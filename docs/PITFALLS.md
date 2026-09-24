@@ -165,6 +165,26 @@ different form, verdict or warning is the defect, and a temporary, copy or alloc
 does not pay is a different form. Where the corpus spells only the generic,
 the twin is a probe.
 
+### `safety-rules-sound-by-default`
+
+**Rule.** An ownership, invalidation or borrow rule is an allow-list: a value is durable only
+when a fact proves it durable, and unknown provenance means own (copy, with the copy warning) or
+reject. A rule that owns or rejects only the shapes known to be hazardous is a deny-list, and
+every shape it did not anticipate is a silent use-after-free. A precision rule that lets a value
+stay a borrow names the fact that proves it (moved vs borrowed, `Final` vs rebindable).
+
+**Example.** A `str` view hoisted out of the block that produced it stayed a `std::string_view`
+unless its source was PROVEN block-local. Each review round found another source the rule did
+not name -- an alias of a view, a nested subscript, a call result, an `elif` or `except` site, a
+`match` capture -- each a view into storage dead after the block. Right: the hoisted slot stays
+a view only when every root is proven durable, and owns a `std::string` otherwise; a wrong entry
+then costs a copy, not memory safety.
+
+**Check.** For a rule the change adds or narrows, list what it treats as durable and the fact
+behind each entry. Then probe a source outside every list (an alias, a call result, a nested
+subscript, a `match` capture) and confirm the emit owns or the compiler rejects; a borrow of it
+is the defect.
+
 ## Generated code
 
 ### `view-not-copy`
@@ -196,7 +216,10 @@ borrowed positions (views), `Span`, `Ptr`. A hidden allocation is one the mappin
 call for: a `std::string` built from a view, a container copied to pass or return, a `BigInt`
 temporary for a literal or comparison that fits a fixed width, a temporary container built
 only to iterate or convert, owned storage in a tuple or optional slot where the scalar slot
-would be a view or a pointer.
+would be a view or a pointer. At a design fork, an option that heap-allocates behind the user's
+back to make a rare shape work is not a candidate: the rare shape gets a documented reject that
+names the explicit spelling (a `Box`, an explicit `copy()`), and the condition for lifting it is
+filed.
 
 **Example.** `a: str = v` emits `std::string_view a = v` (free), but `t: tuple[str] = (v,)`
 emits `std::tuple<std::string>(std::string(v))`, an allocation plus a character copy per
@@ -270,16 +293,19 @@ copy shows the stale value, and a read-only body cannot tell them apart.
 
 ### `generated-cpp-readability`
 
-**Rule.** Generated C++ is read by the developer and by reviewers. A member-init list with
-more than one initializer, a call whose arguments do not fit one line, or a comprehension body
-renders one item per line; a single emitted line should fit an editor width (about 100
-columns).
+**Rule.** Generated C++ is read by the developer and by reviewers. Every `#include` of a
+generated file sits in one block at its top -- none appended at the end or scattered between
+definitions. A call whose arguments do not fit one line, or a comprehension body, renders one
+item per line; a single emitted line should fit an editor width (about 100 columns). A
+member-init list with more than one initializer renders one initializer per line -- the target,
+not yet the emit (TODO.md, "Render a constructor's member-init list one initializer per line").
 
 **Example.** `inline Grid::Grid(int32_t n) : cells(...), tags(...), data(...), mirror(...) {}`
 on one line.
 
-**Check.** Read the changed snapshot for one-line multi-initializer lists and lines far past
-100 columns.
+**Check.** Read the changed snapshot for an `#include` outside the top block, lines far past 100
+columns, and one-line multi-item lists the change introduces (a one-line member-init list is the
+tracked TODO, not a finding against the change).
 
 ## Diagnostics
 

@@ -26,7 +26,7 @@ The orchestrator passes you a base ref and the changed-file lists.
 2. `git diff <BASE> --name-only -- 'tests/cases/**'` -- changed test cases
 3. For each behavior change in `tpyc/`, look for a corresponding test case touching the same code path.
 
-You may NOT run `uv run pytest`. Surface coverage concerns as findings.
+You may NOT run any test suite or `tests/update_snapshots.py`. Surface coverage concerns as findings.
 
 ## Checks
 
@@ -51,6 +51,10 @@ You may NOT run `uv run pytest`. Surface coverage concerns as findings.
 - `error_` cases take the one most representative position (the compiler stops at the first error); the other positions are covered by the happy-path sections.
 - A divergence found in review becomes a section in the existing case, never a new case.
 - A section that needs `no_cpython.txt`, a `@native` companion or a runtime panic is its own case; folded in, it removes the cpy or exec phase for every sibling section.
+
+**Error cases: everyday vs exotic**
+- Classify every new `error_` case as everyday (a shape a Python programmer writes routinely) or exotic. An everyday shape newly pinned as an error is a SHIPPED LIMITATION: report it with its sibling spellings (the same intent written the other common ways, and whether each compiles) and the `BUGS.md#<slug>` it cites; a missing slug is a Warning.
+- A test pinning a known defect -- an error, warning or render that is wrong -- cites `BUGS.md#<slug>` in its comment.
 
 **Test integrity**
 - A pre-existing case's subject line is never simplified to keep a gate, ratchet or snapshot green (`git diff <BASE> -- 'tests/cases/*/src/main.py'` over cases that existed at `<BASE>`; every hunk on a subject line needs a reason in the change-set).

@@ -66,6 +66,10 @@ Out of scope:
 - New methods correctly inferred as `is_readonly` or not
 - Mutation facts propagated through Phase-2 fixpoint reach all callers
 
+**Sound by default** (`docs/PITFALLS.md#safety-rules-sound-by-default`)
+- Ownership, invalidation and borrow rules are allow-lists: a value is durable only when proven durable; unknown provenance means own (copy with the copy warning) or reject.
+- A deny-list of known-bad shapes is a finding, whatever it currently covers -- each unseen shape leaks a use-after-free. A precision rule that keeps a value borrowed names the fact that proves durability (moved vs borrowed, `Final` vs rebindable).
+
 **Safety diagnostics**
 - New code paths that need `deref_check` get it
 - Bounds checks present where they should be
@@ -74,12 +78,13 @@ Out of scope:
 
 ## Pitfalls you own
 
-`docs/PITFALLS.md` holds the language rules that keep passing review. You own these entries; run their **Check** line for the constructs the change touches. A finding about a copy, a move or an alias must be backed by a probe you wrote under `/tmp/agents/` (`printf '...' > file`; no Write tool, no heredocs) and ran (`uv run tpy --dump-code`, then `uv run tpy` and `PYTHONPATH=lib/cpy python3` for the alias observation); quote the emitted line or the two outputs. Reading is how you form the suspicion, not how you confirm it.
+`docs/PITFALLS.md` holds the language rules that keep passing review. You own these entries; run their **Check** line for the constructs the change touches. A finding about a copy, a move or an alias must be backed by a probe you wrote under `/tmp/agents/<name>/` (`printf '...' > file`; no Write tool, no heredocs) and ran (`uv run tpy --dump-code`, then `uv run tpy` and `PYTHONPATH=lib/cpy uv run python` for the alias observation); quote the emitted line or the two outputs. Reading is how you form the suspicion, not how you confirm it. You may NOT run any test suite or `tests/update_snapshots.py`.
 
 - `silent-copy-vs-alias` -- at every boundary the change touches (return, yield, param, field store, container insert, global), mutate after the boundary and observe; then find the copy constructor or by-value slot in the emit.
 - `copy-warning-at-wrong-site` -- for every line under a "copies X" warning, the emit at that line contains the copy; a const-ref bind or a `std::move` under the warning, or a `copy()` whose removal would only change the warning, is the defect.
 - `tuple-equals-scalar` -- a changed ownership or storage verdict holds identically for `x`, `(x,)` and `(x, 1)`.
 - `generic-equals-monomorphic-twin` -- an ownership, form or warning verdict at a slot whose type is still a type parameter holds identically at its instantiation and at the twin with the type spelled directly.
+- `safety-rules-sound-by-default` -- for a rule the change adds or narrows, list what it treats as durable and the proving fact per entry; probe a source outside every list (alias, call result, nested subscript, `match` capture) and confirm it owns or rejects.
 
 ## False-positive discipline
 

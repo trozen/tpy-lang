@@ -180,6 +180,17 @@ union, `str`/`bytes`, `Own[T]`, `readonly[T]`, `Ptr`/`Span`, `Box`/`Rc`)
 and slot kinds (local, param, return, field, container element, global). Every applicable cell is marked covered-by-section,
 not-applicable-because, or gap-filed-as; an empty cell is a finding the
 reviewer will probe. The matrix is what makes "fix the class" checkable.
+Module-level statements and globals rank last: their target design is
+TODO.md "Module scope is the body of __tpy_init", so a global cell is
+gap-filed against it rather than patched per position.
+
+**One mechanism per concept.** If the construct is a variant of an
+existing one (containers vs records, lambda vs nested def, constructor
+vs function, property vs method call, enum vs record methods, generator
+vs other frames), the change goes through the shared path and puts the
+one real difference at the single site that consumes it. If the shared
+path cannot take it within this unit, that is a finding to present, not
+a reason to fork.
 
 The change that fixes the root cause. Note:
 
@@ -208,7 +219,11 @@ divergence class:
   container elements, tuples, unions, captures, match bindings, walrus,
   loop variables) -- historically the largest divergence source
 - **evaluation order and side-effect count** (args including kwargs in
-  written order; assert messages only on failure; operands once)
+  written order; assert messages only on failure; operands once).
+  Operand/argument ORDER is a postponed language decision
+  (`BUGS.md#subexpression-right-to-left-eval`, TODO.md "Evaluation-order
+  policy"): a new site is added to that entry and its render pinned,
+  never fixed alone. Side-effect COUNT is not postponed.
 - **exception semantics** (catchable exception vs panic; finally /
   `__exit__` ordering and coverage on all exit paths; chaining)
 - **scoping and binding lifetime** (loop vars rebind the enclosing

@@ -28,12 +28,14 @@ The orchestrator passes you a base ref and the changed-file list in your scope.
 3. For each new *mechanism* (a new pass, table, registry, predicate, narrowing/coercion/dispatch path, type-shape concept), ask whether an existing abstraction already does this job and the new case is one parameter / method / `TypeDef` field away from being absorbed into it. A second system that should have been a generalization of the first is the costlier defect -- catch it even when no line is literally copy-pasted.
 4. Trace cross-phase consistency: if sema emits a new fact, where does codegen consume it? If codegen reads an attribute, is sema responsible for setting it?
 
+You may NOT run any test suite or `tests/update_snapshots.py`.
+
 ## Checks
 
 **Phase boundary respect**
 - Parser (`tpyc/parse/`) does not resolve types across modules -- only collects refs
 - Sema (`tpyc/sema/`) does not generate C++ or mutate parse nodes for codegen convenience
-- Codegen (`tpyc/codegen_cpp/`) does not run type-analysis; it consumes sema's output
+- THIR lowering (`tpyc/thir/lower/`), the emitter (`tpyc/thir/emit.py`) and the skeleton printer (`tpyc/codegen_cpp/`) do not run type-analysis; they consume sema's output
 - New sema -> codegen facts live on a THIR node or the lowering context, not on parse nodes and not in codegen side tables
 
 **Phase-1 / Phase-2 split (sema)**
@@ -47,7 +49,7 @@ The orchestrator passes you a base ref and the changed-file list in your scope.
 - Overload resolution -> `sema/overloads.py`
 - Built-in defs -> `lib/tpy/` `.py` stubs (NOT `tpyc/modules/`)
 - Generic type factories / per-qname behavior -> `tpyc.type_def_registry.TypeDef`
-- Expression patterns -> `sema/expressions.py` (analysis), `thir/lower/` (lowering), `thir/emit.py` (rendering)
+- Expression analysis -> `sema/expressions.py`; expression lowering -> `thir/lower/` (e.g. `thir/lower/expressions.py`); rendering -> `thir/emit.py`
 
 **No duplication**
 - Search for similar logic elsewhere before approving new code
@@ -75,9 +77,25 @@ The orchestrator passes you a base ref and the changed-file list in your scope.
 - Quadratic in N modules or N methods -> will brick on real-sized codebases
 
 **Sema/codegen mirroring**
-- New sema rule -> matching codegen handler?
-- New type in typesys -> registered in modules/ AND mapped in codegen_cpp/types.py?
-- New built-in function -> both sema and codegen updated?
+- New sema rule -> matching THIR lowering arm (not a special case in the printer)?
+- New type in typesys -> its per-type facts on `TypeDef` AND its C++ mapping in `codegen_cpp/types.py`?
+- New built-in function -> a `lib/tpy/` stub (`@native` / resolved dunder), not compiler code keyed on its name
+
+**One mechanism per concept**
+- A construct that is a variant of an existing one (containers vs records, lambda vs nested def, constructor vs function, property vs method call, enum methods vs record methods, generator frames vs other frames, `bytearray`/`String` vs any other reference/native type) goes through the SAME code path; its single difference sits at the one site that consumes it (render, declaration or lookup), not a seam per consumer.
+- Check: for each new row, branch or table entry keyed on a construct kind, name the existing path the sibling construct takes; a parallel row/branch is a finding. When the unification is too big for this branch, the finding says so and recommends filing it (CLAUDE.md "A branch holds its goal") rather than demanding it in-branch.
+
+**The compiler never re-reads its own rendered C++**
+- tpyc never decides or transforms by inspecting rendered C++ strings (regex, `startswith`, `replace`, `splitlines` on emitted text); the fact is computed upstream (sema/THIR) and carried to the render.
+- Check: grep the diff's added lines for string operations applied to a render result or emitted text; each hit is a finding.
+
+**Re-derivations, duplicates, point patches**
+- An added function that re-derives a fact decided elsewhere, duplicates an existing helper, or patches one instance of a class is a finding.
+- Check: for a re-derivation name the site that decides the fact; for a duplicate name the existing helper.
+
+**No hardcoding of builtins** (`CLAUDE.md` "THIR and the codegen boundary")
+- No builtin method names, runtime symbols, container kinds or builtin type names in the compiler -- diagnostics keyed on a builtin type name included. Exceptions: literal construction and pending-literal element-type resolution. A runtime signature refusing the language model's form (a `str` argument is a view) is fixed in the runtime, not with compiler code.
+- Check: grep the diff's added `tpyc/` lines for comparisons, table keys or message text naming a builtin method, runtime symbol, container kind or builtin type (`== "append"`, `in ("list", "dict")`, a `::tpy::` name used as a decision key); outside the two exceptions each is a finding.
 
 **Style**
 - Type annotations on functions

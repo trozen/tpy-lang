@@ -26,6 +26,8 @@ The orchestrator passes you a base ref and the changed-file list in your scope.
 1. `git diff <BASE> -- 'runtime/cpp/**'`
 2. For facade-header changes, also inspect any companion `.c`/`.cpp` compilation units under `runtime/cpp/third_party/<lib>/`
 
+You may NOT run any test suite or `tests/update_snapshots.py`.
+
 ## Checks
 
 **C++ correctness**
@@ -50,6 +52,12 @@ The orchestrator passes you a base ref and the changed-file list in your scope.
 - No accidental dependency on global linkage state
 - Symbol names stable across versions where possible
 - Inline namespace boundaries respected if used
+
+**Type and trait placement**
+- One C++ runtime type, not a named twin, when the distinction is a fact the template pack or the alternatives already carry; the criterion is the hand-written / external C++ surface -- a twin is justified only when code outside the generated emit must name the difference. Check: for each new runtime type, name what it spells that an existing type's parameters could not; nothing is a finding.
+- `static_assert` pin blocks live in the compiled-once runtime self-check TUs (`runtime/cpp/tests/*.cpp`, built by `tests/test_runtime_cpp.py`); headers keep only point-of-use asserts guarding the template they sit in. Check: a new header `static_assert` that names concrete types rather than the enclosing template's parameters is a finding.
+- Per-type traits and specializations live next to the type they describe, not in a central traits header. Check: a new trait specialization in a header other than the one declaring the type it describes is a finding.
+- No specializations of `std` templates for `std` types (e.g. `std::hash<std::vector<...>>`) -- give the runtime its own type and specialize for that. Check: grep the diff for `struct std::` / `namespace std {` specializations; a `std` type as the argument is a finding.
 
 **Performance / hot paths**
 - No accidental allocations in hot-path operations

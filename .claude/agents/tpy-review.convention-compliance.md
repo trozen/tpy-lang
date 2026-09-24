@@ -29,7 +29,7 @@ The orchestrator passes you a base ref and the changed-file list.
 2. Re-read `CLAUDE.md` (root) so you check against the current rules, not memory.
 3. Judge each changed file against the checklist below. Read surrounding context only when needed to tell a violation from an intended exception.
 
-You may NOT run `uv run pytest` or `tests/update_snapshots.py`.
+You may NOT run any test suite or `tests/update_snapshots.py`.
 
 ## Checks
 
@@ -64,6 +64,12 @@ You may NOT run `uv run pytest` or `tests/update_snapshots.py`.
 - `src/main.py` opens with a 1-2 line comment saying what it covers.
 - Logic in functions (`def main(): ... main()`), not top-level, unless the case specifically tests global behavior.
   (Coverage/annotation adequacy is test-coverage's call -- only flag the textual convention here.)
+
+**Committed-file hygiene** (every changed file, not only the in-scope sources)
+- No sibling-repo relative paths (`../tpy-examples`) -- name the repo or its URL. Check: grep added lines for `\.\./[a-z]`.
+- No source line numbers in comments or test notes; they churn with every edit. Check: grep added comments for `:\d+`, `line \d+`, `~\d+`.
+- No committed regenerable or large generated data files (JSON dumps, probe outputs) outside `tests/cases/*/expected/`. Check: list added files by extension and size; a generated artifact outside `expected/` is a finding.
+- No tests-for-tests harness files added to police test hygiene when a structural fix is possible. Check: for an added test that asserts over the test corpus itself, name the structural change that would make the rule unbreakable; if one exists, the harness file is a finding.
 
 **Front-end perf rule**
 - No proactive front-end optimization (incremental caching, self-hosting, hot-path tuning) absent a stated real-workload need -- CLAUDE.md defers this to the IR migration.

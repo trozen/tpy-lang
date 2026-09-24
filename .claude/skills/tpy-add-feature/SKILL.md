@@ -174,6 +174,17 @@ union, `str`/`bytes`, `Own[T]`, `readonly[T]`, `Ptr`/`Span`, `Box`/`Rc`)
 and slot kinds (local, param, return, field, container element, global). Every applicable cell is marked covered-by-section,
 not-applicable-because, or gap-filed-as; an empty cell is a finding the
 reviewer will probe.
+Module-level statements and globals rank last: their target design is
+TODO.md "Module scope is the body of __tpy_init", so a global cell is
+gap-filed against it rather than patched per position.
+
+**One mechanism per concept.** If the construct is a variant of an
+existing one (containers vs records, lambda vs nested def, constructor
+vs function, property vs method call, enum vs record methods, generator
+vs other frames), the change goes through the shared path and puts the
+one real difference at the single site that consumes it. If the shared
+path cannot take it within this unit, that is a finding to present, not
+a reason to fork.
 
 ## Phase 4: Plan tests and docs
 
@@ -252,7 +263,11 @@ source and a verdict per divergence class:
   container elements, tuples, unions, captures, match bindings, walrus,
   loop variables) -- historically the largest divergence source
 - **evaluation order and side-effect count** (left-to-right including
-  kwargs as written; conditional operands evaluated only when reached)
+  kwargs as written; conditional operands evaluated only when reached).
+  Operand/argument ORDER is a postponed language decision
+  (`BUGS.md#subexpression-right-to-left-eval`, TODO.md "Evaluation-order
+  policy"): a new site is added to that entry and its render pinned.
+  Side-effect COUNT is not postponed.
 - **exception semantics** (catchable vs panic; finally / `__exit__`
   ordering and coverage; chaining)
 - **scoping and binding lifetime** (loop-var rebinding, closure
