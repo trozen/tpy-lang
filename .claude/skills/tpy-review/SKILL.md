@@ -45,11 +45,8 @@ Then wait for the user's decision.
 Run `git diff <BASE> --name-only` and bucket each path:
 
 - **codegen-output**: `tests/cases/*/expected/{src,include}/main.{cpp,hpp}`
-- **codegen-logic**: `tpyc/codegen_cpp/**/*.py`, `tpyc/thir/lower/**/*.py`
-  (both emit C++; a wave that touches only the THIR lowering path would
-  otherwise silence codegen-correctness, safety-model and cpython-parity at
-  once, and after the AST body emitters are deleted `codegen_cpp/` stops
-  changing at all)
+- **codegen-logic**: `tpyc/thir/**/*.py` (lowering and `emit.py`, the body
+  renderer), `tpyc/codegen_cpp/**/*.py` (skeleton/printer layer)
 - **compiler-py**: any `tpyc/**/*.py`
 - **tests**: `tests/cases/**`
 - **runtime-cpp**: `runtime/cpp/**`
@@ -67,7 +64,7 @@ Skip a specialist when its scope is empty:
 | `codegen-correctness` | `codegen-output` OR `codegen-logic` non-empty |
 | `architecture-fit` | `compiler-py` non-empty |
 | `test-coverage` | always (cheap; catches missing tests for compiler changes) |
-| `safety-model` | any of `tpyc/sema/`, `tpyc/typesys.py`, `tpyc/coercions.py`, `tpyc/codegen_cpp/`, or `runtime/cpp/` touched |
+| `safety-model` | any of `tpyc/sema/`, `tpyc/typesys.py`, `tpyc/coercions.py`, `tpyc/thir/`, `tpyc/codegen_cpp/`, or `runtime/cpp/` touched |
 | `cpython-parity` | any of `codegen-output`, `codegen-logic`, `tpyc/sema/`, `tpyc/typesys.py`, `runtime/cpp/`, or `tests/cases/` touched (effectively always for compiler work) -- catches TPy-vs-CPython behavioral divergence the cpy test phase can't (mutation-dependent or `no_cpython`-masked) |
 | `runtime-cpp-correctness` | `runtime-cpp` non-empty |
 | `convention-compliance` | always (cheap; checks the diff against CLAUDE.md's written rules across all changed files) |
@@ -207,7 +204,7 @@ Set aside only bullets that need the user: a significant design decision, a lang
 - Apply each "Handle now" item in order. If an item turns out to need real design analysis or root-cause work (not a mechanical fix), STOP and surface to the user -- recommend invoking `/tpy-fix-bug` or `/tpy-add-feature` for that item rather than improvising.
 - File each "File and defer" item into `BUGS.md` or `TODO.md` using the existing structure of each file (one-line summary, short context, `file:line` where relevant). Don't double-file.
 - Run targeted `uv run pytest -k <pattern>` for cases plausibly affected as you make changes. After all items are applied, run `uv run pytest` once to confirm nothing else regressed.
-- If a fix changes expected output for *existing* test snapshots, consult the user before running `update_snapshots.py` (per CLAUDE.md's snapshot policy).
+- Snapshot churn on *existing* tests follows CLAUDE.md's snapshot policy: covered when the approved plan listed it; beyond it, neutral or improving churn is noted in the round's summary, a regression or behavior change stops for the user.
 
 Once all items in this round are applied and the suite is green, commit them as a SINGLE commit, following the branch-aware policy in CLAUDE.md (auto-commit on a temporary working branch; ask first on `master`/`main` or any branch tracking a remote). One commit for the whole review round -- never a separate tiny commit per finding/item. Do NOT push. (The single-commit rule is the point: this is an automated review pass, so batching its applied fixes into one commit is fine and expected -- what to avoid is the per-remark commit spam.) End with one line: what was applied, what was filed, and the HEAD this round reviewed -- the next round's base.
 

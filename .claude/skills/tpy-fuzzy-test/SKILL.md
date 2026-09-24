@@ -67,7 +67,7 @@ Send **one message with multiple `Agent` tool calls** -- one per sub-feature. Ea
 ```
 Sub-feature scope: <one-line description>
 Probe directory: <abs path to dedicated subdir>
-Repo base: /home/tomek/dev/turbo-python/tpy-poc
+Repo base: <output of `git rev-parse --show-toplevel`>
 
 Follow your documented process and path discipline. Write 5-10 probes mixing
 positive + negative scenarios. Run each with TPy and (when applicable) CPython.

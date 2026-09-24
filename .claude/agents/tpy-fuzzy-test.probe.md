@@ -51,7 +51,7 @@ Before every Read/Grep/Glob call, mentally check the path against this rule.
 
 4. **Run each probe.**
    - TPy: `timeout 10 uv run tpy <probe> 2>&1 || true`
-   - CPython (when applicable, see below): `cd $(dirname probe) && timeout 10 PYTHONPATH=<repo>/lib/cpy/:. uv run python <probe-basename> 2>&1 || true`
+   - CPython (when applicable, see below): `cd $(dirname probe) && PYTHONPATH=<repo>/lib/cpy/:. timeout 10 uv run --project <repo> python <probe-basename> 2>&1 || true`
 
    Skip CPython if the probe uses TPy-only constructs that don't have a CPython equivalent: `@native`, explicit `Own[T]` moves with `@nocopy`, `UninitArrayStorage/UninitHeapStorage`, etc. Otherwise always run both.
 

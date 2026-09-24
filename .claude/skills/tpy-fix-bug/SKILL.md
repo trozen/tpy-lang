@@ -20,7 +20,7 @@ Free-text identifier of the bug to address. Accepted forms:
 - A short BUGS.md substring -- a distinctive phrase from the entry's
   first line (e.g. `enum.Enum @native`, `Ptr[T] | None`).
 - `file:line` -- the crash / failure site
-  (e.g. `tpyc/codegen_cpp/expressions.py:3462`).
+  (e.g. `tpyc/thir/lower/expressions.py:3462`).
 - A reproducer path -- `/tmp/agents/.../repro.py` or similar.
 - Free text describing the bug -- when none of the above fit (e.g. a
   fresh user report not yet in BUGS.md).
@@ -64,7 +64,7 @@ Before anything else, classify the bug and state the classification:
 
 - **Architectural:** the bug touches a shared invariant, a duplicated
   representation, a phase-ordering issue, or a feature whose design has
-  tension with others. Anything in `sema/`, `codegen_cpp/`, or `typesys.py`
+  tension with others. Anything in `sema/`, `thir/`, or `typesys.py`
   that crosses multiple concepts is usually here.
   -> Full procedure (Phases 1-7); consider spawning an `Explore` sub-agent
   for the cross-feature survey.
@@ -95,8 +95,8 @@ invariant -- not where the violated invariant first gets noticed.
 Articulate the architectural invariant being violated -- not "the line
 that crashed." Examples of well-formed root-cause statements:
 
-- "`current_ns` is None when reached during MIL hoist, so all
-  binding-based dispatch in `_gen_field_access` falls through silently."
+- "`current_ns` is None when reached during member-init hoist, so all
+  binding-based dispatch in field access falls through silently."
 - "`OptionalType(PtrType(T))` and `PtrType(T)` are byte-identical in C++
   but distinct in TPy, so every boundary needs its own coercion rule."
 - "Readonly-method return-const projects `const` onto `OptionalType`
@@ -413,8 +413,9 @@ the final report states each:
   corrected in the same commit -- behavior changes routinely outlive
   stale doc claims about the old behavior.
 - Snapshot changes to existing tests match what the approval
-  enumerated; anything beyond it goes back to the user before
-  `update_snapshots.py`.
+  enumerated; extra churn that is neutral or an improvement is listed
+  in the final report, a regression or behavior change goes back to
+  the user (CLAUDE.md snapshot policy).
 
 ## Throughout: track new issues uncovered
 

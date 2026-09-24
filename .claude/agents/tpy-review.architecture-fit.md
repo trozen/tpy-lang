@@ -43,11 +43,11 @@ The orchestrator passes you a base ref and the changed-file list in your scope.
 
 **Module placement**
 - Type ops -> `typesys.py` / `coercions.py`
-- Diagnostic formatting -> `sema/diagnostics.py`
+- Diagnostic formatting -> `tpyc/diagnostics.py`
 - Overload resolution -> `sema/overloads.py`
 - Built-in defs -> `lib/tpy/` `.py` stubs (NOT `tpyc/modules/`)
 - Generic type factories / per-qname behavior -> `tpyc.type_def_registry.TypeDef`
-- Expression patterns -> `sema/expressions.py` or `codegen_cpp/expressions.py`
+- Expression patterns -> `sema/expressions.py` (analysis), `thir/lower/` (lowering), `thir/emit.py` (rendering)
 
 **No duplication**
 - Search for similar logic elsewhere before approving new code
@@ -66,7 +66,7 @@ The orchestrator passes you a base ref and the changed-file list in your scope.
 
 **Per-module state hygiene**
 - New per-analysis state must be per-module, not global
-- No caches hanging off type objects that span modules (front-end perf section in CLAUDE.md calls this out -- bitrots and blocks THIR migration)
+- No caches hanging off type objects that span modules (front-end perf section in CLAUDE.md calls this out -- bitrots and fights the MIR direction in `docs/IR_DESIGN.md`)
 - Avoid analyzer-dependent fields stacked into codegen-only side tables
 
 **Algorithmic cliffs**

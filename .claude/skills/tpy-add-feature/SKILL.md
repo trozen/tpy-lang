@@ -53,7 +53,7 @@ Before anything else, classify the work and state the classification:
   has plausible interaction with sibling concepts (Optional <-> Union
   <-> Ptr, methods <-> functions <-> constructors, generators <-> async
   <-> context managers). Anything in `tpyc/typesys.py`, `tpyc/sema/`,
-  `tpyc/codegen_cpp/` that introduces a new kind of fact is usually
+  `tpyc/thir/` that introduces a new kind of fact is usually
   here.
   -> Full procedure (Phases 1-6); consider spawning an `Explore`
   sub-agent for the sibling survey.
@@ -98,11 +98,12 @@ Project-aware heuristics:
   `__enter__`/`__exit__` shape).
 - **Phase siblings:** feature touching sema? where does parser feed
   it and codegen consume it? Where else does this concept appear?
-- **Prior patterns:** grep `tpyc/sema/` and `tpyc/codegen_cpp/` for
+- **Prior patterns:** grep `tpyc/sema/` and `tpyc/thir/lower/` for
   similar existing features. Reusing an existing emit helper or sema
   rule is almost always preferable to a new parallel one.
 - **Tests at risk:** which existing `tests/cases/` snapshots will
-  change? Snapshot policy applies; consult before regenerating.
+  change? List them in the Phase 6 report; approving the design
+  approves regenerating them (CLAUDE.md snapshot policy).
 
 For wide blast radius, spawn an `Explore` sub-agent with a focused
 prompt: "given this feature design, which sites in the codebase share
@@ -135,9 +136,11 @@ Where each piece of the feature lives:
 - **Type system** (`tpyc/typesys.py`, `tpyc/coercions.py`,
   `tpyc/type_def_registry.py`) -- new TypeDef? new TypeRefNode shape?
   new coercion rule?
-- **Codegen** (`tpyc/codegen_cpp/`) -- which emit path? Read sema's
-  facts off the AST or off a side table? (Strongly prefer AST nodes
-  per CLAUDE.md's perf section.)
+- **Lowering / emit** (`tpyc/thir/lower/`, `tpyc/thir/emit.py`) --
+  which lowering arm? A new sema->codegen fact goes on a THIR node or
+  the lowering context (CLAUDE.md "Compiler Front-end Performance");
+  `tpyc/codegen_cpp/` only for the skeleton: headers, signatures,
+  record/protocol/enum drivers.
 - **Runtime** (`runtime/cpp/include/tpy/`) -- new header support? New
   template, new helper, new concept?
 - **Stdlib** (`lib/tpy/`) -- new module or stub? Parallel
@@ -193,9 +196,9 @@ reviewer will probe.
   feature truly depends on C++-only behavior (e.g. `@native` interop)
 
 **Existing tests at risk:** which snapshots will change? Consult the
-snapshot policy in `CLAUDE.md` -- changes to expected output for
-*existing* tests require a heads-up to the user before
-`update_snapshots.py` runs.
+snapshot policy in `CLAUDE.md` -- they are listed in the Phase 6
+report (count, kind, one C++ example), and approving the design
+approves regenerating them.
 
 **Docs:**
 
@@ -407,8 +410,9 @@ or use `-D`.
 - Sliced-scope exclusions and adjacent issues are actually filed
   (`TODO.md` / `BUGS.md`), not just mentioned in the report.
 - Snapshot changes to existing tests match what the approval
-  enumerated; anything beyond it goes back to the user before
-  `update_snapshots.py`.
+  enumerated; extra churn that is neutral or an improvement is listed
+  in the final report, a regression or behavior change goes back to
+  the user (CLAUDE.md snapshot policy).
 
 ## Throughout: track adjacent issues
 

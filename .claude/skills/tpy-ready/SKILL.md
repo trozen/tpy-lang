@@ -7,7 +7,7 @@ description: Merge-readiness gate to run before /prep-merge. Confirms the branch
 
 A readiness + retrospective gate to run before `/prep-merge`.
 
-This is **not** a code review -- `/tpy-review` hunts defects, `/verify` runs the app, `/prep-merge` does the squash. `/tpy-ready` answers a different question: *is this work actually done, tracked, documented, and would you still build it this way?* Keep it honest and crisp -- when the branch is ready, say so in one line; do not manufacture blockers (spirit over letter).
+This is **not** a code review -- `/tpy-review` hunts defects, `/prep-merge` does the squash. `/tpy-ready` answers a different question: *is this work actually done, tracked, documented, and would you still build it this way?* Keep it honest and crisp -- when the branch is ready, say so in one line; do not manufacture blockers (spirit over letter).
 
 ## Arguments
 
