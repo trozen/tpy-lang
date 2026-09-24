@@ -18,7 +18,7 @@ void main();
 
 // def gen() -> Iterator[tuple[int32, int32]]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<int32_t, int32_t>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::tuple<int32_t, int32_t> t;
     std::tuple<int32_t, int32_t> u;
     std::tuple<int32_t, int32_t> v;

@@ -30,18 +30,18 @@ void main();
 
 // async def client_role(port: int32) -> None:
 struct __coro_client_role {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t port;
     ::tpy::frame_slot<::tpystd::asyncio::StreamReader> reader;
     ::tpy::frame_slot<::tpystd::asyncio::StreamWriter> writer;
-    ::tpy::Bytes first;
-    ::tpy::Bytes second;
-    ::tpy::frame_slot<std::tuple<::tpystd::asyncio::StreamReader, ::tpystd::asyncio::StreamWriter>> __await_lift_0;
-    std::string __coro_arg_0;
-    ::tpy::Bytes __coro_arg_1;
     ::tpy::Bytes __coro_arg_2;
+    ::tpy::Bytes first;
     ::tpy::Bytes __coro_arg_3;
+    ::tpy::Bytes second;
+    std::string __coro_arg_0;
+    ::tpy::frame_slot<std::tuple<::tpystd::asyncio::StreamReader, ::tpystd::asyncio::StreamWriter>> __await_lift_0;
+    ::tpy::Bytes __coro_arg_1;
     ::tpy::Bytes __coro_arg_4;
     std::optional<::tpystd::asyncio::__coro_open_connection> __sub_0;
     std::optional<::tpystd::asyncio::__coro_StreamReader_readuntil> __sub_1;
@@ -78,7 +78,7 @@ struct __coro_client_role {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::EventLoop> loop;
     ::tpy::frame_slot<::tpystd::socket::socket> listener;

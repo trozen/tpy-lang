@@ -26,7 +26,7 @@ void main();
 
 // async def add_one(x: int32) -> int32:
 struct __coro_add_one {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t x;
 
@@ -48,7 +48,7 @@ struct __coro_add_one {
 
 // async def caller() -> int32:
 struct __coro_caller {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t __await_lift_0;
     int32_t __await_lift_1;
@@ -75,7 +75,7 @@ struct __coro_caller {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t val;
     std::optional<__coro_caller> __sub_0;

@@ -13,6 +13,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         std::cout << "background ran" << "\n";
         done.set_result(0);
         __state = S_DONE;
@@ -39,6 +40,7 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         done.emplace(::tpystd::asyncio::Future<int32_t>());
         t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::background((*done)))));
         { auto __del_sink = std::move(t); }

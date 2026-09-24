@@ -335,6 +335,7 @@ void or_positions(const C& a) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         C __tpy_async_ret = ((c) ? (a) : (C(50)));
         return ::tpystd::tpy::Poll<C>::ready(std::move(__tpy_async_ret));
@@ -481,6 +482,7 @@ __gen_gen_receiver gen_receiver(C& a, bool c) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         log.emplace(std::vector<std::string>{});
         std::optional<C> __select_slot_34;
         first = ((c) ? (a) : (__select_slot_34.emplace(::tpyapp::main::make((*log))))).inc();

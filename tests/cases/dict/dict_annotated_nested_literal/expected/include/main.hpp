@@ -95,7 +95,7 @@ inline std::ostream& operator<<(std::ostream& os, const Reg& obj) {
 
 // def rows() -> Iterator[int32]:
 struct __gen_rows : public ::tpy::next_iter_mixin<__gen_rows, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<::tpy::ordered_map<std::string, std::vector<int32_t>>> inside;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_values((*inside))))>;
     ::tpy::begin_elem_t<__for_src_0_t>* v = nullptr;

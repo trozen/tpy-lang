@@ -11,6 +11,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -39,6 +40,7 @@ __coro_step step() {
 ::tpystd::tpy::Poll<int32_t> __coro_other::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -67,6 +69,7 @@ __coro_other other() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;

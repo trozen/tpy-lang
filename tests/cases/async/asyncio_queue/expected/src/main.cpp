@@ -14,6 +14,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -59,6 +60,7 @@ __coro_producer producer(::tpystd::asyncio::Queue<int32_t>& q) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_consumer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         n = 0;
         __state = S_JOIN_0;
         continue;
@@ -138,6 +140,7 @@ __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         q.emplace(::tpystd::asyncio::Queue<int32_t>(2));
         std::cout << "empty:" << " " << ::tpy::print_bool((*q).empty()) << " " << "full:" << " " << ::tpy::print_bool((*q).full()) << " " << "qsize:" << " " << (*q).qsize() << " " << "maxsize:" << " " << (*q).maxsize << "\n";
         out.emplace(std::vector<int32_t>{});

@@ -27,7 +27,7 @@ void main();
 
 // async def quick() -> int:
 struct __coro_quick {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -50,7 +50,7 @@ struct __coro_quick {
 
 // async def go() -> None:
 struct __coro_go {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt v;
     std::exception_ptr __finally_exc_0;
@@ -80,7 +80,7 @@ struct __coro_go {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> task;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;

@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<std::string, ::tpy::StopIteration> __gen_in_generator::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         v = &*(__ptr_slot_f0 = ::tpystd::json::loads("[1]"));
         v = &*(__ptr_slot_f1 = ::tpystd::json::loads("[5, 6]"));
         __state = S_RESUME_0;

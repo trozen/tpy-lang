@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Lim& obj) {
 
 // def first(self, items: list[int32], cap: int32) -> Iterator[int32]:
 struct __gen_Lim_first : public ::tpy::next_iter_mixin<__gen_Lim_first, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Lim& __self;
     const std::vector<int32_t>& items;
     int32_t cap;
@@ -95,7 +95,7 @@ inline __gen_Lim_first Lim::first(const std::vector<int32_t>& items, int32_t cap
 
 // def ro_pair(self, xs: readonly[list[int32]]) -> Iterator[int32]:
 struct __gen_Lim_ro_pair : public ::tpy::next_iter_mixin<__gen_Lim_ro_pair, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Lim& __self;
     const std::vector<int32_t>& xs;
     int32_t x;
@@ -128,7 +128,7 @@ inline __gen_Lim_ro_pair Lim::ro_pair(const std::vector<int32_t>& xs) const {
 
 // def rec_val(self, r: readonly[Rec]) -> Iterator[int32]:
 struct __gen_Lim_rec_val : public ::tpy::next_iter_mixin<__gen_Lim_rec_val, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Lim& __self;
     const Rec& r;
 
@@ -156,7 +156,7 @@ inline __gen_Lim_rec_val Lim::rec_val(const Rec& r) const {
 
 // def dvals(self, d: readonly[dict[str, int32]]) -> Iterator[int32]:
 struct __gen_Lim_dvals : public ::tpy::next_iter_mixin<__gen_Lim_dvals, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Lim& __self;
     const ::tpy::ordered_map<std::string, int32_t>& d;
     std::string k;
@@ -189,7 +189,7 @@ inline __gen_Lim_dvals Lim::dvals(const ::tpy::ordered_map<std::string, int32_t>
 
 // def echo(self, xs: list[int32]) -> Iterator[int32]:
 struct __gen_Lim_echo : public ::tpy::next_iter_mixin<__gen_Lim_echo, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Lim& __self;
     const std::vector<int32_t>& xs;
 

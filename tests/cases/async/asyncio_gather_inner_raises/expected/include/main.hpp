@@ -27,7 +27,7 @@ void main();
 
 // async def good() -> int32:
 struct __coro_good {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -50,7 +50,7 @@ struct __coro_good {
 
 // async def bad() -> int32:
 struct __coro_bad {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -71,7 +71,7 @@ struct __coro_bad {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<::tpystd::asyncio::_executor::Task<int32_t>>> tasks;
     ::tpy::frame_slot<std::vector<int32_t>> results;

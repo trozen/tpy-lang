@@ -26,7 +26,7 @@ void main();
 
 // async def doubler(n: int32, label: str) -> int32:
 struct __coro_doubler {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
     std::string label;
@@ -51,14 +51,14 @@ struct __coro_doubler {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
+    std::string __coro_arg_0;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t1;
+    std::string __coro_arg_1;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t2;
     int32_t a;
     int32_t b;
-    std::string __coro_arg_0;
-    std::string __coro_arg_1;
     ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;
     ::tpystd::asyncio::_executor::Task<int32_t>* __sub_1 = nullptr;
 

@@ -28,7 +28,7 @@ __coro_drive drive();
 
 // async def fill_buf(b: bytearray) -> int32:  # tpyc: ok
 struct __coro_fill_buf {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::ByteArray& b;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -52,7 +52,7 @@ struct __coro_fill_buf {
 
 // async def bump_arr(a: Array[int32, 2]) -> int32:  # tpyc: ok
 struct __coro_bump_arr {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::array<int32_t, 2>& a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -76,7 +76,7 @@ struct __coro_bump_arr {
 
 // async def push_list(xs: list[int32]) -> int32:
 struct __coro_push_list {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<int32_t>& xs;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -100,7 +100,7 @@ struct __coro_push_list {
 
 // async def drive() -> None:
 struct __coro_drive {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpy::ByteArray> b;
     ::tpy::frame_slot<std::array<int32_t, 2>> a;

@@ -18,6 +18,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_section::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
         __state = S_JOIN_0;
@@ -62,6 +63,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_section::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_while_section::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -110,6 +112,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_while_section::__n
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_for_single::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
         __state = S_JOIN_0;
@@ -151,6 +154,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_for_single::__next
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_slice_view::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -187,6 +191,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_slice_view::__next
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_while_single::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -213,58 +218,6 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_while_single::
             __state = S_RESUME_1;
             return std::format("{}{}{}", b, a, (*f).n);
         }
-    }
-    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    __builtin_unreachable();
-}
-
-// # Generator, sibling loop between the binding loop and the read. The name binds
-// # the CALLER's element, so the post-loop mutation is observed on `pics` -- a
-// # frame-slot copy would leave it behind.
-// def gen_sibling(pics: list[Pic]) -> Iterator[int32]:
-//     for i in range(2):
-//         p = pics[i]  # tpyc: ok
-//         yield p.n                                     # -> S_RESUME_0
-//     for k in range(2):
-//         yield k + 50                                  # -> S_RESUME_1
-//     p.n += 100
-//     yield p.n                                         # -> S_RESUME_2
-inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_sibling::__next__() {
-    while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        __for_i_0.emplace(int32_t(0));
-        __for_stop_0.emplace(static_cast<int32_t>(2));
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_2: {  // after: yield p.n
-        __state = S_DONE;
-        return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    case S_RESUME_0:  // after: yield p.n
-    case S_JOIN_0: {
-        if (!((*__for_i_0) < (*__for_stop_0))) {
-            __for_i_1.emplace(int32_t(0));
-            __for_stop_1.emplace(static_cast<int32_t>(2));
-            __state = S_JOIN_1;
-            continue;
-        }
-        i = ((*__for_i_0))++;
-        p = &(::tpy::__getitem__(pics, i));
-        __state = S_RESUME_0;
-        return p->n;
-    }
-    case S_RESUME_1:  // after: yield k + 50
-    case S_JOIN_1: {
-        if (!((*__for_i_1) < (*__for_stop_1))) {
-            p->n = ::tpy::add_check<int32_t>(p->n, 100);
-            __state = S_RESUME_2;
-            return p->n;
-        }
-        k = ((*__for_i_1))++;
-        __state = S_RESUME_1;
-        return (::tpy::add_check<int32_t>(k, 50));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

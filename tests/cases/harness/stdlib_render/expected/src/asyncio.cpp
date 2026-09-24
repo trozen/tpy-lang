@@ -169,6 +169,7 @@ EventLoop get_running_loop() {
 ::tpystd::tpy::Poll<std::tuple<StreamReader, StreamWriter>> __coro_open_connection::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         loop.emplace(::tpystd::asyncio::get_running_loop());
         sock.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
         (*sock).setblocking(false);
@@ -215,6 +216,7 @@ __coro_open_connection open_connection(std::string_view host, int32_t port) {
 ::tpystd::tpy::Poll<::std::monostate> __coro__accept_loop::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         loop.emplace(::tpystd::asyncio::get_running_loop());
         __state = S_JOIN_0;
         continue;
@@ -278,6 +280,7 @@ __coro__accept_loop _accept_loop(::tpystd::tplib::rc::Rc<::tpystd::socket::socke
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         listener.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
         (*listener).setsockopt_int(::tpy_const_sol_socket, ::tpy_const_so_reuseaddr, 1);
         (*listener).bind(std::tuple<std::string, int32_t>{std::string(host), port});
@@ -311,6 +314,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<bool> __coro_Event_wait::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0 = &(__self);
         __state = S_RESUME_0;
         continue;
@@ -336,6 +340,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<bool> __coro_Lock_acquire::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(_LockAcquire(&__self)));
         __state = S_RESUME_0;
         continue;
@@ -360,6 +365,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<::std::monostate> __coro_Lock___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(__self);
         __state = S_RESUME_0;
         continue;
@@ -385,6 +391,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __self.release();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -401,6 +408,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<bool> __coro_Semaphore_acquire::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(_SemAcquire(&__self)));
         __state = S_RESUME_0;
         continue;
@@ -425,6 +433,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<::std::monostate> __coro_Semaphore___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(__self);
         __state = S_RESUME_0;
         continue;
@@ -450,6 +459,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __self.release();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -472,6 +482,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<int32_t> __coro_StreamReader__fill::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         loop.emplace(::tpystd::asyncio::get_running_loop());
         __sub_0.emplace(std::move((*loop).sock_recv(__self._sock.get(), 65536)));
         __state = S_RESUME_0;
@@ -512,6 +523,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<::tpy::Bytes> __coro_StreamReader_read::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((n < 0)) {
             __state = S_JOIN_0;
             continue;
@@ -578,6 +590,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<::tpy::Bytes> __coro_StreamReader_readexactly::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((n < 0)) {
             throw ::tpy::ValueError("readexactly size can not be less than zero");
         }
@@ -625,6 +638,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<::tpy::Bytes> __coro_StreamReader_readline::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         idx = ::tpy::bytes_find(__self._buf, ::tpy::bytes_literal("\n", 1));
         __state = S_JOIN_0;
         continue;
@@ -677,6 +691,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<::tpy::Bytes> __coro_StreamReader_readuntil::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((::tpy::__len__(separator) == 0)) {
             throw ::tpy::ValueError("Separator should be at least one-byte string");
         }
@@ -721,6 +736,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<::std::monostate> __coro_StreamWriter_drain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((::tpy::__len__(__self._buf) > 0)) {
             loop.emplace(::tpystd::asyncio::get_running_loop());
             __sub_0.emplace(std::move((*loop).sock_sendall(__self._sock.get(), __self._buf)));
@@ -758,6 +774,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -800,6 +817,8 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         try {
             __sub_0 = &(__self._task);
@@ -827,6 +846,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -844,6 +864,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         Server* __tpy_async_ret = &(__self);
         return ::tpystd::tpy::Poll<Server*>::ready(std::move(__tpy_async_ret));
@@ -861,6 +882,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __self.close();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});

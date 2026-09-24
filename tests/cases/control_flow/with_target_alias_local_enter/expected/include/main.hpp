@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // def steps(start: int32) -> Iterator[int32]:
 struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t start;
     ::tpy::frame_slot<Holder> h;
     ::tpy::frame_slot<::tpy::with_enter_t<Holder>> it;

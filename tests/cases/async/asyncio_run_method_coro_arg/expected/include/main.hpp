@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Worker& obj) {
 
 // async def go(self) -> None:
 struct __coro_Worker_go {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Worker& __self;
 

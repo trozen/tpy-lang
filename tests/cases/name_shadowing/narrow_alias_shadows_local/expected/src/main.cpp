@@ -305,6 +305,7 @@ __gen_gen_sibling gen_sibling(::tpy::Union<Cat*, Dog*> a, int32_t a_narrowed) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __a = 9;
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
@@ -343,6 +344,7 @@ __coro_coro coro(::tpy::Union<Cat*, Dog*> a) {
 ::tpystd::tpy::Poll<std::string> __coro_coro_complement::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __a = 1;
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
@@ -386,6 +388,7 @@ __coro_coro_complement coro_complement(::tpy::Union<Cat*, Dog*> a) {
 ::tpystd::tpy::Poll<std::string> __coro_coro_global::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (std::holds_alternative<Cat*>(acache)) {
             auto& __acache_narrowed = *std::get<Cat*>(acache);
             before = __acache_narrowed.n;

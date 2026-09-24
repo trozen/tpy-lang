@@ -57,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // async def count_mono(items: Own[Iterable[int32]]) -> int32:  # tpyc: warning(/never consumed/)
 template <::tpystd::typing::Iterable<int32_t> T_items>
 struct __coro_count_mono {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     T_items items;
     int32_t s;
@@ -92,6 +92,7 @@ template <::tpystd::typing::Iterable<int32_t> T_items>
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         s = 0;
         auto& __src_0 = items;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -120,7 +121,7 @@ __coro_count_mono<T_items> count_mono(T_items&& items) {
 // def each[T](items: Own[Iterable[T]]) -> Iterator[tuple[int32, T]]:  # tpyc: warning(/never consumed/)
 template <typename T, ::tpystd::typing::Iterable<T> T_items>
 struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T, T_items>, std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_items items;
     int32_t i;
     using __for_src_0_t = decltype((items));
@@ -157,6 +158,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_items>
 std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __gen_each<T, T_items>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         ::tpy::resumable_iter_init(__for_itr_0, items);
         __state = S_JOIN_0;
@@ -196,7 +198,7 @@ __gen_each<T, T_items> each(T_items&& items) {
 // def each_mono(items: Own[Iterable[int32]]) -> Iterator[tuple[int32, int32]]:  # tpyc: warning(/never consumed/)
 template <::tpystd::typing::Iterable<int32_t> T_items>
 struct __gen_each_mono : public ::tpy::next_iter_mixin<__gen_each_mono<T_items>, std::tuple<int32_t, int32_t>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_items items;
     int32_t i;
     int32_t item;
@@ -235,6 +237,7 @@ template <::tpystd::typing::Iterable<int32_t> T_items>
 std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __gen_each_mono<T_items>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         ::tpy::resumable_iter_init(__for_itr_0, items);
         __state = S_JOIN_0;

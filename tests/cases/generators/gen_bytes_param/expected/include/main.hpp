@@ -18,7 +18,7 @@ void main();
 
 // def byte_vals(data: bytes) -> Iterator[int]:
 struct __gen_byte_vals : public ::tpy::next_iter_mixin<__gen_byte_vals, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Bytes data;
     int32_t i;
 

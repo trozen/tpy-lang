@@ -13,6 +13,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_peek::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a = &(o.inner);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
@@ -43,6 +44,7 @@ __coro_peek peek(const Outer& o) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __coro_arg_0.emplace(Outer(::tpy::BigInt(9)));
         __sub_0.emplace((*__coro_arg_0));
         __state = S_RESUME_0;

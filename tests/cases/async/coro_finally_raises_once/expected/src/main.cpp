@@ -50,6 +50,8 @@ int32_t _code{};
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         try {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -107,6 +109,8 @@ __coro_normal_exit normal_exit() {
         }
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_0: {
         try {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -142,6 +146,7 @@ __coro_return_exit return_exit() {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0.emplace(Thrower());
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_1;
@@ -245,6 +250,8 @@ __coro_with_exit with_exit() {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         try {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -336,6 +343,8 @@ __coro_handler_exit handler_exit() {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1:
     case S_JOIN_2: {
         try {
@@ -413,6 +422,7 @@ __coro_nested_exit nested_exit() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         _code = 0;
         std::cout << "-- normal_exit --" << "\n";
         __state = S_JOIN_5;

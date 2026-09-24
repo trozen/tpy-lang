@@ -26,7 +26,7 @@ void main();
 
 // async def producer(f: Future[int32]) -> None:
 struct __coro_producer {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::Future<int32_t>& f;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -50,7 +50,7 @@ struct __coro_producer {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::Future<int32_t>> f;
     int32_t result;

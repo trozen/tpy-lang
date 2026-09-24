@@ -12,6 +12,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_0;
@@ -41,6 +42,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 inline std::expected<std::tuple<int32_t, Node*>, ::tpy::StopIteration> __gen_pairs_of::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         auto& __for_obj_0 = ns;
         __for_it_0.emplace((__for_obj_0).begin());
@@ -75,6 +77,7 @@ inline std::expected<std::tuple<int32_t, Node*>, ::tpy::StopIteration> __gen_pai
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_scores::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_0;
@@ -106,6 +109,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_scores::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         xs.emplace(({
             std::vector<int32_t> __result;
             const int32_t __stop_0 = n;

@@ -12,6 +12,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         int32_t __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -37,6 +38,7 @@ __coro_step step(int32_t n) {
 ::tpystd::tpy::Poll<int32_t> __coro_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         n = 0;
         auto& __for_obj_0 = ps;
         __for_it_0.emplace((__for_obj_0).begin());

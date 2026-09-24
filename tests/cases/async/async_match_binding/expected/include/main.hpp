@@ -26,7 +26,7 @@ void main();
 
 // async def sub(n: int) -> int:
 struct __coro_sub {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
 
@@ -48,7 +48,7 @@ struct __coro_sub {
 
 // async def caller(tag: int) -> int:
 struct __coro_caller {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt tag;
     ::tpy::BigInt v;
@@ -76,7 +76,7 @@ struct __coro_caller {
 
 // async def opt_chain(o: Optional[int32]) -> int32:
 struct __coro_opt_chain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<int32_t> o;
     std::optional<__coro_sub> __sub_0;

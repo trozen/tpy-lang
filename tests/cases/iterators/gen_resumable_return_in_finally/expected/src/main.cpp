@@ -40,6 +40,8 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_normal::__ne
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
@@ -84,6 +86,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_in_loop::__n
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(5));
         __state = S_JOIN_0;

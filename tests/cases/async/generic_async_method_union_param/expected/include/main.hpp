@@ -102,7 +102,7 @@ inline std::ostream& operator<<(std::ostream& os, const PlainHolder& obj) {
 // async def show(self, u: A | B) -> int32:
 template <typename T>
 struct __coro_Holder_show {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Holder<T>& __self;
     ::tpy::Union<const A*, const B*> u;
@@ -134,6 +134,7 @@ template <typename T>
 ::tpystd::tpy::Poll<int32_t> __coro_Holder_show<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -167,7 +168,7 @@ inline __coro_Holder_show<T> Holder<T>::show(::tpy::Union<const A*, const B*> u)
 
 // async def show(self, u: A | B) -> int32:
 struct __coro_PlainHolder_show {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const PlainHolder& __self;
     ::tpy::Union<const A*, const B*> u;
@@ -196,7 +197,7 @@ inline __coro_PlainHolder_show PlainHolder::show(::tpy::Union<const A*, const B*
 
 // async def bump(a: A) -> None:
 struct __coro_bump {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     A& a;
 
@@ -218,7 +219,7 @@ struct __coro_bump {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Holder<int32_t>> h;
     ::tpy::frame_slot<A> a;

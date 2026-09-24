@@ -18,6 +18,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 1;
         int32_t __stop_0 = k;
         for (int32_t i = 0; i < __stop_0; ++i) {

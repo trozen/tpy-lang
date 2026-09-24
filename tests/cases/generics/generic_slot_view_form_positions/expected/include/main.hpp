@@ -203,7 +203,7 @@ inline std::ostream& operator<<(std::ostream& os, const Labels<T>& obj) {
 
 // async def async_body(k: str) -> bool:
 struct __coro_async_body {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string k;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -227,7 +227,7 @@ struct __coro_async_body {
 
 // def gen_body(k: str) -> Iterator[bool]:
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, bool> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string k;
 
     enum : int32_t {

@@ -17,6 +17,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -61,6 +62,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
 inline std::expected<std::tuple<int32_t, std::vector<int32_t>*>, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         stack.emplace(std::vector<int32_t>{});
         (*stack).push_back(2);
         __state = S_JOIN_0;
@@ -107,6 +109,7 @@ inline std::expected<std::tuple<int32_t, std::vector<int32_t>*>, ::tpy::StopIter
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_gen_range::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
         __state = S_JOIN_0;
@@ -148,6 +151,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_gen_ternary::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -187,6 +191,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_gen_walrus::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -224,6 +229,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_Source_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;

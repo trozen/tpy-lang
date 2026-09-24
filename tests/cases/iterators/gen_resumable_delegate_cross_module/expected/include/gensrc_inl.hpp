@@ -11,6 +11,7 @@ namespace tpyapp::gensrc {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 1;
     }
@@ -33,6 +34,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk_once::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
         __state = S_JOIN_0;
@@ -62,6 +64,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk_once::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_chatty::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         std::cout << "  callee: before 1" << "\n";
         __state = S_RESUME_0;
         return 1;
@@ -87,6 +90,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_chatty::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Src_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.n;
     }
@@ -109,6 +113,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Src_steps::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Bag_readings::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.n;
     }

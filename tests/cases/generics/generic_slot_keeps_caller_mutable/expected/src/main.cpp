@@ -45,6 +45,7 @@ __gen_via_gen via_gen(NPt& p) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpyapp::main::take<NPt>(p);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -131,6 +132,7 @@ int32_t via_match(NPt& p, int32_t tag) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         n.emplace(NPt(3));
         a.emplace(Pt(5));
         d.emplace(Driver());

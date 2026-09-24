@@ -90,7 +90,7 @@ namespace tpyapp::main {
 // @readonly
 // def ro_names(self) -> Iterator[str]:
 struct __gen_Pet_ro_names : public ::tpy::next_iter_mixin<__gen_Pet_ro_names, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Pet& __self;
 
     enum : int32_t {
@@ -118,7 +118,7 @@ inline __gen_Pet_ro_names Pet::ro_names() const {
 
 // def counts(self) -> Iterator[int]:
 struct __gen_Pet_counts : public ::tpy::next_iter_mixin<__gen_Pet_counts, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Pet& __self;
 
     enum : int32_t {

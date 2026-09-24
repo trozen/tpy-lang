@@ -26,7 +26,7 @@ void main();
 // async def total(items: Iterable[int]) -> int:
 template <::tpystd::typing::Iterable<::tpy::BigInt> T_items>
 struct __coro_total {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     T_items items;
     int32_t s;
@@ -57,6 +57,7 @@ template <::tpystd::typing::Iterable<::tpy::BigInt> T_items>
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         s = 0;
         auto& __src_0 = items;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -84,7 +85,7 @@ __coro_total<T_items> total(T_items&& items) {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::array<int32_t, 3>> xs;
     std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt>> c;

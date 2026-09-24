@@ -94,7 +94,7 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 
 // async def via_async(r: Rec) -> int32:  # tpyc: ok
 struct __coro_via_async {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpyapp::keeper::Rec& r;
     ::tpy::frame_slot<::tpyapp::keeper::Factory> f;
@@ -117,7 +117,7 @@ struct __coro_via_async {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpyapp::keeper::Rec> a;
     int32_t x;
@@ -143,7 +143,7 @@ struct __coro_main_coro {
 
 // def via_gen(r: Rec) -> Iterator[int32]:  # tpyc: ok
 struct __gen_via_gen : public ::tpy::next_iter_mixin<__gen_via_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpyapp::keeper::Rec& r;
     ::tpy::frame_slot<::tpyapp::keeper::Factory> f;
 

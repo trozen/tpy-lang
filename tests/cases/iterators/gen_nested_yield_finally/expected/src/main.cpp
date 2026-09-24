@@ -51,6 +51,8 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         return ::tpy::BigInt(2);
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_2:
     case S_JOIN_5: {
         __state = S_RESUME_0;

@@ -29,7 +29,7 @@ void main();
 
 // def fresh_each_pull() -> Iterator[int]:
 struct __gen_fresh_each_pull : public ::tpy::next_iter_mixin<__gen_fresh_each_pull, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -51,7 +51,7 @@ struct __gen_fresh_each_pull : public ::tpy::next_iter_mixin<__gen_fresh_each_pu
 
 // def fresh_each_pull_framed() -> Iterator[int]:
 struct __gen_fresh_each_pull_framed : public ::tpy::next_iter_mixin<__gen_fresh_each_pull_framed, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -74,7 +74,7 @@ struct __gen_fresh_each_pull_framed : public ::tpy::next_iter_mixin<__gen_fresh_
 
 // def if_cond_temp(n: int) -> Iterator[int]:
 struct __gen_if_cond_temp : public ::tpy::next_iter_mixin<__gen_if_cond_temp, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt n;
     ::tpy::BigInt i;
     ::tpy::frame_loop_slot<::tpy::BigInt> __for_i_0;
@@ -102,7 +102,7 @@ struct __gen_if_cond_temp : public ::tpy::next_iter_mixin<__gen_if_cond_temp, ::
 
 // def walrus_gen(limit: int) -> Iterator[int]:
 struct __gen_walrus_gen : public ::tpy::next_iter_mixin<__gen_walrus_gen, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt limit;
     ::tpy::BigInt n;
     ::tpy::BigInt m;

@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpyapp::main::__genexpr_gen_body_8(xs));
         ::tpy::resumable_iter_init(__for_itr_0, (*__for_src_0));
         __state = S_JOIN_0;

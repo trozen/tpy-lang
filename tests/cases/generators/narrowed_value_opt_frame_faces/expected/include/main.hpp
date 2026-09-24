@@ -34,7 +34,7 @@ void main();
 
 // def g(p: int32 | None) -> Iterator[int32]:
 struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::optional<int32_t> p;
     int32_t q;
 
@@ -60,7 +60,7 @@ struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, int32_t> {
 
 // def g_loop(d: dict[str, int32 | None]) -> Iterator[int32]:
 struct __gen_g_loop : public ::tpy::next_iter_mixin<__gen_g_loop, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const ::tpy::ordered_map<std::string, std::optional<int32_t>>& d;
     std::optional<int32_t> val;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_values(d)))>;
@@ -89,7 +89,7 @@ struct __gen_g_loop : public ::tpy::next_iter_mixin<__gen_g_loop, int32_t> {
 
 // def g_whole(p: int32 | None) -> Iterator[int32 | None]:
 struct __gen_g_whole : public ::tpy::next_iter_mixin<__gen_g_whole, std::optional<int32_t>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::optional<int32_t> p;
 
     enum : int32_t {
@@ -113,7 +113,7 @@ struct __gen_g_whole : public ::tpy::next_iter_mixin<__gen_g_whole, std::optiona
 
 // def g_frame_whole(p: int32 | None) -> Iterator[int32]:
 struct __gen_g_frame_whole : public ::tpy::next_iter_mixin<__gen_g_frame_whole, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::optional<int32_t> p;
     std::optional<int32_t> q2;
 
@@ -139,7 +139,7 @@ struct __gen_g_frame_whole : public ::tpy::next_iter_mixin<__gen_g_frame_whole, 
 
 // def g_global() -> Iterator[int32]:
 struct __gen_g_global : public ::tpy::next_iter_mixin<__gen_g_global, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -162,7 +162,7 @@ struct __gen_g_global : public ::tpy::next_iter_mixin<__gen_g_global, int32_t> {
 
 // def g_view(s: str | None) -> Iterator[str]:
 struct __gen_g_view : public ::tpy::next_iter_mixin<__gen_g_view, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::optional<std::string> s;
 
     enum : int32_t {

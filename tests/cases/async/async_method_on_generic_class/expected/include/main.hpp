@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 // async def take(self) -> T:  # tpyc: ok
 template <typename T>
 struct __coro_Box_take {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Box<T>& __self;
 
@@ -70,6 +70,7 @@ template <typename T>
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(__self.value);
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));

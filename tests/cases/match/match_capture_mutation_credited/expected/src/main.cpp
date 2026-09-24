@@ -236,6 +236,7 @@ __gen_gen_body gen_body(::tpy::Union<Cat*, Counter*> a) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 1: {

@@ -16,6 +16,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_worker::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0 = &(sem);
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
@@ -123,6 +124,7 @@ __coro_worker worker(::tpystd::asyncio::Semaphore& sem, Counters& c) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         counter.emplace(::tpystd::asyncio::Semaphore(2));
         std::cout << "locked0:" << " " << ::tpy::print_bool((*counter).locked()) << "\n";
         __sub_0.emplace((*counter));

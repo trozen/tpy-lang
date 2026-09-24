@@ -16,6 +16,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_bump::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         n = 0;
         __for_src_0.emplace(::tpy::dict_items(d));
         __for_it_0.emplace(((*__for_src_0)).begin());

@@ -20,7 +20,7 @@ void main();
 
 // async def total_up(k: int32) -> int:
 struct __coro_total_up {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t k;
     ::tpy::BigInt total;

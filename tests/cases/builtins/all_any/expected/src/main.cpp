@@ -8,7 +8,7 @@ namespace {
 
 // print(all(x > 0 for x in nums))
 struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, bool> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::array<int32_t, 5>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -49,7 +49,7 @@ __genexpr_main_1_frame __genexpr_main_1(const std::array<int32_t, 5>& __src) {
 
 // print(all(x > 3 for x in nums))
 struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_frame, bool> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::array<int32_t, 5>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -90,7 +90,7 @@ __genexpr_main_2_frame __genexpr_main_2(const std::array<int32_t, 5>& __src) {
 
 // print(any(x > 4 for x in nums))
 struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_frame, bool> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::array<int32_t, 5>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -131,7 +131,7 @@ __genexpr_main_3_frame __genexpr_main_3(const std::array<int32_t, 5>& __src) {
 
 // print(any(x > 10 for x in nums))
 struct __genexpr_main_4_frame : public ::tpy::next_iter_mixin<__genexpr_main_4_frame, bool> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::array<int32_t, 5>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));

@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // def g(boxes: list[Box]) -> Iterator[tuple[int, Box]]:
 struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, std::tuple<::tpy::BigInt, Box*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Box>& boxes;
     int32_t i;
     using __for_src_0_t = decltype((boxes));

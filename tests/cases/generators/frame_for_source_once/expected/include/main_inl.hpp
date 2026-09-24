@@ -11,6 +11,7 @@ namespace tpyapp::main {
 inline std::expected<Cell, ::tpy::StopIteration> __gen_gen_cells::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return Cell(7);
     }
@@ -37,6 +38,7 @@ inline std::expected<Cell, ::tpy::StopIteration> __gen_gen_cells::__next__() {
 inline std::expected<std::string, ::tpy::StopIteration> __gen_named_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         cells.emplace(std::array<Cell, 2>{Cell(1), Cell(2)});
         auto& __for_obj_0 = (*cells);
         __for_it_0.emplace((__for_obj_0).begin());
@@ -72,6 +74,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_named_src::__next_
 inline std::expected<std::string, ::tpy::StopIteration> __gen_param_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = cells;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -102,6 +105,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_param_src::__next_
 inline std::expected<std::string, ::tpy::StopIteration> __gen_subscript_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = ::tpy::__getitem__(table, "a");
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -132,6 +136,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_subscript_src::__n
 inline std::expected<std::string, ::tpy::StopIteration> __gen_accessor_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = b.items();
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -162,6 +167,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_accessor_src::__ne
 inline std::expected<std::string, ::tpy::StopIteration> __gen_property_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = b.view();
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -192,6 +198,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_property_src::__ne
 inline std::expected<std::string, ::tpy::StopIteration> __gen_own_call_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpyapp::main::make_cells());
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
@@ -226,6 +233,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_own_call_src::__ne
 inline std::expected<std::string, ::tpy::StopIteration> __gen_copy_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(std::vector<Cell>(cells));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
@@ -260,6 +268,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_copy_src::__next__
 inline std::expected<std::string, ::tpy::StopIteration> __gen_literal_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(std::array<Cell, 2>{Cell(4), Cell(5)});
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
@@ -295,6 +304,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_literal_src::__nex
 inline std::expected<std::string, ::tpy::StopIteration> __gen_slice_mut_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         cells.emplace(std::array<Cell, 3>{Cell(1), Cell(2), Cell(3)});
         __for_src_0.emplace(::tpy::list_slice((*cells), ::tpy::BasicSlice{1, std::nullopt}));
         __for_it_0.emplace(((*__for_src_0)).begin());
@@ -330,6 +340,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_slice_mut_src::__n
 inline std::expected<std::string, ::tpy::StopIteration> __gen_slice_const_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpy::list_slice(cells, ::tpy::BasicSlice{1, std::nullopt}));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
@@ -366,6 +377,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_slice_const_src::_
 inline std::expected<std::string, ::tpy::StopIteration> __gen_ternary_lvalues_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         xs.emplace(std::vector<Cell>{Cell(1)});
         ys.emplace(std::vector<Cell>{Cell(2)});
         auto& __for_obj_0 = ((flag) ? ((*xs)) : ((*ys)));
@@ -402,6 +414,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_ternary_lvalues_sr
 inline std::expected<std::string, ::tpy::StopIteration> __gen_ternary_temps_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(((flag) ? (std::vector<Cell>{Cell(10)}) : (std::vector<Cell>{Cell(11)})));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
@@ -438,6 +451,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_ternary_temps_src:
 inline std::expected<std::string, ::tpy::StopIteration> __gen_walrus_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = ws.emplace(::tpyapp::main::make_cells());
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -475,6 +489,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_walrus_src::__next
 inline std::expected<std::string, ::tpy::StopIteration> __gen_str_temp_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace((::tpy::str_concat(a, b)));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
@@ -504,6 +519,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_str_temp_src::__ne
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_call_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpyapp::main::gen_cells());
         __state = S_JOIN_0;
         continue;
@@ -536,6 +552,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_call_src::__ne
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_zip_names_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpy::builtin_zip(xs, ys));
         __state = S_JOIN_0;
         continue;
@@ -575,6 +592,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_zip_names_src::__next_
 inline std::expected<std::string, ::tpy::StopIteration> __gen_enumerate_cells_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         cells.emplace(std::array<Cell, 2>{Cell(1), Cell(2)});
         __for_src_0.emplace(::tpy::builtin_enumerate((*cells)));
         __state = S_JOIN_0;
@@ -617,6 +635,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_enumerate_cells_sr
 inline std::expected<std::string, ::tpy::StopIteration> __gen_reversed_temp_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __coro_arg_0.emplace(::tpyapp::main::make_cells());
         __for_src_0.emplace(::tpy::builtin_reversed((*__coro_arg_0)));
         __state = S_JOIN_0;
@@ -650,6 +669,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_reversed_temp_src:
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_genexpr_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpyapp::main::__genexpr_genexpr_src_4(xs));
         ::tpy::resumable_iter_init(__for_itr_0, (*__for_src_0));
         __state = S_JOIN_0;
@@ -682,6 +702,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_genexpr_src::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_genexpr_capture_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpyapp::main::__genexpr_genexpr_capture_src_5(xs, k));
         ::tpy::resumable_iter_init(__for_itr_0, (*__for_src_0));
         __state = S_JOIN_0;
@@ -711,6 +732,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_genexpr_capture_src::_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_readonly_view_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpy::dict_values(d));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
@@ -744,6 +766,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_readonly_view_src::__n
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_const_method_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = b.items_m();
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -779,6 +802,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_const_method_src::__ne
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_ternary_params_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = ((flag) ? (xs) : (ys));
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -813,6 +837,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_ternary_params_src::__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_delegate_proto_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return -1;
     }
@@ -846,6 +871,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_delegate_proto_src::__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_iter_object_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(h.get());
         __state = S_JOIN_0;
         continue;
@@ -880,6 +906,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_iter_object_src::__nex
 inline std::expected<std::string, ::tpy::StopIteration> __gen_nested_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = rows;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -923,6 +950,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_nested_src::__next
 inline std::expected<std::string, ::tpy::StopIteration> __gen_arg_temp_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         Cell __tmp_1 = Cell(5);
         __for_src_0.emplace(::tpyapp::main::take(__tmp_1, 2));
         __for_it_0.emplace(((*__for_src_0)).begin());
@@ -958,6 +986,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_arg_temp_src::__ne
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_nested_combinator_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpy::builtin_enumerate(::tpy::builtin_reversed(xs)));
         __state = S_JOIN_0;
         continue;
@@ -994,6 +1023,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_nested_combinator_src:
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_combinator_temp_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __coro_arg_0.emplace(Deleg(3));
         __for_src_0.emplace(::tpy::builtin_enumerate((*__coro_arg_0)));
         __state = S_JOIN_0;
@@ -1030,6 +1060,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_combinator_temp_src::_
 inline std::expected<std::string, ::tpy::StopIteration> __gen_str_literal_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(std::string_view("ab"));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
@@ -1063,6 +1094,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_str_literal_src::_
 inline std::expected<std::tuple<int32_t, Cell*>, ::tpy::StopIteration> __gen_pairs_of::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         auto& __for_obj_0 = cells;
         __for_it_0.emplace((__for_obj_0).begin());
@@ -1098,6 +1130,7 @@ inline std::expected<std::tuple<int32_t, Cell*>, ::tpy::StopIteration> __gen_pai
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_next_unpack_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpyapp::main::pairs_of(cells));
         __state = S_JOIN_0;
         continue;
@@ -1135,6 +1168,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_next_unpack_src::__nex
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_shared_var_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a.emplace(std::array<Cell, 1>{Cell(5)});
         auto& __for_obj_0 = b;
         __for_it_0.emplace((__for_obj_0).begin());
@@ -1180,6 +1214,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_shared_var_src::__next
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_own_param_iter_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_0:  // after: yield v
     case S_JOIN_0: {
         __for_r_0.emplace(h.get().__next__());
@@ -1224,6 +1260,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __genexpr_async_genexpr_6_fr
 inline std::expected<std::string, ::tpy::StopIteration> __gen_Bag_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = __self.cells;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -1258,6 +1295,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Bag_walk::__next__
 inline std::expected<std::string, ::tpy::StopIteration> __gen_Bag_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpy::builtin_zip(__self.cells, ys));
         __state = S_JOIN_0;
         continue;

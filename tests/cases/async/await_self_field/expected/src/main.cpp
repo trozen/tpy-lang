@@ -12,6 +12,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         g.open();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -35,6 +36,7 @@ __coro_opener opener(Gate& g) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         g.emplace(Gate());
         ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::opener((*g))));
         __sub_0.emplace((*g));
@@ -73,6 +75,7 @@ void main() {
 ::tpystd::tpy::Poll<bool> __coro_Gate_passed::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0 = &(__self.evt);
         __state = S_RESUME_0;
         continue;

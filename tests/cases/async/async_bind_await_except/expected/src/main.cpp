@@ -14,6 +14,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((n > 0)) {
             throw ::tpy::ValueError("bad input");
         }
@@ -42,6 +43,7 @@ __coro_boom boom(::tpy::BigInt n) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         c.emplace(::tpyapp::main::boom(::tpy::BigInt(1)));
         __state = S_JOIN_1;
         continue;

@@ -98,6 +98,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_in_finally::__next__() {
         return -1;
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_2: {
         try {
             auto& __for_obj_0 = xs;
@@ -138,6 +140,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_in_with::__next__() {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0.emplace(Trace());
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_2;

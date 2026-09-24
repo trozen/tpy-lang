@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_rvalue_init::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         saved = &*(__ptr_slot_f0 = Point(42));
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(3));
@@ -62,6 +63,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_rvalue_init::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_alias::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         saved = nullptr;
         saved = &(::tpy::__getitem__(items, 0));
         if ((saved != nullptr)) {
@@ -104,6 +106,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_alias::__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_none::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         saved = nullptr;
         __state = S_RESUME_0;
         return 1;
@@ -143,6 +146,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_none::__n
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_own_opt_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __ptr_slot_f0 = ::tpyapp::main::make_opt(3);
         got = ::tpy::optional_to_ptr(__ptr_slot_f0);
         __state = S_RESUME_0;
@@ -185,6 +189,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_own_opt_call::__next__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_loop_rebind::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         saved = nullptr;
         i = 0;
         __state = S_JOIN_0;

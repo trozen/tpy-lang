@@ -10,6 +10,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         std::cout << "inside-side-effect" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -31,6 +32,7 @@ __coro_side_effect side_effect() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;

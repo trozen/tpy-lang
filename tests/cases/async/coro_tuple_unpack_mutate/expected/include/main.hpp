@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 
 // async def process(rows: list[tuple[int32, Item]]) -> int32:
 struct __coro_process {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<std::tuple<int32_t, Item>>& rows;
     int32_t total;
@@ -72,7 +72,7 @@ struct __coro_process {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<std::tuple<int32_t, Item>>> rows;
     int32_t __await_lift_0;

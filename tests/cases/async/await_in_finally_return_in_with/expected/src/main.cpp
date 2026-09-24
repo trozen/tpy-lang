@@ -12,6 +12,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -33,6 +34,7 @@ __coro_value value(::tpy::BigInt n) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         std::cout << "cleanup" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -116,6 +118,8 @@ __coro_cleanup cleanup() {
         continue;
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_2: {
         try {
             __with_ctx_0.emplace(Tracer("with"));

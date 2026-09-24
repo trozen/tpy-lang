@@ -12,6 +12,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -47,6 +48,7 @@ __coro_step step(int32_t i) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_val_scalar::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -103,6 +105,7 @@ __coro_val_scalar val_scalar() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_owning::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -151,6 +154,7 @@ __coro_owning owning() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_borrow_alias::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -216,6 +220,7 @@ Node* pick(std::vector<Node>& nodes, int32_t i) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_opt_ptr::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -270,6 +275,7 @@ __coro_opt_ptr opt_ptr(std::vector<Node>& nodes) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;

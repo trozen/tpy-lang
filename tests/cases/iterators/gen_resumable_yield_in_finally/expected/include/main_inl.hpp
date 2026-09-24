@@ -29,6 +29,8 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_then_
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         try {
             this->__finally_pending_0 = true;

@@ -15,6 +15,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_fact::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((n <= 1)) {
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = 1;

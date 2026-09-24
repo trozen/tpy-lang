@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         rows.emplace(({
             std::vector<std::array<int32_t, 2>> __result;
             const int32_t __stop_0 = 3;

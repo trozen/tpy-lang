@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 // async def identity[T](x: T) -> T:
 template <typename T>
 struct __coro_identity {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::val_or_ref_t<T> x;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -71,6 +71,7 @@ template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_identity<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -98,12 +99,12 @@ __coro_identity<T> identity(::tpy::param_val_or_ref_t<T> x) {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Node> n;
     Node* r = nullptr;
-    std::string s;
     std::string __coro_arg_0;
+    std::string s;
     std::optional<__coro_identity<Node>> __sub_0;
     std::optional<__coro_identity<std::string>> __sub_1;
 

@@ -46,8 +46,8 @@ using step_elem_member_t = std::remove_reference_t<decltype(
 //
 // A self-iterator (`is_self_iterator_v`, dunder.hpp) is its own iterator, so
 // we keep NO iterator state (the slot stays empty) and drive the source's
-// __next__() directly each step, re-read through `src` so a frame move can't
-// dangle a stored self-pointer. Its __iter__ is never called here
+// __next__() directly each step, re-read through `src` rather than through a
+// stored pointer to it. Its __iter__ is never called here
 // (BUGS.md#frame-for-skips-self-iterator-iter). Any other source yields an independent
 // iterator (a prvalue, e.g. a container's native_iterator) that we own in the
 // slot as before. A source whose __iter__ returns a reference to a *member*

@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_two_yield::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpyapp::main::apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 1);
     }
@@ -39,6 +40,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_two_yield::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_store::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         r.register_([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); });
         __state = S_RESUME_0;
         return 1;
@@ -69,6 +71,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_store::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_cell::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         step = 1;
         f = [step = step](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, step)); };
         __state = S_RESUME_0;
@@ -99,6 +102,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_cell::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_ref_capture::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpyapp::main::apply_fn([&xs = xs](int32_t v) -> int32_t { return ::tpyapp::main::push(xs, v); }, 9);
     }
@@ -125,6 +129,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_ref_capture::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_own_capture::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpyapp::main::apply([p = p](int32_t i) -> int32_t { return (::tpy::add_check<int32_t>(i, p.x)); }, 1);
     }
@@ -149,6 +154,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_own_capture::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_C_emit::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(k));
         __state = S_JOIN_0;
@@ -180,6 +186,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_C_emit::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_D_emit::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpyapp::main::apply([&__self = __self](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, __self.n)); }, 1);
     }

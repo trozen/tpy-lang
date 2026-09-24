@@ -13,6 +13,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -44,6 +45,7 @@ __coro_producer producer(::tpystd::asyncio::Event& e) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_consumer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0 = &(e);
         __state = S_RESUME_0;
         continue;
@@ -74,6 +76,7 @@ __coro_consumer consumer(::tpystd::asyncio::Event& e) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_fast_path_consumer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0 = &(e);
         __state = S_RESUME_0;
         continue;
@@ -120,6 +123,7 @@ __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         e_fast.emplace(::tpystd::asyncio::Event());
         std::cout << ::tpy::print_bool((*e_fast).is_set()) << "\n";
         (*e_fast).set();

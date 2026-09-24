@@ -27,7 +27,7 @@ void main();
 
 // async def cleanup() -> None:
 struct __coro_cleanup {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -48,7 +48,7 @@ struct __coro_cleanup {
 
 // async def coro() -> int:
 struct __coro_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::exception_ptr __finally_exc_0;
     bool __finally_pending_0 = false;
@@ -79,7 +79,7 @@ struct __coro_coro {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<::tpy::BigInt>> task;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;

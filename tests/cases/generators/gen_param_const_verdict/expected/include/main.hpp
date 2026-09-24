@@ -157,7 +157,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 // async def achain_hop(s: Shelf) -> int32:  # tpyc: ok
 struct __coro_achain_hop {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Shelf& s;
     int32_t t;
@@ -187,7 +187,7 @@ struct __coro_achain_hop {
 
 // async def aalias_mut(ds: list[Depot]) -> int32:  # tpyc: ok
 struct __coro_aalias_mut {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<Depot>& ds;
     int32_t t;
@@ -218,7 +218,7 @@ struct __coro_aalias_mut {
 
 // async def aro(xs: list[int32]) -> int32:  # tpyc: ok
 struct __coro_aro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<int32_t>& xs;
     int32_t t;
@@ -248,7 +248,7 @@ struct __coro_aro {
 
 // async def drive_aro(xs: list[int32]) -> int32:
 struct __coro_drive_aro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<int32_t>& xs;
     std::optional<__coro_aro> __sub_0;
@@ -272,7 +272,7 @@ struct __coro_drive_aro {
 
 // def ro(xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_ro : public ::tpy::next_iter_mixin<__gen_ro, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& xs;
     int32_t x;
     using __for_src_0_t = decltype((xs));
@@ -299,7 +299,7 @@ struct __gen_ro : public ::tpy::next_iter_mixin<__gen_ro, int32_t> {
 
 // def mut(recs: list[Rec]) -> Iterator[Rec]:  # tpyc: ok
 struct __gen_mut : public ::tpy::next_iter_mixin<__gen_mut, ::tpy::val_or_ref<Rec>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Rec>& recs;
     using __for_src_0_t = decltype((recs));
     ::tpy::begin_elem_t<__for_src_0_t>* r = nullptr;
@@ -326,7 +326,7 @@ struct __gen_mut : public ::tpy::next_iter_mixin<__gen_mut, ::tpy::val_or_ref<Re
 
 // def sub_hop(grid: list[list[list[Rec]]]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_sub_hop : public ::tpy::next_iter_mixin<__gen_sub_hop, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<std::vector<std::vector<Rec>>>& grid;
     using __for_src_0_t = decltype((grid));
     ::tpy::begin_elem_t<__for_src_0_t>* rows = nullptr;
@@ -358,7 +358,7 @@ struct __gen_sub_hop : public ::tpy::next_iter_mixin<__gen_sub_hop, int32_t> {
 
 // def chain_hop(s: Shelf) -> Iterator[int32]:  # tpyc: ok
 struct __gen_chain_hop : public ::tpy::next_iter_mixin<__gen_chain_hop, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Shelf& s;
     using __for_src_0_t = decltype((::tpy::__getitem__(s.rows, 0)));
     ::tpy::begin_elem_t<__for_src_0_t>* r = nullptr;
@@ -385,7 +385,7 @@ struct __gen_chain_hop : public ::tpy::next_iter_mixin<__gen_chain_hop, int32_t>
 
 // def alias_ro(ds: list[Depot]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_alias_ro : public ::tpy::next_iter_mixin<__gen_alias_ro, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<Depot>& ds;
     using __for_src_0_t = decltype((ds));
     ::tpy::begin_elem_t<__for_src_0_t>* d = nullptr;
@@ -413,7 +413,7 @@ struct __gen_alias_ro : public ::tpy::next_iter_mixin<__gen_alias_ro, int32_t> {
 
 // def alias_mut(ds: list[Depot]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_alias_mut : public ::tpy::next_iter_mixin<__gen_alias_mut, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Depot>& ds;
     using __for_src_0_t = decltype((ds));
     ::tpy::begin_elem_t<__for_src_0_t>* d = nullptr;
@@ -441,7 +441,7 @@ struct __gen_alias_mut : public ::tpy::next_iter_mixin<__gen_alias_mut, int32_t>
 
 // def to_mut_callee(xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_to_mut_callee : public ::tpy::next_iter_mixin<__gen_to_mut_callee, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<int32_t>& xs;
     int32_t x;
     using __for_src_0_t = decltype((xs));
@@ -468,7 +468,7 @@ struct __gen_to_mut_callee : public ::tpy::next_iter_mixin<__gen_to_mut_callee, 
 
 // def items_ro(d: dict[int32, int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_items_ro : public ::tpy::next_iter_mixin<__gen_items_ro, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const ::tpy::ordered_map<int32_t, int32_t>& d;
     std::tuple<int32_t, int32_t> __for_tup_0;
     int32_t k;
@@ -499,7 +499,7 @@ struct __gen_items_ro : public ::tpy::next_iter_mixin<__gen_items_ro, int32_t> {
 
 // def values_ro(d: dict[int32, int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_values_ro : public ::tpy::next_iter_mixin<__gen_values_ro, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const ::tpy::ordered_map<int32_t, int32_t>& d;
     int32_t v;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_values(d)))>;
@@ -527,7 +527,7 @@ struct __gen_values_ro : public ::tpy::next_iter_mixin<__gen_values_ro, int32_t>
 
 // def match_ro(b: Box) -> Iterator[int32]:  # tpyc: ok
 struct __gen_match_ro : public ::tpy::next_iter_mixin<__gen_match_ro, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Box& b;
     const Rec* v = nullptr;
 
@@ -553,7 +553,7 @@ struct __gen_match_ro : public ::tpy::next_iter_mixin<__gen_match_ro, int32_t> {
 
 // def scan(self, ys: list[int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_Bag_scan : public ::tpy::next_iter_mixin<__gen_Bag_scan, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Bag& __self;
     const std::vector<int32_t>& ys;
     int32_t y;

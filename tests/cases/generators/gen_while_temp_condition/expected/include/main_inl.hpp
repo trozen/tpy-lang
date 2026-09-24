@@ -13,6 +13,8 @@ namespace tpyapp::main {
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_fresh_each_pull::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_0:  // after: yield 1
     case S_JOIN_0: {
         std::vector<::tpy::BigInt> __tmp_1 = {1, 2};
@@ -42,6 +44,8 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_fresh_each_pull_
         return ::tpy::BigInt(2);
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_1:  // after: yield 2
     case S_JOIN_0: {
         std::vector<::tpy::BigInt> __tmp_2 = {1, 2};
@@ -68,6 +72,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_fresh_each_pull_
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_if_cond_temp::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(::tpy::BigInt(0));
         __for_stop_0.emplace(static_cast<::tpy::BigInt>(n));
         __state = S_JOIN_0;
@@ -107,6 +112,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_if_cond_temp::__
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_walrus_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         n = limit;
         __state = S_JOIN_0;
         continue;

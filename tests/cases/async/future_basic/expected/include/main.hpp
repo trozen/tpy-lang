@@ -25,7 +25,7 @@ void main();
 
 // async def main_coro(f: Future[int32]) -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::Future<int32_t>& f;
     int32_t val;
@@ -50,7 +50,7 @@ struct __coro_main_coro {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::Future<int32_t>> f;
     std::optional<__coro_main_coro> __sub_0;

@@ -73,6 +73,7 @@ __gen_gen_pos gen_pos() {
 ::tpystd::tpy::Poll<int32_t> __coro_async_pos::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -954,6 +955,7 @@ __gen_else_gen else_gen(bool flag) {
 ::tpystd::tpy::Poll<int32_t> __coro_else_async::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -1058,7 +1060,7 @@ void main() {
     Holder h = Holder();
     std::cout << "constructor" << " " << h.total << "\n";
     std::cout << "method" << " " << h.bump() << "\n";
-    auto g = ::tpyapp::main::gen_pos();
+    __gen_gen_pos g = ::tpyapp::main::gen_pos();
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

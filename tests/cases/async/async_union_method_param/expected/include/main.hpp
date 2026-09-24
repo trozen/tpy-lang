@@ -67,7 +67,7 @@ inline std::ostream& operator<<(std::ostream& os, const Shelter& obj) {
 
 // async def describe(self, a: Dog | Cat) -> str:
 struct __coro_Shelter_describe {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Shelter& __self;
     ::tpy::Union<const Cat*, const Dog*> a;
@@ -96,13 +96,13 @@ inline __coro_Shelter_describe Shelter::describe(::tpy::Union<const Cat*, const 
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Shelter> s;
-    std::string __await_lift_0;
-    std::string __await_lift_1;
     ::tpy::frame_slot<Dog> __coro_arg_0;
+    std::string __await_lift_0;
     ::tpy::frame_slot<Cat> __coro_arg_1;
+    std::string __await_lift_1;
     std::optional<__coro_Shelter_describe> __sub_0;
     std::optional<__coro_Shelter_describe> __sub_1;
 

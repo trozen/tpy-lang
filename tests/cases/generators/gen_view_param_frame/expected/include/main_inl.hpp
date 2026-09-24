@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_bump_scalars::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::__setitem__(s, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(s, 0), 10));
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 0);
@@ -42,6 +43,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_bump_scalars::__next__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_bump_records::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 0).n;
     }
@@ -68,6 +70,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_bump_records::__next__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_read_ro_elems::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 0);
     }
@@ -92,6 +95,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_read_ro_elems::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_read_ro_span::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 1);
     }
@@ -116,6 +120,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_read_ro_span::__next__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_read_pair::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 0);
     }
@@ -140,6 +145,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_read_pair::__next__() 
 inline std::expected<std::string, ::tpy::StopIteration> __gen_head_tail::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return std::string(::tpy::str_slice(t, ::tpy::BasicSlice{0, 4}));
     }
@@ -162,6 +168,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_head_tail::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_byte_ends::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return static_cast<int32_t>(::tpy::bytes_getitem(b, 0));
     }
@@ -186,6 +193,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_byte_ends::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_view_lens::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::__len__(t);
     }
@@ -213,6 +221,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_view_lens::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_ends::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::__getitem__(xs, 0);
     }
@@ -237,6 +246,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_ends::__next__() {
 inline std::expected<std::string, ::tpy::StopIteration> __gen_outer_for::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return "start";
     }
@@ -270,6 +280,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_outer_for::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_outer_span::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 0;
     }
@@ -304,6 +315,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_outer_span::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 0;
     }
@@ -353,6 +365,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp_method::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 1;
     }
@@ -398,6 +411,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp_method::__n
 inline std::expected<std::string, ::tpy::StopIteration> __gen_outer_fstring::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return "n";
     }
@@ -434,6 +448,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_outer_fstring::__n
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_outer_loop_for::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_0;
@@ -474,6 +489,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_outer_loop_for::__next
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Scaler_scale::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::__setitem__(s, 0, ::tpy::mul_check<int32_t>(::tpy::__getitem__(s, 0), __self.factor));
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 0);
@@ -498,6 +514,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Scaler_scale::__next__
 inline std::expected<std::string, ::tpy::StopIteration> __gen_Tagger_tag::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return (::tpy::str_concat((::tpy::str_concat(__self.name, ":")), ::tpy::str_slice(t, ::tpy::BasicSlice{0, 3})));
     }
@@ -520,6 +537,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Tagger_tag::__next
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Summer_pair::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(__self.base, ::tpy::__getitem__(xs, 0)));
     }
@@ -543,6 +561,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Summer_pair::__next__(
 inline std::expected<std::string, ::tpy::StopIteration> __gen_Outer_run::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.prefix;
     }
@@ -577,6 +596,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Outer_run::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Outer_run_recv::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::__len__(__self.prefix);
     }

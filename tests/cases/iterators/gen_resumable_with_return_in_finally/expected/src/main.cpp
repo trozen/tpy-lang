@@ -16,6 +16,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_outer_return_i
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0.emplace(CM("outer"));
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_1;
@@ -110,6 +111,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_nested_with_return_
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0.emplace(CM("outer"));
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_1;

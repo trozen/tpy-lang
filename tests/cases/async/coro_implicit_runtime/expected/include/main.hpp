@@ -99,7 +99,7 @@ inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
 
 // async def compute(self, n: int) -> int:  # tpyc: ok
 struct __coro_Worker_compute {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Worker& __self;
     ::tpy::BigInt n;
@@ -126,7 +126,7 @@ inline __coro_Worker_compute Worker::compute(::tpy::BigInt n) const {
 
 // async def compute(self, n: int) -> int:  # tpyc: ok
 struct __coro_2_5_Outer_5_Inner_7_compute {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Outer::Inner& __self;
     ::tpy::BigInt n;
@@ -153,7 +153,7 @@ inline __coro_2_5_Outer_5_Inner_7_compute Outer::Inner::compute(::tpy::BigInt n)
 
 // async def __aenter__(self) -> int:  # tpyc: ok
 struct __coro_Gate___aenter__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Gate& __self;
 
@@ -179,7 +179,7 @@ inline __coro_Gate___aenter__ Gate::__aenter__() const {
 
 // async def __aexit__(self, et: None, ev: None, tb: None) -> None:  # tpyc: ok
 struct __coro_Gate___aexit__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Gate& __self;
     std::monostate et;
@@ -208,7 +208,7 @@ inline __coro_Gate___aexit__ Gate::__aexit__(std::monostate et, std::monostate e
 
 // async def scalar(n: int) -> int:  # tpyc: ok
 struct __coro_scalar {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
 
@@ -230,7 +230,7 @@ struct __coro_scalar {
 
 // async def wrapped(n: tuple[int]) -> tuple[int]:  # tpyc: ok
 struct __coro_wrapped {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::tuple<::tpy::BigInt> n;
 
@@ -252,7 +252,7 @@ struct __coro_wrapped {
 
 // async def optional(n: int | None) -> int | None:  # tpyc: ok
 struct __coro_optional {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpy::BigInt> n;
 
@@ -275,7 +275,7 @@ struct __coro_optional {
 // async def identity[T](n: T) -> T:  # tpyc: ok
 template <typename T>
 struct __coro_identity {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::val_or_ref_t<T> n;
 
@@ -302,6 +302,7 @@ template <typename T>
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(n));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -320,7 +321,7 @@ __coro_identity<T> identity(::tpy::param_val_or_ref_t<T> n) {
 
 // async def chained(n: int) -> int:
 struct __coro_chained {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
     ::tpy::BigInt value;

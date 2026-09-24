@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 // async def tag(self) -> str:
 struct __coro_A_tag {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const A& __self;
 
@@ -75,7 +75,7 @@ inline __coro_A_tag A::tag() const {
 
 // async def tag(self) -> str:
 struct __coro_B_tag {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const B& __self;
 
@@ -101,7 +101,7 @@ inline __coro_B_tag B::tag() const {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<A> a;
     ::tpy::frame_slot<B> b;

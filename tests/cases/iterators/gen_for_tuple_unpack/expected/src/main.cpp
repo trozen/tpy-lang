@@ -25,6 +25,7 @@ __gen_firsts firsts(const std::vector<std::tuple<int32_t, int32_t>>& pairs) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = p1;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

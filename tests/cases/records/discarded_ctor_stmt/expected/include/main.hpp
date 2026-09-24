@@ -223,7 +223,7 @@ inline std::ostream& operator<<(std::ostream& __os, Outer::Kind __e) {
 
 // def gen(n: int32) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
 
     enum : int32_t {

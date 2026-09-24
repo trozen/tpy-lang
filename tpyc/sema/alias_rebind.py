@@ -21,8 +21,12 @@ binding arriving over the back edge are both seen. Two facts flow:
   walk and records them per statement (`BorrowTracker.stmt_loans`); the replay
   adds what the tracker does not model, on the side of "unknown means
   aliased": a holder copied from another holder inherits its loans, a
-  frame-factory call keeps its arguments, and a pointer that leaves through
-  a call argument is held for ever.
+  generator or coroutine call keeps what its frame borrows
+  (`frame_borrowed_operands`) and any call result what its callee's
+  recorded return borrows name, and a pointer that leaves through a call
+  argument and a frame handed to an `Own` parameter are held for ever. A
+  name holding a generator is never rebound: a rebind site of one that some
+  path reaches with a generator already bound is an error.
 
 A site writes IN_PLACE when the name owns every possible current storage
 and no holder's loan can point at it; otherwise OWN. A holder counts
@@ -53,12 +57,15 @@ from ..type_def_registry import (
     is_bytes_view_type, is_char_type, is_str_view_type,
 )
 from ..typesys import (
-    NoneType, OptionalType, TpyType, UnionType, is_any_bytes_type,
+    NoneType, OptionalType, OwnType, TpyType, UnionType,
+    is_any_bytes_type,
+    recorded_return_borrow_sources,
     is_any_str_type, is_numeric_type, unwrap_readonly, view_family_for_type,
 )
-from ..value_category import frame_factory_callee, is_rvalue_source
+from ..value_category import is_rvalue_source
 from .context import (
     BorrowKind, ITER_BORROWER, _borrow_storage_roots, addr_taken_roots,
+    call_borrow_operands, call_param_args, frame_borrowed_operands,
 )
 
 if TYPE_CHECKING:
@@ -354,10 +361,12 @@ class _Replay:
         raise AssertionError("alias-rebind loop replay did not converge")
 
     def walk_for(self, s: TpyForEach, st: _State) -> _State | None:
-        self.expr_effects(s.iterable, st, s)
+        self.expr_effects(s.iterable, st, s, top_is_bind=True)
         groups = self.groups(s)
         iter_key = f"{ITER_BORROWER}#{self.id_of(s)}"
-        iter_loans = self.loans_of(iter_key, groups, None, st)
+        iter_loans = self.loans_of(iter_key, groups, None, st) | frozenset(
+            (root, BorrowKind.OPAQUE, self.origins_of(root, st))
+            for root in _frame_roots(_peel(s.iterable)))
         if iter_loans:
             st.loans[iter_key] = iter_loans
 
@@ -486,19 +495,27 @@ class _Replay:
             for n in read_names(inner):
                 if n in st.loans:
                     out |= st.loans[n]
-        # A generator or coroutine object keeps its reference arguments
-        # and receiver for as long as it lives.
-        if (isinstance(inner, (TpyCall, TpyMethodCall))
-                and frame_factory_callee(inner.resolved_function_info)):
-            srcs = list(inner.args)
-            if isinstance(inner, TpyMethodCall):
-                srcs.insert(0, inner.obj)
-            for src in srcs:
-                for root in _borrow_storage_roots(src):
-                    if root != holder:
-                        out.add((root, BorrowKind.OPAQUE,
-                                 self.origins_of(root, st)))
+        # A generator object keeps what its frame borrows for as long as it
+        # lives, and any call result keeps what its callee's recorded return
+        # borrows name (`c = mk(g)` where `mk` returns a coroutine over it).
+        for root in _frame_roots(inner) + self.result_borrow_roots(inner):
+            if root != holder:
+                out.add((root, BorrowKind.OPAQUE, self.origins_of(root, st)))
         return frozenset(out)
+
+    def result_borrow_roots(self, e: TpyExpr) -> list[str]:
+        """What a call's result keeps per its callee's recorded return
+        borrows."""
+        ops = call_borrow_operands(e)
+        if ops is None:
+            return []
+        out: list[str] = []
+        for idx in recorded_return_borrow_sources(ops.fi):
+            if idx == -1 and ops.obj is not None:
+                out += _borrow_storage_roots(ops.obj)
+            elif 0 <= idx < len(ops.args):
+                out += _borrow_storage_roots(ops.args[idx])
+        return out
 
     def origins_of(self, root: str, st: _State) -> frozenset[int]:
         base = root.split(".", 1)[0]
@@ -533,6 +550,15 @@ class _Replay:
             for root in _ptr_escape_roots(e):
                 st.loans[_ESCAPED] = st.loans.get(_ESCAPED, frozenset()) | {
                     (root, BorrowKind.PTR, self.origins_of(root, st))}
+        # A generator or coroutine handed over to an owning parameter
+        # (`create_task(consume(g))`) outlives the statement, and so do its
+        # loans; one lent to a borrowing parameter (`list(relay(g))`) dies
+        # with the statement.
+        for arg in _owned_args(inner):
+            arg = _peel(arg)
+            for root in _frame_roots(arg) + self.result_borrow_roots(arg):
+                st.loans[_ESCAPED] = st.loans.get(_ESCAPED, frozenset()) | {
+                    (root, BorrowKind.OPAQUE, self.origins_of(root, st))}
         for child in inner.children():
             self.expr_effects(child, st, stmt)
 
@@ -549,6 +575,8 @@ class _Replay:
             name = stmt.name if isinstance(stmt, TpyVarDecl) else stmt.target.name  # type: ignore[union-attr]
             value = stmt.init if isinstance(stmt, TpyVarDecl) else stmt.value
             st = self.site_states.get(stmt)
+            var_type = self.local_type(name, value)
+            frame_sites = self.ctx.func.frame_rebind_sites
             if st is None:
                 continue  # unreachable: OWN
             # None: liveness never walked the body -- decide, but stay quiet.
@@ -556,7 +584,20 @@ class _Replay:
             origins = st.origins.get(name)
             if not origins:
                 continue
-            var_type = self.local_type(name, value)
+            # A generator name that holds nothing on every path reaching
+            # here (`else: h = gen(xs)` after `if c: h = gen(xs)`) is
+            # bound for the first time, not rebound.
+            if stmt in frame_sites and origins - {UNBOUND}:
+                # Rebuilding the frame in place would need proof that nothing
+                # -- an alias, a frame, a task, a view of a yielded value --
+                # still reaches the old generator, and a slot of its own would
+                # outlive the name's; a generator name is bound once.
+                raise self.ctx.error(
+                    f"cannot rebind '{name}' to a new generator: a name "
+                    f"holding a generator is bound once, since something may "
+                    f"still reach the old one; bind the new generator to a "
+                    f"new name",
+                    stmt)
             decidable = (getattr(stmt, "rebind_storage", None) is not None
                          and not (origins & _NOT_OWNED)
                          and not self.in_place_unrenderable(var_type, origins))
@@ -639,6 +680,18 @@ class _Replay:
             f"'{alias}' will not keep the object it was given -- '{name}' is "
             f"rebound here and {fix}",
             stmt)
+
+
+def _owned_args(e: TpyExpr) -> list[TpyExpr]:
+    """The arguments of call `e` its callee takes as `Own[...]`."""
+    return [a for p, a in call_param_args(e)
+            if isinstance(unwrap_readonly(p.type), OwnType)]
+
+
+def _frame_roots(e: TpyExpr) -> list[str]:
+    operands = frame_borrowed_operands(e)
+    return [root for src in operands or ()
+            for root in _borrow_storage_roots(src)]
 
 
 def _ptr_escape_roots(e: TpyExpr) -> list[str]:

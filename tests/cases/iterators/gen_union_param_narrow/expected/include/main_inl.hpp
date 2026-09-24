@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<std::string, ::tpy::StopIteration> __gen_Owner_voices::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return "start";
     }
@@ -47,6 +48,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Owner_voices::__ne
 inline std::expected<std::string, ::tpy::StopIteration> __gen_Owner_first::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (std::holds_alternative<Dog*>(a)) {
             auto& __a = *std::get<Dog*>(a);
             __state = S_RESUME_0;

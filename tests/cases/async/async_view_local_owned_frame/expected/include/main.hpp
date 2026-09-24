@@ -23,7 +23,7 @@ void main();
 
 // async def read_addr() -> None:
 struct __coro_read_addr {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string host;
     std::string port;

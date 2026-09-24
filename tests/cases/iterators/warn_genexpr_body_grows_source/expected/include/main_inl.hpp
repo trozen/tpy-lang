@@ -12,6 +12,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -39,6 +40,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_src_gen_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_src_gen_body_36(xs, big, xs));
     }
@@ -57,6 +59,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_src_gen_body::__next__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Tagged___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = __self.items;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

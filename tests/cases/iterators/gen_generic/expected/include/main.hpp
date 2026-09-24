@@ -83,7 +83,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bin& obj) {
 // def bump_each[T: Appendable](obj: T, count: int32) -> Iterator[int32]:
 template <typename T>
 struct __gen_bump_each : public ::tpy::next_iter_mixin<__gen_bump_each<T>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::val_or_ref_t<T> obj;
     int32_t count;
     int32_t i;
@@ -116,6 +116,7 @@ template <typename T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump_each<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         obj.append(1);
         i = 0;
         __state = S_JOIN_0;
@@ -150,7 +151,7 @@ __gen_bump_each<T> bump_each(::tpy::param_val_or_ref_t<T> obj, int32_t count) {
 // def size_each[T: Readable](obj: readonly[T], count: int32) -> Iterator[int32]:
 template <typename T>
 struct __gen_size_each : public ::tpy::next_iter_mixin<__gen_size_each<T>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::val_or_cref_t<T> obj;
     int32_t count;
     int32_t i;
@@ -187,6 +188,7 @@ template <typename T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_size_each<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -220,7 +222,7 @@ __gen_size_each<T> size_each(::tpy::readonly_form_t<T> obj, int32_t count) {
 // def len_each[T: Sized](obj: readonly[T], count: int32) -> Iterator[int32]:
 template <typename T>
 struct __gen_len_each : public ::tpy::next_iter_mixin<__gen_len_each<T>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::val_or_cref_t<T> obj;
     int32_t count;
     int32_t i;
@@ -255,6 +257,7 @@ template <typename T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_len_each<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -288,7 +291,7 @@ __gen_len_each<T> len_each(::tpy::readonly_form_t<T> obj, int32_t count) {
 // def repeat[T](value: T, count: int32) -> Iterator[T]:
 template <typename T>
 struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::val_or_ref_t<T> value;
     int32_t count;
     int32_t i;
@@ -319,6 +322,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -352,7 +356,7 @@ __gen_repeat<T> repeat(::tpy::param_val_or_ref_t<T> value, int32_t count) {
 // def enumerate[T](iterable: Iterable[T]) -> Iterator[tuple[int32, T]]:
 template <typename T, ::tpystd::typing::Iterable<T> T_iterable>
 struct __gen_enumerate : public ::tpy::next_iter_mixin<__gen_enumerate<T, T_iterable>, std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_iterable iterable;
     int32_t i;
     using __for_src_0_t = decltype((iterable));
@@ -386,6 +390,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_iterable>
 std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __gen_enumerate<T, T_iterable>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         ::tpy::resumable_iter_init(__for_itr_0, iterable);
         __state = S_JOIN_0;

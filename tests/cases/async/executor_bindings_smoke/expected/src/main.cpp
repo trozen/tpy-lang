@@ -26,6 +26,7 @@ void check_outside() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         h = ::tpystd::asyncio::_executor::_get_current_executor();
         std::cout << "inside null?" << " " << ::tpy::print_bool((h == nullptr)) << "\n";
         ::tpystd::asyncio::_executor::_clear_current_executor();
@@ -60,6 +61,7 @@ void check_sleep() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

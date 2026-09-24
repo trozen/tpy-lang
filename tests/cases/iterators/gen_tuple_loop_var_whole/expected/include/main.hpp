@@ -77,7 +77,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // async def walk_async(xs: list[tuple[int32, A]]) -> int32:
 struct __coro_walk_async {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<std::tuple<int32_t, A>>& xs;
     int32_t total;
@@ -107,7 +107,7 @@ struct __coro_walk_async {
 
 // async def sum_items(d: dict[int32, int32]) -> int32:
 struct __coro_sum_items {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const ::tpy::ordered_map<int32_t, int32_t>& d;
     int32_t total;
@@ -138,12 +138,12 @@ struct __coro_sum_items {
 
 // async def async_section() -> None:
 struct __coro_async_section {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<std::tuple<int32_t, A>>> ays;
     int32_t __await_lift_0;
-    int32_t __await_lift_1;
     ::tpy::frame_slot<::tpy::ordered_map<int32_t, int32_t>> __coro_arg_0;
+    int32_t __await_lift_1;
     std::optional<__coro_walk_async> __sub_0;
     std::optional<__coro_sum_items> __sub_1;
 
@@ -167,7 +167,7 @@ struct __coro_async_section {
 
 // def walk_free(xs: list[tuple[int32, A]]) -> Iterator[int32]:
 struct __gen_walk_free : public ::tpy::next_iter_mixin<__gen_walk_free, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<std::tuple<int32_t, A>>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* t = nullptr;
@@ -195,7 +195,7 @@ struct __gen_walk_free : public ::tpy::next_iter_mixin<__gen_walk_free, int32_t>
 
 // def walk_value(xs: list[tuple[int32, int32]]) -> Iterator[int32]:
 struct __gen_walk_value : public ::tpy::next_iter_mixin<__gen_walk_value, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::tuple<int32_t, int32_t>>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* t = nullptr;
@@ -223,7 +223,7 @@ struct __gen_walk_value : public ::tpy::next_iter_mixin<__gen_walk_value, int32_
 
 // def walk_items(d: dict[int32, A]) -> Iterator[int32]:
 struct __gen_walk_items : public ::tpy::next_iter_mixin<__gen_walk_items, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::ordered_map<int32_t, A>& d;
     std::tuple<int32_t, A*> kv;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_items(d)))>;
@@ -252,7 +252,7 @@ struct __gen_walk_items : public ::tpy::next_iter_mixin<__gen_walk_items, int32_
 
 // def walk(self) -> Iterator[int32]:
 struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Holder& __self;
     using __for_src_0_t = decltype((__self.xs));
     ::tpy::begin_elem_t<__for_src_0_t>* t = nullptr;
@@ -285,7 +285,7 @@ inline __gen_Holder_walk Holder::walk() {
 // @readonly
 // def peek(self) -> Iterator[int32]:
 struct __gen_Holder_peek : public ::tpy::next_iter_mixin<__gen_Holder_peek, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Holder& __self;
     using __for_src_0_t = decltype((__self.xs));
     ::tpy::begin_elem_t<__for_src_0_t>* t = nullptr;

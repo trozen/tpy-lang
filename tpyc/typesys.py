@@ -12,7 +12,7 @@ Defines the core types available in TurboPython:
 
 from __future__ import annotations
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace as dc_replace
 from enum import Enum
 from typing import Any, Callable, Iterable, Iterator, Optional, Sequence, TYPE_CHECKING
 
@@ -4491,57 +4491,63 @@ def make_cancellable(awaited_type: 'TpyType') -> 'NominalType':
 
 
 @dataclass(frozen=True)
-class ConcreteCoroType(NominalType):
-    """A coroutine handle whose concrete frame struct is statically known
-    (the result of binding a direct async-def/method call).
+class ConcreteFrameType(NominalType):
+    """A generator or coroutine object whose concrete frame struct is
+    statically known (the result of binding a direct generator /
+    async-def call).
 
-    Subtype of the Cancellable[T] NominalType so every conformance,
-    compat, and diagnostic path treats it as Cancellable[T] -- the
-    concreteness is a REPRESENTATION fact: the value is the concrete
-    `__coro_*` frame (stored in std::optional, zero heap allocation),
-    erased to unique_ptr<Cancellable<T>> only at typed boundaries
-    (create_task/run args, Own[Cancellable[T]] params/returns).
-    Never printed to users (renders as
-    Cancellable[T] via the inherited __str__); has no self-contained
-    C++ spelling -- codegen renders it via the sub-coro struct naming
-    helper.
+    A subtype of the protocol the frame implements (`Iterator[T]` /
+    `Cancellable[T]`), so every conformance, compat and diagnostic path
+    treats it as that protocol; the concreteness is a REPRESENTATION fact:
+    the value is one frame object, a non-copyable reference type (a
+    generator object is aliased the way a record is; a coroutine handle
+    still moves on a second binding). Never printed to users (renders as the
+    protocol via the inherited __str__); has no self-contained C++
+    spelling -- codegen names the frame struct.
     """
-    # Identity fields participate in equality: handles of two DIFFERENT
-    # coroutines must compare unequal (a branch-join merge collapsing
-    # them would poll the wrong frame type).
-    coro_func_name: str = ""
-    # Method coroutines: the receiver's owner NominalType (carries the
-    # class-level type args the struct name needs). None for free fns.
-    coro_owner: 'NominalType | None' = None
-    coro_inferred_type_args: 'tuple[TpyType, ...] | None' = None
+    # Identity fields participate in equality: two DIFFERENT functions'
+    # frames must compare unequal (a branch-join merge collapsing them
+    # would bind one frame type's storage to the other's object).
+    frame_func_name: str = ""
+    # Methods: the receiver's owner NominalType (carries the class-level
+    # type args the struct name needs). None for free functions.
+    frame_owner: 'NominalType | None' = None
+    frame_inferred_type_args: 'tuple[TpyType, ...] | None' = None
     # Defining module when it differs from the binding module (qualifies
     # the struct name with the callee's C++ namespace).
-    coro_module_qual: 'str | None' = None
+    frame_module_qual: 'str | None' = None
+
+    def is_value_type(self) -> bool:
+        return False
+
+    def to_cpp(self) -> str:
+        raise RuntimeError(
+            f"{type(self).__name__} has no self-contained C++ spelling; "
+            f"render via codegen's type_to_cpp (frame struct naming)")
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        # NominalType's override reconstructs a plain NominalType, which
+        # would silently strip the frame identity if a generic-substitution
+        # walk ever traverses one of these. Preserve every field.
+        base = super().with_inner_types(types)
+        return dc_replace(self, type_args=base.type_args)
+
+
+@dataclass(frozen=True)
+class ConcreteCoroType(ConcreteFrameType):
+    """A coroutine handle with a known frame struct: erased to
+    unique_ptr<Cancellable<T>> only at typed boundaries (create_task/run
+    args, Own[Cancellable[T]] params/returns)."""
     # Awaiting this handle yields a borrow (pointer Poll payload aliasing
     # caller-durable storage), per the callee's declared-return form. A
     # borrow-result handle is direct-await-only: it must never erase to
     # Own[Cancellable[T]] (task results are owned slots).
     result_is_borrow: bool = False
 
-    def to_cpp(self) -> str:
-        raise RuntimeError(
-            "ConcreteCoroType has no self-contained C++ spelling; render "
-            "via codegen's type_to_cpp (sub-coro struct naming)")
 
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        # NominalType's override reconstructs a plain NominalType, which
-        # would silently strip the frame identity (degrading the handle
-        # to the erased representation) if a generic-substitution walk
-        # ever traverses one of these. Preserve the identity fields.
-        base = super().with_inner_types(types)
-        return ConcreteCoroType(
-            base.name, base.type_args, base.is_protocol,
-            base._module_qname, base.is_dynamic_protocol,
-            coro_func_name=self.coro_func_name,
-            coro_owner=self.coro_owner,
-            coro_inferred_type_args=self.coro_inferred_type_args,
-            coro_module_qual=self.coro_module_qual,
-            result_is_borrow=self.result_is_borrow)
+@dataclass(frozen=True)
+class ConcreteGenType(ConcreteFrameType):
+    """A generator object with a known frame struct (`g = gen()`)."""
 
 
 def make_concrete_coro(awaited_type: 'TpyType', func_name: str,
@@ -4554,10 +4560,26 @@ def make_concrete_coro(awaited_type: 'TpyType', func_name: str,
         name="Cancellable", type_args=(awaited_type,),
         is_protocol=True, is_dynamic_protocol=True,
         _module_qname=qnames.CANCELLABLE,
-        coro_func_name=func_name, coro_owner=owner,
-        coro_inferred_type_args=inferred_type_args,
-        coro_module_qual=module_qual,
+        frame_func_name=func_name, frame_owner=owner,
+        frame_inferred_type_args=inferred_type_args,
+        frame_module_qual=module_qual,
         result_is_borrow=result_is_borrow)
+
+
+def make_concrete_gen(iterator: 'NominalType', func_name: str,
+                      owner: 'NominalType | None' = None,
+                      inferred_type_args: 'tuple[TpyType, ...] | None' = None,
+                      module_qual: 'str | None' = None) -> 'ConcreteGenType':
+    """The concrete frame of a generator call typed `iterator`
+    (`typing.Iterator[T]`)."""
+    return ConcreteGenType(
+        name=iterator.name, type_args=iterator.type_args,
+        is_protocol=iterator.is_protocol,
+        _module_qname=iterator._module_qname,
+        is_dynamic_protocol=iterator.is_dynamic_protocol,
+        frame_func_name=func_name, frame_owner=owner,
+        frame_inferred_type_args=inferred_type_args,
+        frame_module_qual=module_qual)
 
 
 # Singleton for the non-generic Waker type. Registered as a value-type

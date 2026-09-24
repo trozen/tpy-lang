@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_fresh::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<A, int32_t>{A(1), 2});
         __state = S_RESUME_0;
         return std::get<0>((*t)).v;
@@ -41,6 +42,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_fresh::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_own_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<int32_t, A>{1, ::tpyapp::main::make()});
         __state = S_RESUME_0;
         return std::get<1>((*t)).v;
@@ -69,6 +71,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_own_call::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_lvalue::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t = std::tuple<A*, int32_t>{&(a), 2};
         __state = S_RESUME_0;
         return std::get<0>(t)->v;
@@ -96,6 +99,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_lvalue::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_fresh_first::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<A, A*>{A(1), &(a)});
         __state = S_RESUME_0;
         return std::get<0>((*t)).v;
@@ -123,6 +127,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_fresh_first::__n
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_lvalue_first::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<A*, A>{&(a), A(1)});
         __state = S_RESUME_0;
         return std::get<1>((*t)).v;
@@ -150,6 +155,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_lvalue_first::__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_moved_last_use::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a.emplace(A(1));
         t.emplace(std::tuple<A, A>{A(2), std::move((*a))});
         __state = S_RESUME_0;
@@ -180,6 +186,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_moved_last_use::__next
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_loop_reassigned::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -222,6 +229,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_loop_reassigned::__nex
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_literal_then_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (c) {
             t.emplace(std::tuple<A, int32_t>{A(1), 2});
         } else {
@@ -256,6 +264,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_literal_then_call::__n
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_call_then_literal::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (c) {
             t.emplace(::tpyapp::main::make_pair());
         } else {
@@ -289,6 +298,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_call_then_literal::__n
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_call_reassigned::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(::tpyapp::main::make_pair());
         __state = S_RESUME_0;
         return std::get<0>((*t)).v;
@@ -319,6 +329,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_call_reassigned::__nex
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_own_elem_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(::tpyapp::main::own_elem_pair());
         __state = S_RESUME_0;
         return std::get<0>((*t)).v;
@@ -346,6 +357,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_own_elem_call::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_H_g::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<A, int32_t>{A(__self.n), 2});
         __state = S_RESUME_0;
         return std::get<0>((*t)).v;

@@ -650,6 +650,7 @@ int32_t closure() {
 ::tpystd::tpy::Poll<std::tuple<Box, int32_t>> __coro_async_body::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         b.emplace(Box(1));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
@@ -699,6 +700,7 @@ __coro_async_body async_body() {
 ::tpystd::tpy::Poll<std::tuple<Box, int32_t>> __coro_async_rebind::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         b.emplace(Box(1));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
@@ -745,6 +747,7 @@ __coro_async_rebind async_rebind() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;

@@ -14,6 +14,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_work::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         rows.emplace(({
             std::vector<std::array<int32_t, 2>> __result;
             const int32_t __stop_0 = 3;
@@ -55,6 +56,7 @@ __coro_work work() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;

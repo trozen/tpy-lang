@@ -57,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const DerivedCM& obj) {
 
 // async def __aenter__(self) -> None:
 struct __coro_BaseCM___aenter__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     BaseCM& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -85,7 +85,7 @@ inline __coro_BaseCM___aenter__ BaseCM::__aenter__() {
 
 // async def __aexit__(self, et: None, ev: None, tb: None) -> None:
 struct __coro_BaseCM___aexit__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     BaseCM& __self;
     std::monostate et;
@@ -116,7 +116,7 @@ inline __coro_BaseCM___aexit__ BaseCM::__aexit__(std::monostate et, std::monosta
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<DerivedCM> cm;
     DerivedCM* __with_ctx_0 = nullptr;

@@ -23,7 +23,7 @@ void main();
 
 // async def add_one(n: int) -> int:
 struct __coro_add_one {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
 
@@ -45,14 +45,14 @@ struct __coro_add_one {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t total;
     int32_t i;
-    std::optional<__coro_add_one> c;
     ::tpy::BigInt __await_lift_0;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
     ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+    std::optional<__coro_add_one> c;
 
     enum : int32_t {
         S_INITIAL = 0,

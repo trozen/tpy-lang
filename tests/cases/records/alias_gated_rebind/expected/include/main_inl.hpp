@@ -18,6 +18,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_section::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         p = &*(__ptr_slot_f0 = Point(1));
         saved = &((*p));
         __state = S_RESUME_0;
@@ -51,6 +52,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_section::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_drop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         r.emplace(Noisy("g1"));
         __state = S_RESUME_0;
         return 1;
@@ -75,6 +77,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_drop::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Walker_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.x;
     }

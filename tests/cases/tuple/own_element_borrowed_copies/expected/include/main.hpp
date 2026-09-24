@@ -222,7 +222,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cm& obj) {
 
 // async def ret_async(p: P) -> tuple[Own[P], int32]:
 struct __coro_ret_async {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const P& p;
 
@@ -244,7 +244,7 @@ struct __coro_ret_async {
 
 // async def ret_async_name(p: P) -> tuple[Own[P], int32]:
 struct __coro_ret_async_name {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     P& p;
     std::tuple<P*, int32_t> t;
@@ -267,7 +267,7 @@ struct __coro_ret_async_name {
 
 // async def arg_async_name(p: P) -> int32:
 struct __coro_arg_async_name {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     P& p;
     std::tuple<P*, int32_t> t;
@@ -290,7 +290,7 @@ struct __coro_arg_async_name {
 
 // async def async_main() -> None:
 struct __coro_async_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<P> a;
     ::tpy::frame_slot<P> q;
@@ -323,7 +323,7 @@ struct __coro_async_main {
 
 // def arg_generator(p: P) -> Iterator[int32]:
 struct __gen_arg_generator : public ::tpy::next_iter_mixin<__gen_arg_generator, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     P& p;
     std::tuple<P*, int32_t> t;
 

@@ -96,7 +96,7 @@ inline std::ostream& operator<<(std::ostream& os, const Runner& obj) {
 
 // async def coro(x: int32) -> str:
 struct __coro_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t x;
     Point* p = nullptr;
@@ -122,7 +122,7 @@ struct __coro_coro {
 
 // def gen(x: int32) -> Iterator[str]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t x;
     Point* p = nullptr;
     std::optional<Point> __ptr_slot_f0;
@@ -147,7 +147,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
 
 // def gen_rebind(x: int32) -> Iterator[str]:
 struct __gen_gen_rebind : public ::tpy::next_iter_mixin<__gen_gen_rebind, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t x;
     Point* p = nullptr;
     std::optional<Point> __ptr_slot_f0;
@@ -173,7 +173,7 @@ struct __gen_gen_rebind : public ::tpy::next_iter_mixin<__gen_gen_rebind, std::s
 
 // def gen_named(x: int32) -> Iterator[str]:
 struct __gen_gen_named : public ::tpy::next_iter_mixin<__gen_gen_named, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t x;
     ::tpy::frame_slot<Holder> h;
     Point* p = nullptr;
@@ -242,7 +242,7 @@ struct __gen_gen_try : public ::tpy::next_iter_mixin<__gen_gen_try, std::string>
 
 // def gen_branch(x: int32) -> Iterator[str]:
 struct __gen_gen_branch : public ::tpy::next_iter_mixin<__gen_gen_branch, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t x;
     Point* p = nullptr;
     std::optional<Point> __ptr_slot_f0;
@@ -268,7 +268,7 @@ struct __gen_gen_branch : public ::tpy::next_iter_mixin<__gen_gen_branch, std::s
 
 // def gen_loop(x: int32) -> Iterator[str]:
 struct __gen_gen_loop : public ::tpy::next_iter_mixin<__gen_gen_loop, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t x;
     int32_t _;
     Point* p = nullptr;
@@ -297,7 +297,7 @@ struct __gen_gen_loop : public ::tpy::next_iter_mixin<__gen_gen_loop, std::strin
 
 // def walk(self) -> Iterator[str]:
 struct __gen_Runner_walk : public ::tpy::next_iter_mixin<__gen_Runner_walk, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Runner& __self;
     Point* p = nullptr;
     std::optional<Point> __ptr_slot_f0;

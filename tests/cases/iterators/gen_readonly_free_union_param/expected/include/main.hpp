@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // @readonly
 // def codes(a: Dog | Cat) -> Iterator[int]:
 struct __gen_codes : public ::tpy::next_iter_mixin<__gen_codes, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<const Cat*, const Dog*> a;
 
     enum : int32_t {

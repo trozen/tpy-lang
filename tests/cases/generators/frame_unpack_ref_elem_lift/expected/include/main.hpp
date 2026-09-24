@@ -152,7 +152,7 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 
 // async def coro_chain(hs: list[Holder]) -> int32:
 struct __coro_coro_chain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<Holder>& hs;
     int32_t a;
@@ -178,7 +178,7 @@ struct __coro_coro_chain {
 
 // async def coro_subscript(pairs: list[tuple[int32, Box]]) -> int32:
 struct __coro_coro_subscript {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<std::tuple<int32_t, Box>>& pairs;
     int32_t a;
@@ -204,7 +204,7 @@ struct __coro_coro_subscript {
 
 // async def main_coro(pairs: list[tuple[int32, Box]]) -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<std::tuple<int32_t, Box>>& pairs;
     int32_t __await_lift_0;
@@ -229,7 +229,7 @@ struct __coro_main_coro {
 
 // async def main_coro_chain(hs: list[Holder]) -> None:
 struct __coro_main_coro_chain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<Holder>& hs;
     int32_t __await_lift_0;
@@ -254,7 +254,7 @@ struct __coro_main_coro_chain {
 
 // def gen_subscript(pairs: list[tuple[int32, Box]]) -> Iterator[int32]:
 struct __gen_gen_subscript : public ::tpy::next_iter_mixin<__gen_gen_subscript, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<std::tuple<int32_t, Box>>& pairs;
     int32_t a;
     Box* b = nullptr;
@@ -279,7 +279,7 @@ struct __gen_gen_subscript : public ::tpy::next_iter_mixin<__gen_gen_subscript, 
 
 // def gen_field(h: Holder) -> Iterator[int32]:
 struct __gen_gen_field : public ::tpy::next_iter_mixin<__gen_gen_field, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Holder& h;
     int32_t a;
     Box* b = nullptr;
@@ -304,7 +304,7 @@ struct __gen_gen_field : public ::tpy::next_iter_mixin<__gen_gen_field, int32_t>
 
 // def gen_local() -> Iterator[int32]:
 struct __gen_gen_local : public ::tpy::next_iter_mixin<__gen_gen_local, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::vector<std::tuple<int32_t, Box>>> own;
     int32_t a;
     Box* b = nullptr;
@@ -372,7 +372,7 @@ struct __gen_gen_try : public ::tpy::next_iter_mixin<__gen_gen_try, int32_t> {
 
 // def gen_value(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
 struct __gen_gen_value : public ::tpy::next_iter_mixin<__gen_gen_value, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::tuple<int32_t, int32_t>>& pairs;
     int32_t a;
     int32_t b;
@@ -397,7 +397,7 @@ struct __gen_gen_value : public ::tpy::next_iter_mixin<__gen_gen_value, int32_t>
 
 // def gen_call(h: Holder) -> Iterator[int32]:
 struct __gen_gen_call : public ::tpy::next_iter_mixin<__gen_gen_call, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Holder& h;
     int32_t a;
     Box* b = nullptr;
@@ -422,7 +422,7 @@ struct __gen_gen_call : public ::tpy::next_iter_mixin<__gen_gen_call, int32_t> {
 
 // def gen_readonly(pairs: list[tuple[int32, Box]]) -> Iterator[int32]:
 struct __gen_gen_readonly : public ::tpy::next_iter_mixin<__gen_gen_readonly, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::tuple<int32_t, Box>>& pairs;
     int32_t a;
     const Box* b = nullptr;
@@ -447,7 +447,7 @@ struct __gen_gen_readonly : public ::tpy::next_iter_mixin<__gen_gen_readonly, in
 
 // def gen_pack(*hs: Holder) -> Iterator[int32]:
 struct __gen_gen_pack : public ::tpy::next_iter_mixin<__gen_gen_pack, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::varargs<const Holder> hs;
     int32_t a;
     const Box* b = nullptr;
@@ -472,7 +472,7 @@ struct __gen_gen_pack : public ::tpy::next_iter_mixin<__gen_gen_pack, int32_t> {
 
 // def gen_pack_bump(*hs: Holder) -> Iterator[int32]:
 struct __gen_gen_pack_bump : public ::tpy::next_iter_mixin<__gen_gen_pack_bump, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::varargs<Holder> hs;
     int32_t a;
     Box* b = nullptr;
@@ -497,7 +497,7 @@ struct __gen_gen_pack_bump : public ::tpy::next_iter_mixin<__gen_gen_pack_bump, 
 
 // def gen_ptr_ro(p: Ptr[readonly[Grid]]) -> Iterator[int32]:
 struct __gen_gen_ptr_ro : public ::tpy::next_iter_mixin<__gen_gen_ptr_ro, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Grid* p;
     int32_t a;
     const Box* b = nullptr;
@@ -522,7 +522,7 @@ struct __gen_gen_ptr_ro : public ::tpy::next_iter_mixin<__gen_gen_ptr_ro, int32_
 
 // def gen_loop_ro(g: readonly[Grid]) -> Iterator[int32]:
 struct __gen_gen_loop_ro : public ::tpy::next_iter_mixin<__gen_gen_loop_ro, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Grid& g;
     using __for_src_0_t = decltype((g.rows));
     ::tpy::begin_elem_t<__for_src_0_t>* h = nullptr;
@@ -552,7 +552,7 @@ struct __gen_gen_loop_ro : public ::tpy::next_iter_mixin<__gen_gen_loop_ro, int3
 
 // def gen_loop_ptr_ro(p: Ptr[readonly[Grid]]) -> Iterator[int32]:
 struct __gen_gen_loop_ptr_ro : public ::tpy::next_iter_mixin<__gen_gen_loop_ptr_ro, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Grid* p;
     using __for_src_0_t = decltype((::tpy::deref_check(p).rows));
     ::tpy::begin_elem_t<__for_src_0_t>* h = nullptr;
@@ -582,7 +582,7 @@ struct __gen_gen_loop_ptr_ro : public ::tpy::next_iter_mixin<__gen_gen_loop_ptr_
 
 // def gen_chain(hs: list[Holder]) -> Iterator[int32]:
 struct __gen_gen_chain : public ::tpy::next_iter_mixin<__gen_gen_chain, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Holder>& hs;
     int32_t a;
     Box* b = nullptr;
@@ -607,7 +607,7 @@ struct __gen_gen_chain : public ::tpy::next_iter_mixin<__gen_gen_chain, int32_t>
 
 // def gen_alias_root(hs: list[Holder]) -> Iterator[int32]:
 struct __gen_gen_alias_root : public ::tpy::next_iter_mixin<__gen_gen_alias_root, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Holder>& hs;
     Holder* h = nullptr;
     int32_t a;
@@ -633,7 +633,7 @@ struct __gen_gen_alias_root : public ::tpy::next_iter_mixin<__gen_gen_alias_root
 
 // def gen_loop_root(hs: list[Holder]) -> Iterator[int32]:
 struct __gen_gen_loop_root : public ::tpy::next_iter_mixin<__gen_gen_loop_root, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Holder>& hs;
     using __for_src_0_t = decltype((hs));
     ::tpy::begin_elem_t<__for_src_0_t>* h = nullptr;
@@ -664,7 +664,7 @@ struct __gen_gen_loop_root : public ::tpy::next_iter_mixin<__gen_gen_loop_root, 
 // @readonly
 // def gen_ro(self) -> Iterator[int32]:
 struct __gen_Keeper_gen_ro : public ::tpy::next_iter_mixin<__gen_Keeper_gen_ro, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Keeper& __self;
     int32_t a;
     const Box* b = nullptr;
@@ -693,7 +693,7 @@ inline __gen_Keeper_gen_ro Keeper::gen_ro() const {
 
 // def gen_bump(self) -> Iterator[int32]:
 struct __gen_Keeper_gen_bump : public ::tpy::next_iter_mixin<__gen_Keeper_gen_bump, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Keeper& __self;
     int32_t a;
     Box* b = nullptr;

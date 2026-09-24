@@ -102,6 +102,7 @@ __gen_gen gen(const std::vector<std::tuple<int32_t, int32_t>>& pairs) {
 ::tpystd::tpy::Poll<int32_t> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         auto& __for_obj_0 = pairs;
         __for_it_0.emplace((__for_obj_0).begin());

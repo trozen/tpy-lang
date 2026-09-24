@@ -111,7 +111,7 @@ inline std::ostream& operator<<(std::ostream& os, const InvalidOperand& obj) {
 
 // async def async_ops(a: int, b: int) -> int:
 struct __coro_async_ops {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt a;
     ::tpy::BigInt b;
@@ -137,7 +137,7 @@ struct __coro_async_ops {
 
 // def generated(a: int, b: int) -> Iterator[int]:
 struct __gen_generated : public ::tpy::next_iter_mixin<__gen_generated, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt a;
     ::tpy::BigInt b;
 

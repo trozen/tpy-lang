@@ -24,7 +24,7 @@ void main();
 
 // def twice_buf(b: bytearray) -> Iterator[bytearray]:  # tpyc: ok
 struct __gen_twice_buf : public ::tpy::next_iter_mixin<__gen_twice_buf, ::tpy::val_or_ref<::tpy::ByteArray>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::ByteArray& b;
 
     enum : int32_t {
@@ -47,7 +47,7 @@ struct __gen_twice_buf : public ::tpy::next_iter_mixin<__gen_twice_buf, ::tpy::v
 
 // def twice_arr(a: Array[int32, 2]) -> Iterator[Array[int32, 2]]:  # tpyc: ok
 struct __gen_twice_arr : public ::tpy::next_iter_mixin<__gen_twice_arr, ::tpy::val_or_ref<std::array<int32_t, 2>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::array<int32_t, 2>& a;
 
     enum : int32_t {
@@ -70,7 +70,7 @@ struct __gen_twice_arr : public ::tpy::next_iter_mixin<__gen_twice_arr, ::tpy::v
 
 // def twice_list(xs: list[int32]) -> Iterator[list[int32]]:  # tpyc: ok
 struct __gen_twice_list : public ::tpy::next_iter_mixin<__gen_twice_list, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<int32_t>& xs;
 
     enum : int32_t {

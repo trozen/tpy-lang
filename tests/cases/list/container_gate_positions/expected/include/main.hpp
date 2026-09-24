@@ -81,7 +81,7 @@ inline std::ostream& operator<<(std::ostream& os, const CtorWriter& obj) {
 
 // async def async_field_write(src: Src) -> int32:
 struct __coro_async_field_write {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Src& src;
     ::tpy::frame_slot<Holder> h;
@@ -104,7 +104,7 @@ struct __coro_async_field_write {
 
 // def gen_field_write(src: Src) -> Iterator[int32]:
 struct __gen_gen_field_write : public ::tpy::next_iter_mixin<__gen_gen_field_write, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Src& src;
     ::tpy::frame_slot<Holder> h;
 

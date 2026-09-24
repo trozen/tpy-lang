@@ -73,6 +73,7 @@ std::expected<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>, ::tpy:
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_2;
         continue;

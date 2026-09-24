@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // def gen_view(h: Holder) -> Iterator[int32]:
 struct __gen_gen_view : public ::tpy::next_iter_mixin<__gen_gen_view, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Holder& h;
     int32_t n;
     char c;
@@ -75,7 +75,7 @@ struct __gen_gen_view : public ::tpy::next_iter_mixin<__gen_gen_view, int32_t> {
 
 // def gen_name(h: Holder) -> Iterator[int32]:
 struct __gen_gen_name : public ::tpy::next_iter_mixin<__gen_gen_name, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Holder& h;
     int32_t n;
     char c;

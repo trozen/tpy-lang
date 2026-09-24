@@ -69,7 +69,7 @@ inline std::ostream& operator<<(std::ostream& os, const CancellableForever& obj)
 
 // async def returns_value(x: int) -> int:
 struct __coro_returns_value {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt x;
 
@@ -91,7 +91,7 @@ struct __coro_returns_value {
 
 // async def void_coro() -> None:
 struct __coro_void_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {

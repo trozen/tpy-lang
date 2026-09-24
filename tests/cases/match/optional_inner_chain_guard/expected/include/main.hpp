@@ -28,7 +28,7 @@ void main();
 
 // def gen(x: Optional[str], flag: bool) -> Iterator[str]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::optional<std::string> x;
     bool flag;
 

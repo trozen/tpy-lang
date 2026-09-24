@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (std::holds_alternative<A*>(v)) {
             auto& __v = *std::get<A*>(v);
             __state = S_RESUME_0;
@@ -52,6 +53,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_match::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = v;
         switch (__match_subject_1.index()) {
         case 0: {
@@ -93,6 +95,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_match::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_total::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpyapp::main::total(v);
     }

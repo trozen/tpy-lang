@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const NumberRange& obj) {
 
 // def doubled_range(r: NumberRange) -> Iterator[int32]:
 struct __gen_doubled_range : public ::tpy::next_iter_mixin<__gen_doubled_range, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     NumberRange& r;
     int32_t x;
     using __for_src_0_t = decltype((r));

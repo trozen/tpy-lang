@@ -107,7 +107,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // async def tick() -> None:
 struct __coro_tick {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -128,7 +128,7 @@ struct __coro_tick {
 
 // async def drain(s: Snap) -> int32:
 struct __coro_drain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Snap& s;
     int32_t n;
@@ -159,7 +159,7 @@ struct __coro_drain {
 
 // def gen_snapshot(s: Snap) -> Iterator[int32]:
 struct __gen_gen_snapshot : public ::tpy::next_iter_mixin<__gen_gen_snapshot, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Snap& s;
     int32_t x;
     using __for_src_0_t = ::tpy::for_source_t<decltype((s.snapshot()))>;
@@ -187,7 +187,7 @@ struct __gen_gen_snapshot : public ::tpy::next_iter_mixin<__gen_gen_snapshot, in
 
 // def yield_own(self) -> Iterator[Own[list[int32]]]:
 struct __gen_Snap_yield_own : public ::tpy::next_iter_mixin<__gen_Snap_yield_own, std::vector<int32_t>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Snap& __self;
 
     enum : int32_t {
@@ -213,7 +213,7 @@ inline __gen_Snap_yield_own Snap::yield_own() const {
 
 // def yield_rec(self) -> Iterator[Point]:
 struct __gen_Holder_yield_rec : public ::tpy::next_iter_mixin<__gen_Holder_yield_rec, ::tpy::val_or_ref<Point>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Holder& __self;
 
     enum : int32_t {
@@ -239,7 +239,7 @@ inline __gen_Holder_yield_rec Holder::yield_rec() {
 
 // def yield_data(self) -> Iterator[list[int32]]:
 struct __gen_Holder_yield_data : public ::tpy::next_iter_mixin<__gen_Holder_yield_data, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Holder& __self;
 
     enum : int32_t {

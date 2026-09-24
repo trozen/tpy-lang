@@ -16,6 +16,7 @@ Counter* g{};
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0 = g;
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
@@ -130,6 +131,7 @@ void main() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __self.opens = ::tpy::add_check<int32_t>(__self.opens, 1);
         __state = S_DONE;
         int32_t __tpy_async_ret = __self.opens;
@@ -148,6 +150,7 @@ void main() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

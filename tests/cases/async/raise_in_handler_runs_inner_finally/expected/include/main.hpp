@@ -23,7 +23,7 @@ void main();
 
 // async def fail_value() -> int32:
 struct __coro_fail_value {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {

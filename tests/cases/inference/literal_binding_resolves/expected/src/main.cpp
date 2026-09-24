@@ -10,7 +10,7 @@ namespace {
 
 // parts = list(str(x) for x in nums)  # tpyc: type(list[str])
 struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::array<int32_t, 3>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));

@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // async def f() -> Own[Box]:
 struct __coro_f {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Box> b;
 
@@ -66,7 +66,7 @@ struct __coro_f {
 
 // async def f_opt(flag: bool) -> Own[Box] | None:
 struct __coro_f_opt {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     bool flag;
     Box* b = nullptr;
@@ -90,7 +90,7 @@ struct __coro_f_opt {
 
 // async def f_alias() -> Own[Box]:
 struct __coro_f_alias {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Box> b;
     Box* a = nullptr;
@@ -113,7 +113,7 @@ struct __coro_f_alias {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Box> r;
     std::optional<Box> o;

@@ -121,7 +121,7 @@ inline std::ostream& operator<<(std::ostream& os, const D& obj) {
 
 // def two_yield(n: int32) -> Iterator[int32]:
 struct __gen_two_yield : public ::tpy::next_iter_mixin<__gen_two_yield, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
 
     enum : int32_t {
@@ -144,7 +144,7 @@ struct __gen_two_yield : public ::tpy::next_iter_mixin<__gen_two_yield, int32_t>
 
 // def store(n: int32, r: Registry) -> Iterator[int32]:
 struct __gen_store : public ::tpy::next_iter_mixin<__gen_store, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     Registry& r;
 
@@ -168,7 +168,7 @@ struct __gen_store : public ::tpy::next_iter_mixin<__gen_store, int32_t> {
 
 // def cell() -> Iterator[int32]:
 struct __gen_cell : public ::tpy::next_iter_mixin<__gen_cell, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t step;
     std::function<int32_t(int32_t)> f;
 
@@ -192,7 +192,7 @@ struct __gen_cell : public ::tpy::next_iter_mixin<__gen_cell, int32_t> {
 
 // def ref_capture(xs: list[int32]) -> Iterator[int32]:
 struct __gen_ref_capture : public ::tpy::next_iter_mixin<__gen_ref_capture, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<int32_t>& xs;
 
     enum : int32_t {
@@ -215,7 +215,7 @@ struct __gen_ref_capture : public ::tpy::next_iter_mixin<__gen_ref_capture, int3
 
 // def own_capture(p: Own[Pt]) -> Iterator[int32]:
 struct __gen_own_capture : public ::tpy::next_iter_mixin<__gen_own_capture, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Pt p;
 
     enum : int32_t {
@@ -238,7 +238,7 @@ struct __gen_own_capture : public ::tpy::next_iter_mixin<__gen_own_capture, int3
 
 // def emit(self, k: int32) -> Iterator[int32]:
 struct __gen_C_emit : public ::tpy::next_iter_mixin<__gen_C_emit, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const C& __self;
     int32_t k;
     int32_t i;
@@ -269,7 +269,7 @@ inline __gen_C_emit C::emit(int32_t k) const {
 
 // def emit(self) -> Iterator[int32]:
 struct __gen_D_emit : public ::tpy::next_iter_mixin<__gen_D_emit, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     D& __self;
 
     enum : int32_t {

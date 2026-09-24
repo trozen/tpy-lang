@@ -9,7 +9,7 @@ namespace {
 // print(sum(x * x for x in [1, 2, 3, 4]))
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -43,7 +43,9 @@ struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_f
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_1_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }

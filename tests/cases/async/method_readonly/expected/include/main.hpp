@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Reporter& obj) {
 
 // async def describe(self) -> int:
 struct __coro_Reporter_describe {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Reporter& __self;
 
@@ -65,7 +65,7 @@ inline __coro_Reporter_describe Reporter::describe() const {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Reporter> r;
     ::tpy::BigInt __await_lift_0;

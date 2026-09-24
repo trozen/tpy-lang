@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_pos::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         for (int32_t i = 0; i < 2; ++i) {
             v = (::tpy::add_check<int32_t>(i, 1));
         }
@@ -45,6 +46,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_pos::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_else_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         for (int32_t i = 0; i < 2; ++i) {
             v = (::tpy::add_check<int32_t>(i, 1));
             if (flag) {

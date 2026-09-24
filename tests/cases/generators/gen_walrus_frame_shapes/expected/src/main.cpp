@@ -121,6 +121,7 @@ int32_t raiser(int32_t i) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_exc_binding::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return -1;
     }
@@ -186,6 +187,7 @@ __gen_exc_binding exc_binding() {
 std::expected<int32_t, ::tpy::StopIteration> __gen_exc_binding_for::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return -1;
     }

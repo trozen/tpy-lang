@@ -363,7 +363,7 @@ inline std::ostream& operator<<(std::ostream& os, const GenLeaf& obj) {
 // async def async_slot[T](v: T) -> int32:
 template <typename T>
 struct __coro_async_slot {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::val_or_ref_t<T> v;
     ::tpy::frame_slot<std::vector<T>> xs;
@@ -393,6 +393,7 @@ template <typename T>
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         xs.emplace(std::vector<T>{});
         (*xs).push_back(::tpy::param_to_storage<T>(v));
         __state = S_DONE;
@@ -413,7 +414,7 @@ __coro_async_slot<T> async_slot(::tpy::param_val_or_ref_t<T> v) {
 
 // async def async_driver(c: Cell) -> int32:
 struct __coro_async_driver {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Cell& c;
     int32_t ref;
@@ -442,7 +443,7 @@ struct __coro_async_driver {
 // def gen_slot[T](v: T) -> Iterator[int32]:
 template <typename T>
 struct __gen_gen_slot : public ::tpy::next_iter_mixin<__gen_gen_slot<T>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::val_or_ref_t<T> v;
     ::tpy::frame_slot<std::vector<T>> xs;
 
@@ -471,6 +472,7 @@ template <typename T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_slot<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         xs.emplace(std::vector<T>{});
         (*xs).push_back(::tpy::param_to_storage<T>(v));
         __state = S_RESUME_0;

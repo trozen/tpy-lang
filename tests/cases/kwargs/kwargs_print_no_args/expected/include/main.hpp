@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Emitter& obj) {
 
 // async def coro() -> int:
 struct __coro_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -73,7 +73,7 @@ struct __coro_coro {
 
 // def gen() -> Iterator[int]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
 
     enum : int32_t {
         S_INITIAL = 0,

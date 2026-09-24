@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<K, V>& obj) {
 // def stream(self, n: int) -> Iterator[V]:  # tpyc: ok
 template <typename K, typename V>
 struct __gen_Pair_stream : public ::tpy::next_iter_mixin<__gen_Pair_stream<K, V>, ::tpy::yield_slot_t<V>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Pair<K, V>& __self;
     ::tpy::BigInt n;
     int32_t i;
@@ -76,6 +76,7 @@ template <typename K, typename V>
 std::expected<::tpy::yield_slot_t<V>, ::tpy::StopIteration> __gen_Pair_stream<K, V>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;

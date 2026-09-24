@@ -11,7 +11,7 @@ namespace {
 // return sum(i * scale for i in range(6) if i < limit)  # tpyc: ok
 template <typename F_limit>
 struct __genexpr_bump_1_frame : public ::tpy::next_iter_mixin<__genexpr_bump_1_frame<F_limit>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     F_limit limit;
     int32_t i;
@@ -42,7 +42,9 @@ struct __genexpr_bump_1_frame : public ::tpy::next_iter_mixin<__genexpr_bump_1_f
 // return sum(i * scale for i in range(6) if i < limit)  # tpyc: ok  # -> S_RESUME_0
 template <typename F_limit>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_bump_1_frame<F_limit>::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;

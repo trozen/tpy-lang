@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counters& obj) {
 
 // async def worker(sem: BoundedSemaphore, c: Counters) -> None:
 struct __coro_worker {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::BoundedSemaphore& sem;
     Counters& c;
@@ -79,7 +79,7 @@ struct __coro_worker {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::BoundedSemaphore> sem;
     ::tpy::frame_slot<::tpystd::asyncio::BoundedSemaphore> fresh;

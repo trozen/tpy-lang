@@ -13,7 +13,7 @@ namespace tpyapp::main {
 //         print(v)
 void main() {
     std::vector<int32_t> xs = {1, 2, 3};
-    auto g = ::tpyapp::main::gen(xs);
+    __gen_gen g = ::tpyapp::main::gen(xs);
     std::vector<int32_t> __tmp_1 = xs;
     std::cout << ::tpyapp::main::drop(std::move(__tmp_1)) << "\n";
     auto& __src_0 = g;

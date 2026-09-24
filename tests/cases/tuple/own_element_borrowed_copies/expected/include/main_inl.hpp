@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_arg_generator::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpyapp::main::take(::tpy::tuple_to_storage_move<std::tuple<P, P>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P>{P(p), P(p)})));
     }

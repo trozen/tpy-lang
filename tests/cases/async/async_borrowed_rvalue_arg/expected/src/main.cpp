@@ -14,6 +14,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<std::string> __coro_via_union::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -53,6 +54,7 @@ __coro_via_union via_union(::tpy::Union<const Cat*, const Dog*> a) {
 ::tpystd::tpy::Poll<std::string> __coro_via_optional::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -88,6 +90,7 @@ __coro_via_optional via_optional(Dog* a) {
 ::tpystd::tpy::Poll<std::string> __coro_via_ref::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -123,6 +126,7 @@ __coro_via_ref via_ref(const Dog& a) {
 ::tpystd::tpy::Poll<std::string> __coro_via_mixed::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -173,6 +177,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __coro_arg_0.emplace(Dog("rex"));
         __sub_0.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_0))});
         __state = S_RESUME_0;

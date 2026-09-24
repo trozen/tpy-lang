@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         d = &*(__ptr_slot_f0 = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"o", {1, 2}}}));
         if ((d != nullptr)) {
             ::tpy::__getitem__((*d), "o").push_back(3);

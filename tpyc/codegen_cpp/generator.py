@@ -12,7 +12,7 @@ import heapq
 import io
 import sys as _sys
 
-from ..typesys import TpyType, NominalType, qualify_shadowed_nominals, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name, ConcreteCoroType, unwrap_readonly, unwrap_own, unwrap_ref_type
+from ..typesys import TpyType, NominalType, qualify_shadowed_nominals, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name, ConcreteFrameType, unwrap_readonly, unwrap_own, unwrap_ref_type
 from ..identity_map import IdentityMap
 from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
@@ -996,18 +996,18 @@ class CodeGenerator:
         return True
 
     @staticmethod
-    def _bound_coro_frame_targets(
+    def _bound_frame_targets(
             func: TpyFunction) -> list[tuple[str, str | None]]:
-        """`(coro_name, owner_record_name | None)` for every bound
-        coroutine handle promoted into `func`'s resumable frame -- each is
-        embedded by value as a `std::optional<__coro_X>` field, the same
-        infinite-size constraint as an inline await's sub-future."""
+        """`(function_name, owner_record_name | None)` for every bound
+        generator or coroutine object promoted into `func`'s resumable
+        frame -- each is embedded by value, the same infinite-size
+        constraint as an inline await's sub-future."""
         targets: list[tuple[str, str | None]] = []
         for _lname, ltype in (func.generator_locals or []):
             inner = unwrap_readonly(unwrap_own(unwrap_ref_type(ltype)))
-            if isinstance(inner, ConcreteCoroType):
-                owner = inner.coro_owner
-                targets.append((inner.coro_func_name,
+            if isinstance(inner, ConcreteFrameType):
+                owner = inner.frame_owner
+                targets.append((inner.frame_func_name,
                                 owner.name if owner is not None else None))
         return targets
 
@@ -1082,7 +1082,7 @@ class CodeGenerator:
             self.gen_async._build_resumable_cfg(f, rn)
             edges = list(resumable_state(f).frame_dep_units)
             edges.extend(self.gen_generators._for_src_generator_targets(f))
-            edges.extend(self._bound_coro_frame_targets(f))
+            edges.extend(self._bound_frame_targets(f))
             for name, owner in edges:
                 j = index.get((name, owner))
                 # A self-edge (a coro that inline-awaits itself, a generator

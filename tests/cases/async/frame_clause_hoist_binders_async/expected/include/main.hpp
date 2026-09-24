@@ -121,7 +121,7 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
 
 // async def value(n: int) -> int:
 struct __coro_value {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
 
@@ -143,7 +143,7 @@ struct __coro_value {
 
 // async def pairs(self) -> str:
 struct __coro_Source_pairs {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Source& __self;
     ::tpy::BigInt n;
@@ -175,7 +175,7 @@ inline __coro_Source_pairs Source::pairs() const {
 
 // async def a_for_body() -> str:
 struct __coro_a_for_body {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
     int32_t i;
@@ -202,7 +202,7 @@ struct __coro_a_for_body {
 
 // async def a_for_else() -> str:
 struct __coro_a_for_else {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
     int32_t i;
@@ -229,7 +229,7 @@ struct __coro_a_for_else {
 
 // async def a_while_body() -> str:
 struct __coro_a_while_body {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t i;
     ::tpy::BigInt n;
@@ -256,7 +256,7 @@ struct __coro_a_while_body {
 
 // async def a_try_except() -> str:
 struct __coro_a_try_except {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string s;
     ::tpy::BigInt k;
@@ -282,7 +282,7 @@ struct __coro_a_try_except {
 
 // async def a_if_arms() -> str:
 struct __coro_a_if_arms {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string s;
     ::tpy::BigInt k;
@@ -308,7 +308,7 @@ struct __coro_a_if_arms {
 
 // async def a_with_body() -> str:
 struct __coro_a_with_body {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt t;
     std::string s;
@@ -335,7 +335,7 @@ struct __coro_a_with_body {
 
 // async def a_with_target() -> str:
 struct __coro_a_with_target {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
     int32_t i;
@@ -361,7 +361,7 @@ struct __coro_a_with_target {
 
 // async def a_match_arm(m: int32) -> str:
 struct __coro_a_match_arm {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t m;
     std::string s;
@@ -388,7 +388,7 @@ struct __coro_a_match_arm {
 
 // async def a_record(c: Cell) -> str:
 struct __coro_a_record {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Cell& c;
     ::tpy::BigInt n;
@@ -418,7 +418,7 @@ struct __coro_a_record {
 
 // async def a_record_match(c: Cell, m: int32) -> str:
 struct __coro_a_record_match {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Cell& c;
     int32_t m;
@@ -446,7 +446,7 @@ struct __coro_a_record_match {
 
 // async def a_walrus() -> str:
 struct __coro_a_walrus {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
     int32_t i;
@@ -472,7 +472,7 @@ struct __coro_a_walrus {
 
 // async def driver() -> None:
 struct __coro_driver {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Source> src;
     ::tpy::frame_slot<Cell> c;

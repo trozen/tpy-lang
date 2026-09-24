@@ -73,7 +73,7 @@ inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
 // async def coro(c: bool, t1: tuple[int32, int32],
 //                t2: tuple[int32, int32]) -> int32:
 struct __coro_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     bool c;
     std::tuple<int32_t, int32_t> t1;
@@ -102,7 +102,7 @@ struct __coro_coro {
 // def gen(c: bool, t1: tuple[int32, int32],
 //         t2: tuple[int32, int32]) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool c;
     std::tuple<int32_t, int32_t> t1;
     std::tuple<int32_t, int32_t> t2;
@@ -129,7 +129,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
 // def gen_view(c: bool) -> Iterator[str]:
 struct __gen_gen_view : public ::tpy::next_iter_mixin<__gen_gen_view, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool c;
     std::tuple<std::string, int32_t> t1;
     std::tuple<std::string, int32_t> t2;

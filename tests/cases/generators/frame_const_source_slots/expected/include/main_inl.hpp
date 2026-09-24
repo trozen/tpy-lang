@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_nested::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = ds;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -55,6 +56,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_nested::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_fieldhop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = ps;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -96,6 +98,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_fieldhop::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_values_ref::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpy::dict_values(m));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
@@ -125,6 +128,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_values_ref::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_items_ref::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpy::dict_items(m));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
@@ -161,6 +165,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_items_ref::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_deep_items::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = ms;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -204,6 +209,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_deep_items::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_values_list::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpy::dict_values(m));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
@@ -235,6 +241,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_values_list::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_values_mutated::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::__setitem__(m, 9, Box(9));
         __for_src_0.emplace(::tpy::dict_values(m));
         __for_it_0.emplace(((*__for_src_0)).begin());
@@ -269,6 +276,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_values_mutated::__next
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_over_array_list::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::resumable_iter_init(__for_itr_0, al);
         __state = S_JOIN_0;
         continue;
@@ -297,6 +305,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_over_array_list::__nex
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_loop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = pairs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -333,6 +342,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_loop::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_subscript::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(pairs, 0));
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -360,6 +370,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_subscript::__ne
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_field::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(h.pair);
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -387,6 +398,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_field::__next__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_readonly::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(pairs, 0));
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -415,6 +427,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_readonly::__nex
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_alias_in_loop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = ds;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -441,55 +454,6 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_alias_in_loop::__next_
     __builtin_unreachable();
 }
 
-// # the negative: a mutated param keeps the mutable capture, and the loop var is
-// # written through after the yield -- the caller sees it, so a copy would fail
-// def mutated(ds: list[list[Box]]) -> Iterator[int32]:
-//     ds.append([Box(9)])
-//     for d in ds:
-//         for b in d:  # tpyc: ok
-//             yield b.n                                 # -> S_RESUME_0
-//             b.n += 100
-inline std::expected<int32_t, ::tpy::StopIteration> __gen_mutated::__next__() {
-    while (true) switch (__state) {
-    case S_INITIAL: {  // entry
-        ds.push_back({Box(9)});
-        auto& __for_obj_0 = ds;
-        __for_it_0.emplace((__for_obj_0).begin());
-        __for_end_0.emplace((__for_obj_0).end());
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_RESUME_0: {  // after: yield b.n
-        b->n = ::tpy::add_check<int32_t>(b->n, 100);
-        __state = S_JOIN_1;
-        continue;
-    }
-    case S_JOIN_0: {
-        if ((*__for_it_0) == (*__for_end_0)) {
-            __state = S_DONE;
-            return ::tpy::make_unexpected(::tpy::StopIteration{});
-        }
-        d = &(*((*__for_it_0))++);
-        auto& __for_obj_1 = (*d);
-        __for_it_1.emplace((__for_obj_1).begin());
-        __for_end_1.emplace((__for_obj_1).end());
-        __state = S_JOIN_1;
-        continue;
-    }
-    case S_JOIN_1: {
-        if ((*__for_it_1) == (*__for_end_1)) {
-            __state = S_JOIN_0;
-            continue;
-        }
-        b = &(*((*__for_it_1))++);
-        __state = S_RESUME_0;
-        return b->n;
-    }
-    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
-    __builtin_unreachable();
-}
-
 // # method position: `self` is the const binding the nested slot reads
 // def scan(self) -> Iterator[int32]:
 //     for r in self.rows:
@@ -498,6 +462,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_mutated::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Bag_scan::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = __self.rows;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

@@ -24,7 +24,7 @@ void main();
 
 // async def cleanup() -> None:
 struct __coro_cleanup {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -47,7 +47,7 @@ struct __coro_cleanup {
 
 // async def caller() -> int:
 struct __coro_caller {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::exception_ptr __finally_exc_0;
     bool __finally_pending_0 = false;

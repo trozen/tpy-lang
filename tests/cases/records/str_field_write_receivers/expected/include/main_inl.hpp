@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         o.inner.name = "g-nested";
         ::tpy::__getitem__(o.rows, 0).count = 8;
         __state = S_RESUME_0;

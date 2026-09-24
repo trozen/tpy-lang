@@ -229,7 +229,7 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 
 // def gen_for_body() -> Iterator[str]:
 struct __gen_gen_for_body : public ::tpy::next_iter_mixin<__gen_gen_for_body, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     std::string s;
     ::tpy::BigInt k;
@@ -254,7 +254,7 @@ struct __gen_gen_for_body : public ::tpy::next_iter_mixin<__gen_gen_for_body, st
 
 // def gen_for_else() -> Iterator[str]:
 struct __gen_gen_for_else : public ::tpy::next_iter_mixin<__gen_gen_for_else, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     std::string s;
     ::tpy::BigInt k;
@@ -279,7 +279,7 @@ struct __gen_gen_for_else : public ::tpy::next_iter_mixin<__gen_gen_for_else, st
 
 // def gen_while_body() -> Iterator[str]:
 struct __gen_gen_while_body : public ::tpy::next_iter_mixin<__gen_gen_while_body, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     std::string s;
     ::tpy::BigInt k;
@@ -304,7 +304,7 @@ struct __gen_gen_while_body : public ::tpy::next_iter_mixin<__gen_gen_while_body
 
 // def gen_while_else() -> Iterator[str]:
 struct __gen_gen_while_else : public ::tpy::next_iter_mixin<__gen_gen_while_else, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     std::string s;
     ::tpy::BigInt k;
@@ -329,7 +329,7 @@ struct __gen_gen_while_else : public ::tpy::next_iter_mixin<__gen_gen_while_else
 
 // def gen_if_arms() -> Iterator[str]:
 struct __gen_gen_if_arms : public ::tpy::next_iter_mixin<__gen_gen_if_arms, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string s;
     ::tpy::BigInt k;
 
@@ -353,7 +353,7 @@ struct __gen_gen_if_arms : public ::tpy::next_iter_mixin<__gen_gen_if_arms, std:
 
 // def gen_try_except() -> Iterator[str]:
 struct __gen_gen_try_except : public ::tpy::next_iter_mixin<__gen_gen_try_except, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string s;
     ::tpy::BigInt k;
 
@@ -377,7 +377,7 @@ struct __gen_gen_try_except : public ::tpy::next_iter_mixin<__gen_gen_try_except
 
 // def gen_finally() -> Iterator[str]:
 struct __gen_gen_finally : public ::tpy::next_iter_mixin<__gen_gen_finally, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string s;
     ::tpy::BigInt k;
 
@@ -401,7 +401,7 @@ struct __gen_gen_finally : public ::tpy::next_iter_mixin<__gen_gen_finally, std:
 
 // def gen_with_body() -> Iterator[str]:
 struct __gen_gen_with_body : public ::tpy::next_iter_mixin<__gen_gen_with_body, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt t;
     std::string s;
     ::tpy::BigInt k;
@@ -426,7 +426,7 @@ struct __gen_gen_with_body : public ::tpy::next_iter_mixin<__gen_gen_with_body, 
 
 // def gen_with_target() -> Iterator[str]:
 struct __gen_gen_with_target : public ::tpy::next_iter_mixin<__gen_gen_with_target, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::BigInt t;
 
@@ -450,7 +450,7 @@ struct __gen_gen_with_target : public ::tpy::next_iter_mixin<__gen_gen_with_targ
 
 // def gen_match_arm(n: int32) -> Iterator[str]:
 struct __gen_gen_match_arm : public ::tpy::next_iter_mixin<__gen_gen_match_arm, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     std::string s;
     ::tpy::BigInt k;
@@ -475,7 +475,7 @@ struct __gen_gen_match_arm : public ::tpy::next_iter_mixin<__gen_gen_match_arm, 
 
 // def gen_nested_loop() -> Iterator[str]:
 struct __gen_gen_nested_loop : public ::tpy::next_iter_mixin<__gen_gen_nested_loop, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t j;
     std::string s;
     ::tpy::BigInt k;
@@ -501,7 +501,7 @@ struct __gen_gen_nested_loop : public ::tpy::next_iter_mixin<__gen_gen_nested_lo
 
 // def gen_walrus() -> Iterator[str]:
 struct __gen_gen_walrus : public ::tpy::next_iter_mixin<__gen_gen_walrus, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::BigInt w;
 
@@ -525,7 +525,7 @@ struct __gen_gen_walrus : public ::tpy::next_iter_mixin<__gen_gen_walrus, std::s
 
 // def gen_int32() -> Iterator[str]:
 struct __gen_gen_int32 : public ::tpy::next_iter_mixin<__gen_gen_int32, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     std::string s;
     int32_t k;
@@ -550,7 +550,7 @@ struct __gen_gen_int32 : public ::tpy::next_iter_mixin<__gen_gen_int32, std::str
 
 // def gen_optional() -> Iterator[str]:
 struct __gen_gen_optional : public ::tpy::next_iter_mixin<__gen_gen_optional, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     std::optional<::tpy::BigInt> n;
     std::string s;
@@ -579,7 +579,7 @@ struct __gen_gen_optional : public ::tpy::next_iter_mixin<__gen_gen_optional, st
 
 // def gen_two_str() -> Iterator[str]:
 struct __gen_gen_two_str : public ::tpy::next_iter_mixin<__gen_gen_two_str, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     std::string a;
     std::string b;
@@ -605,7 +605,7 @@ struct __gen_gen_two_str : public ::tpy::next_iter_mixin<__gen_gen_two_str, std:
 
 // def gen_record(c: Cell) -> Iterator[str]:
 struct __gen_gen_record : public ::tpy::next_iter_mixin<__gen_gen_record, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Cell& c;
     int32_t i;
     Cell* r = nullptr;
@@ -633,7 +633,7 @@ struct __gen_gen_record : public ::tpy::next_iter_mixin<__gen_gen_record, std::s
 
 // def gen_own_list() -> Iterator[str]:
 struct __gen_gen_own_list : public ::tpy::next_iter_mixin<__gen_gen_own_list, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::frame_slot<std::vector<::tpy::BigInt>> xs;
     ::tpy::BigInt k;
@@ -660,7 +660,7 @@ struct __gen_gen_own_list : public ::tpy::next_iter_mixin<__gen_gen_own_list, st
 
 // def gen_record_with(c: Cell) -> Iterator[str]:
 struct __gen_gen_record_with : public ::tpy::next_iter_mixin<__gen_gen_record_with, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Cell& c;
     ::tpy::BigInt t;
     Cell* r = nullptr;
@@ -686,7 +686,7 @@ struct __gen_gen_record_with : public ::tpy::next_iter_mixin<__gen_gen_record_wi
 
 // def gen_record_try(c: Cell) -> Iterator[str]:
 struct __gen_gen_record_try : public ::tpy::next_iter_mixin<__gen_gen_record_try, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Cell& c;
     Cell* r = nullptr;
     ::tpy::BigInt k;
@@ -711,7 +711,7 @@ struct __gen_gen_record_try : public ::tpy::next_iter_mixin<__gen_gen_record_try
 
 // def gen_record_if(c: Cell) -> Iterator[str]:
 struct __gen_gen_record_if : public ::tpy::next_iter_mixin<__gen_gen_record_if, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Cell& c;
     Cell* r = nullptr;
     ::tpy::BigInt k;
@@ -736,7 +736,7 @@ struct __gen_gen_record_if : public ::tpy::next_iter_mixin<__gen_gen_record_if, 
 
 // def gen_record_match(c: Cell, n: int32) -> Iterator[str]:
 struct __gen_gen_record_match : public ::tpy::next_iter_mixin<__gen_gen_record_match, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Cell& c;
     int32_t n;
     Cell* r = nullptr;
@@ -762,7 +762,7 @@ struct __gen_gen_record_match : public ::tpy::next_iter_mixin<__gen_gen_record_m
 
 // def gen_own_record_try() -> Iterator[str]:
 struct __gen_gen_own_record_try : public ::tpy::next_iter_mixin<__gen_gen_own_record_try, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<Cell> r;
     ::tpy::BigInt k;
     ::tpy::frame_slot<std::array<Cell, 50>> junk;
@@ -787,7 +787,7 @@ struct __gen_gen_own_record_try : public ::tpy::next_iter_mixin<__gen_gen_own_re
 
 // def gen_own_record_if() -> Iterator[str]:
 struct __gen_gen_own_record_if : public ::tpy::next_iter_mixin<__gen_gen_own_record_if, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<Cell> r;
     ::tpy::BigInt k;
     ::tpy::frame_slot<std::array<Cell, 50>> junk;
@@ -812,7 +812,7 @@ struct __gen_gen_own_record_if : public ::tpy::next_iter_mixin<__gen_gen_own_rec
 
 // def gen_own_record_loop() -> Iterator[str]:
 struct __gen_gen_own_record_loop : public ::tpy::next_iter_mixin<__gen_gen_own_record_loop, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::array<Cell, 50>> junk;
     int32_t i;
     ::tpy::frame_slot<Cell> r;
@@ -840,7 +840,7 @@ struct __gen_gen_own_record_loop : public ::tpy::next_iter_mixin<__gen_gen_own_r
 
 // def gen_own_union() -> Iterator[str]:
 struct __gen_gen_own_union : public ::tpy::next_iter_mixin<__gen_gen_own_union, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::array<Pic, 40>> junk;
     int32_t i;
     ::tpy::frame_slot<::tpy::Union<Flat, Pic>> u;
@@ -874,7 +874,7 @@ struct __gen_gen_own_union : public ::tpy::next_iter_mixin<__gen_gen_own_union, 
 
 // def gen_own_box() -> Iterator[str]:
 struct __gen_gen_own_box : public ::tpy::next_iter_mixin<__gen_gen_own_box, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::array<int32_t, 40>> junk;
     int32_t i;
     ::tpy::frame_slot<::tpystd::tplib::box::Box<int32_t>> b;
@@ -902,7 +902,7 @@ struct __gen_gen_own_box : public ::tpy::next_iter_mixin<__gen_gen_own_box, std:
 
 // def gen_plain_assign() -> Iterator[str]:
 struct __gen_gen_plain_assign : public ::tpy::next_iter_mixin<__gen_gen_plain_assign, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     std::string s;
     ::tpy::BigInt k;
@@ -927,7 +927,7 @@ struct __gen_gen_plain_assign : public ::tpy::next_iter_mixin<__gen_gen_plain_as
 
 // def gen_literal_src() -> Iterator[str]:
 struct __gen_gen_literal_src : public ::tpy::next_iter_mixin<__gen_gen_literal_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     std::string_view s;
     int32_t k;
@@ -954,7 +954,7 @@ struct __gen_gen_literal_src : public ::tpy::next_iter_mixin<__gen_gen_literal_s
 
 // def gen_prebound() -> Iterator[str]:
 struct __gen_gen_prebound : public ::tpy::next_iter_mixin<__gen_gen_prebound, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string s;
     ::tpy::BigInt k;
     int32_t i;
@@ -979,7 +979,7 @@ struct __gen_gen_prebound : public ::tpy::next_iter_mixin<__gen_gen_prebound, st
 
 // def gen_toplevel() -> Iterator[str]:
 struct __gen_gen_toplevel : public ::tpy::next_iter_mixin<__gen_gen_toplevel, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string s;
     ::tpy::BigInt k;
 
@@ -1003,7 +1003,7 @@ struct __gen_gen_toplevel : public ::tpy::next_iter_mixin<__gen_gen_toplevel, st
 
 // def pairs(self) -> Iterator[str]:
 struct __gen_Source_pairs : public ::tpy::next_iter_mixin<__gen_Source_pairs, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Source& __self;
     int32_t i;
     std::string s;

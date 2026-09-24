@@ -25,7 +25,7 @@ __gen_g g() {
 //     for v in it:
 //         print(v)
 void main() {
-    auto it = ::tpyapp::main::g();
+    __gen_g it = ::tpyapp::main::g();
     std::cout << "created" << "\n";
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

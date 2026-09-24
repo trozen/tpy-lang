@@ -16,6 +16,7 @@ namespace tpyapp::main {
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         p = &*(__ptr_slot_f0 = Dog());
         __state = S_RESUME_0;
         return "start";

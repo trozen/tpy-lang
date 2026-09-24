@@ -66,6 +66,8 @@ namespace tpyapp::main {
         }
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         try {
             __for_itr_0.emplace((c).__aiter__());
@@ -124,6 +126,7 @@ __coro_runner runner(const Counts& c) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         c.emplace(Counts(::tpy::BigInt(5)));
         __sub_0.emplace((*c));
         __state = S_RESUME_0;
@@ -158,6 +161,7 @@ __coro_main main() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((__self.n >= __self.limit)) {
             throw ::tpy::StopAsyncIteration{};
         }

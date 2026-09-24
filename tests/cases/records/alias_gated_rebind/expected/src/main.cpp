@@ -259,7 +259,7 @@ void generator_holds_receiver() {
     std::optional<Walker> __slot_2;
     Walker __slot_1 = Walker(18);
     Walker* wk = &__slot_1;
-    auto g = wk->walk();
+    __gen_Walker_walk g = wk->walk();
     wk = &*(__slot_2 = Walker(50));
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -294,6 +294,7 @@ __gen_gen_drop gen_drop() {
 ::tpystd::tpy::Poll<int32_t> __coro_async_section::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         p = &*(__ptr_slot_f0 = Point(2));
         alias = &((*p));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));

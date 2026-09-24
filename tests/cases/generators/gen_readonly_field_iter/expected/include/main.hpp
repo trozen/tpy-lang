@@ -85,7 +85,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bumper& obj) {
 
 // def alias_param(h: Holder) -> Iterator[int32]:
 struct __gen_alias_param : public ::tpy::next_iter_mixin<__gen_alias_param, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Holder& h;
     std::vector<int32_t>* a = nullptr;
 
@@ -109,7 +109,7 @@ struct __gen_alias_param : public ::tpy::next_iter_mixin<__gen_alias_param, int3
 
 // def direct(self) -> Iterator[int32]:
 struct __gen_Holder_direct : public ::tpy::next_iter_mixin<__gen_Holder_direct, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Holder& __self;
     int32_t x;
     using __for_src_0_t = decltype(((*__self.lst)));
@@ -141,7 +141,7 @@ inline __gen_Holder_direct Holder::direct() const {
 
 // def via_alias(self) -> Iterator[int32]:
 struct __gen_Holder_via_alias : public ::tpy::next_iter_mixin<__gen_Holder_via_alias, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Holder& __self;
     const std::vector<int32_t>* h = nullptr;
     int32_t x;
@@ -174,7 +174,7 @@ inline __gen_Holder_via_alias Holder::via_alias() const {
 
 // def simple_alias(self) -> Iterator[int32]:
 struct __gen_Holder_simple_alias : public ::tpy::next_iter_mixin<__gen_Holder_simple_alias, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Holder& __self;
     const std::vector<int32_t>* a = nullptr;
     int32_t x;
@@ -206,7 +206,7 @@ inline __gen_Holder_simple_alias Holder::simple_alias() const {
 
 // def live_alias(self) -> Iterator[int32]:
 struct __gen_Holder_live_alias : public ::tpy::next_iter_mixin<__gen_Holder_live_alias, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Holder& __self;
     std::vector<int32_t>* a = nullptr;
 
@@ -234,7 +234,7 @@ inline __gen_Holder_live_alias Holder::live_alias() {
 
 // def bump(self) -> Iterator[int32]:
 struct __gen_Bumper_bump : public ::tpy::next_iter_mixin<__gen_Bumper_bump, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Bumper& __self;
     using __for_src_0_t = decltype((__self.cells));
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;

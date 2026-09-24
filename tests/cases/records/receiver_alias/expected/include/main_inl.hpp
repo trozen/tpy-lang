@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         me = &(__self);
         me->n = ::tpy::add_check<int32_t>(me->n, 1);
         __state = S_RESUME_0;
@@ -45,6 +46,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_steps::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_rebound_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         first = &(__self);
         me = first;
         __state = S_RESUME_0;
@@ -74,6 +76,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_rebound_steps::__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_readonly_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         me = &(__self);
         __state = S_RESUME_0;
         return me->n;

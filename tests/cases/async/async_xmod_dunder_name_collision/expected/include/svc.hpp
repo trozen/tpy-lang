@@ -72,7 +72,7 @@ inline std::ostream& operator<<(std::ostream& os, const Svc& obj) {
 
 // async def __aenter__(self) -> int32:
 struct __coro_Gate___aenter__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Gate& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -100,7 +100,7 @@ inline __coro_Gate___aenter__ Gate::__aenter__() const {
 
 // async def __aexit__(self, et: None, ev: None, tb: None) -> None:
 struct __coro_Gate___aexit__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Gate& __self;
     std::monostate et;
@@ -131,7 +131,7 @@ inline __coro_Gate___aexit__ Gate::__aexit__(std::monostate et, std::monostate e
 
 // async def __anext__(self) -> int32:
 struct __coro_Ticker___anext__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Ticker& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -159,7 +159,7 @@ inline __coro_Ticker___anext__ Ticker::__anext__() {
 
 // async def fetch(self) -> int32:
 struct __coro_Svc_fetch {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Svc& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;

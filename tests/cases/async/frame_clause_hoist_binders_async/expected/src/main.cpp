@@ -42,6 +42,7 @@ std::tuple<std::string, ::tpy::BigInt> fallback() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -66,6 +67,7 @@ __coro_value value(::tpy::BigInt n) {
 ::tpystd::tpy::Poll<std::string> __coro_a_for_body::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __obj_0 = {1, 2};
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -110,6 +112,7 @@ __coro_a_for_body a_for_body() {
 ::tpystd::tpy::Poll<std::string> __coro_a_for_else::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __obj_1 = {1, 2};
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
@@ -157,6 +160,7 @@ __coro_a_for_else a_for_else() {
 ::tpystd::tpy::Poll<std::string> __coro_a_while_body::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         while ((i < 2)) {
             auto __tup_1 = ::tpyapp::main::pair();
@@ -199,6 +203,7 @@ __coro_a_while_body a_while_body() {
 ::tpystd::tpy::Poll<std::string> __coro_a_try_except::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         {
             try {
                 auto __tup_1 = ::tpyapp::main::pair();
@@ -245,6 +250,7 @@ __coro_a_try_except a_try_except() {
 ::tpystd::tpy::Poll<std::string> __coro_a_if_arms::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (::tpyapp::main::flag()) {
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::get<0>(__tup_1);
@@ -287,6 +293,7 @@ __coro_a_if_arms a_if_arms() {
 ::tpystd::tpy::Poll<std::string> __coro_a_with_body::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __ctx_1 = Guard();
         t = __ctx_1.__enter__();
         try {
@@ -337,6 +344,7 @@ __coro_a_with_body a_with_body() {
 ::tpystd::tpy::Poll<std::string> __coro_a_with_target::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __obj_0 = {1, 2};
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -392,6 +400,7 @@ __coro_a_with_target a_with_target() {
 ::tpystd::tpy::Poll<std::string> __coro_a_match_arm::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = m;
         switch (__match_subject_1) {
         case 1: {
@@ -442,6 +451,7 @@ __coro_a_match_arm a_match_arm(int32_t m) {
 ::tpystd::tpy::Poll<std::string> __coro_a_record::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(std::array<int32_t, 2>{1, 2});
         auto __beg_0 = (*__for_src_0).begin();
         auto __end_0 = (*__for_src_0).end();
@@ -489,6 +499,7 @@ __coro_a_record a_record(Cell& c) {
 ::tpystd::tpy::Poll<std::string> __coro_a_record_match::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = m;
         switch (__match_subject_1) {
         case 1: {
@@ -539,6 +550,7 @@ __coro_a_record_match a_record_match(Cell& c, int32_t m) {
 ::tpystd::tpy::Poll<std::string> __coro_a_walrus::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __obj_0 = {1, 2};
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -592,6 +604,7 @@ __coro_a_walrus a_walrus() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -746,6 +759,7 @@ void main() {
 ::tpystd::tpy::Poll<std::string> __coro_Source_pairs::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __obj_0 = {1, 2};
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();

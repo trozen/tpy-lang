@@ -12,6 +12,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((n) + (::tpy::BigInt(1)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -40,6 +41,7 @@ std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt>> make(const ::tpy::Bi
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_spawn_via::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         coro = factory(n);
         t.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(std::move(coro)));
         __sub_0 = &((*t));

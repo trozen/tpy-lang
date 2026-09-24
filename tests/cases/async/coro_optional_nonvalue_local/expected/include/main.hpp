@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 // async def pick(items: list[P], i: int32, drop: bool) -> int32:
 struct __coro_pick {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<P>& items;
     int32_t i;
@@ -75,7 +75,7 @@ struct __coro_pick {
 
 // async def driver() -> None:
 struct __coro_driver {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<P>> items;
     int32_t __await_lift_0;

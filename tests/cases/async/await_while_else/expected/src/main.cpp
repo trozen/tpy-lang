@@ -12,6 +12,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         bool __tpy_async_ret = (i < limit);
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -37,6 +38,7 @@ __coro_below below(::tpy::BigInt i, ::tpy::BigInt limit) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_normal_exit::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -94,6 +96,7 @@ __coro_normal_exit normal_exit() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_break_exit::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -150,6 +153,7 @@ __coro_break_exit break_exit() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;

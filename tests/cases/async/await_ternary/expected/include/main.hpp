@@ -27,7 +27,7 @@ __coro_main main();
 
 // async def one(tag: str) -> int:
 struct __coro_one {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string tag;
 
@@ -49,7 +49,7 @@ struct __coro_one {
 
 // async def two(tag: str) -> int:
 struct __coro_two {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string tag;
 
@@ -71,7 +71,7 @@ struct __coro_two {
 
 // async def pick(tag: str, b: bool) -> bool:
 struct __coro_pick {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string tag;
     bool b;
@@ -94,27 +94,27 @@ struct __coro_pick {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     bool cond;
+    std::string __coro_arg_0;
+    std::string __coro_arg_1;
     ::tpy::BigInt __await_ternary_0;
     ::tpy::BigInt x;
     bool cond2;
+    std::string __coro_arg_2;
+    std::string __coro_arg_3;
     ::tpy::BigInt __await_ternary_1;
     ::tpy::BigInt y;
+    std::string __coro_arg_5;
+    std::string __coro_arg_6;
     ::tpy::BigInt __await_ternary_2;
     ::tpy::BigInt z;
     int32_t w;
-    bool __await_lift_0;
-    bool __await_lift_1;
-    std::string __coro_arg_0;
-    std::string __coro_arg_1;
-    std::string __coro_arg_2;
-    std::string __coro_arg_3;
     std::string __coro_arg_4;
-    std::string __coro_arg_5;
-    std::string __coro_arg_6;
+    bool __await_lift_0;
     std::string __coro_arg_7;
+    bool __await_lift_1;
     std::optional<__coro_one> __sub_0;
     std::optional<__coro_two> __sub_1;
     std::optional<__coro_one> __sub_2;

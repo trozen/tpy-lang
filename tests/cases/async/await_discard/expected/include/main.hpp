@@ -24,7 +24,7 @@ void main();
 
 // async def side_effect() -> None:
 struct __coro_side_effect {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -45,7 +45,7 @@ struct __coro_side_effect {
 
 // async def caller() -> None:
 struct __coro_caller {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<__coro_side_effect> __sub_0;
 

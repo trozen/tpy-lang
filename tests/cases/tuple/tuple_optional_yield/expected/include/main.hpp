@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 // def gen_for(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
 struct __gen_gen_for : public ::tpy::next_iter_mixin<__gen_gen_for, std::tuple<P*, P*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<P>& items;
     using __for_src_0_t = decltype((items));
     ::tpy::begin_elem_t<__for_src_0_t>* it = nullptr;
@@ -69,7 +69,7 @@ struct __gen_gen_for : public ::tpy::next_iter_mixin<__gen_gen_for, std::tuple<P
 
 // def gen_range(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
 struct __gen_gen_range : public ::tpy::next_iter_mixin<__gen_gen_range, std::tuple<P*, P*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<P>& items;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -95,7 +95,7 @@ struct __gen_gen_range : public ::tpy::next_iter_mixin<__gen_gen_range, std::tup
 
 // def gen_while(items: list[P], n: int32) -> Iterator[tuple[P | None, P | None]]:
 struct __gen_gen_while : public ::tpy::next_iter_mixin<__gen_gen_while, std::tuple<P*, P*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<P>& items;
     int32_t n;
     int32_t i;

@@ -70,7 +70,7 @@ inline std::ostream& operator<<(std::ostream& os, const Mgr& obj) {
 
 // async def __aenter__(self) -> None:
 struct __coro_HasEnter___aenter__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     HasEnter& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -98,7 +98,7 @@ inline __coro_HasEnter___aenter__ HasEnter::__aenter__() {
 
 // async def __aexit__(self, et: None, ev: None, tb: None) -> None:
 struct __coro_HasBoth___aexit__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     HasBoth& __self;
     std::monostate et;
@@ -129,7 +129,7 @@ inline __coro_HasBoth___aexit__ HasBoth::__aexit__(std::monostate et, std::monos
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Mgr> m;
     Mgr* __with_ctx_0 = nullptr;

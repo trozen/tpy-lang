@@ -133,6 +133,7 @@ __gen_gen_call_src gen_call_src() {
 ::tpystd::tpy::Poll<int32_t> __coro_async_accessor::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         auto& __for_obj_0 = b.items();
         __for_it_0.emplace((__for_obj_0).begin());
@@ -182,6 +183,7 @@ __coro_async_accessor async_accessor(Bag& b) {
 ::tpystd::tpy::Poll<int32_t> __coro_async_slice::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         __for_src_0.emplace(::tpy::list_slice(cells, ::tpy::BasicSlice{1, std::nullopt}));
         __for_it_0.emplace(((*__for_src_0)).begin());
@@ -224,7 +226,7 @@ namespace {
 
 // return sum(v * 2 for v in xs)  # tpyc: ok
 struct __genexpr_gx_named_1_frame : public ::tpy::next_iter_mixin<__genexpr_gx_named_1_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::array<int32_t, 3>& __src;
     int32_t v;
     using __for_src_0_t = decltype((__src));
@@ -280,7 +282,7 @@ namespace {
 // return sum(c.v for c in make_cells())  # tpyc: ok
 template <::tpystd::typing::Iterable<Cell> T___src>
 struct __genexpr_gx_own_call_2_frame : public ::tpy::next_iter_mixin<__genexpr_gx_own_call_2_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     using __for_src_0_t = decltype((__src));
     ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> c;
@@ -314,7 +316,9 @@ struct __genexpr_gx_own_call_2_frame : public ::tpy::next_iter_mixin<__genexpr_g
 template <::tpystd::typing::Iterable<Cell> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_gx_own_call_2_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -354,7 +358,7 @@ namespace {
 // return sum(c.v for c in b.items())  # tpyc: ok
 template <::tpystd::typing::Iterable<Cell> T___src>
 struct __genexpr_gx_accessor_3_frame : public ::tpy::next_iter_mixin<__genexpr_gx_accessor_3_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     using __for_src_0_t = decltype((__src));
     ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> c;
@@ -388,7 +392,9 @@ struct __genexpr_gx_accessor_3_frame : public ::tpy::next_iter_mixin<__genexpr_g
 template <::tpystd::typing::Iterable<Cell> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_gx_accessor_3_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -561,6 +567,7 @@ __gen_own_param_iter_src own_param_iter_src(Holder h) {
 ::tpystd::tpy::Poll<int32_t> __coro_async_combinator_temp::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         __coro_arg_0.emplace(Deleg(3));
         __for_src_0.emplace(::tpy::builtin_enumerate((*__coro_arg_0)));
@@ -612,6 +619,7 @@ __coro_async_combinator_temp async_combinator_temp() {
 ::tpystd::tpy::Poll<int32_t> __coro_async_zip::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         __for_src_0.emplace(::tpy::builtin_zip(xs, ys));
         __state = S_JOIN_0;
@@ -662,6 +670,7 @@ __coro_async_zip async_zip(const std::vector<int32_t>& xs, const std::vector<int
 ::tpystd::tpy::Poll<int32_t> __coro_async_genexpr::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         __for_src_0.emplace(::tpyapp::main::__genexpr_async_genexpr_6(xs));
         ::tpy::resumable_iter_init(__for_itr_0, (*__for_src_0));

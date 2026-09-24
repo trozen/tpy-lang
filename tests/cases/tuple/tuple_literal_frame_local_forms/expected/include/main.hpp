@@ -104,7 +104,7 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 
 // async def coro(a: A) -> int32:
 struct __coro_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     A& a;
     ::tpy::frame_slot<std::tuple<A, A*>> t;
@@ -129,7 +129,7 @@ struct __coro_coro {
 
 // async def async_section() -> None:
 struct __coro_async_section {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<A> a;
     int32_t __await_lift_0;
@@ -154,7 +154,7 @@ struct __coro_async_section {
 
 // def fresh() -> Iterator[int32]:
 struct __gen_fresh : public ::tpy::next_iter_mixin<__gen_fresh, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::tuple<A, int32_t>> t;
 
     enum : int32_t {
@@ -177,7 +177,7 @@ struct __gen_fresh : public ::tpy::next_iter_mixin<__gen_fresh, int32_t> {
 
 // def own_call() -> Iterator[int32]:
 struct __gen_own_call : public ::tpy::next_iter_mixin<__gen_own_call, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::tuple<int32_t, A>> t;
 
     enum : int32_t {
@@ -200,7 +200,7 @@ struct __gen_own_call : public ::tpy::next_iter_mixin<__gen_own_call, int32_t> {
 
 // def lvalue(a: A) -> Iterator[int32]:
 struct __gen_lvalue : public ::tpy::next_iter_mixin<__gen_lvalue, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     A& a;
     std::tuple<A*, int32_t> t;
 
@@ -224,7 +224,7 @@ struct __gen_lvalue : public ::tpy::next_iter_mixin<__gen_lvalue, int32_t> {
 
 // def mixed_fresh_first(a: A) -> Iterator[int32]:
 struct __gen_mixed_fresh_first : public ::tpy::next_iter_mixin<__gen_mixed_fresh_first, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     A& a;
     ::tpy::frame_slot<std::tuple<A, A*>> t;
 
@@ -248,7 +248,7 @@ struct __gen_mixed_fresh_first : public ::tpy::next_iter_mixin<__gen_mixed_fresh
 
 // def mixed_lvalue_first(a: A) -> Iterator[int32]:
 struct __gen_mixed_lvalue_first : public ::tpy::next_iter_mixin<__gen_mixed_lvalue_first, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     A& a;
     ::tpy::frame_slot<std::tuple<A*, A>> t;
 
@@ -272,7 +272,7 @@ struct __gen_mixed_lvalue_first : public ::tpy::next_iter_mixin<__gen_mixed_lval
 
 // def moved_last_use() -> Iterator[int32]:
 struct __gen_moved_last_use : public ::tpy::next_iter_mixin<__gen_moved_last_use, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<A> a;
     ::tpy::frame_slot<std::tuple<A, A>> t;
 
@@ -296,7 +296,7 @@ struct __gen_moved_last_use : public ::tpy::next_iter_mixin<__gen_moved_last_use
 
 // def loop_reassigned() -> Iterator[int32]:
 struct __gen_loop_reassigned : public ::tpy::next_iter_mixin<__gen_loop_reassigned, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::frame_slot<std::tuple<int32_t, A>> t;
 
@@ -321,7 +321,7 @@ struct __gen_loop_reassigned : public ::tpy::next_iter_mixin<__gen_loop_reassign
 
 // def literal_then_call(c: bool) -> Iterator[int32]:
 struct __gen_literal_then_call : public ::tpy::next_iter_mixin<__gen_literal_then_call, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool c;
     ::tpy::frame_slot<std::tuple<A, int32_t>> t;
 
@@ -345,7 +345,7 @@ struct __gen_literal_then_call : public ::tpy::next_iter_mixin<__gen_literal_the
 
 // def call_then_literal(c: bool) -> Iterator[int32]:
 struct __gen_call_then_literal : public ::tpy::next_iter_mixin<__gen_call_then_literal, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool c;
     ::tpy::frame_slot<std::tuple<A, int32_t>> t;
 
@@ -369,7 +369,7 @@ struct __gen_call_then_literal : public ::tpy::next_iter_mixin<__gen_call_then_l
 
 // def call_reassigned() -> Iterator[int32]:
 struct __gen_call_reassigned : public ::tpy::next_iter_mixin<__gen_call_reassigned, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::tuple<A, int32_t>> t;
 
     enum : int32_t {
@@ -392,7 +392,7 @@ struct __gen_call_reassigned : public ::tpy::next_iter_mixin<__gen_call_reassign
 
 // def own_elem_call() -> Iterator[int32]:
 struct __gen_own_elem_call : public ::tpy::next_iter_mixin<__gen_own_elem_call, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::tuple<A, int32_t>> t;
 
     enum : int32_t {
@@ -456,7 +456,7 @@ struct __gen_try_body : public ::tpy::next_iter_mixin<__gen_try_body, int32_t> {
 
 // def g(self) -> Iterator[int32]:
 struct __gen_H_g : public ::tpy::next_iter_mixin<__gen_H_g, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const H& __self;
     ::tpy::frame_slot<std::tuple<A, int32_t>> t;
 

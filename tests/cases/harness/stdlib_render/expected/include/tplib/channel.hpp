@@ -447,7 +447,7 @@ inline std::ostream& operator<<(std::ostream& os, const Receiver<T>& obj) {
 // def __iter__(self) -> Iterator[Own[T]]:
 template <typename T>
 struct __gen_Receiver___iter__ : public ::tpy::next_iter_mixin<__gen_Receiver___iter__<T>, T> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Receiver<T>& __self;
 
     enum : int32_t {
@@ -480,6 +480,8 @@ template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_Receiver___iter__<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_0:  // after: yield self.recv()
     case S_JOIN_1:
     case S_JOIN_0: {

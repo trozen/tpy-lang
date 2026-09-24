@@ -22,6 +22,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_own_slot::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         fl.emplace(Rec(11));
         // def inner: frame member
         __state = S_RESUME_0;
@@ -56,6 +57,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_own_slot::__next__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_escape_hoist::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         // def inner: frame member
         __state = S_RESUME_0;
         return inner();
@@ -85,6 +87,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_escape_hoist::__ne
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_per_resume::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         fl.emplace(Rec(100));
         // def inner: frame member
         __for_i_0.emplace(int32_t(0));
@@ -119,6 +122,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_per_resume::__next
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         // def inner: frame member
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(inner(), __self.n));

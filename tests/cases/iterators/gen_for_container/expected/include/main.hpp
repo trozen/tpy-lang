@@ -18,7 +18,7 @@ void main();
 
 // def doubled(items: list[int32]) -> Iterator[int32]:
 struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& items;
     int32_t x;
     using __for_src_0_t = decltype((items));

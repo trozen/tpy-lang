@@ -158,7 +158,7 @@ inline std::ostream& operator<<(std::ostream& os, const FeedIter& obj) {
 
 // async def __anext__(self) -> int:
 struct __coro_SrcIter___anext__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     SrcIter& __self;
     ::tpy::BigInt val;
@@ -185,7 +185,7 @@ inline __coro_SrcIter___anext__ SrcIter::__anext__() {
 
 // async def __anext__(self) -> int:
 struct __coro_FeedIter___anext__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     FeedIter& __self;
     ::tpy::BigInt v;
@@ -212,7 +212,7 @@ inline __coro_FeedIter___anext__ FeedIter::__anext__() {
 
 // async def runner() -> None:
 struct __coro_runner {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Source> src;
     ::tpy::BigInt x;
@@ -241,7 +241,7 @@ struct __coro_runner {
 
 // async def post_loop() -> None:
 struct __coro_post_loop {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Source> src;
     ::tpy::BigInt x;
@@ -270,7 +270,7 @@ struct __coro_post_loop {
 
 // async def nested() -> None:
 struct __coro_nested {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Source> outer;
     ::tpy::frame_slot<Source> inner;
@@ -307,7 +307,7 @@ struct __coro_nested {
 
 // async def hop(sh: Shelf) -> None:
 struct __coro_hop {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Shelf& sh;
     ::tpy::BigInt x;
@@ -336,7 +336,7 @@ struct __coro_hop {
 
 // async def field_hop(sh: Shelf) -> None:
 struct __coro_field_hop {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Shelf& sh;
     ::tpy::BigInt x;
@@ -365,7 +365,7 @@ struct __coro_field_hop {
 
 // async def elem_distinct(rows: list[Source]) -> None:
 struct __coro_elem_distinct {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<Source>& rows;
     ::tpy::BigInt x;
@@ -394,7 +394,7 @@ struct __coro_elem_distinct {
 
 // async def elem_unknown(rows: list[Source], i: int) -> None:
 struct __coro_elem_unknown {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<Source>& rows;
     ::tpy::BigInt i;
@@ -424,7 +424,7 @@ struct __coro_elem_unknown {
 
 // async def elem_container(rows: list[Source]) -> None:
 struct __coro_elem_container {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<Source>& rows;
     ::tpy::BigInt x;
@@ -455,7 +455,7 @@ struct __coro_elem_container {
 
 // async def ptr_iter(feeds: list[Feed]) -> None:
 struct __coro_ptr_iter {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<Feed>& feeds;
     ::tpy::BigInt x;

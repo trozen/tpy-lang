@@ -12,6 +12,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((n) + (::tpy::BigInt(100)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -35,6 +36,7 @@ __coro_value value(::tpy::BigInt n) {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_total_of::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());

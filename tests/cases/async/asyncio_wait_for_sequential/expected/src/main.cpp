@@ -12,6 +12,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_first::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -42,6 +43,7 @@ __coro_first first() {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_second::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -73,6 +75,7 @@ __coro_second second() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::first()), 5.0);
         __state = S_RESUME_0;
         continue;

@@ -66,6 +66,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_try::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         try {
             auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(pairs, 0));
@@ -177,6 +179,7 @@ __gen_gen_loop_root gen_loop_root(std::vector<Holder>& hs) {
 ::tpystd::tpy::Poll<int32_t> __coro_coro_chain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(hs, 0).pair);
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -214,6 +217,7 @@ __coro_coro_chain coro_chain(std::vector<Holder>& hs) {
 ::tpystd::tpy::Poll<int32_t> __coro_coro_subscript::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(pairs, 0));
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -247,6 +251,7 @@ __coro_coro_subscript coro_subscript(std::vector<std::tuple<int32_t, Box>>& pair
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(pairs);
         __state = S_RESUME_0;
         continue;
@@ -276,6 +281,7 @@ __coro_main_coro main_coro(std::vector<std::tuple<int32_t, Box>>& pairs) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro_chain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(hs);
         __state = S_RESUME_0;
         continue;

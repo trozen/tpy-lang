@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // async def bump(self, by: int32) -> int32:
 struct __coro_Counter_bump {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Counter& __self;
     int32_t by;
@@ -65,7 +65,7 @@ inline __coro_Counter_bump Counter::bump(int32_t by) {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Counter> c;
     int32_t __await_lift_0;

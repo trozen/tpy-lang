@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Derived& obj) {
 
 // async def val(self) -> int32:
 struct __coro_Base_val {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Base& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -80,7 +80,7 @@ inline __coro_Base_val Base::val() const {
 
 // async def val(self) -> int32:
 struct __coro_Derived_val {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Derived& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -108,7 +108,7 @@ inline __coro_Derived_val Derived::val() const {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Base> b;
     ::tpy::frame_slot<Derived> d;

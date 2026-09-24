@@ -18,7 +18,7 @@ void main();
 
 // def gen() -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::array<int32_t, 3>> nums;
     ::tpy::frame_slot<::tpy::ordered_map<int32_t, int32_t>> d;
     ::tpy::frame_slot<::tpy::ordered_set<int32_t>> s;

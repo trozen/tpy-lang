@@ -39,6 +39,7 @@ __gen_gen_nosusp gen_nosusp(Outer& o) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -65,6 +66,7 @@ __coro_tick tick() {
 ::tpystd::tpy::Poll<int32_t> __coro_bump_await::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         auto& __for_obj_0 = i.items();
         __for_it_0.emplace((__for_obj_0).begin());
@@ -109,6 +111,7 @@ __coro_bump_await bump_await(Inner& i) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(i);
         __state = S_RESUME_0;
         continue;

@@ -27,7 +27,7 @@ void main();
 
 // async def helper() -> int32:
 struct __coro_helper {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -50,7 +50,7 @@ struct __coro_helper {
 
 // async def driver() -> None:
 struct __coro_driver {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t v;
     std::optional<__coro_helper> __sub_0;
@@ -74,7 +74,7 @@ struct __coro_driver {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<__coro_driver> __sub_0;
 

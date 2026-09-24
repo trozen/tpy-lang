@@ -25,7 +25,7 @@ __coro_main main();
 
 // async def consume(data: bytes) -> int:
 struct __coro_consume {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::Bytes data;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -49,7 +49,7 @@ struct __coro_consume {
 
 // async def head(data: bytes) -> int:
 struct __coro_head {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::Bytes data;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -73,12 +73,12 @@ struct __coro_head {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpy::BigInt __await_lift_0;
-    ::tpy::BigInt __await_lift_1;
     ::tpy::Bytes __coro_arg_0;
+    ::tpy::BigInt __await_lift_0;
     ::tpy::Bytes __coro_arg_1;
+    ::tpy::BigInt __await_lift_1;
     std::optional<__coro_consume> __sub_0;
     std::optional<__coro_head> __sub_1;
 

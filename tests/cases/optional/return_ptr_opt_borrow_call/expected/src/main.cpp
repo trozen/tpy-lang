@@ -49,6 +49,7 @@ __gen_in_generator in_generator(B& b) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         r = ::tpyapp::main::via_method(b);
         if ((r != nullptr)) {
             std::cout << "async" << " " << r->x << "\n";

@@ -15,6 +15,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         s = 0;
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
@@ -58,6 +59,7 @@ __coro_total total(const std::vector<std::tuple<Item, Item>>& pairs) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         pairs.emplace(std::vector<std::tuple<Item, Item>>{});
         (*pairs).push_back(::tpy::tuple_to_storage_move<std::tuple<Item, Item>>(std::tuple<Item, Item>{Item(1), Item(2)}));
         (*pairs).push_back(::tpy::tuple_to_storage_move<std::tuple<Item, Item>>(std::tuple<Item, Item>{Item(10), Item(20)}));

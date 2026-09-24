@@ -18,7 +18,7 @@ void main();
 
 // def bump(d: dict[str, list[int32]]) -> Iterator[int32]:
 struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::ordered_map<std::string, std::vector<int32_t>>& d;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_values(d)))>;
     ::tpy::begin_elem_t<__for_src_0_t>* v = nullptr;

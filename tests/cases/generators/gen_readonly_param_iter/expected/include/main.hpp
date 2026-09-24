@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // async def total(self) -> int32:
 struct __coro_Holder_total {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Holder& __self;
     int32_t n;
@@ -79,7 +79,7 @@ inline __coro_Holder_total Holder::total() const {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<int32_t>> data;
     ::tpy::frame_slot<Holder> h;
@@ -105,7 +105,7 @@ struct __coro_amain {
 
 // def tail(xs: readonly[list[int32]]) -> Iterator[int32]:
 struct __gen_tail : public ::tpy::next_iter_mixin<__gen_tail, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& xs;
     int32_t x;
     using __for_src_0_t = decltype((xs));

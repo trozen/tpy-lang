@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_free_import::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 0;
     }
@@ -46,6 +47,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_free_import::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_single_yield_import::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 5;
     }
@@ -78,6 +80,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_single_yield_import::_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_module_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 10;
     }
@@ -110,6 +113,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_module_call::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_imported_method::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 20;
     }
@@ -142,6 +146,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_imported_method::__nex
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_generic_callee::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 30;
     }
@@ -175,6 +180,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_generic_callee::__next
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_generic_owner_imported::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 40;
     }
@@ -207,6 +213,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_generic_owner_imported
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_generic_owner_local::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 50;
     }
@@ -241,6 +248,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_generic_owner_local::_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_mutate_receiver::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 60;
     }
@@ -275,6 +283,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_mutate_receiver::__nex
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_lazy_interleave::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 70;
     }
@@ -308,6 +317,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_lazy_interleave::__nex
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_abandoned::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 80;
     }

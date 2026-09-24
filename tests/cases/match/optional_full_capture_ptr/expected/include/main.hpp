@@ -88,7 +88,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // async def a_bump(o: Optional[Cat]) -> int32:
 struct __coro_a_bump {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Cat* o;
 
@@ -110,7 +110,7 @@ struct __coro_a_bump {
 
 // async def amain(c: Cat) -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Cat& c;
     int32_t __await_lift_0;

@@ -179,7 +179,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counts& obj) {
 
 // async def add(self, a: int32, b: int32 = 10) -> int32:
 struct __coro_Adder_add {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Adder& __self;
     int32_t a;
@@ -209,7 +209,7 @@ inline __coro_Adder_add Adder::add(int32_t a, int32_t b) const {
 
 // async def __aenter__(self, bump: int32 = 5) -> int32:
 struct __coro_CM___aenter__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     CM& __self;
     int32_t bump;
@@ -239,7 +239,7 @@ inline __coro_CM___aenter__ CM::__aenter__(int32_t bump) {
 // async def __aexit__(self, exc_type: None, exc: None,
 //                     tb: None) -> bool:
 struct __coro_CM___aexit__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const CM& __self;
     std::monostate exc_type;
@@ -270,7 +270,7 @@ inline __coro_CM___aexit__ CM::__aexit__(std::monostate exc_type, std::monostate
 
 // async def __aenter__(self) -> int32:
 struct __coro_CM2___aenter__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const CM2& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -299,7 +299,7 @@ inline __coro_CM2___aenter__ CM2::__aenter__() const {
 // async def __aexit__(self, exc_type: None, exc: None, tb: None,
 //                     extra: int32 = 9) -> bool:
 struct __coro_CM2___aexit__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     CM2& __self;
     std::monostate exc_type;
@@ -331,7 +331,7 @@ inline __coro_CM2___aexit__ CM2::__aexit__(std::monostate exc_type, std::monosta
 
 // async def __anext__(self, step: int32 = 1) -> int32:
 struct __coro_Counter___anext__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Counter& __self;
     int32_t step;
@@ -360,7 +360,7 @@ inline __coro_Counter___anext__ Counter::__anext__(int32_t step) {
 
 // async def add(a: int32, b: int32 = 10) -> int32:
 struct __coro_add {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t a;
     int32_t b;
@@ -386,7 +386,7 @@ struct __coro_add {
 // async def counted[T](it: Iterable[T], skip: int32 = 7) -> int32:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __coro_counted {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     T_it it;
     int32_t skip;
@@ -421,6 +421,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it>
 ::tpystd::tpy::Poll<int32_t> __coro_counted<T, T_it>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -457,7 +458,7 @@ __coro_counted<T, T_it> counted(T_it&& it, int32_t skip) {
 
 // async def with_default() -> int32:
 struct __coro_with_default {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t;
     ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;
@@ -481,7 +482,7 @@ struct __coro_with_default {
 
 // async def with_override() -> int32:
 struct __coro_with_override {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t;
     ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;
@@ -505,7 +506,7 @@ struct __coro_with_override {
 
 // async def inline_default() -> int32:
 struct __coro_inline_default {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<__coro_add> __sub_0;
 
@@ -528,7 +529,7 @@ struct __coro_inline_default {
 
 // async def inline_override() -> int32:
 struct __coro_inline_override {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<__coro_add> __sub_0;
 
@@ -551,7 +552,7 @@ struct __coro_inline_override {
 
 // async def generic_default() -> int32:
 struct __coro_generic_default {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<int32_t>> nums;
     std::optional<__coro_counted<int32_t, ::tpy::await_arg_capture_t<decltype(((*nums)))>>> __sub_0;
@@ -575,7 +576,7 @@ struct __coro_generic_default {
 
 // async def generic_override() -> int32:
 struct __coro_generic_override {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<int32_t>> nums;
     std::optional<__coro_counted<int32_t, ::tpy::await_arg_capture_t<decltype(((*nums)))>>> __sub_0;
@@ -599,7 +600,7 @@ struct __coro_generic_override {
 
 // async def method_inline_default() -> int32:
 struct __coro_method_inline_default {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Adder> ad;
     std::optional<__coro_Adder_add> __sub_0;
@@ -623,7 +624,7 @@ struct __coro_method_inline_default {
 
 // async def method_inline_override() -> int32:
 struct __coro_method_inline_override {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Adder> ad;
     std::optional<__coro_Adder_add> __sub_0;
@@ -647,7 +648,7 @@ struct __coro_method_inline_override {
 
 // async def method_task_default() -> int32:
 struct __coro_method_task_default {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Adder> ad;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t;
@@ -672,7 +673,7 @@ struct __coro_method_task_default {
 
 // async def method_task_override() -> int32:
 struct __coro_method_task_override {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Adder> ad;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t;
@@ -697,7 +698,7 @@ struct __coro_method_task_override {
 
 // async def aenter_default() -> int32:
 struct __coro_aenter_default {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<CM> cm;
     int32_t out;
@@ -730,7 +731,7 @@ struct __coro_aenter_default {
 
 // async def aexit_default() -> int32:
 struct __coro_aexit_default {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<CM2> cm;
     CM2* __with_ctx_0 = nullptr;
@@ -761,7 +762,7 @@ struct __coro_aexit_default {
 
 // async def anext_default() -> int32:
 struct __coro_anext_default {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Counts> c;
     int32_t total;
@@ -791,7 +792,7 @@ struct __coro_anext_default {
 
 // async def cross_module_default() -> int32:
 struct __coro_cross_module_default {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpyapp::defmod::__coro_scaled> __sub_0;
 
@@ -814,7 +815,7 @@ struct __coro_cross_module_default {
 
 // async def cross_module_override() -> int32:
 struct __coro_cross_module_override {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpyapp::defmod::__coro_scaled> __sub_0;
 

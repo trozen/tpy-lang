@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 // def items(self) -> Iterator[T]:  # tpyc: ok
 template <typename T>
 struct __gen_Box_items : public ::tpy::next_iter_mixin<__gen_Box_items<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Box<T>& __self;
 
     enum : int32_t {
@@ -69,6 +69,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Box_items<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.value;
     }

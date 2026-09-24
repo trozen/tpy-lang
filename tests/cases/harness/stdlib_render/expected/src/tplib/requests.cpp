@@ -896,6 +896,7 @@ Response delete_(std::string_view url, const ::tpy::ordered_map<std::string, std
 std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         r = ::tpy::optional_to_ptr(__self._raw);
         if ((r != nullptr)) {
             __state = S_JOIN_1;
@@ -982,6 +983,7 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::_
 std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_lines::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         pending.emplace(::tpy::ByteArray());
         __for_src_0.emplace(__self.iter_content(_ITER_LINES_CHUNK));
         __state = S_JOIN_0;

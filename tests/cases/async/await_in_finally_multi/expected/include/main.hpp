@@ -26,7 +26,7 @@ void main();
 
 // async def first() -> None:
 struct __coro_first {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -47,7 +47,7 @@ struct __coro_first {
 
 // async def second() -> None:
 struct __coro_second {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -68,7 +68,7 @@ struct __coro_second {
 
 // async def caller() -> int:
 struct __coro_caller {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::exception_ptr __finally_exc_0;
     bool __finally_pending_0 = false;

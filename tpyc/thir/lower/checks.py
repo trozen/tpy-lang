@@ -49,6 +49,7 @@ from ...parse.nodes import (
     TpyVarDecl,
 )
 from ...typesys import (
+    ConcreteFrameType, ConcreteGenType,
     collapse_tuple_own_elements,
     recorded_return_borrow_sources,
     return_const_projected,
@@ -1825,6 +1826,8 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         if (record_like(target_type, analyzer)
                 and _record_rvalue_source_shape(stmt.init, analyzer)):
             return binding
+        if _frame_factory_source(stmt.init, target_type, analyzer):
+            return binding
         # ... or an rvalue F1-record METHOD call (`cur = a.clone()` -> the
         # same rebind-slot pointer-local, `Rc<Node>* cur = &__slot_1;`): the
         # method-call lowering's own gates validate callee/args, the shared
@@ -2131,6 +2134,34 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
             _witness("decl.opt_ptr_container")
         return binding
     return None
+
+def builds_named_frame(call: TpyExpr, analyzer) -> bool:
+    """A generator call sema typed as the concrete frame it builds: the
+    call is a frame factory wherever its result lands (a decl, a slot, an
+    argument), since the frame is one object that is moved into place
+    before it starts, never copied."""
+    t = analyzer.get_expr_type(call)
+    return t is not None and isinstance(_binding_peel(t), ConcreteGenType)
+
+
+def frame_object_slot(t: TpyType | None) -> bool:
+    """A binding that holds a generator / coroutine frame object: one
+    non-copyable, non-assignable frame, rebound by rebuilding its storage
+    (THIRAssign.rebuild)."""
+    return t is not None and isinstance(_binding_peel(t), ConcreteFrameType)
+
+
+def _frame_factory_source(init: TpyExpr | None, target_t: TpyType | None,
+                          analyzer) -> bool:
+    """A generator call filling a slot that holds a generator object
+    (`g = gen(n)` where `g` is the frame): the slot IS the frame, so the
+    call's result lands whole -- the FRAME_FACTORY form, whose call lowering
+    validates the callee and its args. Sema already refused a slot of a
+    different generator function."""
+    return (init is not None and isinstance(init, (TpyCall, TpyMethodCall))
+            and frame_object_slot(target_t)
+            and builds_named_frame(init, analyzer))
+
 
 def _record_rvalue_source_shape(init: TpyExpr, analyzer) -> bool:
     """Classify an rvalue call producing a reference type -- an F1 record or
@@ -4053,6 +4084,9 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
     and the coro-handle frame write): an async-def CALL is a
     coroutine-FACTORY call spelling exactly like a plain/imported call,
     and a generic factory rides the generic arm the same way."""
+    # A call sema typed as its concrete frame is a factory wherever it
+    # lands (see builds_named_frame).
+    generator_ok = generator_ok or builds_named_frame(e, analyzer)
     if not isinstance(e.func, TpyName):
         note_detail("call.expr_callee")
         return None
@@ -9015,6 +9049,9 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
     extern-C / @native_c raw symbols, `function=True` natives whose args
     render slot-BLIND, non-static cpp_template and
     builtin-module arms)."""
+    # A call sema typed as its concrete frame is a factory wherever it
+    # lands (see builds_named_frame).
+    generator_ok = generator_ok or builds_named_frame(e, analyzer)
     if e.kwargs or e.double_star_unpack is not None:
         return None
     # Every OTHER special marker takes its own method-call arm.
@@ -13676,7 +13713,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
         or (use.admits(SinkForm.RECORD_COPY)
             and _alias_ref_container(analyzer.get_expr_type(e))))
     storage_ret_ok = result_use is _ExprResultUse.STORAGE
-    coro_factory_ok = use.admits(SinkForm.CORO_FACTORY)
+    coro_factory_ok = use.admits(SinkForm.FRAME_FACTORY)
     suspend_ok = result_use is _ExprResultUse.SUSPEND
     iterable_ret_ok = result_use is _ExprResultUse.ITERABLE
     ptr_opt_passthrough = use.admits(SinkForm.PTR_OPT_PASSTHROUGH)

@@ -21,7 +21,7 @@ void main();
 
 // async def compute() -> int32:
 struct __coro_compute {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {

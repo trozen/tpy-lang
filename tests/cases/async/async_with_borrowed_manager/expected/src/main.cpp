@@ -13,6 +13,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_guard_scope::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0 = &(c);
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
@@ -127,6 +128,8 @@ __coro_guard_scope guard_scope(Counter& c) {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         try {
             __with_ctx_0 = &(c);
@@ -184,6 +187,7 @@ __coro_raise_scope raise_scope(Counter& c) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         c.emplace(Counter());
         __sub_0.emplace((*c));
         __state = S_RESUME_0;
@@ -232,6 +236,7 @@ void main() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_Counter___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -258,6 +263,7 @@ void main() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_Counter___aexit__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;

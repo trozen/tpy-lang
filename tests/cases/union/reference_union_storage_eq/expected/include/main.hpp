@@ -230,7 +230,7 @@ inline std::ostream& operator<<(std::ostream& os, const Crate& obj) {
 
 // async def in_async(xs: list[Mixed], ys: list[Mixed]) -> bool:  # async
 struct __coro_in_async {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<::tpy::Union<Dog, double, int32_t>>& xs;
     const std::vector<::tpy::Union<Dog, double, int32_t>>& ys;
@@ -253,7 +253,7 @@ struct __coro_in_async {
 
 // async def amain(xs: list[Mixed], ys: list[Mixed]) -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<::tpy::Union<Dog, double, int32_t>>& xs;
     const std::vector<::tpy::Union<Dog, double, int32_t>>& ys;
@@ -279,7 +279,7 @@ struct __coro_amain {
 
 // def gen_eq(xs: list[Mixed], ys: list[Mixed]) -> Iterator[bool]:  # generator
 struct __gen_gen_eq : public ::tpy::next_iter_mixin<__gen_gen_eq, bool> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<::tpy::Union<Dog, double, int32_t>>& xs;
     const std::vector<::tpy::Union<Dog, double, int32_t>>& ys;
 

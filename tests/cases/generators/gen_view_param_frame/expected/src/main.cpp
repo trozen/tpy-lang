@@ -68,6 +68,7 @@ __gen_byte_ends byte_ends(::tpy::BytesView b) {
 ::tpystd::tpy::Poll<std::string> __coro_async_head::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -97,6 +98,7 @@ __coro_async_head async_head(std::string_view t) {
 ::tpystd::tpy::Poll<std::string> __coro_run_head::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __coro_arg_0 = ::tpyapp::main::make_str(2);
         __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;
@@ -136,6 +138,7 @@ __gen_view_lens view_lens(std::string_view t, ::tpy::BytesView b) {
 ::tpystd::tpy::Poll<int32_t> __coro_bump_async::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::__setitem__(s, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(s, 0), 1));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
@@ -170,6 +173,7 @@ __coro_bump_async bump_async(std::span<int32_t> s) {
 ::tpystd::tpy::Poll<int32_t> __coro_run_bump::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __coro_arg_0.emplace(std::array<int32_t, 2>{7, 8});
         __sub_0.emplace(::tpy::as_mut_span((*__coro_arg_0)));
         __state = S_RESUME_0;
@@ -239,6 +243,7 @@ __gen_outer_fstring outer_fstring(int32_t n) {
 ::tpystd::tpy::Poll<std::string> __coro_outer_bind::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -289,6 +294,7 @@ __coro_outer_bind outer_bind() {
 ::tpystd::tpy::Poll<std::string> __coro_outer_task::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __coro_arg_0 = ::tpyapp::main::make_str(2);
         t.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::async_head(__coro_arg_0))));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
@@ -342,6 +348,7 @@ __gen_outer_loop_for outer_loop_for(int32_t n) {
 ::tpystd::tpy::Poll<std::string> __coro_outer_loop_bind::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         out = "";
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
@@ -401,6 +408,7 @@ __coro_outer_loop_bind outer_loop_bind(int32_t n) {
 ::tpystd::tpy::Poll<int32_t> __coro_outer_async_recv::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -457,6 +465,7 @@ __coro_outer_async_recv outer_async_recv(const std::vector<int32_t>& src) {
 ::tpystd::tpy::Poll<int32_t> __coro_outer_task_recv::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __coro_arg_0.emplace(Adder(5));
         __coro_arg_1.emplace(std::array<int32_t, 2>{7, 8});
         t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>((*__coro_arg_0).add(::tpy::as_mut_span((*__coro_arg_1))))));
@@ -1101,6 +1110,7 @@ void main() {
 ::tpystd::tpy::Poll<int32_t> __coro_Adder_add::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::__setitem__(s, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(s, 0), __self.step));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;

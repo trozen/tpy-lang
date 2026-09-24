@@ -22,6 +22,8 @@ _CPP_TESTS = PROJECT_ROOT / "runtime" / "cpp" / "tests"
 # failure, so the C++ file owns its own assertions.
 _SELFCHECKS = [
     ("test_frame_slot_forms.cpp", "resumable-frame slot storage forms"),
+    ("test_frame_state_pin.cpp",
+     "a resumable frame is never copied and moves only before its first entry"),
     ("test_bigint_small_ops.cpp", "BigInt small-operation values and allocations"),
     ("test_math_exception_policy.cpp", "math exceptions and IEEE special values"),
     ("test_seq_contains_identity.cpp", "containment's identity-before-== rule"),
@@ -40,7 +42,7 @@ _SELFCHECKS = [
 # Self-checks also built the way a release build sees the headers: their
 # debug-only guards compile out under NDEBUG, so the guarded paths must hold
 # without them.
-_RELEASE_SHAPE = {"test_owning_combinator_move.cpp"}
+_RELEASE_SHAPE = {"test_owning_combinator_move.cpp", "test_frame_state_pin.cpp"}
 _RELEASE_FLAGS = ("-O2", "-DNDEBUG")
 
 _BUILDS = [(s, w, ()) for s, w in _SELFCHECKS] + [

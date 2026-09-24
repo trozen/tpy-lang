@@ -154,7 +154,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // async def async_read(x: bytearray | int32) -> int32:
 struct __coro_async_read {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x;
     uint8_t first;
@@ -179,7 +179,7 @@ struct __coro_async_read {
 
 // def generate(x: bytearray | int32) -> Iterator[int32]:
 struct __gen_generate : public ::tpy::next_iter_mixin<__gen_generate, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x;
 
     enum : int32_t {

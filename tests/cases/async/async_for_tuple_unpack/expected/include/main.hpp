@@ -64,7 +64,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pairs& obj) {
 
 // async def __anext__(self) -> tuple[int, int]:
 struct __coro_PairIter___anext__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     PairIter& __self;
 
@@ -90,7 +90,7 @@ inline __coro_PairIter___anext__ PairIter::__anext__() {
 
 // async def sum_squares(p: Pairs) -> int:
 struct __coro_sum_squares {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Pairs& p;
     int32_t total;
@@ -122,7 +122,7 @@ struct __coro_sum_squares {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Pairs> p;
     ::tpy::BigInt __await_lift_0;

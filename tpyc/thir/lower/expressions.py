@@ -571,6 +571,7 @@ _MEMBERSHIP_RECV = _ExprUse(pos=SinkPos.RECEIVER,
 
 
 from .checks import (
+    builds_named_frame,
     declared_name_copy,
     own_btuple_borrow_name_arg,
     _enum_receiver,
@@ -1287,7 +1288,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                   and _witness("call.container_rebind_ret"))
               # An async-def FACTORY call under the make_adapter wrap: the
               # concrete coro frame is consumed whole by the adapter.
-              or (use.admits(SinkForm.CORO_FACTORY)
+              or (use.admits(SinkForm.FRAME_FACTORY)
                   and fi is not None and fi.is_async)
               # A sync `with` manager that resolves to a @native record-
               # returning call (`with open(path, mode)`): stored in the
@@ -9073,9 +9074,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             return ffold
         k = _free_callee_kind(
             e, analyzer,
-            generator_ok=use.result is _ExprResultUse.ITERABLE,
+            generator_ok=(use.result is _ExprResultUse.ITERABLE
+                          or use.admits(SinkForm.FRAME_FACTORY)),
             error_return_ok=True,
-            coro_factory_ok=use.admits(SinkForm.CORO_FACTORY),
+            coro_factory_ok=use.admits(SinkForm.FRAME_FACTORY),
             ret_cast_ok=True)
         len_call = _is_len_call(e, declared, analyzer, lc.pointers)
         if not len_call:
@@ -9537,7 +9539,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             expansion = _lower_expr(e.macro_expansion, lc, declared)
             _witness("call.macro_expansion")
             return expansion
-        iterable_override = (
+        iterable_override = ((
             result_use is _ExprResultUse.ITERABLE
             and (_dict_view_iterable_ok(
                     e, declared, analyzer,
@@ -9549,6 +9551,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     field_recv_ok=True)
                  or _str_list_method_iterable_ok(e, declared, analyzer)
                  or _member_gen_call_iterable_ok(e, declared, analyzer)))
+            # A member generator call typed as its frame lands wherever it
+            # is bound, under the same receiver rule: a frame borrowing a
+            # receiver that dies with the statement would dangle.
+            or (builds_named_frame(e, analyzer)
+                and _member_gen_call_iterable_ok(e, declared, analyzer)))
         if e.is_nested_enum_constructor:
             if (not e.nested_type_name or e.kwargs
                     or e.double_star_unpack is not None or len(e.args) != 1):
@@ -9845,11 +9852,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                            declared, loc)
             # The overload-seam-aware verdict: a stub fi carries
             # is_generator=False while the impl is the generator.
-            iterable_gen = (result_use is _ExprResultUse.ITERABLE
+            iterable_gen = ((result_use is _ExprResultUse.ITERABLE
+                             or use.admits(SinkForm.FRAME_FACTORY))
                             and _genfac_like_call(e, analyzer))
             mk = _marker_call_kind(
                 e, analyzer, generator_ok=iterable_gen,
-                coro_factory_ok=use.admits(SinkForm.CORO_FACTORY),
+                coro_factory_ok=use.admits(SinkForm.FRAME_FACTORY),
                 error_return_ok=error_return_raw)
             # An F1-record result renders bare under a postfix member
             # (RECEIVER) and, when it is an RVALUE source, directly into the
@@ -9881,7 +9889,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         and use.admits(SinkForm.TUPLE_SOURCE)),
                     storage_ret_ok=result_use is _ExprResultUse.STORAGE,
                     value_opt_ret_ok=allow_whole_optional,
-                    coro_factory_ok=use.admits(SinkForm.CORO_FACTORY),
+                    coro_factory_ok=use.admits(SinkForm.FRAME_FACTORY),
                     iterable_ret_ok=result_use is _ExprResultUse.ITERABLE)):
                 if mk is None:
                     note_detail(_marker_reject(e, analyzer))
@@ -10069,7 +10077,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     property_getter_ok=True,
                     whole_optional_ok=allow_whole_optional,
                     property_setter_ok=True,
-                    coro_factory_ok=use.admits(SinkForm.CORO_FACTORY),
+                    coro_factory_ok=use.admits(SinkForm.FRAME_FACTORY),
                     consuming_ok=consuming_ok,
                     error_return_ok=error_return_raw or er_expr_unwrap,
                     # The plain-method tail composes the cpp_return_type
@@ -11269,8 +11277,7 @@ def _capture_entry_cpp(name: str, lc: '_LowerCtx',
     snapshots, a non-escaping (`Fn`) one binds a reference, which for a
     borrowed param is the caller's object and for a frame local is the frame's
     own storage. Capturing the frame itself would be neither, and would tie
-    the closure to a frame it does not own (a stored closure outlives it; a
-    copied frame leaves it pointing at the original).
+    the closure to a frame it does not own (a stored closure outlives it).
 
     Three names have no entry. A by-value entry over a type C++ cannot copy is
     an ill-formed copy in both lanes, so both reject here rather than hand it
@@ -15191,7 +15198,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # exactly here). Base spells from the SLOT protocol via the shared
     # `dynamic_base_name` helper, so the spellings cannot drift. The
     # factory lowers as an ordinary plain/imported free call
-    # (the CORO_FACTORY form lifts only the async-callee reject).
+    # (the FRAME_FACTORY form lifts only the async-callee reject).
     coro_proto = _dyn_own_coro_factory_arg(a, ptype, lc.analyzer)
     if coro_proto is not None:
         _witness("call.coro_factory_adapter")
@@ -15247,7 +15254,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         if _coro_factory_structural_arg(a, proto, lc.analyzer):
             # The coro-factory structural temp (`auto __tmp_N = f();`):
             # gate-admitted under temps_ok only; the frame result lowers
-            # under CORO_FACTORY (lifts only the async-callee reject).
+            # under FRAME_FACTORY (lifts only the async-callee reject).
             if not temp_args:
                 raise ThirUnsupported(
                     "protocol arg-temp outside a flush position")

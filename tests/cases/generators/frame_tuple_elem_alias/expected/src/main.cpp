@@ -28,6 +28,7 @@ __gen_mut_param mut_param(std::tuple<A*, A*> p) {
 ::tpystd::tpy::Poll<int32_t> __coro_co_param::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a = &((*std::get<0>(p)));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;

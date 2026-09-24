@@ -26,7 +26,7 @@ void main();
 
 // async def value(n: int32) -> int32:
 struct __coro_value {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
 
@@ -48,7 +48,7 @@ struct __coro_value {
 
 // async def fail() -> int32:
 struct __coro_fail {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -69,7 +69,7 @@ struct __coro_fail {
 
 // async def go() -> int32:
 struct __coro_go {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t x;
     int32_t y;

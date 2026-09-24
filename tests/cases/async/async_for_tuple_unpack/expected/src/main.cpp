@@ -14,6 +14,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_sum_squares::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         __for_itr_0.emplace((p).__aiter__());
         __state = S_JOIN_0;
@@ -78,6 +79,7 @@ __coro_sum_squares sum_squares(const Pairs& p) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         p.emplace(Pairs(::tpy::BigInt(4)));
         __sub_0.emplace((*p));
         __state = S_RESUME_0;
@@ -112,6 +114,7 @@ __coro_main main() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((__self.n >= __self.limit)) {
             throw ::tpy::StopAsyncIteration{};
         }

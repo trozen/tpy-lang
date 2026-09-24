@@ -15,6 +15,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         result = 0;
         auto& __src_0 = s.items;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);

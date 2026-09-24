@@ -21,7 +21,7 @@ void main();
 
 // def loop(a: int | str) -> Iterator[str]:
 struct __gen_loop : public ::tpy::next_iter_mixin<__gen_loop, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<::tpy::BigInt, std::string> a;
     int32_t count;
 
@@ -47,7 +47,7 @@ struct __gen_loop : public ::tpy::next_iter_mixin<__gen_loop, std::string> {
 
 // def checked(a: int | str) -> Iterator[str]:
 struct __gen_checked : public ::tpy::next_iter_mixin<__gen_checked, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<::tpy::BigInt, std::string> a;
 
     enum : int32_t {

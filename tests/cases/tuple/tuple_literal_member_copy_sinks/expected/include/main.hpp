@@ -115,7 +115,7 @@ inline std::ostream& operator<<(std::ostream& os, const G& obj) {
 
 // async def adup() -> tuple[Own[C], Own[C]]:
 struct __coro_adup {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<C> b;
 
@@ -137,7 +137,7 @@ struct __coro_adup {
 
 // async def run_adup() -> None:
 struct __coro_run_adup {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::tuple<C, C>> t;
     std::optional<__coro_adup> __sub_0;
@@ -161,7 +161,7 @@ struct __coro_run_adup {
 
 // def yield_param(c: C) -> Iterator[tuple[int32, Own[C]]]:
 struct __gen_yield_param : public ::tpy::next_iter_mixin<__gen_yield_param, std::tuple<int32_t, C>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const C& c;
 
     enum : int32_t {
@@ -183,7 +183,7 @@ struct __gen_yield_param : public ::tpy::next_iter_mixin<__gen_yield_param, std:
 
 // def yield_live_local() -> Iterator[tuple[int32, Own[C]]]:
 struct __gen_yield_live_local : public ::tpy::next_iter_mixin<__gen_yield_live_local, std::tuple<int32_t, C>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<C> c;
 
     enum : int32_t {
@@ -205,7 +205,7 @@ struct __gen_yield_live_local : public ::tpy::next_iter_mixin<__gen_yield_live_l
 
 // def yield_repack() -> Iterator[tuple[int32, Own[C]]]:
 struct __gen_yield_repack : public ::tpy::next_iter_mixin<__gen_yield_repack, std::tuple<int32_t, C>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::tuple<int32_t, C>> t;
 
     enum : int32_t {
@@ -227,7 +227,7 @@ struct __gen_yield_repack : public ::tpy::next_iter_mixin<__gen_yield_repack, st
 
 // def yield_mixed(a: C, b: C) -> Iterator[tuple[Own[C], C]]:
 struct __gen_yield_mixed : public ::tpy::next_iter_mixin<__gen_yield_mixed, std::tuple<C, C*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const C& a;
     C& b;
 

@@ -29,6 +29,7 @@ P* maybe_p(std::vector<P>& items, int32_t i) {
 ::tpystd::tpy::Poll<int32_t> __coro_pick::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         h = ::tpyapp::main::maybe_p(items, i);
         if (drop) {
             h = nullptr;
@@ -74,6 +75,7 @@ __coro_pick pick(std::vector<P>& items, int32_t i, bool drop) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         items.emplace(std::vector<P>{});
         (*items).push_back(P(10));
         (*items).push_back(P(20));

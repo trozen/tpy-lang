@@ -50,6 +50,7 @@ from ...modules.defs import BINOP_TO_METHOD, get_dunder_cpp_template
 from ...modules.type_resolution import get_iterable_element_type
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...typesys import (
+    ConcreteGenType,
     return_const_projected,
     substitute_type_params_simple,
     collapse_tuple_own_elements,
@@ -789,7 +790,8 @@ def _protocol_auto_slot(t: 'TpyType | None') -> bool:
     and the init render carries the concrete type. @dynamic protocols
     take the adapter machinery instead."""
     return ((isinstance(t, NominalType) and t.is_protocol
-             and not t.is_dynamic_protocol)
+             and not t.is_dynamic_protocol
+             and not isinstance(t, ConcreteGenType))
             or isinstance(t, SelfType))
 
 
@@ -3316,6 +3318,9 @@ def record_like(t: TpyType | None, analyzer) -> bool:
     t = _binding_peel(t)
     if not isinstance(t, NominalType):
         return False
+    # A bound generator object is one frame, bound and aliased as a record.
+    if isinstance(t, ConcreteGenType):
+        return True
     td = type_def_of(t)
     if td is not None and td.is_compile_time_only:
         return False
@@ -11855,7 +11860,7 @@ def _plain_method_fi_ok(fi, *, generator_ok: bool = False,
                 # the call spells inline (member call + method targs, the
                 # sync generic-method render) and the positions that would
                 # spell the coro FRAME type gate generics themselves (the
-                # decl arm's coro_inferred_type_args check, the await
+                # decl arm's frame_inferred_type_args check, the await
                 # gate's res.await_generic).
                 or (fi.is_async and not coro_factory_ok)
                 or (fi.is_generator and not generator_ok)

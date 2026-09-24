@@ -13,6 +13,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_asum::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -68,6 +69,7 @@ int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<cons
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a.emplace(Tag(3));
         b.emplace(Tag(4));
         __coro_arg_0 = std::tuple<Tag*, Tag*>{&((*a)), &((*b))};

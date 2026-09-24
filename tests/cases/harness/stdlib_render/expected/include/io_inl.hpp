@@ -14,6 +14,8 @@ namespace tpystd::io {
 inline std::expected<std::string, ::tpy::StopIteration> __gen_StringIO___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_0:  // after: yield line
     case S_JOIN_0: {
         if (true) {
@@ -43,6 +45,8 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_StringIO___iter__:
 inline std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_BytesIO___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_0:  // after: yield line
     case S_JOIN_0: {
         if (true) {
@@ -72,6 +76,8 @@ inline std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_BytesIO___iter__:
 inline std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_BufferedReader___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_0:  // after: yield line
     case S_JOIN_0: {
         if (true) {

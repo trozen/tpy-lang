@@ -488,27 +488,6 @@ def test_for_each_gen_call_container_literal_arg_routes():
     assert scope < flush < src
 
 
-def test_iterator_object_decl_routes():
-    # `it = g()` -> `auto it = g();` (decl.iterator_object) and the for-head
-    # admits the LOCAL despite its protocol declared type (a protocol PARAM
-    # stays deferred -- pinned below).
-    compiler, body = _emitted(
-        "from tpy import int32\n"
-        "from typing import Iterator\n"
-        "def gen(n: int32) -> Iterator[int32]:\n"
-        "    yield n\n"
-        "def routed(n: int32) -> int32:\n"
-        "    it = gen(n)\n"
-        "    t = 0\n"
-        "    for v in it:\n"
-        "        t = t + v\n"
-        "    return t\n",
-        "routed")
-    assert "auto it = ::tpyapp::main::gen(n);\n" in body
-    assert "auto& __src_0 = it;\n" in body
-    assert compiler._thir_face_witnesses.get("decl.iterator_object") == 1
-
-
 def test_iterator_protocol_param_iterable_routes():
     # An Iterator[T]-typed STRUCTURAL param iterable routes in a sync body:
     # the deduced `T_it&` is a plain lvalue, the universal `__iter__` loop
@@ -1346,55 +1325,6 @@ def test_iterator_object_local_as_protocol_arg_byte_identical():
         "def use(n: int32) -> int32:\n"
         "    it = gen(n)\n"
         "    return total(it)\n")
-
-
-def test_reassigned_iterator_object_local_falls_back():
-    # The iterator-object decl gate excludes reassigned names -- a rebind
-    # would need pointer machinery the arm does not carry.
-    compiler, entry, f = _fn_body(
-        "from tpy import int32\n"
-        "from typing import Iterator\n"
-        "def gen(n: int32) -> Iterator[int32]:\n"
-        "    yield n\n"
-        "def rejected(n: int32) -> int32:\n"
-        "    it = gen(n)\n"
-        "    it = gen(n + 1)\n"
-        "    t = 0\n"
-        "    for v in it:\n"
-        "        t = t + v\n"
-        "    return t\n",
-        "rejected")
-    with activate_compiler(compiler):
-        begin_attempt()
-        fn = lower_function(f, entry.analyzer, self_type=None)
-        if fn is None:
-            _record_reject("body")
-    assert fn is None
-
-
-def test_branch_first_iterator_object_decl_falls_back():
-    # `iterator_object_locals` is outside the branch snapshot -- a
-    # branch-first iterator decl must reject (function scope only), so the
-    # registration can never leak past its branch.
-    compiler, entry, f = _fn_body(
-        "from tpy import int32\n"
-        "from typing import Iterator\n"
-        "def gen(n: int32) -> Iterator[int32]:\n"
-        "    yield n\n"
-        "def rejected(c: bool, n: int32) -> int32:\n"
-        "    t = 0\n"
-        "    if c:\n"
-        "        it = gen(n)\n"
-        "        for v in it:\n"
-        "            t = t + v\n"
-        "    return t\n",
-        "rejected")
-    with activate_compiler(compiler):
-        begin_attempt()
-        fn = lower_function(f, entry.analyzer, self_type=None)
-        if fn is None:
-            _record_reject("body")
-    assert fn is None
 
 
 def _reasons(src: str) -> list[str]:

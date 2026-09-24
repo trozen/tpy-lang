@@ -32,7 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
 
 // def values(self) -> Iterator[int32]:
 struct __gen_Source_values : public ::tpy::next_iter_mixin<__gen_Source_values, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Source& __self;
 
     enum : int32_t {

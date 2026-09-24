@@ -18,6 +18,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_local_after_nested::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         // def bump: frame member
         tmp.emplace(Point(bump(x)));
         __state = S_RESUME_0;

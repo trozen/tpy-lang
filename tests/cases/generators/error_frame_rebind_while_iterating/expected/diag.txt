@@ -1,0 +1,1 @@
+main.py:21: error: cannot rebind 'g' inside a 'for' loop over it: the loop is still running the generator 'g' holds; bind the new generator to a new name

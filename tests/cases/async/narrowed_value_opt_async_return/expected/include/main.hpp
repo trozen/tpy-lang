@@ -25,7 +25,7 @@ __coro_drive drive();
 
 // async def pick(p: int32 | None) -> int32:
 struct __coro_pick {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<int32_t> p;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -49,7 +49,7 @@ struct __coro_pick {
 
 // async def pick_whole(p: int32 | None) -> int32 | None:
 struct __coro_pick_whole {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<int32_t> p;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -73,7 +73,7 @@ struct __coro_pick_whole {
 
 // async def drive() -> None:
 struct __coro_drive {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<int32_t> w;
     std::optional<int32_t> w2;

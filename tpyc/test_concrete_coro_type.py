@@ -1,6 +1,6 @@
 """Unit tests for ConcreteCoroType identity preservation.
 
-The frame-identity fields (coro_func_name/owner/type-args/module) are
+The frame-identity fields (frame_func_name/owner/type-args/module) are
 what codegen renders the concrete `__coro_*` struct from; losing them
 silently degrades a zero-alloc handle to the erased representation.
 The substitution walk reconstructs types via with_inner_types, which
@@ -19,12 +19,12 @@ def test_substitution_preserves_identity():
                            inferred_type_args=(TypeParamRef("T"),))
     sub = substitute_type_params_structural(t, {"T": INT32})
     assert isinstance(sub, ConcreteCoroType)
-    assert sub.coro_func_name == "fetch"
+    assert sub.frame_func_name == "fetch"
     assert sub.type_args == (INT32,)
     # inferred_type_args are compare=False extras carried verbatim; the
     # walk substitutes only type_args (identity args are re-derived at
     # the binding if ever needed).
-    assert sub.coro_inferred_type_args is not None
+    assert sub.frame_inferred_type_args is not None
 
 
 def test_identity_participates_in_equality():

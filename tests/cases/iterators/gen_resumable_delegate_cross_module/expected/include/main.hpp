@@ -87,7 +87,7 @@ inline std::ostream& operator<<(std::ostream& os, const LocalBox<T>& obj) {
 
 // async def async_position() -> int32:
 struct __coro_async_position {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t total;
     int32_t x;
@@ -116,7 +116,7 @@ struct __coro_async_position {
 
 // def free_import() -> Iterator[int32]:
 struct __gen_free_import : public ::tpy::next_iter_mixin<__gen_free_import, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t x;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::gensrc::walk()))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
@@ -143,7 +143,7 @@ struct __gen_free_import : public ::tpy::next_iter_mixin<__gen_free_import, int3
 
 // def single_yield_import() -> Iterator[int32]:
 struct __gen_single_yield_import : public ::tpy::next_iter_mixin<__gen_single_yield_import, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t x;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::gensrc::walk_once()))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
@@ -170,7 +170,7 @@ struct __gen_single_yield_import : public ::tpy::next_iter_mixin<__gen_single_yi
 
 // def module_call() -> Iterator[int32]:
 struct __gen_module_call : public ::tpy::next_iter_mixin<__gen_module_call, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t x;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::gensrc::walk()))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
@@ -197,7 +197,7 @@ struct __gen_module_call : public ::tpy::next_iter_mixin<__gen_module_call, int3
 
 // def imported_method(s: Src) -> Iterator[int32]:
 struct __gen_imported_method : public ::tpy::next_iter_mixin<__gen_imported_method, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const ::tpyapp::gensrc::Src& s;
     int32_t x;
     using __for_src_0_t = ::tpy::for_source_t<decltype((s.steps()))>;
@@ -225,7 +225,7 @@ struct __gen_imported_method : public ::tpy::next_iter_mixin<__gen_imported_meth
 
 // def generic_callee() -> Iterator[int32]:
 struct __gen_generic_callee : public ::tpy::next_iter_mixin<__gen_generic_callee, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t x;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::gensrc::pair<int32_t>(1, 2)))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
@@ -252,7 +252,7 @@ struct __gen_generic_callee : public ::tpy::next_iter_mixin<__gen_generic_callee
 
 // def generic_owner_imported(b: Box[int32]) -> Iterator[int32]:
 struct __gen_generic_owner_imported : public ::tpy::next_iter_mixin<__gen_generic_owner_imported, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpyapp::gensrc::Box<int32_t>& b;
     int32_t v;
     using __for_src_0_t = ::tpy::for_source_t<decltype((b.two()))>;
@@ -280,7 +280,7 @@ struct __gen_generic_owner_imported : public ::tpy::next_iter_mixin<__gen_generi
 
 // def mutate_receiver(b: Bag) -> Iterator[int32]:
 struct __gen_mutate_receiver : public ::tpy::next_iter_mixin<__gen_mutate_receiver, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpyapp::gensrc::Bag& b;
     int32_t v;
     using __for_src_0_t = ::tpy::for_source_t<decltype((b.readings()))>;
@@ -308,7 +308,7 @@ struct __gen_mutate_receiver : public ::tpy::next_iter_mixin<__gen_mutate_receiv
 
 // def lazy_interleave() -> Iterator[int32]:
 struct __gen_lazy_interleave : public ::tpy::next_iter_mixin<__gen_lazy_interleave, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t x;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::gensrc::chatty()))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
@@ -335,7 +335,7 @@ struct __gen_lazy_interleave : public ::tpy::next_iter_mixin<__gen_lazy_interlea
 
 // def abandoned() -> Iterator[int32]:
 struct __gen_abandoned : public ::tpy::next_iter_mixin<__gen_abandoned, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t x;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::gensrc::guarded()))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
@@ -363,7 +363,7 @@ struct __gen_abandoned : public ::tpy::next_iter_mixin<__gen_abandoned, int32_t>
 // def two(self) -> Iterator[T]:
 template <typename T>
 struct __gen_LocalBox_two : public ::tpy::next_iter_mixin<__gen_LocalBox_two<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     LocalBox<T>& __self;
 
     enum : int32_t {
@@ -391,6 +391,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_LocalBox_two<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::__getitem__(__self.items, 0);
     }
@@ -415,7 +416,7 @@ inline __gen_LocalBox_two<T> LocalBox<T>::two() {
 
 // def generic_owner_local(b: LocalBox[int32]) -> Iterator[int32]:
 struct __gen_generic_owner_local : public ::tpy::next_iter_mixin<__gen_generic_owner_local, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     LocalBox<int32_t>& b;
     int32_t v;
     using __for_src_0_t = ::tpy::for_source_t<decltype((b.two()))>;

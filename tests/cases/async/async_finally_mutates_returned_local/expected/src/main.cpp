@@ -16,6 +16,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         b.emplace(Box());
         {
             bool __fin_ran_1 = false;
@@ -58,6 +59,7 @@ __coro_f f() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         b = nullptr;
         if (flag) {
             b = &*(__ptr_slot_f0 = Box());
@@ -109,6 +111,7 @@ __coro_f_opt f_opt(bool flag) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         b.emplace(Box());
         a = &((*b));
         {
@@ -150,6 +153,7 @@ __coro_f_alias f_alias() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;

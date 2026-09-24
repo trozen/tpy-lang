@@ -34,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
 // def items[U](self, x: U) -> Iterator[U]:
 template <typename U>
 struct __gen_Foo_items : public ::tpy::next_iter_mixin<__gen_Foo_items<U>, ::tpy::yield_slot_t<U>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Foo& __self;
     ::tpy::val_or_ref_t<U> x;
 
@@ -63,6 +63,7 @@ template <typename U>
 std::expected<::tpy::yield_slot_t<U>, ::tpy::StopIteration> __gen_Foo_items<U>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return x;
     }

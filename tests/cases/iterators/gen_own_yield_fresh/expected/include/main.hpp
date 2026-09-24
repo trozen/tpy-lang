@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 // def boxes(n: int) -> Iterator[Own[Node]]:
 struct __gen_boxes : public ::tpy::next_iter_mixin<__gen_boxes, Node> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt n;
     ::tpy::BigInt i;
     ::tpy::frame_loop_slot<::tpy::BigInt> __for_i_0;
@@ -91,7 +91,7 @@ struct __gen_boxes : public ::tpy::next_iter_mixin<__gen_boxes, Node> {
 
 // def fresh_records(src: list[Node]) -> Iterator[Own[Node]]:
 struct __gen_fresh_records : public ::tpy::next_iter_mixin<__gen_fresh_records, Node> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<Node>& src;
     using __for_src_0_t = decltype((src));
     ::tpy::begin_elem_t<__for_src_0_t>* p = nullptr;
@@ -119,7 +119,7 @@ struct __gen_fresh_records : public ::tpy::next_iter_mixin<__gen_fresh_records, 
 
 // def fresh_rows(src: list[list[int32]]) -> Iterator[Own[list[int32]]]:
 struct __gen_fresh_rows : public ::tpy::next_iter_mixin<__gen_fresh_rows, std::vector<int32_t>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::vector<int32_t>>& src;
     using __for_src_0_t = decltype((src));
     ::tpy::begin_elem_t<__for_src_0_t>* r = nullptr;
@@ -147,7 +147,7 @@ struct __gen_fresh_rows : public ::tpy::next_iter_mixin<__gen_fresh_rows, std::v
 
 // def drain(self) -> Iterator[Own[Node]]:
 struct __gen_Bag_drain : public ::tpy::next_iter_mixin<__gen_Bag_drain, Node> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Bag& __self;
     using __for_src_0_t = decltype((__self.items));
     ::tpy::begin_elem_t<__for_src_0_t>* p = nullptr;

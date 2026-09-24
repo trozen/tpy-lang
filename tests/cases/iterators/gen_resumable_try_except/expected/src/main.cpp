@@ -17,7 +17,7 @@ __gen_guarded guarded(const std::vector<::tpy::BigInt>& xs) {
 //         print(v)
 void main() {
     std::vector<::tpy::BigInt> __tmp_1 = {1, -2, 3, -4, 5};
-    auto g = ::tpyapp::main::guarded(__tmp_1);
+    __gen_guarded g = ::tpyapp::main::guarded(__tmp_1);
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {

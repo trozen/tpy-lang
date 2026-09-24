@@ -76,7 +76,7 @@ inline std::ostream& operator<<(std::ostream& os, const Reader& obj) {
 
 // async def coro(b: B) -> int32:
 struct __coro_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     B& b;
 
@@ -98,7 +98,7 @@ struct __coro_coro {
 
 // def gen(b: B) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     B& b;
 
     enum : int32_t {

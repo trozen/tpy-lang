@@ -24,7 +24,7 @@ void main();
 
 // async def boom(n: int) -> int:
 struct __coro_boom {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
 
@@ -46,10 +46,10 @@ struct __coro_boom {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::optional<__coro_boom> c;
     ::tpy::BigInt __await_lift_0;
+    std::optional<__coro_boom> c;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
 
     enum : int32_t {

@@ -71,7 +71,7 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 
 // def g(v: A | B) -> Iterator[bool]:
 struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, bool> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<const A*, const B*> v;
 
     enum : int32_t {

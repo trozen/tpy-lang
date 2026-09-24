@@ -8,7 +8,7 @@ namespace {
 
 // print(sum(k for k in d))  # tpyc: ok
 struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const ::tpy::ordered_map<int32_t, int32_t>& __src;
     int32_t k;
     using __for_src_0_t = decltype((__src));
@@ -51,7 +51,7 @@ __genexpr_main_1_frame __genexpr_main_1(const ::tpy::ordered_map<int32_t, int32_
 // print(sum(a for a, b in [(1, 2), (3, 4)]))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t a;
@@ -87,7 +87,9 @@ struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_f
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_2_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -119,7 +121,7 @@ __genexpr_main_2_frame<std::invoke_result_t<F_make>> __genexpr_main_2(std::in_pl
 // print(sum(b for a, b in [(1, 2), (3, 4)]))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t a;
@@ -154,7 +156,9 @@ struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_f
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_3_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -185,7 +189,7 @@ __genexpr_main_3_frame<std::invoke_result_t<F_make>> __genexpr_main_3(std::in_pl
 
 // print(sum(p.bump() for p, n in items))  # tpyc: ok
 struct __genexpr_main_4_frame : public ::tpy::next_iter_mixin<__genexpr_main_4_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::array<std::tuple<P, int32_t>, 2>& __src;
     using __for_src_0_t = decltype((__src));
     ::tpy::begin_elem_t<__for_src_0_t>* __for_tup_gx = nullptr;
@@ -233,7 +237,7 @@ __genexpr_main_4_frame __genexpr_main_4(std::array<std::tuple<P, int32_t>, 2>& _
 
 // print(sum(1 for x in xs if x is not None))  # tpyc: ok
 struct __genexpr_main_5_frame : public ::tpy::next_iter_mixin<__genexpr_main_5_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::optional<int32_t>>& __src;
     std::optional<int32_t> x;
     using __for_src_0_t = decltype((__src));
@@ -279,7 +283,7 @@ __genexpr_main_5_frame __genexpr_main_5(const std::vector<std::optional<int32_t>
 
 // print(sum(1 for x in xs if x is None))  # tpyc: ok
 struct __genexpr_main_6_frame : public ::tpy::next_iter_mixin<__genexpr_main_6_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::optional<int32_t>>& __src;
     std::optional<int32_t> x;
     using __for_src_0_t = decltype((__src));

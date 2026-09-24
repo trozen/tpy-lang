@@ -14,6 +14,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((p != nullptr)) {
             __state = S_DONE;
             int32_t __tpy_async_ret = p->n;
@@ -44,6 +45,7 @@ __coro_takes_optional takes_optional(P* p) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         items.emplace(std::vector<P>{});
         (*items).push_back(P(42));
         (*items).push_back(P(7));

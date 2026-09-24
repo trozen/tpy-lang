@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_two_then::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 0;
     }
@@ -50,6 +51,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_two_then::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_simple::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -82,6 +84,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_simple::__next__() {
 inline std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return std::tuple<int32_t, int32_t>{0, 0};
     }
@@ -118,6 +121,7 @@ inline std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __gen_p
 inline std::expected<Node, ::tpy::StopIteration> __gen_make_nodes::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return Node(0);
     }
@@ -152,6 +156,7 @@ inline std::expected<Node, ::tpy::StopIteration> __gen_make_nodes::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_around::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return (::tpy::sub_check<int32_t>(__self.base, 1));
     }

@@ -24,7 +24,7 @@ void main();
 
 // async def sub() -> int32:
 struct __coro_sub {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -45,7 +45,7 @@ struct __coro_sub {
 
 // async def caller() -> int32:
 struct __coro_caller {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t x;
     std::optional<__coro_sub> __sub_0;

@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // async def step() -> int32:
 struct __coro_step {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -105,7 +105,7 @@ struct __coro_ret_after_await {
 
 // async def driver() -> None:
 struct __coro_driver {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Box> __await_lift_0;
     std::optional<__coro_ret_after_await> __sub_0;

@@ -16,6 +16,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_sum_evens::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         __for_itr_0.emplace((c).__aiter__());
         __state = S_JOIN_0;
@@ -82,6 +83,7 @@ __coro_sum_evens sum_evens(const Counts& c) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         c.emplace(Counts(::tpy::BigInt(6)));
         __sub_0.emplace((*c));
         __state = S_RESUME_0;
@@ -116,6 +118,7 @@ __coro_main main() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((__self.n >= __self.limit)) {
             throw ::tpy::StopAsyncIteration{};
         }

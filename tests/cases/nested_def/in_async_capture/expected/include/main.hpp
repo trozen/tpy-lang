@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // async def capture_mutate() -> Own[Box]:
 struct __coro_capture_mutate {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Box> b;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -72,7 +72,7 @@ struct __coro_capture_mutate {
 
 // async def across_await() -> int32:
 struct __coro_across_await {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t base;
     int32_t first;
@@ -98,7 +98,7 @@ struct __coro_across_await {
 
 // async def lambda_capture(n: int32) -> int32:
 struct __coro_lambda_capture {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
     int32_t first;
@@ -123,7 +123,7 @@ struct __coro_lambda_capture {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Box> __await_lift_0;
     int32_t __await_lift_1;

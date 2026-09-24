@@ -12,6 +12,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::Bytes> __coro_reader::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         loop.emplace(::tpystd::asyncio::get_running_loop());
         __sub_0.emplace(std::move((*loop).sock_recv(sock, 16)));
         __state = S_RESUME_0;
@@ -53,6 +54,7 @@ __coro_reader reader(::tpystd::socket::socket& sock) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpystd::socket::socketpair();
         a1.emplace(std::move(std::get<0>(__tup_1)));
         b1.emplace(std::move(std::get<1>(__tup_1)));

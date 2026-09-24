@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 // def each[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
 struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T>, T> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<T>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
@@ -87,6 +87,7 @@ template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_each<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -118,7 +119,7 @@ __gen_each<T> each(const std::vector<T>& xs) {
 // def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
 struct __gen_each_twice : public ::tpy::next_iter_mixin<__gen_each_twice<T>, T> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<T>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
@@ -153,6 +154,7 @@ template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_each_twice<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

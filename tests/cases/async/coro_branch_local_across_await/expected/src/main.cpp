@@ -16,6 +16,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_coro_if::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((n == 0)) {
             r = 100;
         } else {
@@ -57,6 +58,7 @@ __coro_coro_if coro_if(::tpy::BigInt n) {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_coro_elif::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((n == 0)) {
             r = 1;
         } else if ((n == 1)) {
@@ -99,6 +101,7 @@ __coro_coro_elif coro_elif(::tpy::BigInt n) {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_coro_match::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = n;
         if (__match_subject_1 == 0) {
             r = 100;

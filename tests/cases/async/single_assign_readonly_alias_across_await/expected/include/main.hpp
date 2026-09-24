@@ -57,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 // async def peek(o: readonly[Outer]) -> int:
 struct __coro_peek {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Outer& o;
     const Inner* a = nullptr;
@@ -82,10 +82,10 @@ struct __coro_peek {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpy::BigInt __await_lift_0;
     ::tpy::frame_slot<Outer> __coro_arg_0;
+    ::tpy::BigInt __await_lift_0;
     std::optional<__coro_peek> __sub_0;
 
     enum : int32_t {

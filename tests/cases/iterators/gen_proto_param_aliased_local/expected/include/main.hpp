@@ -21,7 +21,7 @@ void main();
 // def echo(it: Iterable[int]) -> Iterator[int]:
 template <::tpystd::typing::Iterable<::tpy::BigInt> T_it>
 struct __gen_echo : public ::tpy::next_iter_mixin<__gen_echo<T_it>, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_it it;
     ::tpy::BigInt x;
     using __for_src_0_t = decltype((it));
@@ -55,6 +55,7 @@ template <::tpystd::typing::Iterable<::tpy::BigInt> T_it>
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_echo<T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;

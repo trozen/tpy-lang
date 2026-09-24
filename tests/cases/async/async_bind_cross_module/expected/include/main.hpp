@@ -24,13 +24,13 @@ void main();
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::optional<::tpyapp::helpers::__coro_add_one> c;
     std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt>> d;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<::tpy::BigInt>> t;
     ::tpy::BigInt __await_lift_0;
     ::tpy::BigInt __await_lift_1;
+    std::optional<::tpyapp::helpers::__coro_add_one> c;
     ::tpystd::asyncio::_executor::Task<::tpy::BigInt>* __sub_1 = nullptr;
 
     enum : int32_t {

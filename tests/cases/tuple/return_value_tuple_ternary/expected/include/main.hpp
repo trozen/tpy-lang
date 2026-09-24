@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 
 // async def coro(f: bool) -> tuple[int32, str]:
 struct __coro_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     bool f;
     std::tuple<int32_t, std::string> t;

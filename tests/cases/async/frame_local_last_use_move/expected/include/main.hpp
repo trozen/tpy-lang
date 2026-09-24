@@ -22,7 +22,7 @@ __coro_amain amain();
 
 // async def collect(n: int) -> int:
 struct __coro_collect {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
     ::tpy::frame_slot<std::vector<std::vector<int32_t>>> out;
@@ -50,7 +50,7 @@ struct __coro_collect {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt __await_lift_0;
     std::optional<__coro_collect> __sub_0;

@@ -102,7 +102,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 
 // def matching(names: list[bytes], want: bytes) -> Iterator[bytes]:
 struct __gen_matching : public ::tpy::next_iter_mixin<__gen_matching, ::tpy::Bytes> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<::tpy::Bytes>& names;
     ::tpy::Bytes want;
     ::tpy::Bytes n;

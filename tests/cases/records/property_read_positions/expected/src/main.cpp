@@ -100,6 +100,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_frame_manager::__next__() {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0 = &(b.guard());
         g = (*__with_ctx_0).__enter__();
         __state = S_JOIN_1;

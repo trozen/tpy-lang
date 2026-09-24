@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __a = 5;
         __state = S_RESUME_0;
         return 0;
@@ -41,6 +42,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_across::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __a = 8;
         if (std::holds_alternative<Cat*>(a)) {
             auto& __a_narrowed = *std::get<Cat*>(a);
@@ -78,6 +80,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_across::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_cross::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __a = 5;
         __state = S_RESUME_0;
         return 0;
@@ -107,6 +110,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_cross::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_assert::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __a = 2;
         __state = S_RESUME_0;
         return 3;
@@ -134,6 +138,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_assert::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_bumped_frame::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __a = 5;
         __a_narrowed = 6;
         if (std::holds_alternative<Cat*>(a)) {
@@ -173,6 +178,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_bumped_frame::__ne
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_resume_cross::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __a = 5;
         if (!(std::holds_alternative<Cat*>(a))) ::tpy::raise_assertion_error();
         auto& __a_narrowed = *std::get<Cat*>(a);
@@ -205,6 +211,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_resume_cross::__ne
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_sibling::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __a = 5;
         __state = S_RESUME_0;
         return 0;

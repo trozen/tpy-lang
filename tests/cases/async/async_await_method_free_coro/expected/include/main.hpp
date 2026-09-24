@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Runner& obj) {
 
 // async def helper() -> int32:
 struct __coro_helper {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -63,7 +63,7 @@ struct __coro_helper {
 
 // async def run(self) -> None:
 struct __coro_Runner_run {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Runner& __self;
     int32_t v;
@@ -92,7 +92,7 @@ inline __coro_Runner_run Runner::run() const {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Runner> r;
     std::optional<__coro_Runner_run> __sub_0;

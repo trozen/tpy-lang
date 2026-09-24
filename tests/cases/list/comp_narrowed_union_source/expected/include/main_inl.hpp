@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (std::holds_alternative<const std::vector<int32_t>*>(u)) {
             auto& __u = *std::get<const std::vector<int32_t>*>(u);
             __state = S_RESUME_0;

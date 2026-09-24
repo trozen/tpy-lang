@@ -33,7 +33,7 @@ void main();
 
 // async def slow() -> int32:
 struct __coro_slow {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -57,7 +57,7 @@ struct __coro_slow {
 
 // async def fast() -> int32:
 struct __coro_fast {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -80,7 +80,7 @@ struct __coro_fast {
 
 // async def canceller(target: Own[asyncio.Task[int32]]) -> None:
 struct __coro_canceller {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::_executor::Task<int32_t> target;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -104,7 +104,7 @@ struct __coro_canceller {
 
 // async def gather_helper() -> Own[list[asyncio.Settled[int32]]]:
 struct __coro_gather_helper {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> a;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> b;
@@ -130,7 +130,7 @@ struct __coro_gather_helper {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<::tpystd::asyncio::Settled<int32_t>>> results;
     ::tpy::frame_slot<::tpystd::asyncio::Settled<int32_t>> r;

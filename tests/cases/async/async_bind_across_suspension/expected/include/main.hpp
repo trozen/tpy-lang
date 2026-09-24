@@ -24,7 +24,7 @@ void main();
 
 // async def add_one(n: int) -> int:
 struct __coro_add_one {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
 
@@ -46,11 +46,11 @@ struct __coro_add_one {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::optional<__coro_add_one> c;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<::tpy::BigInt>> t;
     ::tpy::BigInt __await_lift_0;
+    std::optional<__coro_add_one> c;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
     ::tpystd::asyncio::_executor::Task<::tpy::BigInt>* __sub_1 = nullptr;
 

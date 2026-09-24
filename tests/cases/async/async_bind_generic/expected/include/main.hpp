@@ -26,7 +26,7 @@ void main();
 // async def ident[T](x: T) -> T:
 template <typename T>
 struct __coro_ident {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::val_or_ref_t<T> x;
 
@@ -52,6 +52,7 @@ template <typename T>
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(x));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -70,13 +71,13 @@ __coro_ident<T> ident(::tpy::param_val_or_ref_t<T> x) {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::optional<__coro_ident<int32_t>> c;
-    std::optional<__coro_ident<std::string>> s;
+    std::string __coro_arg_0;
     int32_t __await_lift_0;
     std::string __await_lift_1;
-    std::string __coro_arg_0;
+    std::optional<__coro_ident<int32_t>> c;
+    std::optional<__coro_ident<std::string>> s;
 
     enum : int32_t {
         S_INITIAL = 0,

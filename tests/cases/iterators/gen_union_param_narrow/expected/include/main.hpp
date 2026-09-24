@@ -64,7 +64,7 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
 
 // def voices(self, a: Dog | Cat) -> Iterator[str]:
 struct __gen_Owner_voices : public ::tpy::next_iter_mixin<__gen_Owner_voices, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Owner& __self;
     ::tpy::Union<Cat*, Dog*> a;
 
@@ -94,7 +94,7 @@ inline __gen_Owner_voices Owner::voices(::tpy::Union<Cat*, Dog*> a) const {
 
 // def first(self, a: Dog | Cat) -> Iterator[str]:
 struct __gen_Owner_first : public ::tpy::next_iter_mixin<__gen_Owner_first, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Owner& __self;
     ::tpy::Union<Cat*, Dog*> a;
 

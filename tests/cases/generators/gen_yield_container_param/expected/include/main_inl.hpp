@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_repeat_list::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -44,6 +45,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
 inline std::expected<::tpy::val_or_ref<::tpy::ordered_map<std::string, int32_t>>, ::tpy::StopIteration> __gen_repeat_dict::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -75,6 +77,7 @@ inline std::expected<::tpy::val_or_ref<::tpy::ordered_map<std::string, int32_t>>
 inline std::expected<::tpy::val_or_ref<::tpy::ordered_set<int32_t>>, ::tpy::StopIteration> __gen_repeat_set::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -106,6 +109,7 @@ inline std::expected<::tpy::val_or_ref<::tpy::ordered_set<int32_t>>, ::tpy::Stop
 inline std::expected<::tpy::val_or_ref<::tpy::ByteArray>, ::tpy::StopIteration> __gen_repeat_buf::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -137,6 +141,7 @@ inline std::expected<::tpy::val_or_ref<::tpy::ByteArray>, ::tpy::StopIteration> 
 inline std::expected<::tpy::val_or_ref<std::array<int32_t, 2>>, ::tpy::StopIteration> __gen_repeat_arr::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;

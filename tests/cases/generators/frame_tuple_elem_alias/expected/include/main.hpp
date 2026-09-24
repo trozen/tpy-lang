@@ -91,7 +91,7 @@ inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {
 
 // async def co_param(p: tuple[A, A]) -> int32:
 struct __coro_co_param {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::tuple<A*, A*> p;
     A* a = nullptr;
@@ -116,7 +116,7 @@ struct __coro_co_param {
 
 // def ro_param(p: tuple[A, A]) -> Iterator[int32]:
 struct __gen_ro_param : public ::tpy::next_iter_mixin<__gen_ro_param, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::tuple<const A*, const A*> p;
     const A* a = nullptr;
 
@@ -140,7 +140,7 @@ struct __gen_ro_param : public ::tpy::next_iter_mixin<__gen_ro_param, int32_t> {
 
 // def mut_param(p: tuple[A, A]) -> Iterator[int32]:
 struct __gen_mut_param : public ::tpy::next_iter_mixin<__gen_mut_param, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::tuple<A*, A*> p;
     A* a = nullptr;
 
@@ -164,7 +164,7 @@ struct __gen_mut_param : public ::tpy::next_iter_mixin<__gen_mut_param, int32_t>
 
 // def nested(p: tuple[A, A]) -> Iterator[int32]:
 struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::tuple<A*, A*> p;
     A* a = nullptr;
 
@@ -189,7 +189,7 @@ struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested, int32_t> {
 
 // def frame_local(r0: A, r1: A) -> Iterator[int32]:
 struct __gen_frame_local : public ::tpy::next_iter_mixin<__gen_frame_local, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     A& r0;
     A& r1;
     std::tuple<A*, A*> t;
@@ -215,7 +215,7 @@ struct __gen_frame_local : public ::tpy::next_iter_mixin<__gen_frame_local, int3
 
 // def mixed_borrowed(b: A) -> Iterator[int32]:
 struct __gen_mixed_borrowed : public ::tpy::next_iter_mixin<__gen_mixed_borrowed, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     A& b;
     ::tpy::frame_slot<std::tuple<A, A*>> t;
     A* saved = nullptr;
@@ -240,7 +240,7 @@ struct __gen_mixed_borrowed : public ::tpy::next_iter_mixin<__gen_mixed_borrowed
 
 // def owning_no_rebind() -> Iterator[int32]:
 struct __gen_owning_no_rebind : public ::tpy::next_iter_mixin<__gen_owning_no_rebind, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::tuple<A, A>> t;
     A* saved = nullptr;
 
@@ -264,7 +264,7 @@ struct __gen_owning_no_rebind : public ::tpy::next_iter_mixin<__gen_owning_no_re
 
 // def mixed_owned_no_rebind(b: A) -> Iterator[int32]:
 struct __gen_mixed_owned_no_rebind : public ::tpy::next_iter_mixin<__gen_mixed_owned_no_rebind, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     A& b;
     ::tpy::frame_slot<std::tuple<A, A*>> t;
     A* saved = nullptr;
@@ -289,7 +289,7 @@ struct __gen_mixed_owned_no_rebind : public ::tpy::next_iter_mixin<__gen_mixed_o
 
 // def mixed_borrowed_rebound(b: A, c: A) -> Iterator[int32]:
 struct __gen_mixed_borrowed_rebound : public ::tpy::next_iter_mixin<__gen_mixed_borrowed_rebound, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     A& b;
     A& c;
     ::tpy::frame_slot<std::tuple<A, A*>> t;
@@ -316,7 +316,7 @@ struct __gen_mixed_borrowed_rebound : public ::tpy::next_iter_mixin<__gen_mixed_
 
 // def rebind_before_alias(c: bool) -> Iterator[int32]:
 struct __gen_rebind_before_alias : public ::tpy::next_iter_mixin<__gen_rebind_before_alias, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool c;
     ::tpy::frame_slot<std::tuple<A, A>> t;
     A* saved = nullptr;
@@ -341,7 +341,7 @@ struct __gen_rebind_before_alias : public ::tpy::next_iter_mixin<__gen_rebind_be
 
 // def alias_after_last_rebind() -> Iterator[int32]:
 struct __gen_alias_after_last_rebind : public ::tpy::next_iter_mixin<__gen_alias_after_last_rebind, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::tuple<A, A>> t;
     A* saved = nullptr;
 
@@ -365,7 +365,7 @@ struct __gen_alias_after_last_rebind : public ::tpy::next_iter_mixin<__gen_alias
 
 // def orelse_alias() -> Iterator[int32]:
 struct __gen_orelse_alias : public ::tpy::next_iter_mixin<__gen_orelse_alias, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::tuple<A, A>> t;
     int32_t i;
     A* saved = nullptr;
@@ -393,7 +393,7 @@ struct __gen_orelse_alias : public ::tpy::next_iter_mixin<__gen_orelse_alias, in
 
 // def walk(self, p: tuple[A, A]) -> Iterator[int32]:
 struct __gen_Walker_walk : public ::tpy::next_iter_mixin<__gen_Walker_walk, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Walker& __self;
     std::tuple<A*, A*> p;
     A* a = nullptr;

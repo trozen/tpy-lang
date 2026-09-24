@@ -16,6 +16,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         nums.emplace(std::array<int32_t, 3>{1, 2, 3});
         d.emplace(::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}}));
         s.emplace(::tpy::ordered_set<int32_t>({7, 8}));

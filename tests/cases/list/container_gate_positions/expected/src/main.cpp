@@ -35,6 +35,7 @@ __gen_gen_field_write gen_field_write(const Src& src) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         h.emplace(Holder());
         (*h).f = src.items;
         (*h).f.push_back(1);

@@ -11,6 +11,7 @@ namespace tpyapp::main {
 inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_copy::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return std::tuple<int32_t, C>{1, C(c)};
     }
@@ -29,6 +30,7 @@ inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_c
 inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_fresh::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return std::tuple<int32_t, C>{1, C(5)};
     }
@@ -49,6 +51,7 @@ inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_f
 inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_last_use::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
         __state = S_JOIN_0;
@@ -76,6 +79,7 @@ inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_l
 inline std::expected<std::tuple<C, C*>, ::tpy::StopIteration> __gen_yield_mixed_borrow::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return std::tuple<C, C*>{C(7), &(b)};
     }
@@ -94,6 +98,7 @@ inline std::expected<std::tuple<C, C*>, ::tpy::StopIteration> __gen_yield_mixed_
 inline std::expected<std::tuple<int32_t, std::tuple<int32_t, std::string>>, ::tpy::StopIteration> __gen_yield_values::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return std::tuple<int32_t, std::tuple<int32_t, std::string>>{1, std::tuple<int32_t, std::string>{2, "two"}};
     }

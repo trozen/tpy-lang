@@ -14,6 +14,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0.emplace(Suppressor("S"));
         s = (*__with_ctx_0).__enter__();
         __state = S_JOIN_0;

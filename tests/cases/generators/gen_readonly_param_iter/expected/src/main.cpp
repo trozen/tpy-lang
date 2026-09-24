@@ -21,6 +21,7 @@ __gen_tail tail(const std::vector<int32_t>& xs) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         data.emplace(std::vector<int32_t>{10, 20});
         std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::tail((*data))) << "\n";
         h.emplace(Holder());
@@ -63,7 +64,7 @@ void main() {
     std::vector<int32_t> __tmp_1 = {1, 2};
     std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::tail(__tmp_1)) << "\n";
     std::vector<int32_t> __tmp_2 = {3, 4};
-    auto g = ::tpyapp::main::tail(__tmp_2);
+    __gen_tail g = ::tpyapp::main::tail(__tmp_2);
     int32_t total = 0;
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -87,6 +88,7 @@ void main() {
 ::tpystd::tpy::Poll<int32_t> __coro_Holder_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         n = 0;
         if ((__self.lst.has_value())) {
             auto& __for_obj_0 = (*__self.lst);

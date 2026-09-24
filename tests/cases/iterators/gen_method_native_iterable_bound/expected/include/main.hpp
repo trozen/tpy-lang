@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrap<T>& obj) {
 // def summary(self) -> Iterator[int32]:
 template <::tpy::NativeIterable<int32_t> T>
 struct __gen_Wrap_summary : public ::tpy::next_iter_mixin<__gen_Wrap_summary<T>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Wrap<T>& __self;
     int32_t total;
     int32_t count;
@@ -77,6 +77,7 @@ template <::tpy::NativeIterable<int32_t> T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_Wrap_summary<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         count = 0;
         auto& __obj_0 = __self.items;

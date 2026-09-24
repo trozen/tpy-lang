@@ -27,7 +27,7 @@ void main();
 // async def solo[T](x: T) -> tuple[T]:
 template <typename T>
 struct __coro_solo {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::val_or_ref_t<T> x;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -56,6 +56,7 @@ template <typename T>
 ::tpystd::tpy::Poll<std::tuple<T>> __coro_solo<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -83,7 +84,7 @@ __coro_solo<T> solo(::tpy::param_val_or_ref_t<T> x) {
 
 // async def go() -> None:
 struct __coro_go {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::tuple<int32_t> t;
     std::optional<__coro_solo<int32_t>> __sub_0;

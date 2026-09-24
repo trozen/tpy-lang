@@ -27,6 +27,7 @@ __gen_gen gen(Box& b) {
 ::tpystd::tpy::Poll<int32_t> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         p.emplace(::tpyapp::main::make_mixed(b));
         std::get<1>((*p))->val = 99;
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));

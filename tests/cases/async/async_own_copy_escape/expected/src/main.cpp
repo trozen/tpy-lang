@@ -16,6 +16,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         c.emplace(C());
         t.emplace(::tpystd::asyncio::create_task<C>(::tpy::make_adapter<::tpystd::coro::Cancellable<C>>((*c).snapshot())));
         __sub_0 = &((*t));
@@ -50,6 +51,7 @@ __coro_main main() {
 ::tpystd::tpy::Poll<C> __coro_C_snapshot::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;

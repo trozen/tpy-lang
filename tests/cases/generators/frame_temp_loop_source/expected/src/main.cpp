@@ -78,6 +78,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_counted::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         __state = S_RESUME_0;
         return 1;
@@ -163,6 +165,7 @@ __gen_gen_two_arms gen_two_arms(bool pick) {
 std::expected<std::string, ::tpy::StopIteration> __gen_gen_nested::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpyapp::main::make_cells());
         auto __beg_1 = (*__for_src_0).begin();
         auto __end_1 = (*__for_src_0).end();
@@ -262,6 +265,7 @@ __gen_gen_param_slice gen_param_slice(std::vector<Cell>& cells) {
 std::expected<std::string, ::tpy::StopIteration> __gen_gen_in_match::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = k;
         switch (__match_subject_1) {
         case 1: {
@@ -385,6 +389,7 @@ __gen_gen_in_try gen_in_try() {
 std::expected<std::string, ::tpy::StopIteration> __gen_gen_in_with::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __ctx_1 = Scope();
         one = __ctx_1.__enter__();
         try {
@@ -450,6 +455,7 @@ __gen_gen_in_with gen_in_with() {
 ::tpystd::tpy::Poll<int32_t> __coro_async_fn::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpyapp::main::make_cells());
         auto __beg_1 = (*__for_src_0).begin();
         auto __end_1 = (*__for_src_0).end();
@@ -496,6 +502,7 @@ __coro_async_fn async_fn() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_run_async::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -854,6 +861,7 @@ void main() {
 ::tpystd::tpy::Poll<int32_t> __coro_Bag_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpyapp::main::make_cells());
         auto __beg_1 = (*__for_src_0).begin();
         auto __end_1 = (*__for_src_0).end();

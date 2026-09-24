@@ -22,7 +22,7 @@ __coro_add add(int32_t a, int32_t b);
 
 // async def ping() -> int32:
 struct __coro_ping {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -45,7 +45,7 @@ struct __coro_ping {
 
 // async def add(a: int32, b: int32) -> int32:
 struct __coro_add {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t a;
     int32_t b;

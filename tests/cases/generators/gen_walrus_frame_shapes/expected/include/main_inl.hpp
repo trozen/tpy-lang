@@ -16,6 +16,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_val_scalar::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return -1;
     }
@@ -55,6 +56,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_val_scalar::__next__()
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_val_str::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::BigInt(-1);
     }
@@ -94,6 +96,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_val_str::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_val_tuple::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return -1;
     }
@@ -134,6 +137,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_val_tuple::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_owning::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return -1;
     }
@@ -176,6 +180,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_owning::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_borrow_alias::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return -1;
     }
@@ -221,6 +226,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_borrow_alias::__next__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_opt_ptr::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return -1;
     }
@@ -267,6 +273,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_opt_ptr::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_borrow_tuple::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return -1;
     }
@@ -309,6 +316,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_borrow_tuple::__next__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_own_tuple::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return -1;
     }
@@ -347,6 +355,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_own_tuple::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Src_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return -1;
     }

@@ -12,6 +12,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(1.0)));
         __state = S_RESUME_0;
         continue;
@@ -68,6 +69,8 @@ __coro_slow slow() {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         try {
             __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::slow()), 0.0);
@@ -97,6 +100,7 @@ __coro_zero_timeout zero_timeout() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;

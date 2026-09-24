@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counts::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = a;
         {
             v = __match_subject_1.lives;

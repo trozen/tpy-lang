@@ -127,7 +127,7 @@ inline std::ostream& operator<<(std::ostream& os, const Scope& obj) {
 
 // def gen(vals: list[float]) -> Iterator[str]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<double>& vals;
     double v;
     using __for_src_0_t = decltype((vals));

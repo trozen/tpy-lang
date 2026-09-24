@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_free_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return s.get();
     }
@@ -37,6 +38,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_free_gen::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_ro_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return s.get();
     }
@@ -61,6 +63,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_ro_gen::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_generic_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return s.get();
     }
@@ -89,6 +92,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_generic_gen::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_forward_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return s.get();
     }
@@ -127,6 +131,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_forward_gen::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_own_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return s->get();
     }
@@ -152,6 +157,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_own_gen::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(s.get(), __self.tag));
     }

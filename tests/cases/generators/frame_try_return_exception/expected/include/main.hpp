@@ -131,7 +131,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 // async def a_first(it: Iterator[int32]) -> int32:
 template <::tpystd::typing::Iterator<int32_t> T_it>
 struct __coro_a_first {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     T_it it;
     int32_t v;
@@ -166,6 +166,7 @@ template <::tpystd::typing::Iterator<int32_t> T_it>
 ::tpystd::tpy::Poll<int32_t> __coro_a_first<T_it>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         {
             v = ({ auto __er_2 = ::tpy::next(it); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); });
             goto __after_try_1;
@@ -201,7 +202,7 @@ __coro_a_first<T_it> a_first(T_it&& it) {
 
 // async def a_dead(n: int32) -> int32:
 struct __coro_a_dead {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
     int32_t acc;
@@ -233,13 +234,13 @@ struct __coro_a_dead {
 
 // async def a_main() -> None:
 struct __coro_a_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
+    ::tpy::frame_slot<Indices> __coro_arg_0;
     int32_t __await_lift_0;
+    ::tpy::frame_slot<Indices> __coro_arg_1;
     int32_t __await_lift_1;
     int32_t __await_lift_2;
-    ::tpy::frame_slot<Indices> __coro_arg_0;
-    ::tpy::frame_slot<Indices> __coro_arg_1;
     std::optional<__coro_a_first<::tpy::await_arg_capture_t<decltype(((*__coro_arg_0)))>>> __sub_0;
     std::optional<__coro_a_first<::tpy::await_arg_capture_t<decltype(((*__coro_arg_1)))>>> __sub_1;
     std::optional<__coro_a_dead> __sub_2;
@@ -265,7 +266,7 @@ struct __coro_a_main {
 
 // def walk(items: list[Node]) -> Iterator[Node]:
 struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, ::tpy::val_or_ref<Node>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Node>& items;
     ::tpy::frame_slot<Indices> src;
     std::optional<int32_t> i;
@@ -293,7 +294,7 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, ::tpy::val_or_ref<
 // def head(items: list[Node], it: Iterator[int32]) -> Iterator[Node]:
 template <::tpystd::typing::Iterator<int32_t> T_it>
 struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T_it>, ::tpy::val_or_ref<Node>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Node>& items;
     T_it it;
     int32_t i;
@@ -328,6 +329,7 @@ template <::tpystd::typing::Iterator<int32_t> T_it>
 std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_head<T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         {
             i = ({ auto __er_4 = ::tpy::next(it); if (!__er_4.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_4); });
             goto __after_try_3;
@@ -359,7 +361,7 @@ __gen_head<T_it> head(std::vector<Node>& items, T_it&& it) {
 
 // def dead_pass(items: list[Node]) -> Iterator[Node]:
 struct __gen_dead_pass : public ::tpy::next_iter_mixin<__gen_dead_pass, ::tpy::val_or_ref<Node>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Node>& items;
     using __for_src_0_t = decltype((items));
     ::tpy::begin_elem_t<__for_src_0_t>* node = nullptr;
@@ -388,7 +390,7 @@ struct __gen_dead_pass : public ::tpy::next_iter_mixin<__gen_dead_pass, ::tpy::v
 
 // def dead_break(items: list[Node]) -> Iterator[Node]:
 struct __gen_dead_break : public ::tpy::next_iter_mixin<__gen_dead_break, ::tpy::val_or_ref<Node>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Node>& items;
     using __for_src_0_t = decltype((items));
     ::tpy::begin_elem_t<__for_src_0_t>* node = nullptr;
@@ -418,7 +420,7 @@ struct __gen_dead_break : public ::tpy::next_iter_mixin<__gen_dead_break, ::tpy:
 
 // def dead_return(items: list[Node]) -> Iterator[Node]:
 struct __gen_dead_return : public ::tpy::next_iter_mixin<__gen_dead_return, ::tpy::val_or_ref<Node>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Node>& items;
     using __for_src_0_t = decltype((items));
     ::tpy::begin_elem_t<__for_src_0_t>* node = nullptr;
@@ -448,7 +450,7 @@ struct __gen_dead_return : public ::tpy::next_iter_mixin<__gen_dead_return, ::tp
 // def nested(items: list[Node], it: Iterator[int32]) -> Iterator[Node]:
 template <::tpystd::typing::Iterator<int32_t> T_it>
 struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested<T_it>, ::tpy::val_or_ref<Node>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Node>& items;
     T_it it;
     using __for_src_0_t = decltype((items));
@@ -496,6 +498,7 @@ template <::tpystd::typing::Iterator<int32_t> T_it>
 std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_nested<T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = items;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

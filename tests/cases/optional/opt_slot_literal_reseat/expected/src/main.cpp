@@ -153,6 +153,7 @@ __gen_gen_call_then_literal gen_call_then_literal(F& f) {
 ::tpystd::tpy::Poll<int32_t> __coro_coro_literal::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         d = nullptr;
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;

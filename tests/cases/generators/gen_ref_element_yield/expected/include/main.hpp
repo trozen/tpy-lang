@@ -158,7 +158,7 @@ inline std::ostream& operator<<(std::ostream& os, const ROBag& obj) {
 
 // def each_list(xs: list[list[int32]]) -> Iterator[list[int32]]:
 struct __gen_each_list : public ::tpy::next_iter_mixin<__gen_each_list, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<std::vector<int32_t>>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* s = nullptr;
@@ -186,7 +186,7 @@ struct __gen_each_list : public ::tpy::next_iter_mixin<__gen_each_list, ::tpy::v
 
 // def each_rec(xs: list[Box]) -> Iterator[Box]:
 struct __gen_each_rec : public ::tpy::next_iter_mixin<__gen_each_rec, ::tpy::val_or_ref<Box>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Box>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* b = nullptr;
@@ -214,7 +214,7 @@ struct __gen_each_rec : public ::tpy::next_iter_mixin<__gen_each_rec, ::tpy::val
 
 // def each_pack(*xs: list[int32]) -> Iterator[list[int32]]:
 struct __gen_each_pack : public ::tpy::next_iter_mixin<__gen_each_pack, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::varargs<std::vector<int32_t>> xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* s = nullptr;
@@ -242,7 +242,7 @@ struct __gen_each_pack : public ::tpy::next_iter_mixin<__gen_each_pack, ::tpy::v
 
 // def each_local() -> Iterator[list[int32]]:
 struct __gen_each_local : public ::tpy::next_iter_mixin<__gen_each_local, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::vector<std::vector<int32_t>>> own;
     using __for_src_0_t = decltype(((*own)));
     ::tpy::begin_elem_t<__for_src_0_t>* s = nullptr;
@@ -270,7 +270,7 @@ struct __gen_each_local : public ::tpy::next_iter_mixin<__gen_each_local, ::tpy:
 
 // def each_alias(xs: list[Box]) -> Iterator[Box]:
 struct __gen_each_alias : public ::tpy::next_iter_mixin<__gen_each_alias, ::tpy::val_or_ref<Box>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Box>& xs;
     Box* b = nullptr;
 
@@ -294,7 +294,7 @@ struct __gen_each_alias : public ::tpy::next_iter_mixin<__gen_each_alias, ::tpy:
 
 // def each_ternary(flag: bool) -> Iterator[Box]:
 struct __gen_each_ternary : public ::tpy::next_iter_mixin<__gen_each_ternary, ::tpy::val_or_ref<Box>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool flag;
     ::tpy::frame_slot<Box> p;
     ::tpy::frame_slot<Box> q;
@@ -319,7 +319,7 @@ struct __gen_each_ternary : public ::tpy::next_iter_mixin<__gen_each_ternary, ::
 
 // def each_dict(xs: list[dict[int32, int32]]) -> Iterator[dict[int32, int32]]:
 struct __gen_each_dict : public ::tpy::next_iter_mixin<__gen_each_dict, ::tpy::val_or_ref<::tpy::ordered_map<int32_t, int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<::tpy::ordered_map<int32_t, int32_t>>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* d = nullptr;
@@ -347,7 +347,7 @@ struct __gen_each_dict : public ::tpy::next_iter_mixin<__gen_each_dict, ::tpy::v
 
 // def each_set(xs: list[set[int32]]) -> Iterator[set[int32]]:
 struct __gen_each_set : public ::tpy::next_iter_mixin<__gen_each_set, ::tpy::val_or_ref<::tpy::ordered_set<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<::tpy::ordered_set<int32_t>>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* s = nullptr;
@@ -422,7 +422,7 @@ struct __gen_each_with : public ::tpy::next_iter_mixin<__gen_each_with, ::tpy::v
 
 // def each_finally(xs: list[list[int32]]) -> Iterator[list[int32]]:
 struct __gen_each_finally : public ::tpy::next_iter_mixin<__gen_each_finally, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<std::vector<int32_t>>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* s = nullptr;
@@ -454,7 +454,7 @@ struct __gen_each_finally : public ::tpy::next_iter_mixin<__gen_each_finally, ::
 
 // def boxes(xs: list[Box]) -> Iterator[Box]:
 struct __gen_boxes : public ::tpy::next_iter_mixin<__gen_boxes, ::tpy::val_or_ref<Box>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Box>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* b = nullptr;
@@ -483,7 +483,7 @@ struct __gen_boxes : public ::tpy::next_iter_mixin<__gen_boxes, ::tpy::val_or_re
 // def relay(it: Iterator[Box]) -> Iterator[int32]:
 template <::tpystd::typing::Iterator<Box> T_it>
 struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T_it>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_it it;
     using __for_src_0_t = decltype((it));
     ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* b = nullptr;
@@ -525,6 +525,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_relay<T_it>::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_0:  // after: yield v
     case S_JOIN_0: {
         __for_r_0.emplace(it.__next__());
@@ -552,7 +554,7 @@ __gen_relay<T_it> relay(T_it&& it) {
 
 // def each(self, xs: list[list[int32]]) -> Iterator[list[int32]]:
 struct __gen_Rows_each : public ::tpy::next_iter_mixin<__gen_Rows_each, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Rows& __self;
     std::vector<std::vector<int32_t>>& xs;
     using __for_src_0_t = decltype((xs));
@@ -585,7 +587,7 @@ inline __gen_Rows_each Rows::each(std::vector<std::vector<int32_t>>& xs) const {
 
 // def field_twice(self) -> Iterator[list[int32]]:
 struct __gen_Rows_field_twice : public ::tpy::next_iter_mixin<__gen_Rows_field_twice, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Rows& __self;
 
     enum : int32_t {
@@ -612,7 +614,7 @@ inline __gen_Rows_field_twice Rows::field_twice() {
 
 // def twice(self) -> Iterator[readonly[list[int32]]]:
 struct __gen_ROBag_twice : public ::tpy::next_iter_mixin<__gen_ROBag_twice, ::tpy::val_or_ref<const std::vector<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const ROBag& __self;
 
     enum : int32_t {

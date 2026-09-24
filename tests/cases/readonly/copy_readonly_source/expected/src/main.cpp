@@ -83,6 +83,7 @@ void sec_generator(const Cell& c) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         d.emplace(::tpyapp::main::bump(Cell(c)));
         __state = S_DONE;
         int32_t __tpy_async_ret = (*d).n;

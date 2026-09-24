@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType,
     PendingListType, PendingDictType, PendingSetType, PendingViewType, ViewTypeFamily, make_list, make_dict, make_set, TypeParamRef, NominalType,
     UnionType, NoneType, VoidType, TupleType, ReadonlyType, OwnType,
-    ConcreteCoroType,
+    ConcreteCoroType, ConcreteFrameType,
     unwrap_readonly, unwrap_ref_type, is_protocol_type, resolve_int_literals,
     is_integer_type, is_float_type, is_numeric_type, is_void_like_type,
     substitute_type_params_simple,
@@ -20,6 +20,7 @@ from ..typesys import (
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral, TpyIfExpr
 from ..sema.context import PENDING_CONTAINER_TYPES
 from .context import qualified_cpp_name, enum_cpp_name
+from . import resumable_cfg as rcfg
 from ..compilation_context import get_current_compiler
 from ..type_def_registry import (
     is_list,
@@ -379,18 +380,18 @@ class TypeResolver:
         Native records use their native C++ name directly (no namespace qualification).
         @dynamic protocol types map to the base class name.
         """
-        # Concrete coroutine handle: renders as the concrete `__coro_*`
-        # frame struct (zero-alloc representation), NOT the Cancellable
-        # base it subtypes -- must precede the protocol branch below.
+        # A bound coroutine or generator object renders as its concrete
+        # frame struct (`__coro_*` / `__gen_*`), NOT the protocol it
+        # subtypes -- must precede the protocol branch below.
         # Own[ConcreteCoro] is the storage form: std::optional<frame>.
-        if isinstance(typ, ConcreteCoroType):
-            # Local import: types <-> gen_async circular dodge (gen_async
-            # imports functions -> type_resolution -> types at module load).
-            from .gen_async import sub_struct_qualname
-            return sub_struct_qualname(
-                self, typ.coro_owner, typ.coro_func_name,
-                typ.coro_inferred_type_args,
-                module_qual=typ.coro_module_qual)
+        if isinstance(typ, ConcreteFrameType):
+            return rcfg.frame_struct_qualname(
+                self, typ.frame_owner, typ.frame_func_name,
+                typ.frame_inferred_type_args,
+                module_qual=typ.frame_module_qual,
+                shape=(rcfg.ResumableShape.ASYNC
+                       if isinstance(typ, ConcreteCoroType)
+                       else rcfg.ResumableShape.GENERATOR))
         if isinstance(typ, OwnType):
             own_inner = unwrap_readonly(typ.wrapped)
             if isinstance(own_inner, ConcreteCoroType):

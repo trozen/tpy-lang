@@ -15,6 +15,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         c.emplace(Counter(limit));
         __with_ctx_0 = &((*c));
         guard.emplace((*__with_ctx_0).__enter__());

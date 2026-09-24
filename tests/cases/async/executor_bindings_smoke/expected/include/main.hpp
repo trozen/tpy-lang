@@ -36,7 +36,7 @@ void main();
 
 // async def check_inside() -> None:
 struct __coro_check_inside {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::_executor::Executor* h;
 
@@ -58,7 +58,7 @@ struct __coro_check_inside {
 
 // async def trivial() -> None:
 struct __coro_trivial {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {

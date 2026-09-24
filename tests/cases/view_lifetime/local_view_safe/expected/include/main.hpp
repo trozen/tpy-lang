@@ -30,7 +30,7 @@ void main();
 
 // def gen_nested_def_return(s: str) -> Iterator[int32]:
 struct __gen_gen_nested_def_return : public ::tpy::next_iter_mixin<__gen_gen_nested_def_return, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string s;
 
     enum : int32_t {

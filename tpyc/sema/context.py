@@ -26,12 +26,13 @@ if TYPE_CHECKING:
 from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
     INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType, UnionType, TupleType,
-    RecursiveAliasInstanceType, recursive_union_alternatives,
+    RecursiveAliasInstanceType, recursive_union_alternatives, ConcreteFrameType,
+    ConcreteGenType,
     PendingListType, PendingDictType, PendingSetType,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
     unwrap_readonly, unwrap_ref_type, unwrap_qualifiers,
-    FunctionInfo,
+    FunctionInfo, ParamInfo,
     is_dyn_protocol, contains_pending_leaf,
 )
 from ..namespace import Namespace
@@ -41,12 +42,14 @@ from ..parse import (
     TpyCall, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp,
     TpyUnaryOp, TpyIfExpr, TpyTupleLiteral, TpyVarargPack, TpyStarUnpack,
     TpyNestedDef, TpyNamedExpr, TpyIntLiteral, TpyStrLiteral,
-    TpyGeneratorExpression,
+    TpyGeneratorExpression, TpyForEach, TpyWhile,
+    walk_body_stmts,
     is_parse_node,
     is_property_getter_read,
 )
 from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
-from ..value_category import call_returns_cpp_ref
+from ..value_category import call_returns_cpp_ref, frame_factory_callee
+from ..prescan import bound_names_of, walrus_names_of
 from .type_ops import signature_may_return_borrow
 
 # Tuple of all pending container types -- use in isinstance checks so adding
@@ -418,6 +421,153 @@ def call_borrow_operands(expr: TpyExpr) -> CallOperands | None:
     else:
         return None
     return None if fi is None else CallOperands(fi, obj, args)
+
+
+def frame_borrowed_operands(call: TpyExpr) -> list[TpyExpr] | None:
+    """The operands the frame a generator or coroutine call builds keeps a
+    reference to -- its receiver and the arguments `return_borrows_from`
+    names (every argument while that fact is unknown) -- or None when `call`
+    builds no frame."""
+    if not isinstance(call, (TpyCall, TpyMethodCall)):
+        return None
+    fi = call.resolved_function_info
+    is_coro = fi is not None and fi.is_async
+    if not (is_coro or frame_factory_callee(fi)):
+        return None
+    out: list[TpyExpr] = []
+    if (isinstance(call, TpyMethodCall) and not call.is_static_call
+            and not call.user_module_call):
+        out.append(call.obj)
+    borrowed = fi.root.return_borrows_from
+    out += [a for i, a in enumerate(call.args)
+            if borrowed is None or i in borrowed]
+    if borrowed is None or borrowed:
+        out += list((call.kwargs or {}).values())
+    return out
+
+
+def call_param_args(call: TpyExpr) -> 'list[tuple[ParamInfo, TpyExpr]]':
+    """Each argument of a resolved call with the parameter it binds --
+    positionally, then keywords by name."""
+    if not isinstance(call, (TpyCall, TpyMethodCall)):
+        return []
+    fi = call.resolved_function_info
+    if fi is None:
+        return []
+    by_name = {p.name: p for p in fi.params}
+    pairs = [(fi.params[i], a) for i, a in enumerate(call.args)
+             if i < len(fi.params)]
+    pairs += [(by_name[k], a) for k, a in (call.kwargs or {}).items()
+              if k in by_name]
+    return pairs
+
+
+def frame_binding_calls(value: TpyExpr | None
+                        ) -> 'list[TpyCall | TpyMethodCall] | None':
+    """The generator or coroutine calls one binding may take its frame from
+    -- the call itself, both arms of a ternary, a walrus's value -- or None
+    for any other shape, whose borrows are not traced."""
+    while isinstance(value, TpyCoerce):
+        value = value.expr
+    if isinstance(value, TpyNamedExpr):
+        return frame_binding_calls(value.value)
+    if (isinstance(value, (TpyCall, TpyMethodCall))
+            and frame_borrowed_operands(value) is not None):
+        return [value]
+    if isinstance(value, TpyIfExpr):
+        a = frame_binding_calls(value.then_expr)
+        b = frame_binding_calls(value.else_expr)
+        return None if a is None or b is None else a + b
+    return None
+
+
+def frame_binding_fact(value: TpyExpr | None
+                       ) -> 'tuple[frozenset[str | None], bool] | None':
+    """What one binding's frame borrows: the storage roots (None for a
+    temporary) and whether the binding is one plain call, or None when the
+    shape is not traced."""
+    calls = frame_binding_calls(value)
+    if calls is None:
+        return None
+    while isinstance(value, TpyCoerce):
+        value = value.expr
+    roots = frozenset(_root_name_of_expr(e) for c in calls
+                      for e in frame_borrowed_operands(c) or ())
+    return roots, len(calls) == 1 and calls[0] is value
+
+
+def record_frame_binding_roots(
+        ctx: 'SemanticContext', name: str,
+        fact: 'tuple[frozenset[str | None], bool] | None',
+        node: TpyExpr | TpyStmt) -> None:
+    """Union one binding into the local's per-function fact, and reject the
+    two shapes a generator or async body cannot hold across a suspension: a
+    temporary outside a plain call (only a plain call's temporaries are
+    lifted into the frame ahead of the local), and storage a loop around
+    the binding binds again on its next pass while this generator is still
+    open."""
+    table = ctx.func.frame_local_roots
+    if name not in table:
+        table[name] = fact
+    else:
+        old = table[name]
+        table[name] = (None if old is None or fact is None
+                       else (old[0] | fact[0], old[1] and fact[1]))
+    func = ctx.func.current_function
+    if fact is None or not (getattr(func, "is_generator", False)
+                            or getattr(func, "is_async", False)):
+        return
+    roots, plain = fact
+    if not plain and None in roots:
+        raise ctx.error(
+            f"cannot bind generator '{name}' from this expression inside a "
+            f"generator or async function: it borrows a temporary, which "
+            f"lives only until the next yield or await; bind the temporary "
+            f"to a name first, or bind each generator with an assignment of "
+            f"its own",
+            node)
+    refilled = _loop_refilled_names(ctx)
+    for root in sorted(r for r in roots if r is not None):
+        if root in refilled:
+            raise ctx.error(
+                f"cannot bind generator '{name}' here: it borrows '{root}', "
+                f"which a loop around it binds again on its next pass while "
+                f"this generator is still open; bind the generator outside "
+                f"the loop, or iterate it inside a helper function",
+                node)
+
+
+def _loop_refilled_names(ctx: 'SemanticContext') -> set[str]:
+    """Names a loop enclosing the current statement (within this function)
+    binds on every pass: its body's bindings, a walrus in its own head, and
+    its own variable unless the loop walks a container named by a name or a
+    field, whose elements stay where they are (an iterator's pull rebuilds
+    the object its variable refers to)."""
+    out: set[str] = set()
+
+    def on_stmt(s: TpyStmt) -> None:
+        out.update(bound_names_of(s))
+        out.update(walrus_names_of(s))
+
+    for loop in ctx.func.compound_stack:
+        if not isinstance(loop, (TpyForEach, TpyWhile)):
+            continue
+        walk_body_stmts(loop.body, lambda e: None, on_stmt)
+        out.update(walrus_names_of(loop))
+        if isinstance(loop, TpyForEach):
+            src = loop.iterable
+            while isinstance(src, TpyCoerce):
+                src = src.expr
+            src_t = ctx.get_expr_type(src)
+            src_t = (unwrap_readonly(unwrap_ref_type(src_t))
+                     if src_t is not None else None)
+            stable = (isinstance(src, (TpyName, TpyFieldAccess))
+                      and src_t is not None
+                      and not getattr(src_t, "is_protocol", False)
+                      and not isinstance(src_t, ConcreteFrameType))
+            if not stable:
+                out.update(bound_names_of(loop))
+    return out
 
 
 class BorrowKind(Enum):
@@ -1089,6 +1239,24 @@ def _register_source_borrow(ctx: 'SemanticContext', name: str,
         ctx.mark_param_mutated(root)
 
 
+def holds_generator_object(t: 'TpyType | None') -> bool:
+    return t is not None and isinstance(
+        unwrap_readonly(unwrap_ref_type(t)), ConcreteGenType)
+
+
+def note_owned_local(ctx: 'SemanticContext', name: str,
+                     var_type: 'TpyType | None') -> None:
+    """Record that `name` owns the object it was bound to, so its last
+    use may move it. A generator object never counts: its frame may have
+    started by its last use, and a started frame cannot move (a second
+    name aliases it instead)."""
+    if holds_generator_object(var_type):
+        ctx.func.owned_locals.discard(name)
+        return
+    ctx.func.owned_locals.add(name)
+    ctx.func.ever_owned_locals.add(name)
+
+
 def record_stmt_borrow_binding(ctx: 'SemanticContext', name: str,
                                var_type: 'TpyType | None',
                                init_expr: TpyExpr) -> None:
@@ -1461,6 +1629,17 @@ class FunctionTrackingState:
     # the pass decides them and derives `own_rebind_names`. Identity-keyed
     # so the nested-def state deep copy keeps the real statement objects.
     gate_sites: IdentitySet = field(default_factory=IdentitySet)
+    # The gate sites that bind a name already declared as a generator
+    # object, to what the new frame borrows (None: nothing): the pass
+    # rejects one that rebinds and cannot be rebuilt in place.
+    frame_rebind_sites: IdentityMap = field(default_factory=IdentityMap)
+    # What each generator-object local's bindings borrow, unioned over
+    # every binding: the storage roots (None for a temporary) and whether
+    # every binding was one plain call, whose temporaries a resumable frame
+    # lifts ahead of the local. None when some binding's borrows cannot be
+    # traced; readers reject then.
+    frame_local_roots: 'dict[str, tuple[frozenset[str | None], bool] | None]' = field(
+        default_factory=dict)
     # Locals with a rebind the pass left OWN, for the frame layout's
     # pointer-form verdict; harvested per function by the analyzer.
     own_rebind_names: frozenset[str] = frozenset()
@@ -1629,6 +1808,13 @@ class FunctionTrackingState:
     # manual-driving borrow). Survivors warn at body end: a bound coroutine
     # never consumed is destroyed without running.
     unread_coro_locals: dict[str, 'TpyStmt'] = field(default_factory=dict)
+
+    # Bound concrete coroutine locals a method call may have started (the
+    # hand-driven `c.__poll__(w)`), with that call's line. A started frame
+    # holds pointers into itself, so it may no longer be moved -- into a
+    # task, an Own slot, or another name. Never cleared: a rebind on one
+    # path does not make every path's object unstarted.
+    started_coro_locals: dict[str, int] = field(default_factory=dict)
 
     # --- Variable declaration tracking (per-function) ---
     var_decl_by_name: dict[str, 'TpyVarDecl'] = field(default_factory=dict)
@@ -2452,6 +2638,20 @@ class SemanticContext:
         # Explicitly decorated with @nocopy (or builtin nocopy)
         return f"@nocopy type '{typ}'"
 
+    def check_coro_move_unstarted(self, expr: 'TpyExpr', what: str) -> None:
+        """Reject moving a bound coroutine a method call may have started."""
+        if not isinstance(expr, TpyName):
+            return
+        line = self.func.started_coro_locals.get(expr.name)
+        if line is None:
+            return
+        raise self.error(
+            f"cannot move coroutine '{expr.name}' {what}: the call on "
+            f"line {line} may have started it, and a started coroutine "
+            f"cannot be moved; await it where it is, or bind a new "
+            f"coroutine to a new name",
+            expr)
+
     def is_type_nocopy(self, typ: TpyType) -> bool:
         """Check if a type is nocopy, recursively unwrapping wrappers and generics.
 
@@ -2463,6 +2663,10 @@ class SemanticContext:
             return self.is_type_nocopy(typ.wrapped)
         if isinstance(typ, OwnType):
             return self.is_type_nocopy(typ.wrapped)
+        # A generator / coroutine object is non-copyable by the language's
+        # own rule, as a @nocopy record is by its declaration.
+        if isinstance(typ, ConcreteFrameType):
+            return True
         if isinstance(typ, OptionalType):
             return self.is_type_nocopy(typ.inner)
         if isinstance(typ, TupleType):
@@ -2519,6 +2723,10 @@ class SemanticContext:
             return self.is_type_non_copyable(typ.wrapped)
         if isinstance(typ, OwnType):
             return self.is_type_non_copyable(typ.wrapped)
+        # A generator or coroutine object is one running frame; CPython
+        # refuses to copy one too (TypeError).
+        if isinstance(typ, ConcreteFrameType):
+            return True
         if isinstance(typ, OptionalType):
             return self.is_type_non_copyable(typ.inner)
         if isinstance(typ, TupleType):

@@ -63,6 +63,7 @@ __gen_chain_hop chain_hop(Shelf& s) {
 ::tpystd::tpy::Poll<int32_t> __coro_achain_hop::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t = 0;
         auto& __for_obj_0 = ::tpy::__getitem__(s.rows, 0);
         __for_it_0.emplace((__for_obj_0).begin());
@@ -126,6 +127,7 @@ __gen_alias_mut alias_mut(std::vector<Depot>& ds) {
 ::tpystd::tpy::Poll<int32_t> __coro_aalias_mut::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t = 0;
         auto& __for_obj_0 = ds;
         __for_it_0.emplace((__for_obj_0).begin());
@@ -258,6 +260,7 @@ int32_t drive_match(const Box& b) {
 ::tpystd::tpy::Poll<int32_t> __coro_aro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t = 0;
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
@@ -301,6 +304,7 @@ __coro_aro aro(const std::vector<int32_t>& xs) {
 ::tpystd::tpy::Poll<int32_t> __coro_drive_aro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(xs);
         __state = S_RESUME_0;
         continue;

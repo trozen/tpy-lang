@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // async def make(v: int32) -> Own[Box]:
 struct __coro_make {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t v;
     ::tpy::frame_slot<Box> b;
@@ -64,7 +64,7 @@ struct __coro_make {
 
 // async def driver() -> int32:
 struct __coro_driver {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Box> b;
     std::optional<__coro_make> __sub_0;

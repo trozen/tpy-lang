@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tracer& obj) {
 
 // async def value(n: int) -> int:
 struct __coro_value {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
 

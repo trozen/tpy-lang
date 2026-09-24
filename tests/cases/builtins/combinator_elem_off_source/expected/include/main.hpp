@@ -171,7 +171,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 // async def async_mut(cells: list[Cell]) -> int32:
 struct __coro_async_mut {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<Cell>& cells;
     int32_t t;
@@ -203,7 +203,7 @@ struct __coro_async_mut {
 
 // def each(cells: list[Cell]) -> Iterator[Cell]:
 struct __gen_each : public ::tpy::next_iter_mixin<__gen_each, ::tpy::val_or_ref<Cell>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Cell>& cells;
     using __for_src_0_t = decltype((cells));
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
@@ -230,7 +230,7 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each, ::tpy::val_or_ref<
 
 // def gen_ro(cells: list[Cell]) -> Iterator[int32]:
 struct __gen_gen_ro : public ::tpy::next_iter_mixin<__gen_gen_ro, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<Cell>& cells;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate(cells)))>;
     ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* __for_tup_8 = nullptr;
@@ -259,7 +259,7 @@ struct __gen_gen_ro : public ::tpy::next_iter_mixin<__gen_gen_ro, int32_t> {
 
 // def gen_mut(cells: list[Cell]) -> Iterator[int32]:
 struct __gen_gen_mut : public ::tpy::next_iter_mixin<__gen_gen_mut, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Cell>& cells;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate(cells)))>;
     ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* __for_tup_9 = nullptr;
@@ -288,7 +288,7 @@ struct __gen_gen_mut : public ::tpy::next_iter_mixin<__gen_gen_mut, int32_t> {
 
 // def gen_zip_mut(cells: list[Cell], ws: list[int32]) -> Iterator[int32]:
 struct __gen_gen_zip_mut : public ::tpy::next_iter_mixin<__gen_gen_zip_mut, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Cell>& cells;
     const std::vector<int32_t>& ws;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_zip(cells, ws)))>;

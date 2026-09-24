@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // def decl_inside_while(n: int32) -> Iterator[int32]:
 struct __gen_decl_inside_while : public ::tpy::next_iter_mixin<__gen_decl_inside_while, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_slot<Point> p;
@@ -73,7 +73,7 @@ struct __gen_decl_inside_while : public ::tpy::next_iter_mixin<__gen_decl_inside
 
 // def decl_inside_for(xs: list[int32]) -> Iterator[int32]:
 struct __gen_decl_inside_for : public ::tpy::next_iter_mixin<__gen_decl_inside_for, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& xs;
     int32_t v;
     ::tpy::frame_slot<Point> p;
@@ -101,7 +101,7 @@ struct __gen_decl_inside_for : public ::tpy::next_iter_mixin<__gen_decl_inside_f
 
 // def before_while(n: int32) -> Iterator[int32]:
 struct __gen_before_while : public ::tpy::next_iter_mixin<__gen_before_while, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     ::tpy::frame_slot<Point> p;
     int32_t i;
@@ -126,7 +126,7 @@ struct __gen_before_while : public ::tpy::next_iter_mixin<__gen_before_while, in
 
 // def before_while_after_drain(n: int32) -> Iterator[int32]:
 struct __gen_before_while_after_drain : public ::tpy::next_iter_mixin<__gen_before_while_after_drain, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     ::tpy::frame_slot<Point> p;
     int32_t i;

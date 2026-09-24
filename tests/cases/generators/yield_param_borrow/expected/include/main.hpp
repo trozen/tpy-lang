@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 // async def step(n: int32) -> int32:
 struct __coro_step {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
 
@@ -78,7 +78,7 @@ struct __coro_step {
 
 // async def late() -> int32:
 struct __coro_late {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t x;
     std::string s;
@@ -103,7 +103,7 @@ struct __coro_late {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t __await_lift_0;
     std::optional<__coro_late> __sub_0;
@@ -127,7 +127,7 @@ struct __coro_amain {
 
 // def each(xs: list[int32]) -> Iterator[list[int32]]:
 struct __gen_each : public ::tpy::next_iter_mixin<__gen_each, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<int32_t>& xs;
 
     enum : int32_t {
@@ -150,7 +150,7 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each, ::tpy::val_or_ref<
 
 // def rep(b: P) -> Iterator[P]:
 struct __gen_rep : public ::tpy::next_iter_mixin<__gen_rep, ::tpy::val_or_ref<P>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     P& b;
 
     enum : int32_t {
@@ -173,7 +173,7 @@ struct __gen_rep : public ::tpy::next_iter_mixin<__gen_rep, ::tpy::val_or_ref<P>
 
 // def pairs(d: dict[str, int32]) -> Iterator[dict[str, int32]]:
 struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, ::tpy::val_or_ref<::tpy::ordered_map<std::string, int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::ordered_map<std::string, int32_t>& d;
 
     enum : int32_t {
@@ -196,7 +196,7 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, ::tpy::val_or_re
 
 // def late_gen() -> Iterator[int32]:
 struct __gen_late_gen : public ::tpy::next_iter_mixin<__gen_late_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
 
     enum : int32_t {

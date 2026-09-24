@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Shelter& obj) {
 
 // def counts(c: Cat) -> Iterator[int32]:
 struct __gen_counts : public ::tpy::next_iter_mixin<__gen_counts, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Cat& c;
 
     enum : int32_t {
@@ -90,7 +90,7 @@ struct __gen_counts : public ::tpy::next_iter_mixin<__gen_counts, int32_t> {
 
 // def counts_ordered(c: Cat, k: bool) -> Iterator[int32]:
 struct __gen_counts_ordered : public ::tpy::next_iter_mixin<__gen_counts_ordered, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Cat& c;
     bool k;
 

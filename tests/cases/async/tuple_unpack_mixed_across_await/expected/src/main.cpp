@@ -20,6 +20,7 @@ std::tuple<::tpy::BigInt, Box*> pick(std::vector<Box>& items, const ::tpy::BigIn
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpyapp::main::pick(items, ::tpy::BigInt(0));
         tag = std::get<0>(__tup_1);
         it = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -55,6 +56,7 @@ __coro_step step(std::vector<Box>& items) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         items.emplace(std::vector<Box>{Box(::tpy::BigInt(1))});
         __sub_0.emplace((*items));
         __state = S_RESUME_0;

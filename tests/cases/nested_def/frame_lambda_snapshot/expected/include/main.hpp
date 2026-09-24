@@ -23,7 +23,7 @@ void main();
 
 // def cell() -> Iterator[int32]:
 struct __gen_cell : public ::tpy::next_iter_mixin<__gen_cell, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t step;
     std::function<int32_t(int32_t)> f;
 
@@ -47,7 +47,7 @@ struct __gen_cell : public ::tpy::next_iter_mixin<__gen_cell, int32_t> {
 
 // def copied(xs: list[int32]) -> Iterator[int32]:
 struct __gen_copied : public ::tpy::next_iter_mixin<__gen_copied, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<int32_t>& xs;
     std::function<int32_t(int32_t)> f;
 

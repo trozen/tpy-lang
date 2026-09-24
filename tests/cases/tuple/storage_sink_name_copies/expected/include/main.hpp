@@ -127,7 +127,7 @@ inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
 
 // async def coro(p: P) -> Own[list[tuple[P, P]]]:
 struct __coro_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     P& p;
     std::tuple<P*, P*> t;
@@ -152,7 +152,7 @@ struct __coro_coro {
 
 // def gen(p: P) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     P& p;
     std::tuple<P*, P*> t;
     ::tpy::frame_slot<std::array<std::tuple<P, P>, 1>> ys;

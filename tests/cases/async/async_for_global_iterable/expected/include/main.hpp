@@ -64,7 +64,7 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
 
 // async def __anext__(self) -> int32:
 struct __coro_AIter___anext__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     AIter& __self;
 
@@ -90,7 +90,7 @@ inline __coro_AIter___anext__ AIter::__anext__() {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t total;
     int32_t x;

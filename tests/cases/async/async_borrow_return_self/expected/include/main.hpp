@@ -58,7 +58,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrap& obj) {
 
 // async def me(self) -> "Wrap":
 struct __coro_Wrap_me {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Wrap& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -86,7 +86,7 @@ inline __coro_Wrap_me Wrap::me() {
 
 // async def unwrap(self) -> Server:
 struct __coro_Wrap_unwrap {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Wrap& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -114,7 +114,7 @@ inline __coro_Wrap_unwrap Wrap::unwrap() {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Wrap> w;
     Wrap* r = nullptr;

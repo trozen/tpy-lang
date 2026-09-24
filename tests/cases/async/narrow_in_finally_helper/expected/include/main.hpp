@@ -203,7 +203,7 @@ struct __coro_a_nested {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Dog> d;
     ::tpy::frame_slot<Cat> c;

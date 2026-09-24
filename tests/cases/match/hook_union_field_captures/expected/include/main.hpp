@@ -87,7 +87,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // async def a_guarded(a: Cat | Dog) -> int32:
 struct __coro_a_guarded {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::Union<const Cat*, const Dog*> a;
     int32_t v;
@@ -112,12 +112,12 @@ struct __coro_a_guarded {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
-    int32_t __await_lift_0;
-    int32_t __await_lift_1;
     ::tpy::frame_slot<Cat> __coro_arg_0;
+    int32_t __await_lift_0;
     ::tpy::frame_slot<Dog> __coro_arg_1;
+    int32_t __await_lift_1;
     std::optional<__coro_a_guarded> __sub_0;
     std::optional<__coro_a_guarded> __sub_1;
 
@@ -141,7 +141,7 @@ struct __coro_amain {
 
 // def guarded(a: Cat | Dog) -> Iterator[int32]:
 struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<const Cat*, const Dog*> a;
     int32_t v;
 
@@ -167,7 +167,7 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, int32_t> {
 
 // def guarded_cond(a: Cat | Dog, flag: bool) -> Iterator[int32]:
 struct __gen_guarded_cond : public ::tpy::next_iter_mixin<__gen_guarded_cond, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<const Cat*, const Dog*> a;
     bool flag;
     int32_t v;
@@ -194,7 +194,7 @@ struct __gen_guarded_cond : public ::tpy::next_iter_mixin<__gen_guarded_cond, in
 
 // def nested(h: Holder) -> Iterator[int32]:
 struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Holder& h;
     int32_t v;
 
@@ -220,7 +220,7 @@ struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested, int32_t> {
 
 // def nested_shadow(h: Holder) -> Iterator[int32]:
 struct __gen_nested_shadow : public ::tpy::next_iter_mixin<__gen_nested_shadow, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Holder& h;
     ::tpy::frame_slot<Cat> pet;
     int32_t v;

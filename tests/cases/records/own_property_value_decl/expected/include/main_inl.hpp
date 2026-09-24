@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_drain::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         snap.emplace(s.snapshot());
         (*snap).push_back(4);
         auto& __for_obj_0 = (*snap);

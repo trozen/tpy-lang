@@ -29,7 +29,7 @@ void main();
 
 // async def grandchild() -> int32:
 struct __coro_grandchild {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -52,7 +52,7 @@ struct __coro_grandchild {
 
 // async def child() -> int32:
 struct __coro_child {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> g;
     int32_t __await_lift_0;
@@ -77,7 +77,7 @@ struct __coro_child {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> c;
     int32_t __await_lift_0;

@@ -21,7 +21,7 @@ __genexpr_proto_1_frame __genexpr_proto_1(const std::vector<int32_t>& __src);
 
 // t = sum(x * 2 for x in xs)  # tpyc: ok
 struct __genexpr_proto_1_frame : public ::tpy::next_iter_mixin<__genexpr_proto_1_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));

@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_for_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __obj_0 = {1, 2};
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -50,6 +51,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_for_body::__ne
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_for_else::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __obj_1 = {1, 2};
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
@@ -89,6 +91,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_for_else::__ne
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_while_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         while ((i < 2)) {
             auto __tup_1 = ::tpyapp::main::pair();
@@ -124,6 +127,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_while_body::__
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_while_else::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         while ((i < 2)) {
             i = ::tpy::add_check<int32_t>(i, 1);
@@ -161,6 +165,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_while_else::__
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_if_arms::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (::tpyapp::main::flag()) {
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::get<0>(__tup_1);
@@ -197,6 +202,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_if_arms::__nex
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_try_except::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         {
             try {
                 auto __tup_1 = ::tpyapp::main::pair();
@@ -235,6 +241,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_try_except::__
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_finally::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         {
             try {
             } catch (...) {
@@ -272,6 +279,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_finally::__nex
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_with_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __ctx_1 = Guard();
         t = __ctx_1.__enter__();
         try {
@@ -314,6 +322,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_with_body::__n
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_with_target::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __obj_0 = {1, 2};
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -361,6 +370,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_with_target::_
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_match_arm::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = n;
         switch (__match_subject_1) {
         case 1: {
@@ -402,6 +412,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_match_arm::__n
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_nested_loop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __obj_0 = {1, 2};
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -443,6 +454,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_nested_loop::_
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_walrus::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __obj_0 = {1, 2};
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -477,6 +489,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_walrus::__next
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_int32::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __obj_0 = {1, 2};
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -515,6 +528,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_int32::__next_
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_optional::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(std::array<int32_t, 2>{1, 2});
         auto __beg_0 = (*__for_src_0).begin();
         auto __end_0 = (*__for_src_0).end();
@@ -557,6 +571,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_optional::__ne
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_two_str::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __obj_0 = {1, 2};
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -597,6 +612,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_two_str::__nex
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(std::array<int32_t, 2>{1, 2});
         auto __beg_0 = (*__for_src_0).begin();
         auto __end_0 = (*__for_src_0).end();
@@ -634,6 +650,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record::__next
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_list::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(std::array<int32_t, 2>{1, 2});
         auto __beg_0 = (*__for_src_0).begin();
         auto __end_0 = (*__for_src_0).end();
@@ -670,6 +687,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_list::__ne
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record_with::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __ctx_3 = Guard();
         t = __ctx_3.__enter__();
         try {
@@ -715,6 +733,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record_with::_
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record_try::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         {
             try {
                 auto __tup_1 = ::tpyapp::main::with_cell(c);
@@ -753,6 +772,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record_try::__
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record_if::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (::tpyapp::main::flag()) {
             auto __tup_1 = ::tpyapp::main::with_cell(c);
             r = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
@@ -792,6 +812,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record_if::__n
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record_match::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = n;
         switch (__match_subject_1) {
         case 1: {
@@ -837,6 +858,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record_match::
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_try::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         {
             try {
                 auto __tup_1 = ::tpyapp::main::own_cell(::tpy::BigInt(3));
@@ -878,6 +900,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_try
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_if::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (::tpyapp::main::flag()) {
             auto __tup_1 = ::tpyapp::main::own_cell(::tpy::BigInt(4));
             r.emplace(std::move(std::get<0>(__tup_1)));
@@ -917,6 +940,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_if:
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_loop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(std::array<int32_t, 2>{1, 2});
         auto __beg_0 = (*__for_src_0).begin();
         auto __end_0 = (*__for_src_0).end();
@@ -957,6 +981,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_loo
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_box::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(std::array<int32_t, 2>{1, 2});
         auto __beg_0 = (*__for_src_0).begin();
         auto __end_0 = (*__for_src_0).end();
@@ -996,6 +1021,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_box::__nex
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_plain_assign::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __obj_0 = {1, 2};
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -1029,6 +1055,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_plain_assign::
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_literal_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(std::array<int32_t, 2>{1, 2});
         auto __beg_0 = (*__for_src_0).begin();
         auto __end_0 = (*__for_src_0).end();
@@ -1064,6 +1091,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_literal_src::_
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_prebound::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         s = "start";
         k = ::tpyapp::main::two();
         auto __obj_0 = {1, 2};
@@ -1099,6 +1127,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_prebound::__ne
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_toplevel::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpyapp::main::pair();
         s = std::get<0>(__tup_1);
         k = std::get<1>(__tup_1);
@@ -1128,6 +1157,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_toplevel::__ne
 inline std::expected<std::string, ::tpy::StopIteration> __gen_Source_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __obj_0 = {1, 2};
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();

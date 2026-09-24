@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // def gen_field(self) -> Iterator[int32]:
 struct __gen_Box_gen_field : public ::tpy::next_iter_mixin<__gen_Box_gen_field, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Box& __self;
 
     enum : int32_t {
@@ -79,7 +79,7 @@ inline __gen_Box_gen_field Box::gen_field() const {
 
 // def gen_reassign(self) -> Iterator[int32]:
 struct __gen_Box_gen_reassign : public ::tpy::next_iter_mixin<__gen_Box_gen_reassign, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Box& __self;
     int32_t q;
 
@@ -107,7 +107,7 @@ inline __gen_Box_gen_reassign Box::gen_reassign() const {
 
 // def gen_reguard(self) -> Iterator[int32]:
 struct __gen_Box_gen_reguard : public ::tpy::next_iter_mixin<__gen_Box_gen_reguard, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Box& __self;
 
     enum : int32_t {
@@ -137,7 +137,7 @@ inline __gen_Box_gen_reguard Box::gen_reguard() const {
 
 // def gen_local_bind(self) -> Iterator[int32]:
 struct __gen_Box_gen_local_bind : public ::tpy::next_iter_mixin<__gen_Box_gen_local_bind, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Box& __self;
     std::optional<int32_t> v;
 
@@ -167,7 +167,7 @@ inline __gen_Box_gen_local_bind Box::gen_local_bind() const {
 
 // def gen_try_body(self) -> Iterator[int32]:
 struct __gen_Box_gen_try_body : public ::tpy::next_iter_mixin<__gen_Box_gen_try_body, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Box& __self;
 
     enum : int32_t {
@@ -198,7 +198,7 @@ inline __gen_Box_gen_try_body Box::gen_try_body() const {
 
 // def gen_local_bind_loop(self) -> Iterator[int32]:
 struct __gen_Box_gen_local_bind_loop : public ::tpy::next_iter_mixin<__gen_Box_gen_local_bind_loop, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Box& __self;
     std::optional<int32_t> v;
     int32_t _i;

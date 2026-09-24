@@ -12,6 +12,7 @@ namespace tpyapp::moda {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_local_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 1;
     }
@@ -36,6 +37,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_local_walk::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_free_delegator::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 0;
     }
@@ -68,6 +70,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_free_delegator::__next
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_method_delegator::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 20;
     }
@@ -98,6 +101,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_method_delegator::__ne
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Src_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.n;
     }

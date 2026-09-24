@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // def __iter__(self) -> Iterator[int32]:
 struct __gen_Counter___iter__ : public ::tpy::next_iter_mixin<__gen_Counter___iter__, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Counter& __self;
     int32_t i;
 

@@ -280,7 +280,7 @@ struct __coro_nested_exit {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<__coro_normal_exit> __sub_0;
     std::optional<__coro_return_exit> __sub_1;

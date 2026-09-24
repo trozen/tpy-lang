@@ -12,6 +12,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_Bag___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = __self.items;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

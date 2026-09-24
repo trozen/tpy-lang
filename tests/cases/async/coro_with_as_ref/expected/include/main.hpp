@@ -63,7 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
 
 // async def total() -> int32:
 struct __coro_total {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t s;
     ::tpy::frame_slot<::tpy::with_enter_t<CM>> it;
@@ -89,7 +89,7 @@ struct __coro_total {
 
 // async def driver() -> None:
 struct __coro_driver {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t __await_lift_0;
     std::optional<__coro_total> __sub_0;

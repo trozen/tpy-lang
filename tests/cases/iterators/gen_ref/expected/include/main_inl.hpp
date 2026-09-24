@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<std::tuple<int32_t, Point*>, ::tpy::StopIteration> __gen_my_enumerate::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         auto& __for_obj_0 = items;
         __for_it_0.emplace((__for_obj_0).begin());

@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // async def combine(xs: Iterable[int32]) -> Own[Box]:
 template <::tpystd::typing::Iterable<int32_t> T_xs>
 struct __coro_combine {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     T_xs xs;
     ::tpy::frame_slot<Box> b;
@@ -86,6 +86,7 @@ template <::tpystd::typing::Iterable<int32_t> T_xs>
 ::tpystd::tpy::Poll<Box> __coro_combine<T_xs>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         b.emplace(Box());
         // def stash: frame member
         // def double: frame member
@@ -133,7 +134,7 @@ __coro_combine<T_xs> combine(T_xs&& xs) {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::array<int32_t, 2>> xs;
     ::tpy::frame_slot<Box> __await_lift_0;

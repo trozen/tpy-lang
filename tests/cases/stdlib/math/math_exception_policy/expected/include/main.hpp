@@ -133,7 +133,7 @@ inline std::ostream& operator<<(std::ostream& os, const MarkerError& obj) {
 
 // async def async_root(x: float) -> float:
 struct __coro_async_root {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     double x;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -157,7 +157,7 @@ struct __coro_async_root {
 
 // async def async_position() -> None:
 struct __coro_async_position {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     double __await_lift_0;
     std::optional<__coro_async_root> __sub_0;
@@ -185,7 +185,7 @@ struct __coro_async_position {
 
 // def values() -> Iterator[float]:
 struct __gen_values : public ::tpy::next_iter_mixin<__gen_values, double> {
-    int32_t __state;
+    ::tpy::frame_state __state;
 
     enum : int32_t {
         S_INITIAL = 0,

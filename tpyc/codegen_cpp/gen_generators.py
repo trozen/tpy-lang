@@ -576,9 +576,8 @@ class GeneratorCodegen:
         """An lvalue ITERATOR source the frame holds by reference: a method
         call (which may be impure, so it must run once) whose receiver chain
         is rooted at storage that outlives the frame. A chain rooted at a
-        frame local of the frame's own is not held: a frame move would leave
-        the reference pointing into the moved-from frame, so that shape keeps
-        re-rendering the call (`BUGS.md#frame-iter-next-source-reevaluated`).
+        frame local of the frame's own is not held and keeps re-rendering the
+        call (`BUGS.md#frame-iter-next-source-reevaluated`).
         """
         e = peel_coerce(stmt.iterable)
         if not isinstance(e, TpyMethodCall):

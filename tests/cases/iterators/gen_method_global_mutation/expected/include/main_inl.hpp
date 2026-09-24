@@ -16,6 +16,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Source_values::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         emitted = ::tpy::add_check<int32_t>(emitted, 1);
         __state = S_RESUME_0;
         return 0;

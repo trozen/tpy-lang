@@ -35,7 +35,7 @@ void main() {
     ::tpy::ordered_map<std::string, int32_t> __tmp_4 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     std::cout << ::tpy::builtin_sum<int32_t>(lim.dvals(__tmp_4)) << "\n";
     std::vector<int32_t> __tmp_5 = {10, 20, 30};
-    auto g = lim.first(__tmp_5, 3);
+    __gen_Lim_first g = lim.first(__tmp_5, 3);
     int32_t total = 0;
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

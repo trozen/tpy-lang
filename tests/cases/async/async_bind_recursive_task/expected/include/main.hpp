@@ -21,12 +21,12 @@ void main();
 
 // async def fact(n: int) -> int:
 struct __coro_fact {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
+    ::tpy::BigInt __coro_arg_0;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<::tpy::BigInt>> t;
     ::tpy::BigInt r;
-    ::tpy::BigInt __coro_arg_0;
     ::tpystd::asyncio::_executor::Task<::tpy::BigInt>* __sub_0 = nullptr;
 
     enum : int32_t {

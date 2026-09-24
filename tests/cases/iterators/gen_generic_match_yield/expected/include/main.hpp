@@ -21,7 +21,7 @@ void main();
 // def gen[T](a: T, b: T, tag: int) -> Iterator[T]:
 template <typename T>
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::val_or_ref_t<T> a;
     ::tpy::val_or_ref_t<T> b;
     ::tpy::BigInt tag;
@@ -56,6 +56,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_gen<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = tag;
         if (__match_subject_1 == 0) {
             __state = S_RESUME_0;

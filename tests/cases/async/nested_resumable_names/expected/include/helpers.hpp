@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Library::Worker& obj) {
 
 // async def compute(self, delta: int) -> int:  # tpyc: ok
 struct __coro_2_7_Library_6_Worker_7_compute {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Library::Worker& __self;
     ::tpy::BigInt delta;

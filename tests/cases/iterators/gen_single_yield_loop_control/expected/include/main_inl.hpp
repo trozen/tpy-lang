@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_take::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         auto& __for_obj_0 = items;
         __for_it_0.emplace((__for_obj_0).begin());
@@ -58,6 +59,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_take::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = items;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -93,6 +95,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_stride::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(static_cast<int32_t>(0));
         __for_stop_0.emplace(static_cast<int32_t>(10));
         __for_step_0.emplace(static_cast<int32_t>(2));
@@ -133,6 +136,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_stride::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_upto_range::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_0;
@@ -175,6 +179,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_upto_range::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_upto_while::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         n = 0;
         __state = S_JOIN_0;
         continue;
@@ -215,6 +220,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_upto_while::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_iter_post_break::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = items;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -259,6 +265,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_iter_post_break::__nex
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_post_continue::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = items;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

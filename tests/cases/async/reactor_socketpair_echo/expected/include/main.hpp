@@ -32,7 +32,7 @@ void main();
 
 // async def server(sock: socket) -> None:
 struct __coro_server {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::socket::socket& sock;
     ::tpy::frame_slot<::tpystd::asyncio::EventLoop> loop;
@@ -62,7 +62,7 @@ struct __coro_server {
 
 // async def client(sock: socket) -> None:
 struct __coro_client {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::socket::socket& sock;
     ::tpy::frame_slot<::tpystd::asyncio::EventLoop> loop;
@@ -90,7 +90,7 @@ struct __coro_client {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::socket::socket> a;
     ::tpy::frame_slot<::tpystd::socket::socket> b;

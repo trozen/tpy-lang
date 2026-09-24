@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // async def bump(items: list[Box]) -> int:
 struct __coro_bump {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<Box>& items;
     Box* a = nullptr;
@@ -65,7 +65,7 @@ struct __coro_bump {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<Box>> items;
     ::tpy::BigInt __await_lift_0;

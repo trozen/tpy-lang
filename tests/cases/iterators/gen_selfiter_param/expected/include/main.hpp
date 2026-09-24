@@ -37,7 +37,7 @@ void main();
 // def repeat_n[T](obj: T, times: int32) -> Iterator[T]:
 template <typename T>
 struct __gen_repeat_n : public ::tpy::next_iter_mixin<__gen_repeat_n<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::val_or_ref_t<T> obj;
     int32_t times;
     int32_t _;
@@ -69,6 +69,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_repeat_n<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(times));
         __state = S_JOIN_0;
@@ -99,7 +100,7 @@ __gen_repeat_n<T> repeat_n(::tpy::param_val_or_ref_t<T> obj, int32_t times) {
 // def take[T](it: Iterable[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_take : public ::tpy::next_iter_mixin<__gen_take<T, T_it>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_it it;
     int32_t n;
     int32_t c;
@@ -139,6 +140,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_take<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         c = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
@@ -182,7 +184,7 @@ __gen_take<T, T_it> take(T_it&& it, int32_t n) {
 
 // def wrap(n: int32) -> Iterator[int32]:
 struct __gen_wrap : public ::tpy::next_iter_mixin<__gen_wrap, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t x;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::repeat_n<int32_t>(5, n)))>;
@@ -211,7 +213,7 @@ struct __gen_wrap : public ::tpy::next_iter_mixin<__gen_wrap, int32_t> {
 // def take_iter[T](it: Iterator[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterator<T> T_it>
 struct __gen_take_iter : public ::tpy::next_iter_mixin<__gen_take_iter<T, T_it>, T> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_it it;
     int32_t n;
     int32_t c;
@@ -249,6 +251,7 @@ template <typename T, ::tpystd::typing::Iterator<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_take_iter<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         c = 0;
         __state = S_JOIN_0;
         continue;
@@ -291,7 +294,7 @@ __gen_take_iter<T, T_it> take_iter(T_it&& it, int32_t n) {
 
 // def doubled(xs: list[int32]) -> Iterator[int32]:
 struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& xs;
     int32_t x;
     using __for_src_0_t = decltype((xs));

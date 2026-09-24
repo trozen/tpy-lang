@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // async def relay(b: Own[Box]) -> Own[Box]:
 struct __coro_relay {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Box b;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -72,7 +72,7 @@ struct __coro_relay {
 
 // async def driver() -> int32:
 struct __coro_driver {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Box> b;
     std::optional<__coro_relay> __sub_0;

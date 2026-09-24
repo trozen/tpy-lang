@@ -31,6 +31,7 @@ __gen_walk_value walk_value(const std::vector<std::tuple<int32_t, int32_t>>& xs)
 ::tpystd::tpy::Poll<int32_t> __coro_walk_async::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
@@ -88,6 +89,7 @@ __gen_walk_items walk_items(::tpy::ordered_map<int32_t, A>& d) {
 ::tpystd::tpy::Poll<int32_t> __coro_sum_items::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         __for_src_0.emplace(::tpy::dict_items(d));
         __for_it_0.emplace(((*__for_src_0)).begin());
@@ -134,6 +136,7 @@ __coro_sum_items sum_items(const ::tpy::ordered_map<int32_t, int32_t>& d) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_section::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ays.emplace(std::vector<std::tuple<int32_t, A>>{std::tuple<int32_t, A>{5, A(50)}});
         __sub_0.emplace((*ays));
         __state = S_RESUME_0;

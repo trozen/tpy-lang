@@ -22,6 +22,7 @@ std::tuple<Box*, Box*> first_two(std::vector<Box>& items) {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_f::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t = ::tpyapp::main::first_two(items);
         auto& __tup_1 = t;
         a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
@@ -59,6 +60,7 @@ __coro_f f(std::vector<Box>& items) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         items.emplace(std::vector<Box>{Box(::tpy::BigInt(1)), Box(::tpy::BigInt(2))});
         __sub_0.emplace((*items));
         __state = S_RESUME_0;

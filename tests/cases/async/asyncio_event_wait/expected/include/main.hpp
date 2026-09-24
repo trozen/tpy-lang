@@ -32,7 +32,7 @@ void main();
 
 // async def setter(e: Event) -> None:
 struct __coro_setter {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::Event& e;
 
@@ -54,7 +54,7 @@ struct __coro_setter {
 
 // async def fast() -> None:
 struct __coro_fast {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::Event> e;
     bool r;
@@ -79,7 +79,7 @@ struct __coro_fast {
 
 // async def slow() -> None:
 struct __coro_slow {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::Event> e;
     bool r;
@@ -104,7 +104,7 @@ struct __coro_slow {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<__coro_fast> __sub_0;
     std::optional<__coro_slow> __sub_1;

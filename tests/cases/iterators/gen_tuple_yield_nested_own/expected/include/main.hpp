@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // def g(n: int) -> Iterator[tuple[int, tuple[int, Own[Box]]]]:
 struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, std::tuple<::tpy::BigInt, std::tuple<::tpy::BigInt, Box>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt n;
     ::tpy::BigInt i;
     ::tpy::frame_loop_slot<::tpy::BigInt> __for_i_0;

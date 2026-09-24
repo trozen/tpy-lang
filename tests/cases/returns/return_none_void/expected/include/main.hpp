@@ -113,7 +113,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bad& obj) {
 
 // async def aret() -> None:
 struct __coro_aret {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -136,7 +136,7 @@ struct __coro_aret {
 
 // async def opt_async_finally(k: int32) -> int32 | None:
 struct __coro_opt_async_finally {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t k;
 
@@ -158,7 +158,7 @@ struct __coro_opt_async_finally {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<int32_t> pos;
     std::optional<int32_t> zero;
@@ -187,7 +187,7 @@ struct __coro_amain {
 
 // def gen() -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -209,7 +209,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
 // def gen_bare() -> Iterator[int32]:
 struct __gen_gen_bare : public ::tpy::next_iter_mixin<__gen_gen_bare, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
 
     enum : int32_t {
         S_INITIAL = 0,

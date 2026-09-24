@@ -59,7 +59,7 @@ inline std::ostream& operator<<(std::ostream& os, const N& obj) {
 
 // self.t = (sum(k for k in d), 1)
 struct __genexpr___init___1_frame : public ::tpy::next_iter_mixin<__genexpr___init___1_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const ::tpy::ordered_map<int32_t, int32_t>& __src;
     int32_t k;
     using __for_src_0_t = decltype((__src));
@@ -86,7 +86,7 @@ struct __genexpr___init___1_frame : public ::tpy::next_iter_mixin<__genexpr___in
 
 // self.t = (1, (sum(k for k in d), "a"))
 struct __genexpr___init___2_frame : public ::tpy::next_iter_mixin<__genexpr___init___2_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const ::tpy::ordered_map<int32_t, int32_t>& __src;
     int32_t k;
     using __for_src_0_t = decltype((__src));

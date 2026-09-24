@@ -21,7 +21,7 @@ __coro_main main();
 
 // async def val(tag: str, n: int) -> int:
 struct __coro_val {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string tag;
     ::tpy::BigInt n;
@@ -44,24 +44,24 @@ struct __coro_val {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
+    std::string __coro_arg_0;
     ::tpy::BigInt __sc_1;
+    std::string __coro_arg_1;
     ::tpy::BigInt __sc_2;
     bool __sc_0;
+    std::string __coro_arg_2;
     ::tpy::BigInt __sc_3;
     bool r;
+    std::string __coro_arg_3;
     ::tpy::BigInt __sc_5;
+    std::string __coro_arg_4;
     ::tpy::BigInt __sc_6;
     bool __sc_4;
+    std::string __coro_arg_5;
     ::tpy::BigInt __sc_7;
     bool r2;
-    std::string __coro_arg_0;
-    std::string __coro_arg_1;
-    std::string __coro_arg_2;
-    std::string __coro_arg_3;
-    std::string __coro_arg_4;
-    std::string __coro_arg_5;
     std::optional<__coro_val> __sub_0;
     std::optional<__coro_val> __sub_1;
     std::optional<__coro_val> __sub_2;

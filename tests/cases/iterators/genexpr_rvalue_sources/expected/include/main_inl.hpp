@@ -12,6 +12,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 1;
     }
@@ -39,6 +40,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_noisy::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(3));
         __state = S_JOIN_0;
@@ -67,6 +69,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_noisy::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_ranged::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(4));
         __state = S_JOIN_0;
@@ -96,6 +99,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_ranged::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_four::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 0;
     }
@@ -128,6 +132,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_four::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_framegen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_framegen_7(xs));
     }

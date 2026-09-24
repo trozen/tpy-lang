@@ -18,7 +18,7 @@ void main();
 
 // def chunks(n: int) -> Iterator[int]:
 struct __gen_chunks : public ::tpy::next_iter_mixin<__gen_chunks, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt n;
     ::tpy::frame_slot<std::vector<std::vector<int32_t>>> out;
     ::tpy::frame_slot<std::vector<::tpy::Bytes>> seen;

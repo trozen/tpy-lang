@@ -11,6 +11,7 @@ namespace nested_case::helpers {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __self.value = (__self.value) + (delta);
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = __self.value;

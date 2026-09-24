@@ -12,6 +12,8 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Source___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_0:  // after: yield self._n
     case S_JOIN_0: {
         if ((__self._n > 0)) {

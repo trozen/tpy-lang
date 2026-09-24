@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // async def consume(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 struct __coro_consume {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     T_it it;
     int32_t x;
@@ -84,6 +84,7 @@ template <::tpystd::typing::Iterable<int32_t> T_it>
 ::tpystd::tpy::Poll<::std::monostate> __coro_consume<T_it>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
@@ -123,7 +124,7 @@ __coro_consume<T_it> consume(T_it&& it) {
 // async def run(self, extra: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_extra>
 struct __coro_Holder_run {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Holder& __self;
     T_extra extra;
@@ -155,6 +156,7 @@ template <::tpystd::typing::Iterable<int32_t> T_extra>
 ::tpystd::tpy::Poll<::std::monostate> __coro_Holder_run<T_extra>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(__self.rows);
         __state = S_RESUME_0;
         continue;
@@ -189,7 +191,7 @@ inline __coro_Holder_run<T_extra> Holder::run(T_extra&& extra) {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Holder> h;
     ::tpy::frame_slot<std::vector<int32_t>> data;

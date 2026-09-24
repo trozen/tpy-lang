@@ -64,7 +64,7 @@ inline std::ostream& operator<<(std::ostream& os, const Runner& obj) {
 
 // def sec_gen(xs: list[str]) -> Iterator[int32]:
 struct __gen_sec_gen : public ::tpy::next_iter_mixin<__gen_sec_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<std::string>& xs;
     std::string v;
 

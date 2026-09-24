@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // def my_enumerate(items: list[Point]) -> Iterator[tuple[int32, Point]]:
 struct __gen_my_enumerate : public ::tpy::next_iter_mixin<__gen_my_enumerate, std::tuple<int32_t, Point*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Point>& items;
     int32_t i;
     int32_t n;

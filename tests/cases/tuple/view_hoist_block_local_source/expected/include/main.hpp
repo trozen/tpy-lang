@@ -294,7 +294,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // def uppers(ws: list[str]) -> Iterator[str]:
 struct __gen_uppers : public ::tpy::next_iter_mixin<__gen_uppers, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::string>& ws;
     std::string w;
     using __for_src_0_t = decltype((ws));
@@ -321,7 +321,7 @@ struct __gen_uppers : public ::tpy::next_iter_mixin<__gen_uppers, std::string> {
 
 // def __iter__(self) -> Iterator[str]:
 struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Bag& __self;
     std::string x;
     using __for_src_0_t = decltype((__self.xs));

@@ -33,7 +33,7 @@ void main();
 
 // async def direct(tag: str) -> str:
 struct __coro_direct {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string tag;
 
@@ -55,7 +55,7 @@ struct __coro_direct {
 
 // async def in_finally(tag: str) -> str:
 struct __coro_in_finally {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string tag;
 
@@ -77,7 +77,7 @@ struct __coro_in_finally {
 
 // async def pending_slot(tag: str) -> str:
 struct __coro_pending_slot {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string tag;
     std::exception_ptr __finally_exc_0;
@@ -107,7 +107,7 @@ struct __coro_pending_slot {
 
 // async def opt_ternary(tag: Optional[str]) -> str:
 struct __coro_opt_ternary {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<std::string> tag;
 
@@ -129,17 +129,17 @@ struct __coro_opt_ternary {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
+    std::string __coro_arg_0;
     std::string __await_lift_0;
+    std::string __coro_arg_1;
     std::string __await_lift_1;
+    std::string __coro_arg_2;
     std::string __await_lift_2;
+    std::string __coro_arg_3;
     std::string __await_lift_3;
     std::string __await_lift_4;
-    std::string __coro_arg_0;
-    std::string __coro_arg_1;
-    std::string __coro_arg_2;
-    std::string __coro_arg_3;
     std::optional<__coro_direct> __sub_0;
     std::optional<__coro_in_finally> __sub_1;
     std::optional<__coro_pending_slot> __sub_2;

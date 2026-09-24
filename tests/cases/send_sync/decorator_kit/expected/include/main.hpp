@@ -99,7 +99,7 @@ inline std::ostream& operator<<(std::ostream& os, const SharedTable& obj) {
 // @unsafe_send
 // async def forced(xs: list[int32]) -> int32:    # tpyc: frame_send(yes)
 struct __coro_forced {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<int32_t>& xs;
 
@@ -122,7 +122,7 @@ struct __coro_forced {
 // @nosync
 // def gen_forced(n: int32) -> Iterator[int32]:    # tpyc: frame_send(yes) frame_sync(no)
 struct __gen_gen_forced : public ::tpy::next_iter_mixin<__gen_gen_forced, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
 

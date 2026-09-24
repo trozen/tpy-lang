@@ -57,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 // @readonly
 // async def total(self) -> int32:
 struct __coro_Container_total {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Container& __self;
     int32_t s;
@@ -87,7 +87,7 @@ inline __coro_Container_total Container::total() const {
 
 // async def driver() -> None:
 struct __coro_driver {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Container> c;
     int32_t __await_lift_0;

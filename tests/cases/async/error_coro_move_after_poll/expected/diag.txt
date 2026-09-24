@@ -1,0 +1,1 @@
+main.py:18: error: cannot move coroutine 'c' into argument 'coro': the call on line 16 may have started it, and a started coroutine cannot be moved; await it where it is, or bind a new coroutine to a new name

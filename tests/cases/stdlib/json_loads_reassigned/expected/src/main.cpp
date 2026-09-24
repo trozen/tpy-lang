@@ -35,6 +35,7 @@ __gen_in_generator in_generator() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         v = &*(__ptr_slot_f0 = ::tpystd::json::loads("[1]"));
         v = &*(__ptr_slot_f1 = ::tpystd::json::loads("[7]"));
         std::cout << "async" << " " << ::tpystd::json::dumps((*v), 0, false) << "\n";

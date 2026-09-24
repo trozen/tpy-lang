@@ -26,7 +26,7 @@ void main();
 
 // async def work(n: int32) -> int32:
 struct __coro_work {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
 
@@ -48,7 +48,7 @@ struct __coro_work {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<::tpystd::asyncio::_executor::Task<int32_t>>> tasks;
     int32_t total;

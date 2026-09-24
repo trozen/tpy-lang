@@ -12,6 +12,7 @@ namespace tpyapp::main {
 inline std::expected<std::string, ::tpy::StopIteration> __gen_checked::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (!(std::holds_alternative<::tpy::BigInt>(a))) ::tpy::raise_assertion_error();
         const auto& __a = std::get<::tpy::BigInt>(a);
         __state = S_RESUME_0;

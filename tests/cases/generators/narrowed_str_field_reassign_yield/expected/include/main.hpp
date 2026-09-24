@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // def gen_reassigned(self) -> Iterator[str]:
 struct __gen_Box_gen_reassigned : public ::tpy::next_iter_mixin<__gen_Box_gen_reassigned, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Box& __self;
     std::string q;
 

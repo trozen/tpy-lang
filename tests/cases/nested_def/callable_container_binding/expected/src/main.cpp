@@ -140,6 +140,7 @@ __gen_gen gen() {
 ::tpystd::tpy::Poll<int32_t> __coro_async_bindings::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         callbacks.emplace(std::vector<std::function<int32_t(int32_t)>>{});
         (*callbacks).push_back([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 40)); });
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));

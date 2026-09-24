@@ -24,6 +24,7 @@ namespace tpyapp::main {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_run::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         work.emplace(std::vector<::tpy::Union<Emit, Push>>{});
         (*work).push_back(Emit("ab"));
         (*work).push_back(Push({1, 2, 3}));

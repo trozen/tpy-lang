@@ -145,7 +145,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 // async def avalues(m: dict[int32, Box]) -> int32:
 struct __coro_avalues {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const ::tpy::ordered_map<int32_t, Box>& m;
     int32_t t;
@@ -176,7 +176,7 @@ struct __coro_avalues {
 
 // async def anested(ds: list[list[int32]]) -> int32:
 struct __coro_anested {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<std::vector<int32_t>>& ds;
     int32_t t;
@@ -211,7 +211,7 @@ struct __coro_anested {
 
 // def nested(ds: list[list[int32]]) -> Iterator[int32]:
 struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::vector<int32_t>>& ds;
     int32_t x;
     using __for_src_0_t = decltype((ds));
@@ -243,7 +243,7 @@ struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested, int32_t> {
 
 // def fieldhop(ps: list[P]) -> Iterator[int32]:
 struct __gen_fieldhop : public ::tpy::next_iter_mixin<__gen_fieldhop, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<P>& ps;
     int32_t x;
     using __for_src_0_t = decltype((ps));
@@ -275,7 +275,7 @@ struct __gen_fieldhop : public ::tpy::next_iter_mixin<__gen_fieldhop, int32_t> {
 
 // def items(ds: list[dict[int32, int32]]) -> Iterator[int32]:
 struct __gen_items : public ::tpy::next_iter_mixin<__gen_items, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<::tpy::ordered_map<int32_t, int32_t>>& ds;
     std::tuple<int32_t, int32_t> __for_tup_0;
     int32_t k;
@@ -311,7 +311,7 @@ struct __gen_items : public ::tpy::next_iter_mixin<__gen_items, int32_t> {
 
 // def values_ref(m: dict[int32, Box]) -> Iterator[int32]:
 struct __gen_values_ref : public ::tpy::next_iter_mixin<__gen_values_ref, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const ::tpy::ordered_map<int32_t, Box>& m;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_values(m)))>;
     ::tpy::begin_elem_t<__for_src_0_t>* b = nullptr;
@@ -339,7 +339,7 @@ struct __gen_values_ref : public ::tpy::next_iter_mixin<__gen_values_ref, int32_
 
 // def items_ref(m: dict[int32, Box]) -> Iterator[int32]:
 struct __gen_items_ref : public ::tpy::next_iter_mixin<__gen_items_ref, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const ::tpy::ordered_map<int32_t, Box>& m;
     std::tuple<int32_t, const Box*> __for_tup_1;
     int32_t k;
@@ -370,7 +370,7 @@ struct __gen_items_ref : public ::tpy::next_iter_mixin<__gen_items_ref, int32_t>
 
 // def deep_items(ms: list[dict[int32, list[int32]]]) -> Iterator[int32]:
 struct __gen_deep_items : public ::tpy::next_iter_mixin<__gen_deep_items, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<::tpy::ordered_map<int32_t, std::vector<int32_t>>>& ms;
     std::tuple<int32_t, const std::vector<int32_t>*> __for_tup_2;
     int32_t k;
@@ -405,7 +405,7 @@ struct __gen_deep_items : public ::tpy::next_iter_mixin<__gen_deep_items, int32_
 
 // def values_list(m: dict[int32, list[int32]]) -> Iterator[int32]:
 struct __gen_values_list : public ::tpy::next_iter_mixin<__gen_values_list, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const ::tpy::ordered_map<int32_t, std::vector<int32_t>>& m;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_values(m)))>;
     ::tpy::begin_elem_t<__for_src_0_t>* vs = nullptr;
@@ -433,7 +433,7 @@ struct __gen_values_list : public ::tpy::next_iter_mixin<__gen_values_list, int3
 
 // def values_mutated(m: dict[int32, Box]) -> Iterator[int32]:
 struct __gen_values_mutated : public ::tpy::next_iter_mixin<__gen_values_mutated, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::ordered_map<int32_t, Box>& m;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_values(m)))>;
     ::tpy::begin_elem_t<__for_src_0_t>* b = nullptr;
@@ -461,7 +461,7 @@ struct __gen_values_mutated : public ::tpy::next_iter_mixin<__gen_values_mutated
 
 // def over_array_list(al: ArrayList[int32, 8]) -> Iterator[int32]:
 struct __gen_over_array_list : public ::tpy::next_iter_mixin<__gen_over_array_list, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const ::tpystd::tplib::array_list::ArrayList<int32_t, 8>& al;
     int32_t x;
     using __for_src_0_t = decltype((al));
@@ -488,7 +488,7 @@ struct __gen_over_array_list : public ::tpy::next_iter_mixin<__gen_over_array_li
 
 // def unpack_loop(pairs: list[tuple[int32, Box]]) -> Iterator[int32]:
 struct __gen_unpack_loop : public ::tpy::next_iter_mixin<__gen_unpack_loop, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::tuple<int32_t, Box>>& pairs;
     using __for_src_0_t = decltype((pairs));
     ::tpy::begin_elem_t<__for_src_0_t>* __for_tup_3 = nullptr;
@@ -518,7 +518,7 @@ struct __gen_unpack_loop : public ::tpy::next_iter_mixin<__gen_unpack_loop, int3
 
 // def unpack_subscript(pairs: list[tuple[int32, Box]]) -> Iterator[int32]:
 struct __gen_unpack_subscript : public ::tpy::next_iter_mixin<__gen_unpack_subscript, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::tuple<int32_t, Box>>& pairs;
     int32_t a;
     const Box* b = nullptr;
@@ -543,7 +543,7 @@ struct __gen_unpack_subscript : public ::tpy::next_iter_mixin<__gen_unpack_subsc
 
 // def unpack_field(h: H) -> Iterator[int32]:
 struct __gen_unpack_field : public ::tpy::next_iter_mixin<__gen_unpack_field, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const H& h;
     int32_t a;
     const Box* b = nullptr;
@@ -568,7 +568,7 @@ struct __gen_unpack_field : public ::tpy::next_iter_mixin<__gen_unpack_field, in
 
 // def unpack_readonly(pairs: readonly[list[tuple[int32, Box]]]) -> Iterator[int32]:
 struct __gen_unpack_readonly : public ::tpy::next_iter_mixin<__gen_unpack_readonly, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::tuple<int32_t, Box>>& pairs;
     int32_t a;
     const Box* b = nullptr;
@@ -593,7 +593,7 @@ struct __gen_unpack_readonly : public ::tpy::next_iter_mixin<__gen_unpack_readon
 
 // def alias_in_loop(ds: list[list[Box]]) -> Iterator[int32]:
 struct __gen_alias_in_loop : public ::tpy::next_iter_mixin<__gen_alias_in_loop, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::vector<Box>>& ds;
     using __for_src_0_t = decltype((ds));
     ::tpy::begin_elem_t<__for_src_0_t>* d = nullptr;
@@ -622,7 +622,7 @@ struct __gen_alias_in_loop : public ::tpy::next_iter_mixin<__gen_alias_in_loop, 
 
 // def mutated(ds: list[list[Box]]) -> Iterator[int32]:
 struct __gen_mutated : public ::tpy::next_iter_mixin<__gen_mutated, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<std::vector<Box>>& ds;
     using __for_src_0_t = decltype((ds));
     ::tpy::begin_elem_t<__for_src_0_t>* d = nullptr;
@@ -654,7 +654,7 @@ struct __gen_mutated : public ::tpy::next_iter_mixin<__gen_mutated, int32_t> {
 
 // def scan(self) -> Iterator[int32]:
 struct __gen_Bag_scan : public ::tpy::next_iter_mixin<__gen_Bag_scan, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Bag& __self;
     int32_t x;
     using __for_src_0_t = decltype((__self.rows));

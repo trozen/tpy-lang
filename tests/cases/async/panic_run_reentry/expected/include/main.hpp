@@ -23,7 +23,7 @@ void main();
 
 // async def inner() -> None:
 struct __coro_inner {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -44,7 +44,7 @@ struct __coro_inner {
 
 // async def outer() -> None:
 struct __coro_outer {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {

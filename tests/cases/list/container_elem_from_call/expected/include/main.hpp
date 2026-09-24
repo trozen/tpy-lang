@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Maker& obj) {
 
 // def gen_lens() -> Iterator[int32]:
 struct __gen_gen_lens : public ::tpy::next_iter_mixin<__gen_gen_lens, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::vector<std::vector<std::string>>> rs;
 
     enum : int32_t {

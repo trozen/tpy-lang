@@ -79,7 +79,7 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 
 // async def deep_async(cube: list[list[list[int32]]], i: int32) -> int32:
 struct __coro_deep_async {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<std::vector<std::vector<int32_t>>>& cube;
     int32_t i;
@@ -105,7 +105,7 @@ struct __coro_deep_async {
 
 // def deep_gen(cube: list[list[list[int32]]], i: int32) -> Iterator[int32]:
 struct __gen_deep_gen : public ::tpy::next_iter_mixin<__gen_deep_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<std::vector<std::vector<int32_t>>>& cube;
     int32_t i;
     std::vector<int32_t>* row = nullptr;

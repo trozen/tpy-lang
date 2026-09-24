@@ -78,7 +78,7 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 
 // def yield_copy(c: C) -> Iterator[tuple[int32, Own[C]]]:
 struct __gen_yield_copy : public ::tpy::next_iter_mixin<__gen_yield_copy, std::tuple<int32_t, C>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const C& c;
 
     enum : int32_t {
@@ -100,7 +100,7 @@ struct __gen_yield_copy : public ::tpy::next_iter_mixin<__gen_yield_copy, std::t
 
 // def yield_fresh() -> Iterator[tuple[int32, Own[C]]]:
 struct __gen_yield_fresh : public ::tpy::next_iter_mixin<__gen_yield_fresh, std::tuple<int32_t, C>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -121,7 +121,7 @@ struct __gen_yield_fresh : public ::tpy::next_iter_mixin<__gen_yield_fresh, std:
 
 // def yield_last_use() -> Iterator[tuple[int32, Own[C]]]:
 struct __gen_yield_last_use : public ::tpy::next_iter_mixin<__gen_yield_last_use, std::tuple<int32_t, C>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::frame_slot<C> c;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -147,7 +147,7 @@ struct __gen_yield_last_use : public ::tpy::next_iter_mixin<__gen_yield_last_use
 
 // def yield_mixed_borrow(b: C) -> Iterator[tuple[Own[C], C]]:
 struct __gen_yield_mixed_borrow : public ::tpy::next_iter_mixin<__gen_yield_mixed_borrow, std::tuple<C, C*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     C& b;
 
     enum : int32_t {
@@ -169,7 +169,7 @@ struct __gen_yield_mixed_borrow : public ::tpy::next_iter_mixin<__gen_yield_mixe
 
 // def yield_values() -> Iterator[tuple[int32, tuple[int32, str]]]:
 struct __gen_yield_values : public ::tpy::next_iter_mixin<__gen_yield_values, std::tuple<int32_t, std::tuple<int32_t, std::string>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
 
     enum : int32_t {
         S_INITIAL = 0,

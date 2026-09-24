@@ -15,6 +15,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<std::string> __coro_voice::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -63,6 +64,7 @@ __coro_voice voice(::tpy::Union<Cat*, Dog*> a) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __coro_arg_0.emplace(Dog());
         __sub_0.emplace(::tpy::Union<Cat*, Dog*>{&((*__coro_arg_0))});
         __state = S_RESUME_0;

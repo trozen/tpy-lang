@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const Countdown& obj) {
 
 // async def __anext__(self) -> int32:
 struct __coro_Countdown___anext__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Countdown& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -90,7 +90,7 @@ inline __coro_Countdown___anext__ Countdown::__anext__() {
 
 // async def run(self) -> int32:
 struct __coro_Collector_run {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Collector& __self;
     int32_t v;
@@ -123,7 +123,7 @@ inline __coro_Collector_run Collector::run() {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Collector> c;
     int32_t __await_lift_0;

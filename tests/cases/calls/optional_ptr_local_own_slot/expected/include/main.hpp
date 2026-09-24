@@ -83,7 +83,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 // async def async_body(c: bool) -> None:
 struct __coro_async_body {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     bool c;
     ::tpy::frame_slot<std::vector<std::optional<Pic>>> patches;
@@ -115,7 +115,7 @@ struct __coro_async_body {
 
 // def gen(k: int32) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t k;
     ::tpy::frame_slot<std::vector<std::optional<Pic>>> patches;
     int32_t j;

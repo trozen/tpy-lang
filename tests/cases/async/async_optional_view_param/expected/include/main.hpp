@@ -27,7 +27,7 @@ void main();
 
 // async def first_bytes(b: bytes | None) -> int:
 struct __coro_first_bytes {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpy::Bytes> b;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -51,7 +51,7 @@ struct __coro_first_bytes {
 
 // async def str_len(s: Optional[str]) -> int:
 struct __coro_str_len {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<std::string> s;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -75,14 +75,14 @@ struct __coro_str_len {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
+    ::tpy::Bytes __coro_arg_0;
     ::tpy::BigInt __await_lift_0;
     ::tpy::BigInt __await_lift_1;
+    std::string __coro_arg_1;
     ::tpy::BigInt __await_lift_2;
     ::tpy::BigInt __await_lift_3;
-    ::tpy::Bytes __coro_arg_0;
-    std::string __coro_arg_1;
     std::optional<__coro_first_bytes> __sub_0;
     std::optional<__coro_first_bytes> __sub_1;
     std::optional<__coro_str_len> __sub_2;

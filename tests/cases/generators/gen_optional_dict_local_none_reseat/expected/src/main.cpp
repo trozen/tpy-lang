@@ -34,6 +34,7 @@ void main() {
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_keys_of::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         m = ::tpy::optional_to_ptr(__self.d);
         if ((m != nullptr)) {
             ::tpy::__setitem__((*m), 3, 30);

@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 // def voices(a: Dog | Cat) -> Iterator[str]:
 struct __gen_voices : public ::tpy::next_iter_mixin<__gen_voices, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<Cat*, Dog*> a;
 
     enum : int32_t {
@@ -85,7 +85,7 @@ struct __gen_voices : public ::tpy::next_iter_mixin<__gen_voices, std::string> {
 
 // def capture(a: Dog | Cat) -> Iterator[str]:
 struct __gen_capture : public ::tpy::next_iter_mixin<__gen_capture, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<Cat*, Dog*> a;
     ::tpy::frame_slot<Dog> d;
 
@@ -111,7 +111,7 @@ struct __gen_capture : public ::tpy::next_iter_mixin<__gen_capture, std::string>
 
 // def guarded(a: int | str, allow: bool) -> Iterator[str]:
 struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<::tpy::BigInt, std::string> a;
     bool allow;
 
@@ -137,7 +137,7 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, std::string>
 
 // def kill(a: int | str) -> Iterator[str]:
 struct __gen_kill : public ::tpy::next_iter_mixin<__gen_kill, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<::tpy::BigInt, std::string> a;
 
     enum : int32_t {

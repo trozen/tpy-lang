@@ -23,7 +23,7 @@ void main();
 
 // async def f() -> int:
 struct __coro_f {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt a;
     ::tpy::BigInt b;

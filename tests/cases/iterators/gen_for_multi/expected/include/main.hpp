@@ -18,7 +18,7 @@ void main();
 
 // def multi(items: list[int32], n: int32) -> Iterator[int32]:
 struct __gen_multi : public ::tpy::next_iter_mixin<__gen_multi, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& items;
     int32_t n;
     int32_t x;

@@ -237,7 +237,7 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 
 // async def async_section() -> int32:
 struct __coro_async_section {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Point* p = nullptr;
     Point* alias = nullptr;
@@ -264,7 +264,7 @@ struct __coro_async_section {
 
 // def gen_section() -> Iterator[int32]:
 struct __gen_gen_section : public ::tpy::next_iter_mixin<__gen_gen_section, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Point* p = nullptr;
     Point* saved = nullptr;
     std::optional<Point> __ptr_slot_f0;
@@ -291,7 +291,7 @@ struct __gen_gen_section : public ::tpy::next_iter_mixin<__gen_gen_section, int3
 
 // def gen_drop() -> Iterator[int32]:
 struct __gen_gen_drop : public ::tpy::next_iter_mixin<__gen_gen_drop, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<Noisy> r;
 
     enum : int32_t {
@@ -314,7 +314,7 @@ struct __gen_gen_drop : public ::tpy::next_iter_mixin<__gen_gen_drop, int32_t> {
 
 // def walk(self) -> Iterator[int32]:
 struct __gen_Walker_walk : public ::tpy::next_iter_mixin<__gen_Walker_walk, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Walker& __self;
 
     enum : int32_t {

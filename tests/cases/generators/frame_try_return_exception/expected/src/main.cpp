@@ -53,6 +53,7 @@ __gen_dead_return dead_return(std::vector<Node>& items) {
 ::tpystd::tpy::Poll<int32_t> __coro_a_dead::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         acc = 0;
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
@@ -121,6 +122,7 @@ __coro_a_dead a_dead(int32_t n) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_a_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __coro_arg_0.emplace(Indices(1));
         __sub_0.emplace((*__coro_arg_0));
         __state = S_RESUME_0;

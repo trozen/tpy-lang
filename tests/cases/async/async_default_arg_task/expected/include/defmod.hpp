@@ -21,7 +21,7 @@ __coro_scaled scaled(int32_t a, int32_t b = BUMP);
 
 // async def scaled(a: int32, b: int32 = BUMP) -> int32:
 struct __coro_scaled {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t a;
     int32_t b;

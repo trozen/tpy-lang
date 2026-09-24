@@ -26,6 +26,7 @@ P* maybe_p(std::vector<P>& items, int32_t i) {
 ::tpystd::tpy::Poll<int32_t> __coro_first::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         x = ::tpyapp::main::maybe_p(items, i);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
@@ -63,6 +64,7 @@ __coro_first first(std::vector<P>& items, int32_t i) {
 ::tpystd::tpy::Poll<int32_t> __coro_second::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         x = (::tpy::add_check<int32_t>(n, 1));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
@@ -96,6 +98,7 @@ __coro_second second(int32_t n) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         items.emplace(std::vector<P>{});
         (*items).push_back(P(42));
         __sub_0.emplace((*items), 0);

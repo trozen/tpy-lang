@@ -307,7 +307,7 @@ inline std::ostream& operator<<(std::ostream& os, const Shelf::Box& obj) {
 
 // async def aio(xs: list[int32]) -> int32:
 struct __coro_aio {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<int32_t>& xs;
     int32_t k;
@@ -332,7 +332,7 @@ struct __coro_aio {
 
 // def gen(n: int32) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -359,7 +359,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 // def relay(it: Iterable[int32]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T_it>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_it it;
     int32_t v;
     using __for_src_0_t = decltype((it));
@@ -390,6 +390,7 @@ template <::tpystd::typing::Iterable<int32_t> T_it>
 std::expected<int32_t, ::tpy::StopIteration> __gen_relay<T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
@@ -419,7 +420,7 @@ __gen_relay<T_it> relay(T_it&& it) {
 
 // def pairs_of(ns: list[Node]) -> Iterator[tuple[int32, Node]]:
 struct __gen_pairs_of : public ::tpy::next_iter_mixin<__gen_pairs_of, std::tuple<int32_t, Node*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Node>& ns;
     int32_t i;
     using __for_src_0_t = decltype((ns));
@@ -447,7 +448,7 @@ struct __gen_pairs_of : public ::tpy::next_iter_mixin<__gen_pairs_of, std::tuple
 
 // def scores(n: int32) -> Iterator[int32]:
 struct __gen_scores : public ::tpy::next_iter_mixin<__gen_scores, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -473,7 +474,7 @@ struct __gen_scores : public ::tpy::next_iter_mixin<__gen_scores, int32_t> {
 
 // def walk(n: int32) -> Iterator[int32]:
 struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     ::tpy::frame_slot<std::vector<int32_t>> xs;
     int32_t k;
@@ -498,7 +499,7 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
 
 // self.t = sum(x * 2 for x in xs)  # tpyc: ok
 struct __genexpr___init___3_frame : public ::tpy::next_iter_mixin<__genexpr___init___3_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -526,7 +527,7 @@ struct __genexpr___init___3_frame : public ::tpy::next_iter_mixin<__genexpr___in
 // return sum(x * self.k for x in self.items)  # tpyc: ok
 template <typename F_self>
 struct __genexpr_tot_4_frame : public ::tpy::next_iter_mixin<__genexpr_tot_4_frame<F_self>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     F_self self;
     int32_t x;
@@ -572,7 +573,7 @@ __genexpr_tot_4_frame<F_self> __genexpr_tot_4(const std::vector<int32_t>& __src,
 // return sum(1 for v in self.items)  # tpyc: ok
 template <typename T>
 struct __genexpr_count_5_frame : public ::tpy::next_iter_mixin<__genexpr_count_5_frame<T>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<T>& __src;
     using __for_src_0_t = decltype((__src));
     ::tpy::begin_elem_t<__for_src_0_t>* v = nullptr;
@@ -617,7 +618,7 @@ __genexpr_count_5_frame<T> __genexpr_count_5(const std::vector<T>& __src) {
 // return any(lim < x for x in xs)  # tpyc: ok
 template <typename T, typename F_lim>
 struct __genexpr_first_big_12_frame : public ::tpy::next_iter_mixin<__genexpr_first_big_12_frame<T, F_lim>, bool> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<T>& __src;
     F_lim lim;
     using __for_src_0_t = decltype((__src));
@@ -663,7 +664,7 @@ __genexpr_first_big_12_frame<T, F_lim> __genexpr_first_big_12(const std::vector<
 // yield sum(y * k for y in xs)  # tpyc: ok
 template <typename F_k>
 struct __genexpr_walk_22_frame : public ::tpy::next_iter_mixin<__genexpr_walk_22_frame<F_k>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     F_k k;
     int32_t y;
@@ -708,7 +709,7 @@ __genexpr_walk_22_frame<F_k> __genexpr_walk_22(const std::vector<int32_t>& __src
 // yield sum(y * k for y in xs)
 template <typename F_k>
 struct __genexpr_walk_23_frame : public ::tpy::next_iter_mixin<__genexpr_walk_23_frame<F_k>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     F_k k;
     int32_t y;
@@ -753,7 +754,7 @@ __genexpr_walk_23_frame<F_k> __genexpr_walk_23(const std::vector<int32_t>& __src
 // return sum(x * k for x in xs)  # tpyc: ok
 template <typename F_k>
 struct __genexpr_aio_24_frame : public ::tpy::next_iter_mixin<__genexpr_aio_24_frame<F_k>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     F_k k;
     int32_t x;

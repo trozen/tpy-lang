@@ -24,7 +24,7 @@ __coro_main_coro main_coro();
 
 // async def msg(tag: str) -> str:
 struct __coro_msg {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string tag;
 
@@ -46,11 +46,11 @@ struct __coro_msg {
 
 // async def go(x: int32) -> None:
 struct __coro_go {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t x;
-    std::string __await_lift_0;
     std::string __coro_arg_0;
+    std::string __await_lift_0;
     std::optional<__coro_msg> __sub_0;
 
     enum : int32_t {
@@ -73,7 +73,7 @@ struct __coro_go {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<__coro_go> __sub_0;
     std::optional<__coro_go> __sub_1;

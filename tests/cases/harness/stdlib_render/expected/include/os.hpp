@@ -240,7 +240,7 @@ inline std::ostream& operator<<(std::ostream& os, const terminal_size& obj) {
 //          onerror: Callable[[readonly[OSError]], None] | None = None,
 //          followlinks: bool = False) -> Iterator[tuple[str, list[str], list[str]]]:
 struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string top;
     bool topdown;
     std::optional<std::function<void(const ::tpy::OSError&)>> onerror;

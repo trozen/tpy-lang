@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
 
 // async def passed(self) -> bool:
 struct __coro_Gate_passed {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Gate& __self;
     ::tpystd::asyncio::Event* __sub_0 = nullptr;
@@ -77,7 +77,7 @@ inline __coro_Gate_passed Gate::passed() {
 
 // async def opener(g: Gate) -> None:
 struct __coro_opener {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Gate& g;
 
@@ -99,7 +99,7 @@ struct __coro_opener {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Gate> g;
     bool r;

@@ -14,6 +14,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         s.emplace(Shelter());
         __coro_arg_0.emplace(Dog());
         __sub_0.emplace((*s), ::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_0))});
@@ -61,6 +62,7 @@ __coro_main main() {
 ::tpystd::tpy::Poll<std::string> __coro_Shelter_describe::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __self.seen = (__self.seen) + (::tpy::BigInt(1));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;

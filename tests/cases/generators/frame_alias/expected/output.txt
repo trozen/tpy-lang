@@ -1,0 +1,52 @@
+free 1
+free 2 3
+method 101 102 103
+ctor 1 2
+error_return 2
+generator [1, 2, 3]
+async 12
+loop 1 2
+loop 101 102
+loop 201 202
+block 4 5
+try 1 2
+with 1 2
+match 1 2
+unpack 1 2 7
+swap 101 1
+exhaust 30 0
+interleave [1, 2, 3, 4, 5, 6]
+loop_reuse read
+closure 1 2 3
+member 10 20 30
+deduced 1 2 1 9
+risky start
+raise_before_first_yield raised
+raise_before_first_yield -1
+try_first_bound 8 9
+comprehension [1, 2, 3] 4
+chained 1 2
+generic_owner 2
+loop_closes_each pass 0
+closing finally 0
+loop_closes_each pass 1
+closing finally 10
+with_first_bound 4 5
+branch_first_bound 40 41
+branch_alias 50 51
+outer_lift [70, 71]
+reading_fin finally 3 three
+frame_order ['three', 'one']
+generic a
+generic b
+last_use_alias 2
+last_use_unpack 12 1
+last_use_try 22
+last_use_method 32
+loop_over_param [60, 61]
+await_then_new_name 1103
+ternary_bound [80, 81]
+walrus_bound [85, 86]
+ternary_bound_async 3
+loop_var_over_list [5, 7]
+relay_getter [5, 6]

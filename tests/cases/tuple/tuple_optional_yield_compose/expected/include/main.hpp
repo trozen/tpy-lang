@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 // def first_only(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
 struct __gen_first_only : public ::tpy::next_iter_mixin<__gen_first_only, std::tuple<P*, P*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<P>& items;
     using __for_src_0_t = decltype((items));
     ::tpy::begin_elem_t<__for_src_0_t>* it = nullptr;
@@ -69,7 +69,7 @@ struct __gen_first_only : public ::tpy::next_iter_mixin<__gen_first_only, std::t
 // def relay(src: Iterator[tuple[P | None, P | None]]) -> Iterator[tuple[P | None, P | None]]:
 template <::tpystd::typing::Iterator<std::tuple<std::optional<P>, std::optional<P>>> T_src>
 struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T_src>, std::tuple<P*, P*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_src src;
     std::tuple<P*, P*> pair;
     using __for_src_0_t = decltype((src));
@@ -99,6 +99,8 @@ template <::tpystd::typing::Iterator<std::tuple<std::optional<P>, std::optional<
 std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_relay<T_src>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_0:  // after: yield pair
     case S_JOIN_0: {
         __for_r_0.emplace(src.__next__());

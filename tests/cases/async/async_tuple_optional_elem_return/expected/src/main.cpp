@@ -14,6 +14,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((n > 0)) {
             __state = S_DONE;
             std::tuple<int32_t, std::optional<int32_t>> __tpy_async_ret = std::tuple<int32_t, std::optional<int32_t>>{n, (::tpy::mul_check<int32_t>(n, 2))};
@@ -44,6 +45,7 @@ __coro_pick pick(int32_t n) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(5);
         __state = S_RESUME_0;
         continue;

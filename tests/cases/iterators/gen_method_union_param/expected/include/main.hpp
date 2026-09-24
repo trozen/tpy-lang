@@ -72,7 +72,7 @@ inline std::ostream& operator<<(std::ostream& os, const Zoo& obj) {
 
 // def voices(self, a: Dog | Cat) -> Iterator[str]:
 struct __gen_Zoo_voices : public ::tpy::next_iter_mixin<__gen_Zoo_voices, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Zoo& __self;
     ::tpy::Union<Cat*, Dog*> a;
 
@@ -102,7 +102,7 @@ inline __gen_Zoo_voices Zoo::voices(::tpy::Union<Cat*, Dog*> a) {
 
 // def names(self, a: readonly[Dog | Cat]) -> Iterator[str]:
 struct __gen_Zoo_names : public ::tpy::next_iter_mixin<__gen_Zoo_names, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Zoo& __self;
     ::tpy::Union<const Cat*, const Dog*> a;
 

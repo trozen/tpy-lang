@@ -1,0 +1,1 @@
+main.py:198: warning: 'h' will not keep the object it was given -- 'g' is rebound on each iteration and both names share its storage; 'g' cannot be copied

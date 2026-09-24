@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Summer<T>& obj) {
 // async def total(self) -> int32:
 template <::tpystd::typing::Iterable<int32_t> T>
 struct __coro_Summer_total {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Summer<T>& __self;
     int32_t result;
@@ -75,6 +75,7 @@ template <::tpystd::typing::Iterable<int32_t> T>
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         result = 0;
         auto& __src_0 = __self.items;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);

@@ -12,6 +12,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         std::cout << label << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -39,6 +40,7 @@ __coro_tick tick(std::string_view label) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -101,6 +103,7 @@ __coro_drive drive(int32_t brk) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         std::cout << "no break:" << "\n";
         __sub_0.emplace(99);
         __state = S_RESUME_0;

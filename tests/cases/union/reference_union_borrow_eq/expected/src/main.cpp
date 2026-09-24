@@ -169,6 +169,7 @@ bool in_closure(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*,
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         bool __tpy_async_ret = (a == b);
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -275,6 +276,7 @@ void bump(::tpy::Union<Cat*, Dog*> u) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(a, b);
         __state = S_RESUME_0;
         continue;

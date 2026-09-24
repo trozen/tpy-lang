@@ -27,7 +27,7 @@ void main();
 
 // async def background(done: Future[int32]) -> None:
 struct __coro_background {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::Future<int32_t>& done;
 
@@ -49,7 +49,7 @@ struct __coro_background {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::Future<int32_t>> done;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> t;

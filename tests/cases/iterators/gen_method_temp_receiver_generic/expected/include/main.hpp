@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 // def walk(self) -> Iterator[T]:
 template <typename T>
 struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Holder<T>& __self;
     using __for_src_0_t = decltype((__self.items));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
@@ -73,6 +73,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Holder_walk<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = __self.items;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

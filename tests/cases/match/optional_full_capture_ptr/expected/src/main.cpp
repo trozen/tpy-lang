@@ -87,6 +87,7 @@ int32_t after_none(Cat* o) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = o;
         if (__match_subject_1 != nullptr && (*__match_subject_1).lives == 1) {
             __state = S_DONE;
@@ -185,6 +186,7 @@ int32_t field_src(Box& b) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(&(c));
         __state = S_RESUME_0;
         continue;

@@ -259,7 +259,7 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 
 // async def tick() -> None:
 struct __coro_tick {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -282,7 +282,7 @@ struct __coro_tick {
 
 // async def arun(c: Color) -> str:
 struct __coro_arun {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Color c;
     std::string first;
@@ -307,7 +307,7 @@ struct __coro_arun {
 
 // def gen(c: Color) -> Iterator[str]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Color c;
 
     enum : int32_t {

@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // async def bump_twice(self) -> int32:
 struct __coro_Counter_bump_twice {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Counter& __self;
     int32_t delta;
@@ -71,7 +71,7 @@ inline __coro_Counter_bump_twice Counter::bump_twice() {
 
 // def steps(self) -> Iterator[int32]:
 struct __gen_Counter_steps : public ::tpy::next_iter_mixin<__gen_Counter_steps, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Counter& __self;
     int32_t step;
 

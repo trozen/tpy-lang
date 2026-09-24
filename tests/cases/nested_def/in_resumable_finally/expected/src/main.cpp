@@ -24,6 +24,7 @@ namespace tpyapp::main {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         __state = S_JOIN_1;
         continue;
@@ -101,6 +102,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_def_in_finally::__next__(
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         __state = S_JOIN_1;
         continue;
@@ -170,6 +172,7 @@ __gen_gen_def_in_finally gen_def_in_finally() {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         count = 0;
         // def tick: frame member
         __state = S_JOIN_1;
@@ -239,6 +242,7 @@ __coro_called_from_finally called_from_finally() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;

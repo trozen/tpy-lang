@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 // async def snapshot(self) -> Own["C"]:
 struct __coro_C_snapshot {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const C& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -67,7 +67,7 @@ inline __coro_C_snapshot C::snapshot() const {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<C> c;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<C>> t;

@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // async def producer(tx: Own[Sender[Counter]]) -> None:
 struct __coro_producer {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::tpy::channel::Sender<Counter> tx;
     int32_t i;
@@ -78,7 +78,7 @@ struct __coro_producer {
 
 // async def consumer(rx: Own[Receiver[Counter]]) -> None:
 struct __coro_consumer {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::tpy::channel::Receiver<Counter> rx;
     ::tpy::frame_slot<Counter> c;
@@ -107,7 +107,7 @@ struct __coro_consumer {
 
 // async def main_co() -> None:
 struct __coro_main_co {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::tpy::channel::Sender<Counter>> tx;
     ::tpy::frame_slot<::tpystd::tpy::channel::Receiver<Counter>> rx;

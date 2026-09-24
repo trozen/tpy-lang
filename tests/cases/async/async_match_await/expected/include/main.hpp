@@ -23,7 +23,7 @@ void main();
 
 // async def sub(n: int) -> int:
 struct __coro_sub {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
 
@@ -45,7 +45,7 @@ struct __coro_sub {
 
 // async def caller(tag: int) -> int:
 struct __coro_caller {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt tag;
     std::optional<__coro_sub> __sub_0;

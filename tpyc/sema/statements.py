@@ -32,7 +32,8 @@ from ..typesys import (
     resolve_int_literals,
     yield_uses_borrow_slot, yield_always_borrows, GenExprType,
     is_dyn_protocol, is_fn_type, coro_struct_owner,
-    ConcreteCoroType, make_concrete_coro, make_cancellable,
+    ConcreteCoroType, ConcreteFrameType, ConcreteGenType, make_concrete_coro,
+    make_cancellable,
     bare_name, held_whole_borrow_sources, recorded_return_borrow_sources)
 from ..parse import (
     collect_name_refs,
@@ -54,7 +55,8 @@ from ..coercions import CoercionContext
 from ..namespace import BindingKind, NameBinding
 from ..symbol_binding import SymbolKind, lookup_imported
 from ..prescan import (
-    bound_names_of, ScanResult, scan_reassigned_vars, parse_deref_view_key,
+    bound_names_of, ScanResult, scan_reassigned_vars,
+    parse_deref_view_key,
     FactKills, collect_fact_kills, liveness_alias_sources, is_scan_rvalue,
 )
 from ..liveness import (analyze_last_uses, collect_finally_return_candidates,
@@ -67,6 +69,10 @@ from .context import (addr_taken_roots, call_borrow_operands,
                       canonical_storage_key,
                       expr_yields_non_null_ptr, LoopClauseEdges,
                       record_borrow_binding, record_stmt_borrow_binding,
+                      holds_generator_object, note_owned_local,
+                      frame_binding_calls, frame_binding_fact,
+                      record_frame_binding_roots,
+                      frame_borrowed_operands,
                       tuple_borrow_escape_roots)
 from .flow_facts import condition_walrus_assigned, condition_walrus_targets
 from .literal_utils import is_char_literal_init
@@ -823,6 +829,105 @@ class StatementAnalyzer:
             inferred_type_args=tuple(targs) if targs else None,
             module_qual=module_qual,
             result_is_borrow=aliases)
+
+    def _frame_borrows_local(self, call: 'TpyCall | TpyMethodCall') -> bool:
+        """Whether the frame this generator call builds borrows anything
+        that does not outlive the function body: a temporary, a local, or
+        the adapter a @dynamic protocol parameter binds. Parameters the body
+        never rebinds, the receiver and module globals
+        (`_name_is_param_or_global`) do outlive it."""
+        operands = frame_borrowed_operands(call)
+        if operands is None:
+            return True
+        fi = call.resolved_function_info
+        borrowed = fi.root.return_borrows_from if fi is not None else None
+        if any(i < len(fi.params) and is_dyn_protocol(unwrap_readonly(
+                   unwrap_ref_type(fi.params[i].type)))
+               for i in (borrowed or ())):
+            return True
+        for e in operands:
+            root = _root_name_of_expr(e)
+            # A parameter the body rebinds may by now name a local's storage.
+            if (root is None
+                    or root in self.ctx.func.current_reassigned_vars
+                    or not self.compat._name_is_param_or_global(root)):
+                return True
+        return False
+
+    def _record_frame_binding(self, stmt: TpyVarDecl) -> None:
+        """One binding of a generator-object local: the hoist stamp, the
+        per-name roots the frame layout checks, and the two shapes a
+        resumable frame cannot hold."""
+        init = stmt.init
+        while isinstance(init, TpyCoerce):
+            init = init.expr
+        calls = frame_binding_calls(init)
+        fact: 'tuple[frozenset[str | None], bool] | None'
+        if calls is None and isinstance(init, TpyName):
+            # A name bound from another generator local (an unpack's temp)
+            # borrows what that one does.
+            src = self.ctx.func.var_decl_by_name.get(init.name)
+            stmt.frame_borrows_local = (src.frame_borrows_local
+                                        if src is not None else True)
+            fact = self.ctx.func.frame_local_roots.get(init.name)
+        elif calls is None:
+            stmt.frame_borrows_local = True
+            fact = None
+        else:
+            stmt.frame_borrows_local = any(
+                self._frame_borrows_local(c) for c in calls)
+            fact = frame_binding_fact(init)
+        record_frame_binding_roots(self.ctx, stmt.name, fact, stmt)
+
+    def _binds_fresh_frame(self, stmt: TpyVarDecl) -> bool:
+        """An unpack target bound to a temp that holds a new generator
+        (`g, k = counter(1), 2`), not another name's (`g, h = h, g`)."""
+        temp = stmt.init
+        decl = (self.ctx.func.var_decl_by_name.get(temp.name)
+                if isinstance(temp, TpyName) else None)
+        return (decl is not None and decl.init is not None
+                and is_rvalue_source(self.ctx, decl.init))
+
+    def _check_gen_rebind(self, stmt: TpyVarDecl,
+                          prev: ConcreteGenType) -> None:
+        """A name holding a generator object holds that one frame type: a
+        rebind to another generator function's object (or to any other
+        iterator) would need type erasure, which allocates."""
+        init = stmt.init
+        while isinstance(init, TpyCoerce):
+            init = init.expr
+        cand: TpyType | None = None
+        if isinstance(init, (TpyCall, TpyMethodCall)):
+            t = self.ctx.get_expr_type(init)
+            cand = unwrap_readonly(unwrap_ref_type(t)) if t else None
+        elif isinstance(init, TpyName):
+            src = self.ctx.func.current_scope.lookup(init.name)
+            cand = unwrap_readonly(unwrap_ref_type(src)) if src else None
+        self._check_one_frame_type(stmt, prev, cand)
+
+    def _check_one_frame_type(self, stmt: TpyVarDecl,
+                              prev: 'ConcreteFrameType',
+                              cand: TpyType | None) -> None:
+        """A name holding a generator or coroutine object holds that one
+        frame type: holding another would need type erasure, which
+        allocates."""
+        if cand == prev:
+            return
+        init = stmt.init
+        while isinstance(init, TpyCoerce):
+            init = init.expr
+        what = (f"'{init.func_name}(...)'" if isinstance(init, TpyCall)
+                else "this value")
+        coro = isinstance(prev, ConcreteCoroType)
+        kind = "coroutine" if coro else "generator"
+        other = (kind if coro or isinstance(cand, ConcreteGenType)
+                 else "iterator")
+        raise self.ctx.error(
+            f"cannot rebind '{stmt.name}' to a different {other}: "
+            f"'{stmt.name}' holds a '{prev.frame_func_name}' {kind}, and one "
+            f"name holds one {'async' if coro else 'generator'} function's "
+            f"objects; bind {what} to a new name",
+            stmt)
 
     def _warn_unnecessary_return_copy(self, value: TpyExpr) -> None:
         """Warn when return copy(x) is used but x is at last use (auto-move suffices)."""
@@ -1761,13 +1866,21 @@ class StatementAnalyzer:
                 # lifetime is not tracked across the escape.
                 ret_inner = unwrap_readonly(unwrap_own(unwrap_ref_type(ret_type)))
                 if (isinstance(ret_inner, ConcreteCoroType)
-                        and ret_inner.coro_owner is not None):
+                        and ret_inner.frame_owner is not None):
                     self.ctx.warning(
                         "returned bound method-coroutine borrows its "
                         "receiver by reference; the handle must not "
                         "outlive the receiver (receiver lifetime is not "
                         "tracked across this escape)",
                         stmt)
+                # A returned generator or coroutine keeps what its frame
+                # borrows, whatever slot the return fills.
+                ret_call = stmt.value
+                while isinstance(ret_call, TpyCoerce):
+                    ret_call = ret_call.expr
+                for src_e in frame_borrowed_operands(ret_call) or ():
+                    for src in _borrow_storage_roots(src_e):
+                        self.ctx.mark_param_returned(src)
                 # Check for a borrowed source returned as Own[T] without an
                 # explicit copy(). `readonly` peels first: `readonly[Own[T]]`
                 # is the same owning slot with a const view on top, so the
@@ -5296,8 +5409,37 @@ class StatementAnalyzer:
                     fresh = self.ctx.func.current_scope.lookup(stmt.name)
                     if fresh is not None and fresh != existing_type:
                         existing_type = fresh
-                var_type, stmt.init = self.compat.coerce_reassignment(
-                    stmt.name, existing_type, init_type, stmt.init, stmt)
+                prev_gen = unwrap_readonly(unwrap_ref_type(existing_type))
+                if isinstance(prev_gen, ConcreteGenType):
+                    # The name holds that one frame type; a rebind to it
+                    # keeps the declared type (see _check_gen_rebind).
+                    if stmt.name in self.ctx.func.current_nonlocal_names:
+                        # The enclosing function's storage for the name
+                        # cannot be re-seated from here, and replacing the
+                        # object in place would pull it out from under a
+                        # loop the enclosing body runs over it.
+                        raise self.ctx.error(
+                            f"cannot rebind generator '{stmt.name}' through "
+                            f"'nonlocal': rebind it in the function that "
+                            f"binds it, or bind the new generator to a new "
+                            f"name",
+                            stmt)
+                    self._check_gen_rebind(stmt, prev_gen)
+                    if stmt.unpack_target and self._binds_fresh_frame(stmt):
+                        # The unpack builds the element in a temp and
+                        # binds the name to it, which is not the in-place
+                        # rebuild a rebind is.
+                        raise self.ctx.error(
+                            f"cannot rebind generator '{stmt.name}' in a "
+                            f"tuple unpack: rebind it with an assignment of "
+                            f"its own ('{stmt.name} = ...'), or unpack into a "
+                            f"new name",
+                            stmt)
+                    self.ctx.func.frame_rebind_sites[stmt] = None
+                    var_type = existing_type
+                else:
+                    var_type, stmt.init = self.compat.coerce_reassignment(
+                        stmt.name, existing_type, init_type, stmt.init, stmt)
                 if var_type != existing_type:
                     # Keep codegen and `# tpyc: type()` in sync with the
                     # original declaration when the resolved type changed.
@@ -5403,17 +5545,26 @@ class StatementAnalyzer:
                         if src_t is not None:
                             cand = unwrap_readonly(unwrap_own(
                                 unwrap_ref_type(src_t)))
-                    if not (isinstance(cand, ConcreteCoroType)
-                            and cand == prev_inner):
-                        raise self.ctx.error(
-                            f"cannot rebind '{stmt.name}' to a different "
-                            f"coroutine: the binding holds a concrete "
-                            f"coroutine frame (one frame type per name); "
-                            f"bind to a new name",
-                            stmt)
+                    self._check_one_frame_type(stmt, prev_inner, cand)
                 elif prev_is_coro and isinstance(new_inner, ConcreteCoroType):
                     # Erased slot: materialize the concrete value into it.
                     var_type = OwnType(prev_inner)
+            # A generator object's frame type, recorded on the decl for the
+            # same reason: the init expr is typed as the bare protocol.
+            if isinstance(unwrap_readonly(unwrap_ref_type(var_type)),
+                          ConcreteGenType):
+                self.ctx.var_types[stmt] = var_type
+                if (existing_type is not None and self.ctx.func.borrow_tracker
+                        .has_iter_borrow(stmt.name)):
+                    # The running loop steps the old generator, which an
+                    # in-place rebuild would pull out from under it.
+                    raise self.ctx.error(
+                        f"cannot rebind '{stmt.name}' inside a 'for' loop "
+                        f"over it: the loop is still running the generator "
+                        f"'{stmt.name}' holds; bind the new generator to a "
+                        f"new name",
+                        stmt)
+                self._record_frame_binding(stmt)
             # Record the owned binding on the decl node so codegen reads
             # Own[...] instead of re-deriving the bare protocol from the
             # init expr (mirrors the collapsed-tuple recording below).
@@ -5430,6 +5581,8 @@ class StatementAnalyzer:
                 # moves -- declared divergence). Reject when the source is
                 # used again; otherwise mark it consumed.
                 if isinstance(stmt.init, TpyName):
+                    self.ctx.check_coro_move_unstarted(
+                        stmt.init, f"into '{stmt.name}'")
                     if not self.compat.is_auto_move_use(stmt.init):
                         raise self.ctx.error(
                             f"binding '{stmt.name}' moves the coroutine out of "
@@ -5709,10 +5862,10 @@ class StatementAnalyzer:
                         and var_type is not None
                         and not var_type.is_value_type()
                         and not (isinstance(var_type, OptionalType) and var_type.uses_pointer_repr())
-                        and not is_protocol_union(var_type)):
+                        and not is_protocol_union(var_type)
+                        and not holds_generator_object(var_type)):
                     self.ctx.func.rvalue_vars.add(stmt.name)
-                    self.ctx.func.owned_locals.add(stmt.name)
-                    self.ctx.func.ever_owned_locals.add(stmt.name)
+                    note_owned_local(self.ctx, stmt.name, var_type)
                     self.ctx.func.move_through_vars.add(stmt.name)
                 else:
                     self.ctx.func.rvalue_vars.discard(stmt.name)
@@ -5729,8 +5882,7 @@ class StatementAnalyzer:
                 # later move-out would corrupt the aliased source. Same predicate
                 # codegen uses for the `T&`-vs-value rendering (value_category).
                 if is_rvalue_source(self.ctx, stmt.init):
-                    self.ctx.func.owned_locals.add(stmt.name)
-                    self.ctx.func.ever_owned_locals.add(stmt.name)
+                    note_owned_local(self.ctx, stmt.name, var_type)
                     # Fresh-ctor local: a non-reassigned local whose sole binding
                     # is a constructor call of its exact static type. Its dynamic
                     # type is then provably its static type, so the
@@ -5947,8 +6099,7 @@ class StatementAnalyzer:
                 # becomes a T* pointer-local with different movability.
                 if owned and name not in self.ctx.func.current_reassigned_vars:
                     self.ctx.func.rvalue_vars.add(name)
-                    self.ctx.func.owned_locals.add(name)
-                    self.ctx.func.ever_owned_locals.add(name)
+                    note_owned_local(self.ctx, name, elem_type)
             # Promote a str/bytes view target to owned when it binds an owned-temp
             # tuple member AND is reassigned -- a reassigned target is declared in
             # a scope broader than the per-statement/loop-body `__tup`, so a view
@@ -6454,8 +6605,8 @@ class StatementAnalyzer:
                 # See the var-decl branch: owned only for a genuine value-creating
                 # init, not a borrow-producing one rendered `T&`.
                 if is_rvalue_source(self.ctx, stmt.value):
-                    self.ctx.func.owned_locals.add(stmt.target.name)
-                    self.ctx.func.ever_owned_locals.add(stmt.target.name)
+                    note_owned_local(self.ctx, stmt.target.name,
+                                     self.ctx.get_expr_type(stmt.value))
                 else:
                     self.ctx.func.owned_locals.discard(stmt.target.name)
                     record_stmt_borrow_binding(

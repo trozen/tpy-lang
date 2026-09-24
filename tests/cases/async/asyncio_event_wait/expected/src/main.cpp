@@ -12,6 +12,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         e.set();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -35,6 +36,7 @@ __coro_setter setter(::tpystd::asyncio::Event& e) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_fast::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         e.emplace(::tpystd::asyncio::Event());
         (*e).set();
         __sub_0.emplace((*e));
@@ -69,6 +71,7 @@ __coro_fast fast() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         e.emplace(::tpystd::asyncio::Event());
         ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::setter((*e))));
         __sub_0.emplace((*e));
@@ -101,6 +104,7 @@ __coro_slow slow() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;

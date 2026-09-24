@@ -270,7 +270,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
 // def each[T](items: Iterable[T]) -> Iterator[T]:  # tpyc: ok
 template <typename T, ::tpystd::typing::Iterable<T> T_items>
 struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T, T_items>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_items items;
     using __for_src_0_t = decltype((items));
     ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> it;
@@ -302,6 +302,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_items>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_each<T, T_items>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::resumable_iter_init(__for_itr_0, items);
         __state = S_JOIN_0;
         continue;
@@ -332,7 +333,7 @@ __gen_each<T, T_items> each(T_items&& items) {
 // def each_ro[T](items: readonly[Iterable[T]]) -> Iterator[readonly[T]]:  # tpyc: ok
 template <typename T, ::tpystd::typing::Iterable<T> T_items>
 struct __gen_each_ro : public ::tpy::next_iter_mixin<__gen_each_ro<T, T_items>, ::tpy::yield_slot_t<const T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_items items;
     using __for_src_0_t = decltype((items));
     ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> it;
@@ -365,6 +366,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_items>
 std::expected<::tpy::yield_slot_t<const T>, ::tpy::StopIteration> __gen_each_ro<T, T_items>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::resumable_iter_init(__for_itr_0, items);
         __state = S_JOIN_0;
         continue;
@@ -395,7 +397,7 @@ __gen_each_ro<T, T_items> each_ro(T_items&& items) {
 // def rep[T: Appendable](obj: T, times: int32) -> Iterator[T]:  # tpyc: ok
 template <typename T>
 struct __gen_rep : public ::tpy::next_iter_mixin<__gen_rep<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::val_or_ref_t<T> obj;
     int32_t times;
     int32_t _;
@@ -427,6 +429,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_rep<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(times));
         __state = S_JOIN_0;
@@ -457,7 +460,7 @@ __gen_rep<T> rep(::tpy::param_val_or_ref_t<T> obj, int32_t times) {
 // def ends[T](items: list[T]) -> Iterator[T]:
 template <typename T>
 struct __gen_ends : public ::tpy::next_iter_mixin<__gen_ends<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<T>& items;
 
     enum : int32_t {
@@ -485,6 +488,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_ends<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::__getitem__(items, 0);
     }
@@ -511,7 +515,7 @@ __gen_ends<T> ends(std::vector<T>& items) {
 // def first_then_rest[T](items: list[T]) -> Iterator[T]:
 template <typename T>
 struct __gen_first_then_rest : public ::tpy::next_iter_mixin<__gen_first_then_rest<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<T>& items;
     T* head = nullptr;
     using __for_src_0_t = decltype((items));
@@ -547,6 +551,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_first_then_rest<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         head = &(::tpy::__getitem__(items, 0));
         __state = S_RESUME_0;
         return (*head);
@@ -636,6 +641,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_in_with<T>::__
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0.emplace(Gate());
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_2;
@@ -779,6 +785,8 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_in_try<T>::__n
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_2: {
         try {
             auto& __for_obj_0 = items;
@@ -813,7 +821,7 @@ __gen_in_try<T> in_try(std::vector<T>& items) {
 // def in_match[T](items: list[T], mode: int32) -> Iterator[T]:
 template <typename T>
 struct __gen_in_match : public ::tpy::next_iter_mixin<__gen_in_match<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<T>& items;
     int32_t mode;
 
@@ -846,6 +854,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_in_match<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = mode;
         switch (__match_subject_1) {
         case 0: {
@@ -883,7 +892,7 @@ __gen_in_match<T> in_match(std::vector<T>& items, int32_t mode) {
 // def via_local[T](items: list[T]) -> Iterator[T]:
 template <typename T>
 struct __gen_via_local : public ::tpy::next_iter_mixin<__gen_via_local<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<T>& items;
     ::tpy::frame_slot<std::vector<T>> box;
     ::tpy::frame_slot<T> src;
@@ -933,6 +942,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_via_local<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         box.emplace(std::vector<T>{});
         auto& __obj_0 = items;
         auto __beg_0 = __obj_0.begin();
@@ -985,7 +995,7 @@ __gen_via_local<T> via_local(const std::vector<T>& items) {
 // def trial_then_local[T](items: list[T], n: int32) -> Iterator[T]:
 template <typename T>
 struct __gen_trial_then_local : public ::tpy::next_iter_mixin<__gen_trial_then_local<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<T>& items;
     int32_t n;
     int32_t r;
@@ -1022,6 +1032,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_trial_then_local<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         r = ::tpyapp::main::app<int32_t, int32_t>([](int32_t v) -> int32_t { return (::tpy::add_check<int32_t>(v, 1)); }, n);
         head = &(::tpy::__getitem__(items, 0));
         __state = S_RESUME_0;
@@ -1051,7 +1062,7 @@ __gen_trial_then_local<T> trial_then_local(std::vector<T>& items, int32_t n) {
 // def with_nested[T](items: list[T]) -> Iterator[T]:
 template <typename T>
 struct __gen_with_nested : public ::tpy::next_iter_mixin<__gen_with_nested<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<T>& items;
     using __for_src_0_t = decltype((items));
     ::tpy::begin_elem_t<__for_src_0_t>* it = nullptr;
@@ -1090,6 +1101,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_with_nested<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         // def bump: frame member
         std::cout << "nested-helper" << " " << bump(1) << "\n";
         auto& __for_obj_0 = items;
@@ -1126,7 +1138,7 @@ __gen_with_nested<T> with_nested(std::vector<T>& items) {
 
 // def local_after_nested(x: int32) -> Iterator[Point]:
 struct __gen_local_after_nested : public ::tpy::next_iter_mixin<__gen_local_after_nested, ::tpy::val_or_ref<Point>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t x;
     ::tpy::frame_slot<Point> tmp;
 
@@ -1151,7 +1163,7 @@ struct __gen_local_after_nested : public ::tpy::next_iter_mixin<__gen_local_afte
 // def via_shadowing_local[T](xs: list[T]) -> Iterator[T]:
 template <typename T>
 struct __gen_via_shadowing_local : public ::tpy::next_iter_mixin<__gen_via_shadowing_local<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<T>& xs;
     T* shadowed_src = nullptr;
 
@@ -1182,6 +1194,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_via_shadowing_local<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         shadowed_src = &(::tpy::__getitem__(xs, 0));
         __state = S_RESUME_0;
         return (*shadowed_src);
@@ -1209,7 +1222,7 @@ __gen_via_shadowing_local<T> via_shadowing_local(std::vector<T>& xs) {
 // def mapped[T, U](fn: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
 template <typename T, typename U, ::tpystd::typing::Iterable<T> T_it, typename F_fn>
 struct __gen_mapped : public ::tpy::next_iter_mixin<__gen_mapped<T, U, T_it, F_fn>, U> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     F_fn fn;
     T_it it;
     using __for_src_0_t = decltype((it));
@@ -1244,6 +1257,7 @@ template <typename T, typename U, ::tpystd::typing::Iterable<T> T_it, typename F
 std::expected<U, ::tpy::StopIteration> __gen_mapped<T, U, T_it, F_fn>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
@@ -1274,7 +1288,7 @@ __gen_mapped<T, U, T_it, F_fn> mapped(F_fn&& fn, T_it&& it) {
 // def mixed[T](items: list[T], extra: Iterator[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterator<T> T_extra>
 struct __gen_mixed : public ::tpy::next_iter_mixin<__gen_mixed<T, T_extra>, T> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<T>& items;
     T_extra extra;
     using __for_src_0_t = decltype((items));
@@ -1317,6 +1331,7 @@ template <typename T, ::tpystd::typing::Iterator<T> T_extra>
 std::expected<T, ::tpy::StopIteration> __gen_mixed<T, T_extra>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = items;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -1359,7 +1374,7 @@ __gen_mixed<T, T_extra> mixed(std::vector<T>& items, T_extra&& extra) {
 // def relay[T](it: Iterator[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterator<T> T_it>
 struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T, T_it>, T> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_it it;
     using __for_src_0_t = decltype((it));
     ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* x = nullptr;
@@ -1391,6 +1406,8 @@ template <typename T, ::tpystd::typing::Iterator<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_relay<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_0:  // after: yield x  # tpyc: ok
     case S_JOIN_0: {
         __for_r_0.emplace(it.__next__());
@@ -1417,7 +1434,7 @@ __gen_relay<T, T_it> relay(T_it&& it) {
 // def walk(self) -> Iterator[T]:  # tpyc: ok
 template <typename T>
 struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Holder<T>& __self;
     using __for_src_0_t = decltype((__self.items));
     ::tpy::begin_elem_t<__for_src_0_t>* it = nullptr;
@@ -1450,6 +1467,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Holder_walk<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = __self.items;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -1480,7 +1498,7 @@ inline __gen_Holder_walk<T> Holder<T>::walk() {
 // def twice(self) -> Iterator[T]:
 template <typename T>
 struct __gen_Cell_twice : public ::tpy::next_iter_mixin<__gen_Cell_twice<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Cell<T>& __self;
 
     enum : int32_t {
@@ -1509,6 +1527,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Cell_twice<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.v;
     }
@@ -1534,7 +1553,7 @@ inline __gen_Cell_twice<T> Cell<T>::twice() {
 // def prop(self) -> Iterator[T]:
 template <typename T>
 struct __gen_Cell_prop : public ::tpy::next_iter_mixin<__gen_Cell_prop<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Cell<T>& __self;
 
     enum : int32_t {
@@ -1562,6 +1581,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Cell_prop<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.val();
     }

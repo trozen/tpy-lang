@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Adder& obj) {
 
 // async def add(self, x: int32) -> int32:
 struct __coro_Adder_add {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Adder& __self;
     int32_t x;
@@ -66,7 +66,7 @@ inline __coro_Adder_add Adder::add(int32_t x) const {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Adder> a;
     int32_t r;

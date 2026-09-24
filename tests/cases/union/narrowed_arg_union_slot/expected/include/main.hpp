@@ -324,7 +324,7 @@ namespace tpyapp::main {
 
 // async def async_body(v: A | B) -> int32:
 struct __coro_async_body {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::Union<A*, B*> v;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -348,7 +348,7 @@ struct __coro_async_body {
 
 // async def async_match(v: A | B) -> int32:
 struct __coro_async_match {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::Union<A*, B*> v;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -372,7 +372,7 @@ struct __coro_async_match {
 
 // async def async_total(v: A | B) -> int32:
 struct __coro_async_total {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::Union<const A*, const B*> v;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -396,7 +396,7 @@ struct __coro_async_total {
 
 // async def async_main() -> None:
 struct __coro_async_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<A> t;
     ::tpy::frame_slot<A> u;
@@ -429,7 +429,7 @@ struct __coro_async_main {
 
 // def gen_body(v: A | B) -> Iterator[int32]:
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<A*, B*> v;
 
     enum : int32_t {
@@ -453,7 +453,7 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
 
 // def gen_match(v: A | B) -> Iterator[int32]:
 struct __gen_gen_match : public ::tpy::next_iter_mixin<__gen_gen_match, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<A*, B*> v;
 
     enum : int32_t {
@@ -478,7 +478,7 @@ struct __gen_gen_match : public ::tpy::next_iter_mixin<__gen_gen_match, int32_t>
 
 // def gen_total(v: A | B) -> Iterator[int32]:
 struct __gen_gen_total : public ::tpy::next_iter_mixin<__gen_gen_total, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<const A*, const B*> v;
 
     enum : int32_t {

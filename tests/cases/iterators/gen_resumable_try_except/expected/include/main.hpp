@@ -18,7 +18,7 @@ void main();
 
 // def guarded(xs: list[int]) -> Iterator[int]:
 struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<::tpy::BigInt>& xs;
     ::tpy::BigInt x;
     using __for_src_0_t = decltype((xs));

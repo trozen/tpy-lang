@@ -24,7 +24,7 @@ void main();
 
 // def tails(s: str) -> Iterator[StrView]:
 struct __gen_tails : public ::tpy::next_iter_mixin<__gen_tails, std::string_view> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string s;
 
     enum : int32_t {
@@ -47,7 +47,7 @@ struct __gen_tails : public ::tpy::next_iter_mixin<__gen_tails, std::string_view
 
 // def owned_local(s: str) -> Iterator[StrView]:
 struct __gen_owned_local : public ::tpy::next_iter_mixin<__gen_owned_local, std::string_view> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string s;
     std::string v;
 
@@ -70,7 +70,7 @@ struct __gen_owned_local : public ::tpy::next_iter_mixin<__gen_owned_local, std:
 
 // def slice_of_ref_param(ba: bytearray) -> Iterator[int32]:
 struct __gen_slice_of_ref_param : public ::tpy::next_iter_mixin<__gen_slice_of_ref_param, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const ::tpy::ByteArray& ba;
     ::tpy::Bytes c;
 

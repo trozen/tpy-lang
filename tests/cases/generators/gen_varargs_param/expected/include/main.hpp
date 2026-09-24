@@ -174,7 +174,7 @@ inline std::ostream& operator<<(std::ostream& os, const Grower& obj) {
 
 // def scalars(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 struct __gen_scalars : public ::tpy::next_iter_mixin<__gen_scalars, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::varargs<const int32_t> xs;
     int32_t n;
     int32_t x;
@@ -203,7 +203,7 @@ struct __gen_scalars : public ::tpy::next_iter_mixin<__gen_scalars, int32_t> {
 
 // def strings(*ss: str) -> Iterator[int32]:  # tpyc: ok
 struct __gen_strings : public ::tpy::next_iter_mixin<__gen_strings, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::varargs<const std::string> ss;
     int32_t n;
     std::string s;
@@ -233,7 +233,7 @@ struct __gen_strings : public ::tpy::next_iter_mixin<__gen_strings, int32_t> {
 // def merge_shape[T: Comparable](*xs: list[T]) -> Iterator[int32]:  # tpyc: ok
 template <typename T>
 struct __gen_merge_shape : public ::tpy::next_iter_mixin<__gen_merge_shape<T>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::varargs<const std::vector<T>> xs;
     int32_t total;
     int32_t i;
@@ -272,6 +272,7 @@ template <typename T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_merge_shape<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         auto& __obj_0 = xs;
         auto __beg_0 = __obj_0.begin();
@@ -316,7 +317,7 @@ __gen_merge_shape<T> merge_shape(::tpy::varargs<const std::vector<T>> xs) {
 
 // def bump(*ps: Point) -> Iterator[int32]:  # tpyc: ok
 struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::varargs<Point> ps;
     using __for_src_0_t = decltype((ps));
     ::tpy::begin_elem_t<__for_src_0_t>* p = nullptr;
@@ -344,7 +345,7 @@ struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
 
 // def read_pack(*ps: Point) -> Iterator[int32]:  # tpyc: ok
 struct __gen_read_pack : public ::tpy::next_iter_mixin<__gen_read_pack, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::varargs<const Point> ps;
     using __for_src_0_t = decltype((ps));
     ::tpy::begin_elem_t<__for_src_0_t>* p = nullptr;
@@ -372,7 +373,7 @@ struct __gen_read_pack : public ::tpy::next_iter_mixin<__gen_read_pack, int32_t>
 
 // def forward(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 struct __gen_forward : public ::tpy::next_iter_mixin<__gen_forward, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::varargs<const int32_t> xs;
 
     enum : int32_t {
@@ -395,7 +396,7 @@ struct __gen_forward : public ::tpy::next_iter_mixin<__gen_forward, int32_t> {
 
 // def indexed(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 struct __gen_indexed : public ::tpy::next_iter_mixin<__gen_indexed, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::varargs<const int32_t> xs;
     int32_t i;
 
@@ -511,7 +512,7 @@ struct __gen_in_with : public ::tpy::next_iter_mixin<__gen_in_with, int32_t> {
 
 // def readonly_param(ps: readonly[list[Point]]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_readonly_param : public ::tpy::next_iter_mixin<__gen_readonly_param, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<Point>& ps;
     using __for_src_0_t = decltype((ps));
     ::tpy::begin_elem_t<__for_src_0_t>* p = nullptr;
@@ -540,7 +541,7 @@ struct __gen_readonly_param : public ::tpy::next_iter_mixin<__gen_readonly_param
 // def bump_generic[T: Counter](*xs: T) -> Iterator[int32]:  # tpyc: ok
 template <typename T>
 struct __gen_bump_generic : public ::tpy::next_iter_mixin<__gen_bump_generic<T>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::varargs<T> xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
@@ -576,6 +577,7 @@ template <typename T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump_generic<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -610,7 +612,7 @@ __gen_bump_generic<T> bump_generic(::tpy::varargs<T> xs) {
 
 // def points(ps: readonly[list[Point]]) -> Iterator[readonly[Point]]:  # tpyc: ok
 struct __gen_points : public ::tpy::next_iter_mixin<__gen_points, ::tpy::val_or_ref<const Point>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<Point>& ps;
     using __for_src_0_t = decltype((ps));
     using __for_src_1_t = decltype((ps));
@@ -643,7 +645,7 @@ struct __gen_points : public ::tpy::next_iter_mixin<__gen_points, ::tpy::val_or_
 // def readonly_next(it: Iterator[readonly[Point]]) -> Iterator[int32]:  # tpyc: ok
 template <::tpystd::typing::Iterator<Point> T_it>
 struct __gen_readonly_next : public ::tpy::next_iter_mixin<__gen_readonly_next<T_it>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_it it;
     using __for_src_0_t = decltype((it));
     ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* p = nullptr;
@@ -697,6 +699,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_readonly_next<T_it>::__next__
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_1:  // after: yield after
     case S_JOIN_0: {
         __for_r_0.emplace(it.__next__());
@@ -723,7 +727,7 @@ __gen_readonly_next<T_it> readonly_next(T_it&& it) {
 
 // def each_pack(*xs: list[list[int32]]) -> Iterator[list[list[int32]]]:  # tpyc: ok
 struct __gen_each_pack : public ::tpy::next_iter_mixin<__gen_each_pack, ::tpy::val_or_ref<std::vector<std::vector<int32_t>>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::varargs<std::vector<std::vector<int32_t>>> xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* s = nullptr;
@@ -750,7 +754,7 @@ struct __gen_each_pack : public ::tpy::next_iter_mixin<__gen_each_pack, ::tpy::v
 
 // def sizes(self, *xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_Collector_sizes : public ::tpy::next_iter_mixin<__gen_Collector_sizes, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Collector& __self;
     ::tpy::varargs<const std::vector<int32_t>> xs;
     using __for_src_0_t = decltype((xs));
@@ -783,7 +787,7 @@ inline __gen_Collector_sizes Collector::sizes(::tpy::varargs<const std::vector<i
 
 // def each(self) -> Iterator[int32]:  # tpyc: ok
 struct __gen_Album_each : public ::tpy::next_iter_mixin<__gen_Album_each, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Album& __self;
     using __for_src_0_t = decltype((__self.items));
     ::tpy::begin_elem_t<__for_src_0_t>* p = nullptr;
@@ -815,7 +819,7 @@ inline __gen_Album_each Album::each() const {
 
 // def each_pack(self, *xs: list[list[int32]]) -> Iterator[list[list[int32]]]:  # tpyc: ok
 struct __gen_Grower_each_pack : public ::tpy::next_iter_mixin<__gen_Grower_each_pack, ::tpy::val_or_ref<std::vector<std::vector<int32_t>>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Grower& __self;
     ::tpy::varargs<std::vector<std::vector<int32_t>>> xs;
     using __for_src_0_t = decltype((xs));

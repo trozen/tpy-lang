@@ -1,0 +1,1 @@
+main.py:26: error: cannot rebind 'g' to a different generator: 'g' holds a 'counter' generator, and one name holds one generator function's objects; bind 'evens(...)' to a new name

@@ -241,6 +241,7 @@ __gen_gen_body gen_body(std::vector<int32_t>& xs, bool big) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpy::__len__(({
     std::vector<int32_t> __result;

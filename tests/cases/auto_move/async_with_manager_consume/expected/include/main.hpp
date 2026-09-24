@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const K& obj) {
 
 // async def __aenter__(self) -> None:
 struct __coro_Guard___aenter__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Guard& __self;
 
@@ -88,7 +88,7 @@ inline __coro_Guard___aenter__ Guard::__aenter__() const {
 
 // async def __aexit__(self, et: None, ev: None, tb: None) -> None:
 struct __coro_Guard___aexit__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Guard& __self;
     std::monostate et;
@@ -117,7 +117,7 @@ inline __coro_Guard___aexit__ Guard::__aexit__(std::monostate et, std::monostate
 
 // async def runner() -> None:
 struct __coro_runner {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<K> k;
     ::tpy::frame_slot<Guard> g;

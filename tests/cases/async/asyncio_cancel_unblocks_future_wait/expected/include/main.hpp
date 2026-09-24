@@ -24,7 +24,7 @@ void main();
 
 // async def waiter() -> None:
 struct __coro_waiter {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -49,7 +49,7 @@ struct __coro_waiter {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> task;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;

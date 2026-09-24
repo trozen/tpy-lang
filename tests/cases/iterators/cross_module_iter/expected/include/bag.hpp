@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag<T>& obj) {
 // def __iter__(self) -> Iterator[T]:
 template <typename T>
 struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Bag<T>& __self;
     using __for_src_0_t = decltype((__self._items));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
@@ -80,6 +80,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Bag___iter__<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = __self._items;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

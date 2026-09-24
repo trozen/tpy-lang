@@ -830,6 +830,7 @@ __gen_generator generator() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_body::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         count = 0;
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(3));

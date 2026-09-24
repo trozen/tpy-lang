@@ -3716,7 +3716,8 @@ class Parser:
                 # The temp is live only between eval and bind; keep it a local
                 # of the enclosing body (incl. module __tpy_init), never a global.
                 evals.append(TpyVarDecl(temp, None, elt_expr, loc=loc, module_init_local=True))
-                binds.append(TpyVarDecl(target, None, TpyName(temp, loc=loc), loc=loc))
+                binds.append(TpyVarDecl(target, None, TpyName(temp, loc=loc),
+                                        loc=loc, unpack_target=True))
             result = evals + binds
         # Every statement keeps the unpack's loc so sema records each target's
         # declared type and diagnostics point at the source line.

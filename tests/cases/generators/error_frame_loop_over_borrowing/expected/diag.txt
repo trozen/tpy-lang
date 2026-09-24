@@ -1,0 +1,1 @@
+main.py:20: error: cannot loop over generator 'g' here: it borrows 'xs', and a generator iterated by a 'for' in a generator or async function may borrow only parameters and locals bound once; loop over it in a helper function

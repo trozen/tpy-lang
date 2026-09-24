@@ -16,6 +16,7 @@ namespace tpyapp::main {
 std::expected<std::string, ::tpy::StopIteration> __gen_loop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         count = 0;
         __state = S_JOIN_0;
         continue;

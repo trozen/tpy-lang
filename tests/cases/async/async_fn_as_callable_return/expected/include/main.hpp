@@ -26,7 +26,7 @@ void main();
 
 // async def triple(n: int32) -> int32:
 struct __coro_triple {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -50,7 +50,7 @@ struct __coro_triple {
 
 // async def main_coro() -> int32:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::function<std::unique_ptr<::tpystd::coro::Cancellable<int32_t>>(int32_t)> factory;
     std::optional<::tpystd::asyncio::_executor::Task<int32_t>> __sub_0;

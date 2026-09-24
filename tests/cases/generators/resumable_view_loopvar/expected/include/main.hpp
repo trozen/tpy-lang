@@ -24,7 +24,7 @@ void main();
 
 // def words_gen(words: list[str]) -> Iterator[int32]:
 struct __gen_words_gen : public ::tpy::next_iter_mixin<__gen_words_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::string>& words;
     int32_t i;
     std::string w;
@@ -50,7 +50,7 @@ struct __gen_words_gen : public ::tpy::next_iter_mixin<__gen_words_gen, int32_t>
 
 // def blobs_gen(blobs: list[bytes]) -> Iterator[int32]:
 struct __gen_blobs_gen : public ::tpy::next_iter_mixin<__gen_blobs_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<::tpy::Bytes>& blobs;
     int32_t i;
     ::tpy::Bytes b;
@@ -76,7 +76,7 @@ struct __gen_blobs_gen : public ::tpy::next_iter_mixin<__gen_blobs_gen, int32_t>
 
 // def pairs_gen(pairs: list[tuple[str, int32]]) -> Iterator[int32]:
 struct __gen_pairs_gen : public ::tpy::next_iter_mixin<__gen_pairs_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::tuple<std::string, int32_t>>& pairs;
     int32_t i;
     std::tuple<std::string, int32_t> __for_tup_0;

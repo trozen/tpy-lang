@@ -18,7 +18,7 @@ void main();
 
 // def gen(items: list[int]) -> Iterator[int]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<::tpy::BigInt>& items;
     ::tpy::BigInt it;
     ::tpy::BigInt v;

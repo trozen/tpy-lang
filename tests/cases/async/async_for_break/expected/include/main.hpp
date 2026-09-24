@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counts& obj) {
 
 // async def __anext__(self) -> int:
 struct __coro_Counter___anext__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Counter& __self;
 
@@ -82,7 +82,7 @@ inline __coro_Counter___anext__ Counter::__anext__() {
 
 // async def first_above(c: Counts, threshold: int) -> int:
 struct __coro_first_above {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Counts& c;
     ::tpy::BigInt threshold;
@@ -113,7 +113,7 @@ struct __coro_first_above {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Counts> c;
     ::tpy::BigInt __await_lift_0;

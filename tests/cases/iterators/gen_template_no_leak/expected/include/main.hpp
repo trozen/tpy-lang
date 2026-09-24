@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Doubler& obj) {
 // def skip_first[T](it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_skip_first : public ::tpy::next_iter_mixin<__gen_skip_first<T, T_it>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_it it;
     bool started;
     using __for_src_0_t = decltype((it));
@@ -89,6 +89,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_skip_first<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         started = false;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
@@ -130,7 +131,7 @@ __gen_skip_first<T, T_it> skip_first(T_it&& it) {
 // def gtakewhile[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 struct __gen_gtakewhile : public ::tpy::next_iter_mixin<__gen_gtakewhile<T, T_it, F_pred>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     F_pred pred;
     T_it it;
     using __for_src_0_t = decltype((it));
@@ -169,6 +170,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_gtakewhile<T, T_it, F_pred>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
@@ -207,7 +209,7 @@ __gen_gtakewhile<T, T_it, F_pred> gtakewhile(F_pred&& pred, T_it&& it) {
 
 // def tag(it: list[int32]) -> Iterator[int32]:
 struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& it;
     int32_t x;
     using __for_src_0_t = decltype((it));
@@ -236,7 +238,7 @@ struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag, int32_t> {
 // def first_n[T](it: Iterable[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_first_n : public ::tpy::next_iter_mixin<__gen_first_n<T, T_it>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_it it;
     int32_t n;
     int32_t c;
@@ -275,6 +277,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_first_n<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         c = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
@@ -318,7 +321,7 @@ __gen_first_n<T, T_it> first_n(T_it&& it, int32_t n) {
 
 // def each_twice(self, it: list[int32]) -> Iterator[int32]:
 struct __gen_Doubler_each_twice : public ::tpy::next_iter_mixin<__gen_Doubler_each_twice, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Doubler& __self;
     const std::vector<int32_t>& it;
     int32_t x;

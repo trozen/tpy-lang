@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 // def gen(pairs: list[tuple[Optional[P], Optional[P]]]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::tuple<std::optional<P>, std::optional<P>>>& pairs;
     std::tuple<std::optional<P>, std::optional<P>> __for_tup_0;
     P* a = nullptr;

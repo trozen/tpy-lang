@@ -27,6 +27,7 @@ __gen_capture capture(::tpy::Union<Cat*, Dog*> a) {
 std::expected<std::string, ::tpy::StopIteration> __gen_guarded::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 0: {
@@ -100,6 +101,7 @@ __gen_guarded guarded(::tpy::Union<::tpy::BigInt, std::string> a, bool allow) {
 std::expected<std::string, ::tpy::StopIteration> __gen_kill::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 0: {

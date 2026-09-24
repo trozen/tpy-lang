@@ -18,6 +18,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_literal::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         xs = nullptr;
         __state = S_RESUME_0;
         return (((xs == nullptr)) ? (0) : (::tpy::__len__((*xs))));
@@ -53,6 +54,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_literal::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_call_then_literal::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a = &*(__ptr_slot_f0 = f.make());
         __state = S_RESUME_0;
         return (((a == nullptr)) ? (0) : (::tpy::__len__((*a))));

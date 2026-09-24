@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_chars::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         n = 0;
         __for_src_0.emplace(c.payload());
         __for_it_0.emplace(((*__for_src_0)).begin());
@@ -49,6 +50,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_chars::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_chars_m::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         n = 0;
         __for_src_0.emplace(c.payload_m());
         __for_it_0.emplace(((*__for_src_0)).begin());

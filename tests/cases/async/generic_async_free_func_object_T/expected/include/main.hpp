@@ -53,7 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 // async def increment[T: Bumpable](x: T) -> int32:
 template <typename T>
 struct __coro_increment {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::val_or_ref_t<T> x;
 
@@ -80,6 +80,7 @@ template <typename T>
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         x.bump();
         __state = S_DONE;
         int32_t __tpy_async_ret = 0;
@@ -99,7 +100,7 @@ __coro_increment<T> increment(::tpy::param_val_or_ref_t<T> x) {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Counter> c;
     int32_t _;

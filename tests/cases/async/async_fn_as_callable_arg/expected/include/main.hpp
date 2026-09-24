@@ -28,7 +28,7 @@ void main();
 
 // async def double(n: int32) -> int32:
 struct __coro_double_ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -53,7 +53,7 @@ struct __coro_double_ {
 // async def run_twice(factory: Callable[[int32], Own[Cancellable[int32]]],
 //                     a: int32, b: int32) -> int32:
 struct __coro_run_twice {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::function<std::unique_ptr<::tpystd::coro::Cancellable<int32_t>>(int32_t)> factory;
     int32_t a;
@@ -85,7 +85,7 @@ struct __coro_run_twice {
 
 // async def main_coro() -> int32:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<__coro_run_twice> __sub_0;
 

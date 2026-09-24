@@ -57,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // def nodes_gen(self) -> Iterator[Node]:
 struct __gen_Holder_nodes_gen : public ::tpy::next_iter_mixin<__gen_Holder_nodes_gen, ::tpy::val_or_ref<Node>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Holder& __self;
 
     enum : int32_t {
@@ -84,7 +84,7 @@ inline __gen_Holder_nodes_gen Holder::nodes_gen() {
 
 // def bump_all(h: Holder) -> Iterator[int32]:
 struct __gen_bump_all : public ::tpy::next_iter_mixin<__gen_bump_all, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Holder& h;
     int32_t total;
     using __for_src_0_t = ::tpy::for_source_t<decltype((h.nodes_gen()))>;

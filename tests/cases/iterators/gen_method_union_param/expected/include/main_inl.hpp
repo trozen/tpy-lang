@@ -16,6 +16,7 @@ namespace tpyapp::main {
 inline std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_voices::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __self.seen = (__self.seen) + (::tpy::BigInt(1));
         __state = S_RESUME_0;
         return "start";
@@ -61,6 +62,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_voices::__next
 inline std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_names::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __self.seen = (__self.seen) + (::tpy::BigInt(1));
         __state = S_RESUME_0;
         return "ro";

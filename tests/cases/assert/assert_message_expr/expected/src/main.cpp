@@ -62,6 +62,7 @@ __gen_gen gen(int32_t n, const Error& e) {
 ::tpystd::tpy::Poll<int32_t> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (!((n > 0))) {
             ::tpy::raise_assertion_error(e.detail());
         }

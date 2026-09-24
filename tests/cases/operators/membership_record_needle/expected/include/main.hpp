@@ -110,7 +110,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 // async def async_holds(pts: list[Pt], p: Pt) -> bool:
 struct __coro_async_holds {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<Pt>& pts;
     const Pt& p;
@@ -133,7 +133,7 @@ struct __coro_async_holds {
 
 // def gen_found(pts: list[Pt], probes: list[Pt]) -> Iterator[bool]:
 struct __gen_gen_found : public ::tpy::next_iter_mixin<__gen_gen_found, bool> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<Pt>& pts;
     const std::vector<Pt>& probes;
     using __for_src_0_t = decltype((probes));

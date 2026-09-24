@@ -18,7 +18,7 @@ void main();
 
 // def g_items(d: dict[str, int32 | None]) -> Iterator[int32]:
 struct __gen_g_items : public ::tpy::next_iter_mixin<__gen_g_items, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const ::tpy::ordered_map<std::string, std::optional<int32_t>>& d;
     std::tuple<std::string, std::optional<int32_t>> __for_tup_0;
     std::string k;

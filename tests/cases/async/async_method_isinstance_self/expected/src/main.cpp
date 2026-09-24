@@ -13,6 +13,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<std::string> __coro_describe_via_pet::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(p);
         __state = S_RESUME_0;
         continue;
@@ -44,6 +45,7 @@ __coro_describe_via_pet describe_via_pet(const Pet& p) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         d.emplace(Dog("rex"));
         p.emplace(Pet("plain"));
         __sub_0.emplace((*d));
@@ -91,6 +93,7 @@ __coro_amain amain() {
 ::tpystd::tpy::Poll<std::string> __coro_Pet_describe::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;

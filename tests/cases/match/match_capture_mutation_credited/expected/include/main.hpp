@@ -289,7 +289,7 @@ namespace tpyapp::main {
 
 // async def async_body(a: Counter | Cat) -> int32:
 struct __coro_async_body {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::Union<Cat*, Counter*> a;
 
@@ -311,7 +311,7 @@ struct __coro_async_body {
 
 // def gen_body(a: Counter | Cat) -> Iterator[int32]:
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<Cat*, Counter*> a;
 
     enum : int32_t {

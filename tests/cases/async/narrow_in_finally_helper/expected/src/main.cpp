@@ -45,6 +45,8 @@ namespace tpyapp::main {
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         try {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -114,6 +116,8 @@ __coro_a_assert a_assert(::tpy::Union<Cat*, Dog*> a) {
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         try {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -208,6 +212,8 @@ __coro_a_post_if a_post_if(::tpy::Union<Cat*, Dog*> a) {
         }
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1:
     case S_JOIN_3: {
         try {
@@ -290,6 +296,7 @@ __gen_g_post_if g_post_if(::tpy::Union<Cat*, Dog*> a) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         d.emplace(Dog());
         __sub_0.emplace(::tpy::Union<Cat*, Dog*>{&((*d))});
         __state = S_RESUME_0;

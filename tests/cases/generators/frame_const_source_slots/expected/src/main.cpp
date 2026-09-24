@@ -29,6 +29,7 @@ __gen_fieldhop fieldhop(const std::vector<P>& ps) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_items::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = ds;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -109,6 +110,7 @@ __gen_values_list values_list(const ::tpy::ordered_map<int32_t, std::vector<int3
 ::tpystd::tpy::Poll<int32_t> __coro_avalues::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t = 0;
         __for_src_0.emplace(::tpy::dict_values(m));
         __for_it_0.emplace(((*__for_src_0)).begin());
@@ -200,6 +202,7 @@ __gen_alias_in_loop alias_in_loop(const std::vector<std::vector<Box>>& ds) {
 ::tpystd::tpy::Poll<int32_t> __coro_anested::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t = 0;
         auto& __for_obj_0 = ds;
         __for_it_0.emplace((__for_obj_0).begin());
@@ -248,6 +251,56 @@ __gen_alias_in_loop alias_in_loop(const std::vector<std::vector<Box>>& ds) {
 // async def anested(ds: list[list[int32]]) -> int32:
 __coro_anested anested(const std::vector<std::vector<int32_t>>& ds) {
     return __coro_anested(ds);
+}
+
+// # the negative: a mutated param keeps the mutable capture, and the loop var is
+// # written through after the yield -- the caller sees it, so a copy would fail
+// def mutated(ds: list[list[Box]]) -> Iterator[int32]:
+//     ds.append([Box(9)])
+//     for d in ds:
+//         for b in d:  # tpyc: ok
+//             yield b.n                                 # -> S_RESUME_0
+//             b.n += 100
+std::expected<int32_t, ::tpy::StopIteration> __gen_mutated::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        ds.push_back({Box(9)});
+        auto& __for_obj_0 = ds;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield b.n
+        b->n = ::tpy::add_check<int32_t>(b->n, 100);
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        d = &(*((*__for_it_0))++);
+        auto& __for_obj_1 = (*d);
+        __for_it_1.emplace((__for_obj_1).begin());
+        __for_end_1.emplace((__for_obj_1).end());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_JOIN_1: {
+        if ((*__for_it_1) == (*__for_end_1)) {
+            __state = S_JOIN_0;
+            continue;
+        }
+        b = &(*((*__for_it_1))++);
+        __state = S_RESUME_0;
+        return b->n;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
 

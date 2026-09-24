@@ -17,6 +17,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_generator::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         count = 0;
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(3));

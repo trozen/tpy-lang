@@ -1797,6 +1797,12 @@ class TypeCompatibility:
         if isinstance(actual_bare, OwnType):
             inner = unwrap_readonly(actual_bare.wrapped)
             expected_bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(expected)))
+            # Handing a bound coroutine frame to an owning slot (a task, an
+            # Own[Cancellable[T]] param) moves the frame.
+            if (isinstance(inner, ConcreteCoroType)
+                    and isinstance(unwrap_send_sync(unwrap_readonly(expected)),
+                                   OwnType)):
+                self.ctx.check_coro_move_unstarted(expr, f"into {context}")
             if (isinstance(inner, NominalType)
                     and inner.qualified_name() == qnames.CANCELLABLE
                     and is_protocol_type(expected_bare)

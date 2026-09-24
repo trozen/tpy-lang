@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_branch_suspends::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (::tpy::is_truthy(v)) {
             __state = S_RESUME_0;
             return 1;
@@ -45,6 +46,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_branch_suspends::__nex
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_branch_no_suspend::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         n = 0;
         if (::tpy::is_truthy(v)) {
             n = 1;
@@ -68,6 +70,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_branch_no_suspend::__n
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_not_form::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((!(::tpy::is_truthy(v)))) {
             __state = S_RESUME_0;
             return 1;
@@ -109,6 +112,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_while_suspends::__next
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_0: {
         if (::tpy::is_truthy(v)) {
             __state = S_RESUME_0;
@@ -137,6 +142,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_peephole_while::__next
         continue;
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_0: {
         if (::tpy::is_truthy(v)) {
             __state = S_RESUME_0;
@@ -160,6 +167,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_peephole_while::__next
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_frame_local::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         v = b.f;
         if (::tpy::is_truthy(v)) {
             __state = S_RESUME_0;

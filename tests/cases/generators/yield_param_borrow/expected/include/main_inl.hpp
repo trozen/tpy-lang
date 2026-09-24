@@ -11,6 +11,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return xs;
     }
@@ -33,6 +34,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
 inline std::expected<::tpy::val_or_ref<P>, ::tpy::StopIteration> __gen_rep::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return b;
     }
@@ -55,6 +57,7 @@ inline std::expected<::tpy::val_or_ref<P>, ::tpy::StopIteration> __gen_rep::__ne
 inline std::expected<::tpy::val_or_ref<::tpy::ordered_map<std::string, int32_t>>, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return d;
     }
@@ -79,6 +82,7 @@ inline std::expected<::tpy::val_or_ref<::tpy::ordered_map<std::string, int32_t>>
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_late_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 0;
     }

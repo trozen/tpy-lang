@@ -23,7 +23,7 @@ void main();
 
 // async def sub() -> None:
 struct __coro_sub {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {

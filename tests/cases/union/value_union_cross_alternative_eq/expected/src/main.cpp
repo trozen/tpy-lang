@@ -31,6 +31,7 @@ __gen_gen gen(::tpy::Union<double, int32_t> a, ::tpy::Union<double, int32_t> b) 
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         bool __tpy_async_ret = (a == b);
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -485,6 +486,7 @@ bool str_int_eq(const ::tpy::Union<int32_t, std::string>& a, const ::tpy::Union<
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(x, y);
         __state = S_RESUME_0;
         continue;

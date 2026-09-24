@@ -83,7 +83,7 @@ inline std::ostream& operator<<(std::ostream& os, const Src& obj) {
 
 // def gen(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<int32_t, Box>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_slot<std::tuple<int32_t, Box>> t;
@@ -108,7 +108,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<int32_t, 
 
 // def gen_twice(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 struct __gen_gen_twice : public ::tpy::next_iter_mixin<__gen_gen_twice, std::tuple<int32_t, Box>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_slot<std::tuple<int32_t, Box>> t;
@@ -135,7 +135,7 @@ struct __gen_gen_twice : public ::tpy::next_iter_mixin<__gen_gen_twice, std::tup
 
 // def gen_call_init(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 struct __gen_gen_call_init : public ::tpy::next_iter_mixin<__gen_gen_call_init, std::tuple<int32_t, Box>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_slot<std::tuple<int32_t, Box>> t;
@@ -162,7 +162,7 @@ struct __gen_gen_call_init : public ::tpy::next_iter_mixin<__gen_gen_call_init, 
 
 // def gen_call_init_once(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 struct __gen_gen_call_init_once : public ::tpy::next_iter_mixin<__gen_gen_call_init_once, std::tuple<int32_t, Box>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_slot<std::tuple<int32_t, Box>> t;
@@ -187,7 +187,7 @@ struct __gen_gen_call_init_once : public ::tpy::next_iter_mixin<__gen_gen_call_i
 
 // def gen_call_init_borrowed(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 struct __gen_gen_call_init_borrowed : public ::tpy::next_iter_mixin<__gen_gen_call_init_borrowed, std::tuple<int32_t, Box>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_slot<std::tuple<int32_t, Box>> t;
@@ -215,7 +215,7 @@ struct __gen_gen_call_init_borrowed : public ::tpy::next_iter_mixin<__gen_gen_ca
 
 // def gen_call_init_borrow_dead(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 struct __gen_gen_call_init_borrow_dead : public ::tpy::next_iter_mixin<__gen_gen_call_init_borrow_dead, std::tuple<int32_t, Box>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_slot<std::tuple<int32_t, Box>> t;
@@ -243,7 +243,7 @@ struct __gen_gen_call_init_borrow_dead : public ::tpy::next_iter_mixin<__gen_gen
 
 // def gen_preloop(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 struct __gen_gen_preloop : public ::tpy::next_iter_mixin<__gen_gen_preloop, std::tuple<int32_t, Box>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     ::tpy::frame_slot<std::tuple<int32_t, Box>> t;
     int32_t _;
@@ -270,7 +270,7 @@ struct __gen_gen_preloop : public ::tpy::next_iter_mixin<__gen_gen_preloop, std:
 
 // def gen_live(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 struct __gen_gen_live : public ::tpy::next_iter_mixin<__gen_gen_live, std::tuple<int32_t, Box>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_slot<std::tuple<int32_t, Box>> t;
@@ -297,7 +297,7 @@ struct __gen_gen_live : public ::tpy::next_iter_mixin<__gen_gen_live, std::tuple
 
 // def pairs(self, n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 struct __gen_Src_pairs : public ::tpy::next_iter_mixin<__gen_Src_pairs, std::tuple<int32_t, Box>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Src& __self;
     int32_t n;
     int32_t i;

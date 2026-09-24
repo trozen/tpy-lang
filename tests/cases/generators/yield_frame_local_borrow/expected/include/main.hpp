@@ -30,7 +30,7 @@ void main();
 
 // def counter() -> Iterator[list[int]]:
 struct __gen_counter : public ::tpy::next_iter_mixin<__gen_counter, ::tpy::val_or_ref<std::vector<::tpy::BigInt>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::vector<::tpy::BigInt>> buf;
 
     enum : int32_t {
@@ -53,7 +53,7 @@ struct __gen_counter : public ::tpy::next_iter_mixin<__gen_counter, ::tpy::val_o
 
 // def walk() -> Iterator[tuple[str, list[str], list[str]]]:
 struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::vector<std::string>> dirs;
     ::tpy::frame_slot<std::vector<std::string>> files;
 
@@ -76,7 +76,7 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<std::st
 
 // def no_later_read() -> Iterator[list[int]]:
 struct __gen_no_later_read : public ::tpy::next_iter_mixin<__gen_no_later_read, ::tpy::val_or_ref<std::vector<::tpy::BigInt>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::vector<::tpy::BigInt>> buf;
 
     enum : int32_t {

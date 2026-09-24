@@ -379,6 +379,9 @@ class SemanticAnalyzer:
         # (the alias-rebind pass's OWN verdict) -- the frame layout's
         # pointer-form criterion.
         self.function_own_rebind_names: IdentityMap = IdentityMap()
+        # Per function: what each generator-object local borrows
+        # (FunctionTrackingState.frame_local_roots), for the frame layout.
+        self.function_frame_local_roots: IdentityMap = IdentityMap()
         self.top_level_scan_result: ScanResult | None = None
 
         # Per-function/method hoisted vars (try/finally + branch predecl)
@@ -1792,11 +1795,12 @@ class SemanticAnalyzer:
                 i for i, pname in enumerate(param_list)
                 if pname in self.ctx.func.current_addr_escape_param_names
             )
-            # Generator functions: the returned struct stores non-value params
-            # as T& references (or &ref lambda captures), and str/view params
-            # as views of the argument's storage, so the result borrows from
-            # those params (the same set registration stamped up front).
-            if func.is_generator:
+            # Generator and async functions: the returned frame stores
+            # non-value params as T& references (or &ref lambda captures), and
+            # str/view params as views of the argument's storage, so the
+            # result borrows from those params (the same set registration
+            # stamped up front).
+            if func.is_generator or func.is_async:
                 gen_borrows = TypeRegistrar.generator_borrow_param_indices(
                     [p.type for p in func_info.params])
                 if gen_borrows:
@@ -1908,6 +1912,8 @@ class SemanticAnalyzer:
         """Store prescan/liveness results for codegen consumption."""
         self.function_scan_results[func] = scan
         self.function_own_rebind_names[func] = self.ctx.func.own_rebind_names
+        self.function_frame_local_roots[func] = dict(
+            self.ctx.func.frame_local_roots)
         if self.ctx.func.hoisted_vars:
             self.function_hoisted_vars[func] = self.ctx.func.hoisted_vars.copy()
         if self.ctx.func.move_through_vars:
@@ -3330,11 +3336,11 @@ class SemanticAnalyzer:
                     )
                     if "self" in self.ctx.func.current_returned_param_names:
                         returned = returned | frozenset([-1])
-                    # Generator methods: union the frame's param captures,
-                    # mirroring the free-function finalize. The frame's self
-                    # reference is deliberately not represented as -1 (it
-                    # would block readonly inference); see BUGS.md.
-                    if method.is_generator:
+                    # Generator and async methods: union the frame's param
+                    # captures, mirroring the free-function finalize. The
+                    # frame's self reference is deliberately not represented
+                    # as -1 (it would block readonly inference); see BUGS.md.
+                    if method.is_generator or method.is_async:
                         returned = returned | TypeRegistrar.generator_borrow_param_indices(
                             [p.type for p in method_fi.params])
                     method_fi.return_borrows_from = returned

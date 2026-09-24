@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // async def feed(self, n: int32) -> int32:
 struct __coro_Pet_feed {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Pet& __self;
     int32_t n;
@@ -78,7 +78,7 @@ inline __coro_Pet_feed Pet::feed(int32_t n) const {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Dog> d;
     int32_t v;

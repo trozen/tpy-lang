@@ -87,7 +87,7 @@ inline __gen_Source_windowed Source::windowed(const std::vector<int32_t>& xs) co
 
 // def doubled(self) -> Iterator[int32]:  # tpyc: ok
 struct __gen_Source_doubled : public ::tpy::next_iter_mixin<__gen_Source_doubled, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Source& __self;
 
     enum : int32_t {

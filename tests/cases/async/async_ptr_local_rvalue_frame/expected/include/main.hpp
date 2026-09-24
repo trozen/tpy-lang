@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // async def read_after_await() -> None:
 struct __coro_read_after_await {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Point* saved = nullptr;
     std::optional<Point> __ptr_slot_f0;

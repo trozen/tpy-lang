@@ -14,6 +14,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpy::__len__(xs);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));

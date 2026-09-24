@@ -17,6 +17,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_chunks::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         out.emplace(std::vector<std::vector<int32_t>>{});
         seen.emplace(std::vector<::tpy::Bytes>{});
         buf.emplace(std::vector<int32_t>{1, 2, 3});

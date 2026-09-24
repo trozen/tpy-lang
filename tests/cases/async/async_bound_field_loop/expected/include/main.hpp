@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Summer<T>& obj) {
 
 // async def total(s: Summer[list[int32]]) -> int32:
 struct __coro_total {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Summer<std::vector<int32_t>>& s;
     int32_t result;

@@ -12,6 +12,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_ro::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -42,6 +43,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_ro::__next__() {
 inline std::expected<::tpy::val_or_ref<Rec>, ::tpy::StopIteration> __gen_mut::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         recs.push_back(Rec(4));
         auto& __for_obj_0 = recs;
         __for_it_0.emplace((__for_obj_0).begin());
@@ -74,6 +76,7 @@ inline std::expected<::tpy::val_or_ref<Rec>, ::tpy::StopIteration> __gen_mut::__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_sub_hop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = grid;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -119,6 +122,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_sub_hop::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_chain_hop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = ::tpy::__getitem__(s.rows, 0);
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -151,6 +155,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_chain_hop::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_alias_ro::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = ds;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -183,6 +188,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_alias_ro::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_alias_mut::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = ds;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -214,6 +220,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_alias_mut::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_to_mut_callee::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpyapp::main::bump(xs);
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
@@ -244,6 +251,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_to_mut_callee::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_items_ro::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpy::dict_items(d));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
@@ -279,6 +287,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_items_ro::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_values_ro::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpy::dict_values(d));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
@@ -310,6 +319,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_values_ro::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_match_ro::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = b;
         {
             v = ::tpy::optional_to_ptr(__match_subject_1.inner);
@@ -347,6 +357,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_match_ro::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Bag_scan::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = ys;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

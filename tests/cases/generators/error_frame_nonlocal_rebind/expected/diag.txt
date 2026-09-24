@@ -1,0 +1,1 @@
+main.py:21: error: cannot rebind generator 'g' through 'nonlocal': rebind it in the function that binds it, or bind the new generator to a new name

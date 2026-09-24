@@ -190,6 +190,7 @@ void ret_union(Dog& d, Dog& e) {
 ::tpystd::tpy::Poll<std::string> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         p = &(d);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;

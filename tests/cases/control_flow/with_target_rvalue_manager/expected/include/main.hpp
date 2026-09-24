@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // def steps(limit: int32) -> Iterator[int32]:
 struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t limit;
     ::tpy::frame_slot<::tpy::with_enter_t<Counter>> guard;
     ::tpy::frame_slot<Counter> __with_ctx_0;

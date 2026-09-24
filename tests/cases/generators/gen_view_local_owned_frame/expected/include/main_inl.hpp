@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_across_yield::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpyapp::main::pair(7);
         host = std::get<0>(__tup_1);
         port = std::get<1>(__tup_1);
@@ -44,6 +45,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_across_yield::_
 inline std::expected<std::string, ::tpy::StopIteration> __gen_dict_keys::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = d;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -79,6 +81,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_dict_keys::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_blob_slices::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = blobs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -118,6 +121,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_blob_slices::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_static_sources::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         lit = "static";
         view = "explicit";
         __state = S_RESUME_0;

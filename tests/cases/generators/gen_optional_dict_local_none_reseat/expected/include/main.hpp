@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // def keys_of(self) -> Iterator[int32]:
 struct __gen_Holder_keys_of : public ::tpy::next_iter_mixin<__gen_Holder_keys_of, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Holder& __self;
     ::tpy::ordered_map<int32_t, int32_t>* m = nullptr;
     int32_t k;

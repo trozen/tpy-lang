@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // def gen() -> Iterator[int]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string v;
 
     enum : int32_t {

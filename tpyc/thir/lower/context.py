@@ -11,7 +11,7 @@ from ...parse.nodes import (TpyAssign, TpyCoerce, TpyExpr, TpyFieldAccess,
 from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ...typesys import (
     CallableType,
-    ConcreteCoroType,
+    ConcreteFrameType,
     OptionalType,
     OwnType,
     ReadonlyType,
@@ -203,10 +203,11 @@ class SinkForm(Enum):
     # takes: an `Own[F1-record]`-element tuple call result
     # (`_owned_tuple_call_ret`) and a value-tuple class constant.
     TUPLE_SOURCE = auto()
-    # An async-def FACTORY call (`asyncio.run(main_coro())`'s inner call),
-    # whose concrete coro frame is consumed whole by the heap adapter or
-    # the frame slot -- never by a typed value slot.
-    CORO_FACTORY = auto()
+    # A generator / async-def FACTORY call (`g = gen(n)`,
+    # `asyncio.run(main_coro())`'s inner call), whose concrete frame is
+    # consumed whole by a frame slot or the heap adapter -- never by a
+    # typed value slot.
+    FRAME_FACTORY = auto()
     # A @native record-returning free call into the `__ctx_N` manager slot
     # (`with open(path, mode) as f`), whatever native symbol the overload
     # resolves to.
@@ -301,7 +302,7 @@ _NO_FORMS: frozenset[SinkForm] = frozenset()
 _ONLY_TUPLE_SOURCE: frozenset[SinkForm] = frozenset({SinkForm.TUPLE_SOURCE})
 _ONLY_BTUPLE_SLOT: frozenset[SinkForm] = frozenset({SinkForm.BTUPLE_SLOT})
 _ONLY_INDIRECT_READ: frozenset[SinkForm] = frozenset({SinkForm.INDIRECT_READ})
-_ONLY_CORO_FACTORY: frozenset[SinkForm] = frozenset({SinkForm.CORO_FACTORY})
+_ONLY_FRAME_FACTORY: frozenset[SinkForm] = frozenset({SinkForm.FRAME_FACTORY})
 _ONLY_CTX_MANAGER: frozenset[SinkForm] = frozenset({SinkForm.CTX_MANAGER})
 # The FOLD end of the 3-valued literal axis. Which sinks carry it is
 # enumerated, never derived from `slot_target is None`: a target-less sink
@@ -422,7 +423,7 @@ def _decl_slot_forms(slot: 'TpyType | None', analyzer, *,
     sink consumes WHOLE, whether it is a call at all, and whether the name
     binds as a pointer:
 
-      coro frame slot + from_call               -> CORO_FACTORY
+      frame slot + from_call                    -> FRAME_FACTORY
       pointer slot (ptr-repr Optional, Ptr[T])  -> PTR_OPT_PASSTHROUGH
       tuple slot + whole_tuple_call             -> TUPLE_SOURCE
       borrow-form tuple slot + from_call        -> BTUPLE_SLOT
@@ -437,10 +438,10 @@ def _decl_slot_forms(slot: 'TpyType | None', analyzer, *,
          if slot is not None else None)
     if isinstance(u, OwnType):
         u = unwrap_readonly(u.wrapped)
-    # CORO_FACTORY names a FACTORY CALL's result, so the row asks for the
+    # FRAME_FACTORY names a FACTORY CALL's result, so the row asks for the
     # call as well as the frame slot.
-    if isinstance(u, ConcreteCoroType) and from_call:
-        return _ONLY_CORO_FACTORY
+    if isinstance(u, ConcreteFrameType) and from_call:
+        return _ONLY_FRAME_FACTORY
     # A tuple slot is answered BEFORE the pointer row: an `Optional[tuple]`
     # of reference elements uses pointer repr (the inner is not a value
     # type), and the tuple rows -- not the bare `T*` pass -- are its
@@ -482,7 +483,7 @@ def _call_arg_forms(whole_tuple: bool, coro_factory: bool,
     if whole_tuple:
         return _ONLY_TUPLE_SOURCE
     if coro_factory:
-        return _ONLY_CORO_FACTORY
+        return _ONLY_FRAME_FACTORY
     if ptr_opt_pass:
         return _ONLY_PTR_OPT_PASSTHROUGH
     return _ONLY_INDIRECT_READ

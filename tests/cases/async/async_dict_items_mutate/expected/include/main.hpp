@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 // async def bump(d: dict[int32, C]) -> int32:
 struct __coro_bump {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::ordered_map<int32_t, C>& d;
     int32_t n;

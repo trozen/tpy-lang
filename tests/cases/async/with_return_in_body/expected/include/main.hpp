@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
 
 // async def __aenter__(self) -> int:
 struct __coro_CM___aenter__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const CM& __self;
 
@@ -66,7 +66,7 @@ inline __coro_CM___aenter__ CM::__aenter__() const {
 
 // async def __aexit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None:
 struct __coro_CM___aexit__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const CM& __self;
     std::monostate exc_type;
@@ -95,7 +95,7 @@ inline __coro_CM___aexit__ CM::__aexit__(std::monostate exc_type, std::monostate
 
 // async def inner() -> int:
 struct __coro_inner {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt v;
     ::tpy::frame_slot<CM> __with_ctx_0;
@@ -128,7 +128,7 @@ struct __coro_inner {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt r;
     std::optional<__coro_inner> __sub_0;

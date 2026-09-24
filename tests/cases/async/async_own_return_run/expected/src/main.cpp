@@ -13,6 +13,7 @@ Box2* direct{};
 ::tpystd::tpy::Poll<Box2> __coro_make::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -46,6 +47,7 @@ __coro_make make(::tpy::BigInt v) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(::tpystd::asyncio::create_task<Box2>(::tpy::make_adapter<::tpystd::coro::Cancellable<Box2>>(::tpyapp::main::make(::tpy::BigInt(1)))));
         __sub_0 = &((*t));
         __state = S_RESUME_0;

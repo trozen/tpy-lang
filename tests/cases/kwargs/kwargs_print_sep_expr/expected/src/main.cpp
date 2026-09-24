@@ -45,6 +45,7 @@ __gen_gen gen(std::string_view d) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         std::cout << "async:" << " ";
         const auto& __tmp_7 = (::tpy::str_concat(d, "^"));
         std::cout << "u" << __tmp_7 << "v" << "\n";

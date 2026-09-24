@@ -33,7 +33,7 @@ void main();
 
 // async def shared() -> int32:
 struct __coro_shared {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -56,7 +56,7 @@ struct __coro_shared {
 
 // async def a() -> int32:
 struct __coro_a {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<__coro_shared> __sub_0;
 
@@ -79,7 +79,7 @@ struct __coro_a {
 
 // async def b() -> int32:
 struct __coro_b {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<__coro_shared> __sub_0;
 
@@ -102,7 +102,7 @@ struct __coro_b {
 
 // async def driver() -> None:
 struct __coro_driver {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t x;
     int32_t y;
@@ -129,7 +129,7 @@ struct __coro_driver {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<__coro_driver> __sub_0;
 

@@ -35,6 +35,8 @@ namespace tpyapp::main {
         }
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_0: {
         try {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(1.0)));
@@ -63,6 +65,7 @@ __coro_slow slow() {
 ::tpystd::tpy::Poll<int32_t> __coro_fast::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -93,6 +96,7 @@ __coro_fast fast() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_canceller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.002)));
         __state = S_RESUME_0;
         continue;
@@ -133,6 +137,7 @@ __coro_canceller canceller(::tpystd::asyncio::_executor::Task<int32_t> target) {
 ::tpystd::tpy::Poll<std::vector<::tpystd::asyncio::Settled<int32_t>>> __coro_gather_helper::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::slow())));
         b.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::fast())));
         ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::canceller((*a).clone())));
@@ -178,6 +183,7 @@ __coro_gather_helper gather_helper() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;

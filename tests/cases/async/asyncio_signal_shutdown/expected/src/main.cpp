@@ -42,6 +42,8 @@ namespace tpyapp::main {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         try {
             std::cout << "serving" << "\n";

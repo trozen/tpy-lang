@@ -12,6 +12,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         int32_t __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -33,6 +34,7 @@ __coro_value value(int32_t n) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         throw ::tpy::ValueError("oops");
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -84,6 +86,8 @@ __coro_fail fail() {
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_0: {
         __sub_0.emplace();
         __state = S_RESUME_0;

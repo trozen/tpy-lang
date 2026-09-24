@@ -31,7 +31,7 @@ void main();
 
 // async def sub() -> int32:
 struct __coro_sub {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -52,7 +52,7 @@ struct __coro_sub {
 
 // async def caller() -> int32:
 struct __coro_caller {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t;
     ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;
@@ -76,7 +76,7 @@ struct __coro_caller {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t result;
     std::optional<__coro_caller> __sub_0;

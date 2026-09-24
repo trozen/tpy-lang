@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -51,6 +52,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen::
 inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_twice::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -94,6 +96,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_t
 inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_init::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -134,6 +137,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_c
 inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_init_once::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -175,6 +179,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_c
 inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_init_borrowed::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -224,6 +229,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_c
 inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_init_borrow_dead::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -266,6 +272,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_c
 inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_preloop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(::tpyapp::main::mk(7));
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
@@ -306,6 +313,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_p
 inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_live::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -348,6 +356,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_l
 inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_Src_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;

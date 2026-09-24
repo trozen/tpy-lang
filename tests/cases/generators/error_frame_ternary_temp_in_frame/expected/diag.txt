@@ -1,0 +1,1 @@
+main.py:19: error: cannot bind generator 'g' from this expression inside a generator or async function: it borrows a temporary, which lives only until the next yield or await; bind the temporary to a name first, or bind each generator with an assignment of its own

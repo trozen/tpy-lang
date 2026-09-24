@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // async def borrow(self) -> Payload:
 struct __coro_Holder_borrow {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Holder& __self;
 
@@ -88,7 +88,7 @@ inline __coro_Holder_borrow Holder::borrow() {
 
 // async def take(h: Holder) -> Own[Payload]:
 struct __coro_take {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Holder& h;
     std::optional<__coro_Holder_borrow> __sub_0;
@@ -112,7 +112,7 @@ struct __coro_take {
 
 // async def take_copy(h: Holder) -> Own[Payload]:
 struct __coro_take_copy {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Holder& h;
     Payload* __await_lift_0 = nullptr;
@@ -137,7 +137,7 @@ struct __coro_take_copy {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Holder> h;
     ::tpy::frame_slot<Payload> p;

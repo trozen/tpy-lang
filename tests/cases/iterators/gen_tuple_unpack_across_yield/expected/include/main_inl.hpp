@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpyapp::main::make_pair();
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);

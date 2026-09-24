@@ -81,6 +81,7 @@ __gen_gen gen(bool c, std::tuple<int32_t, int32_t> t1, std::tuple<int32_t, int32
 ::tpystd::tpy::Poll<int32_t> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         const auto& __tup_1 = ((c) ? (t1) : (t2));
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);

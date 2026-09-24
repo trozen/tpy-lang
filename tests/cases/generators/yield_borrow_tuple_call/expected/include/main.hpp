@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // def g(xs: list[P]) -> Iterator[tuple[int32, P]]:
 struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, std::tuple<int32_t, P*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<P>& xs;
 
     enum : int32_t {
@@ -83,7 +83,7 @@ struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, std::tuple<int32_t, P*>>
 
 // def walk(self) -> Iterator[tuple[int32, P]]:
 struct __gen_Box_walk : public ::tpy::next_iter_mixin<__gen_Box_walk, std::tuple<int32_t, P*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Box& __self;
 
     enum : int32_t {

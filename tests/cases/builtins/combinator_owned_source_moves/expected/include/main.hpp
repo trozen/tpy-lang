@@ -256,7 +256,7 @@ inline std::ostream& operator<<(std::ostream& os, const Deleg& obj) {
 
 // async def acount(xs: list[int32]) -> int32:
 struct __coro_acount {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<int32_t>& xs;
 
@@ -278,7 +278,7 @@ struct __coro_acount {
 
 // def gen() -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -301,7 +301,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
 // def ranged() -> Iterator[int32]:
 struct __gen_ranged : public ::tpy::next_iter_mixin<__gen_ranged, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
     ::tpy::frame_loop_slot<int32_t> __for_stop_0;
@@ -326,7 +326,7 @@ struct __gen_ranged : public ::tpy::next_iter_mixin<__gen_ranged, int32_t> {
 
 // def pairs(xs: list[int32]) -> Iterator[int32]:
 struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& xs;
     int32_t t;
     std::tuple<int32_t, int32_t> __for_tup_1;

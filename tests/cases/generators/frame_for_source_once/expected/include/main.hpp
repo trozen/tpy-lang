@@ -337,7 +337,7 @@ inline std::ostream& operator<<(std::ostream& os, const Row& obj) {
 
 // async def async_accessor(b: Bag) -> int32:
 struct __coro_async_accessor {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Bag& b;
     int32_t total;
@@ -367,7 +367,7 @@ struct __coro_async_accessor {
 
 // async def async_slice(cells: list[Cell]) -> int32:
 struct __coro_async_slice {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<Cell>& cells;
     int32_t total;
@@ -398,7 +398,7 @@ struct __coro_async_slice {
 
 // async def async_combinator_temp() -> int32:
 struct __coro_async_combinator_temp {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t total;
     int32_t i;
@@ -430,7 +430,7 @@ struct __coro_async_combinator_temp {
 
 // async def async_zip(xs: list[int32], ys: list[int32]) -> int32:
 struct __coro_async_zip {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<int32_t>& xs;
     const std::vector<int32_t>& ys;
@@ -463,7 +463,7 @@ struct __coro_async_zip {
 
 // def gen_cells() -> Iterator[Own[Cell]]:
 struct __gen_gen_cells : public ::tpy::next_iter_mixin<__gen_gen_cells, Cell> {
-    int32_t __state;
+    ::tpy::frame_state __state;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -485,7 +485,7 @@ struct __gen_gen_cells : public ::tpy::next_iter_mixin<__gen_gen_cells, Cell> {
 
 // def named_src() -> Iterator[str]:
 struct __gen_named_src : public ::tpy::next_iter_mixin<__gen_named_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::array<Cell, 2>> cells;
     using __for_src_0_t = decltype(((*cells)));
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
@@ -513,7 +513,7 @@ struct __gen_named_src : public ::tpy::next_iter_mixin<__gen_named_src, std::str
 
 // def param_src(cells: list[Cell]) -> Iterator[str]:
 struct __gen_param_src : public ::tpy::next_iter_mixin<__gen_param_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Cell>& cells;
     using __for_src_0_t = decltype((cells));
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
@@ -540,7 +540,7 @@ struct __gen_param_src : public ::tpy::next_iter_mixin<__gen_param_src, std::str
 
 // def subscript_src(table: dict[str, list[Cell]]) -> Iterator[str]:
 struct __gen_subscript_src : public ::tpy::next_iter_mixin<__gen_subscript_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::ordered_map<std::string, std::vector<Cell>>& table;
     using __for_src_0_t = decltype((::tpy::__getitem__(table, "a")));
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
@@ -567,7 +567,7 @@ struct __gen_subscript_src : public ::tpy::next_iter_mixin<__gen_subscript_src, 
 
 // def accessor_src(b: Bag) -> Iterator[str]:
 struct __gen_accessor_src : public ::tpy::next_iter_mixin<__gen_accessor_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Bag& b;
     using __for_src_0_t = decltype((b.items()));
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
@@ -594,7 +594,7 @@ struct __gen_accessor_src : public ::tpy::next_iter_mixin<__gen_accessor_src, st
 
 // def property_src(b: Bag) -> Iterator[str]:
 struct __gen_property_src : public ::tpy::next_iter_mixin<__gen_property_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Bag& b;
     using __for_src_0_t = decltype((b.view()));
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
@@ -621,7 +621,7 @@ struct __gen_property_src : public ::tpy::next_iter_mixin<__gen_property_src, st
 
 // def own_call_src() -> Iterator[str]:
 struct __gen_own_call_src : public ::tpy::next_iter_mixin<__gen_own_call_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make_cells()))>;
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
@@ -649,7 +649,7 @@ struct __gen_own_call_src : public ::tpy::next_iter_mixin<__gen_own_call_src, st
 
 // def copy_src(cells: list[Cell]) -> Iterator[str]:
 struct __gen_copy_src : public ::tpy::next_iter_mixin<__gen_copy_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<Cell>& cells;
     using __for_src_0_t = ::tpy::for_source_t<decltype((std::vector<Cell>(cells)))>;
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
@@ -678,7 +678,7 @@ struct __gen_copy_src : public ::tpy::next_iter_mixin<__gen_copy_src, std::strin
 
 // def literal_src() -> Iterator[str]:
 struct __gen_literal_src : public ::tpy::next_iter_mixin<__gen_literal_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     using __for_src_0_t = ::tpy::for_source_t<decltype((std::array<Cell, 2>{Cell(4), Cell(5)}))>;
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
@@ -706,7 +706,7 @@ struct __gen_literal_src : public ::tpy::next_iter_mixin<__gen_literal_src, std:
 
 // def slice_mut_src() -> Iterator[str]:
 struct __gen_slice_mut_src : public ::tpy::next_iter_mixin<__gen_slice_mut_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::array<Cell, 3>> cells;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::list_slice((*cells), ::tpy::BasicSlice{1, std::nullopt})))>;
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
@@ -735,7 +735,7 @@ struct __gen_slice_mut_src : public ::tpy::next_iter_mixin<__gen_slice_mut_src, 
 
 // def slice_const_src(cells: list[Cell]) -> Iterator[str]:
 struct __gen_slice_const_src : public ::tpy::next_iter_mixin<__gen_slice_const_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<Cell>& cells;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::list_slice(cells, ::tpy::BasicSlice{1, std::nullopt})))>;
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
@@ -764,7 +764,7 @@ struct __gen_slice_const_src : public ::tpy::next_iter_mixin<__gen_slice_const_s
 
 // def ternary_lvalues_src(flag: bool) -> Iterator[str]:
 struct __gen_ternary_lvalues_src : public ::tpy::next_iter_mixin<__gen_ternary_lvalues_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool flag;
     ::tpy::frame_slot<std::vector<Cell>> xs;
     ::tpy::frame_slot<std::vector<Cell>> ys;
@@ -794,7 +794,7 @@ struct __gen_ternary_lvalues_src : public ::tpy::next_iter_mixin<__gen_ternary_l
 
 // def ternary_temps_src(flag: bool) -> Iterator[str]:
 struct __gen_ternary_temps_src : public ::tpy::next_iter_mixin<__gen_ternary_temps_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool flag;
     using __for_src_0_t = ::tpy::for_source_t<decltype((((flag) ? (std::vector<Cell>{Cell(10)}) : (std::vector<Cell>{Cell(11)}))))>;
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
@@ -823,7 +823,7 @@ struct __gen_ternary_temps_src : public ::tpy::next_iter_mixin<__gen_ternary_tem
 
 // def walrus_src() -> Iterator[str]:
 struct __gen_walrus_src : public ::tpy::next_iter_mixin<__gen_walrus_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::vector<Cell>> ws;
     using __for_src_0_t = decltype((ws.emplace(::tpyapp::main::make_cells())));
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
@@ -852,7 +852,7 @@ struct __gen_walrus_src : public ::tpy::next_iter_mixin<__gen_walrus_src, std::s
 
 // def str_temp_src(a: str, b: str) -> Iterator[str]:
 struct __gen_str_temp_src : public ::tpy::next_iter_mixin<__gen_str_temp_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string a;
     std::string b;
     char ch;
@@ -881,7 +881,7 @@ struct __gen_str_temp_src : public ::tpy::next_iter_mixin<__gen_str_temp_src, st
 
 // def gen_call_src() -> Iterator[str]:
 struct __gen_gen_call_src : public ::tpy::next_iter_mixin<__gen_gen_call_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<Cell> c;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::gen_cells()))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
@@ -908,7 +908,7 @@ struct __gen_gen_call_src : public ::tpy::next_iter_mixin<__gen_gen_call_src, st
 
 // def zip_names_src(xs: list[int32], ys: list[int32]) -> Iterator[int32]:
 struct __gen_zip_names_src : public ::tpy::next_iter_mixin<__gen_zip_names_src, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& xs;
     const std::vector<int32_t>& ys;
     std::tuple<int32_t, int32_t> __for_tup_1;
@@ -938,7 +938,7 @@ struct __gen_zip_names_src : public ::tpy::next_iter_mixin<__gen_zip_names_src, 
 
 // def enumerate_cells_src() -> Iterator[str]:
 struct __gen_enumerate_cells_src : public ::tpy::next_iter_mixin<__gen_enumerate_cells_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::array<Cell, 2>> cells;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate((*cells))))>;
     ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* __for_tup_2 = nullptr;
@@ -968,7 +968,7 @@ struct __gen_enumerate_cells_src : public ::tpy::next_iter_mixin<__gen_enumerate
 
 // def reversed_temp_src() -> Iterator[str]:
 struct __gen_reversed_temp_src : public ::tpy::next_iter_mixin<__gen_reversed_temp_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::vector<Cell>> __coro_arg_0;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_reversed((*__coro_arg_0))))>;
     ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* c = nullptr;
@@ -996,7 +996,7 @@ struct __gen_reversed_temp_src : public ::tpy::next_iter_mixin<__gen_reversed_te
 
 // def readonly_view_src(d: readonly[dict[str, Cell]]) -> Iterator[int32]:
 struct __gen_readonly_view_src : public ::tpy::next_iter_mixin<__gen_readonly_view_src, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const ::tpy::ordered_map<std::string, Cell>& d;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_values(d)))>;
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
@@ -1024,7 +1024,7 @@ struct __gen_readonly_view_src : public ::tpy::next_iter_mixin<__gen_readonly_vi
 
 // def const_method_src(b: readonly[Bag]) -> Iterator[int32]:
 struct __gen_const_method_src : public ::tpy::next_iter_mixin<__gen_const_method_src, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Bag& b;
     using __for_src_0_t = decltype((b.items_m()));
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
@@ -1051,7 +1051,7 @@ struct __gen_const_method_src : public ::tpy::next_iter_mixin<__gen_const_method
 
 // def ternary_params_src(xs: list[Cell], ys: list[Cell], flag: bool) -> Iterator[int32]:
 struct __gen_ternary_params_src : public ::tpy::next_iter_mixin<__gen_ternary_params_src, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<Cell>& xs;
     const std::vector<Cell>& ys;
     bool flag;
@@ -1081,7 +1081,7 @@ struct __gen_ternary_params_src : public ::tpy::next_iter_mixin<__gen_ternary_pa
 // def doubled(items: Iterable[int32]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<int32_t> T_items>
 struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T_items>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_items items;
     int32_t x;
     using __for_src_0_t = decltype((items));
@@ -1114,6 +1114,7 @@ template <::tpystd::typing::Iterable<int32_t> T_items>
 std::expected<int32_t, ::tpy::StopIteration> __gen_doubled<T_items>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 0;
     }
@@ -1147,7 +1148,7 @@ __gen_doubled<T_items> doubled(T_items&& items) {
 
 // def delegate_proto_src(xs: list[int32]) -> Iterator[int32]:
 struct __gen_delegate_proto_src : public ::tpy::next_iter_mixin<__gen_delegate_proto_src, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<int32_t>& xs;
     int32_t v;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::doubled(xs)))>;
@@ -1175,7 +1176,7 @@ struct __gen_delegate_proto_src : public ::tpy::next_iter_mixin<__gen_delegate_p
 
 // def iter_object_src(h: Holder) -> Iterator[int32]:
 struct __gen_iter_object_src : public ::tpy::next_iter_mixin<__gen_iter_object_src, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Holder& h;
     int32_t v;
     using __for_src_0_t = decltype((h.get()));
@@ -1202,7 +1203,7 @@ struct __gen_iter_object_src : public ::tpy::next_iter_mixin<__gen_iter_object_s
 
 // def nested_src(rows: list[Row]) -> Iterator[str]:
 struct __gen_nested_src : public ::tpy::next_iter_mixin<__gen_nested_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Row>& rows;
     using __for_src_0_t = decltype((rows));
     ::tpy::begin_elem_t<__for_src_0_t>* row = nullptr;
@@ -1234,7 +1235,7 @@ struct __gen_nested_src : public ::tpy::next_iter_mixin<__gen_nested_src, std::s
 
 // def arg_temp_src() -> Iterator[str]:
 struct __gen_arg_temp_src : public ::tpy::next_iter_mixin<__gen_arg_temp_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::take(std::declval<Cell&>(), 2)))>;
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
@@ -1262,7 +1263,7 @@ struct __gen_arg_temp_src : public ::tpy::next_iter_mixin<__gen_arg_temp_src, st
 
 // def nested_combinator_src(xs: list[int32]) -> Iterator[int32]:
 struct __gen_nested_combinator_src : public ::tpy::next_iter_mixin<__gen_nested_combinator_src, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& xs;
     std::tuple<int32_t, int32_t> __for_tup_3;
     int32_t i;
@@ -1291,7 +1292,7 @@ struct __gen_nested_combinator_src : public ::tpy::next_iter_mixin<__gen_nested_
 
 // def combinator_temp_src() -> Iterator[int32]:
 struct __gen_combinator_temp_src : public ::tpy::next_iter_mixin<__gen_combinator_temp_src, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::tuple<int32_t, int32_t> __for_tup_4;
     int32_t i;
     int32_t v;
@@ -1320,7 +1321,7 @@ struct __gen_combinator_temp_src : public ::tpy::next_iter_mixin<__gen_combinato
 
 // def str_literal_src() -> Iterator[str]:
 struct __gen_str_literal_src : public ::tpy::next_iter_mixin<__gen_str_literal_src, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     char ch;
     using __for_src_0_t = ::tpy::for_source_t<decltype((std::string_view("ab")))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
@@ -1348,7 +1349,7 @@ struct __gen_str_literal_src : public ::tpy::next_iter_mixin<__gen_str_literal_s
 
 // def pairs_of(cells: list[Cell]) -> Iterator[tuple[int32, Cell]]:
 struct __gen_pairs_of : public ::tpy::next_iter_mixin<__gen_pairs_of, std::tuple<int32_t, Cell*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Cell>& cells;
     int32_t i;
     using __for_src_0_t = decltype((cells));
@@ -1376,7 +1377,7 @@ struct __gen_pairs_of : public ::tpy::next_iter_mixin<__gen_pairs_of, std::tuple
 
 // def next_unpack_src(cells: list[Cell]) -> Iterator[int32]:
 struct __gen_next_unpack_src : public ::tpy::next_iter_mixin<__gen_next_unpack_src, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Cell>& cells;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::pairs_of(cells)))>;
     ::tpy::step_elem_t<::tpy::iter_next_t<__for_src_0_t>>* __for_tup_5 = nullptr;
@@ -1405,7 +1406,7 @@ struct __gen_next_unpack_src : public ::tpy::next_iter_mixin<__gen_next_unpack_s
 
 // def shared_var_src(b: readonly[list[Cell]]) -> Iterator[int32]:
 struct __gen_shared_var_src : public ::tpy::next_iter_mixin<__gen_shared_var_src, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<Cell>& b;
     ::tpy::frame_slot<std::array<Cell, 1>> a;
     using __for_src_0_t = decltype((b));
@@ -1438,7 +1439,7 @@ struct __gen_shared_var_src : public ::tpy::next_iter_mixin<__gen_shared_var_src
 
 // def own_param_iter_src(h: Own[Holder]) -> Iterator[int32]:  # tpyc: warning(/never consumed/)
 struct __gen_own_param_iter_src : public ::tpy::next_iter_mixin<__gen_own_param_iter_src, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Holder h;
     int32_t v;
     using __for_src_0_t = decltype((h.get()));
@@ -1464,7 +1465,7 @@ struct __gen_own_param_iter_src : public ::tpy::next_iter_mixin<__gen_own_param_
 
 // for v in (x * 2 for x in xs):  # tpyc: ok
 struct __genexpr_genexpr_src_4_frame : public ::tpy::next_iter_mixin<__genexpr_genexpr_src_4_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -1491,7 +1492,7 @@ struct __genexpr_genexpr_src_4_frame : public ::tpy::next_iter_mixin<__genexpr_g
 
 // def genexpr_src(xs: list[int32]) -> Iterator[int32]:
 struct __gen_genexpr_src : public ::tpy::next_iter_mixin<__gen_genexpr_src, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& xs;
     int32_t v;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::__genexpr_genexpr_src_4(xs)))>;
@@ -1520,7 +1521,7 @@ struct __gen_genexpr_src : public ::tpy::next_iter_mixin<__gen_genexpr_src, int3
 // for v in (x + k for x in xs if x > 1):  # tpyc: ok
 template <typename F_k>
 struct __genexpr_genexpr_capture_src_5_frame : public ::tpy::next_iter_mixin<__genexpr_genexpr_capture_src_5_frame<F_k>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     F_k k;
     int32_t x;
@@ -1568,7 +1569,7 @@ __genexpr_genexpr_capture_src_5_frame<F_k> __genexpr_genexpr_capture_src_5(const
 
 // def genexpr_capture_src(xs: list[int32], k: int32) -> Iterator[int32]:
 struct __gen_genexpr_capture_src : public ::tpy::next_iter_mixin<__gen_genexpr_capture_src, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& xs;
     int32_t k;
     int32_t v;
@@ -1597,7 +1598,7 @@ struct __gen_genexpr_capture_src : public ::tpy::next_iter_mixin<__gen_genexpr_c
 
 // for v in (x * 3 for x in xs):  # tpyc: ok
 struct __genexpr_async_genexpr_6_frame : public ::tpy::next_iter_mixin<__genexpr_async_genexpr_6_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -1624,7 +1625,7 @@ struct __genexpr_async_genexpr_6_frame : public ::tpy::next_iter_mixin<__genexpr
 
 // async def async_genexpr(xs: list[int32]) -> int32:
 struct __coro_async_genexpr {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<int32_t>& xs;
     int32_t total;
@@ -1655,7 +1656,7 @@ struct __coro_async_genexpr {
 
 // def walk(self) -> Iterator[str]:
 struct __gen_Bag_walk : public ::tpy::next_iter_mixin<__gen_Bag_walk, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Bag& __self;
     using __for_src_0_t = decltype((__self.cells));
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
@@ -1686,7 +1687,7 @@ inline __gen_Bag_walk Bag::walk() {
 
 // def pairs(self, ys: list[int32]) -> Iterator[str]:
 struct __gen_Bag_pairs : public ::tpy::next_iter_mixin<__gen_Bag_pairs, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Bag& __self;
     const std::vector<int32_t>& ys;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::builtin_zip(__self.cells, ys)))>;

@@ -1684,6 +1684,19 @@ class CallAnalyzer:
                 f"Own[Cancellable[T]] param)",
                 arg)
 
+    def _note_coro_lend(self, arg: TpyExpr, arg_type: 'OwnType',
+                        ptype: TpyType) -> None:
+        """A bound coroutine lent to a parameter that may change it (a
+        protocol param a generic driver polls, `poll_once(c)`) may come back
+        started: record it, so a later move is rejected. A readonly param
+        cannot poll it."""
+        if (isinstance(arg, TpyName)
+                and isinstance(unwrap_readonly(arg_type.wrapped),
+                               ConcreteCoroType)
+                and not isinstance(unwrap_send_sync(ptype), ReadonlyType)):
+            self.ctx.func.started_coro_locals.setdefault(
+                arg.name, arg.loc.line if arg.loc else 0)
+
     def _reject_async_def_ref_arg(self, expr: TpyCall, qname: str) -> None:
         """Friendly pre-check: `run(f)` where f is an async def is a missing
         call, not a coroutine. Without this the user gets a generic
@@ -1722,7 +1735,7 @@ class CallAnalyzer:
             # lets the task outlive the receiver's scope. Lifetime is
             # not tracked across the escape.
             if (isinstance(inner, ConcreteCoroType)
-                    and inner.coro_owner is not None):
+                    and inner.frame_owner is not None):
                 self.ctx.warning(
                     f"spawned bound method-coroutine borrows its receiver "
                     f"by reference; the task must not outlive the "
@@ -5491,6 +5504,7 @@ class CallAnalyzer:
                 # See the non-generic call site: a fresh Own[...] rvalue lent to
                 # a borrow param is safe via codegen's named-temp materialization.
                 if isinstance(arg_type, OwnType) and not isinstance(check_ptype, OwnType):
+                    self._note_coro_lend(arg, arg_type, check_ptype)
                     arg_type = arg_type.wrapped
 
                 self.check_own_param(arg, arg_type, pname, check_ptype)

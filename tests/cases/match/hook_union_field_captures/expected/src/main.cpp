@@ -17,6 +17,7 @@ namespace tpyapp::main {
 std::expected<int32_t, ::tpy::StopIteration> __gen_guarded::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 0: {
@@ -80,6 +81,7 @@ __gen_guarded guarded(::tpy::Union<const Cat*, const Dog*> a) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_guarded_cond::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 0: {
@@ -151,6 +153,7 @@ __gen_nested_shadow nested_shadow(const Holder& h) {
 ::tpystd::tpy::Poll<int32_t> __coro_a_guarded::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 0: {
@@ -211,6 +214,7 @@ __coro_a_guarded a_guarded(::tpy::Union<const Cat*, const Dog*> a) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __coro_arg_0.emplace(Cat(5));
         __sub_0.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_0))});
         __state = S_RESUME_0;

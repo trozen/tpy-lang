@@ -25,7 +25,7 @@ int32_t drop(std::vector<int32_t>&& xs) {
 void main() {
     Walker w = Walker();
     std::vector<int32_t> xs = {1, 2, 3};
-    auto g = w.walk(xs);
+    __gen_Walker_walk g = w.walk(xs);
     std::vector<int32_t> __tmp_1 = xs;
     std::cout << ::tpyapp::main::drop(std::move(__tmp_1)) << "\n";
     auto& __src_0 = g;

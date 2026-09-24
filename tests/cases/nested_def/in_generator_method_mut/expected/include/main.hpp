@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
 
 // def steps(self, k: int32) -> Iterator[int32]:
 struct __gen_Tally_steps : public ::tpy::next_iter_mixin<__gen_Tally_steps, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Tally& __self;
     int32_t k;
     int32_t i;

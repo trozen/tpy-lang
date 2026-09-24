@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // def bump(items: Iterable[Point]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<Point> T_items>
 struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump<T_items>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_items items;
     using __for_src_0_t = decltype((items));
     ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> p;
@@ -78,6 +78,7 @@ template <::tpystd::typing::Iterable<Point> T_items>
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump<T_items>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::resumable_iter_init(__for_itr_0, items);
         __state = S_JOIN_0;
         continue;
@@ -113,7 +114,7 @@ __gen_bump<T_items> bump(T_items&& items) {
 // def doubled(nums: Iterable[int32]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<int32_t> T_nums>
 struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T_nums>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_nums nums;
     int32_t n;
     using __for_src_0_t = decltype((nums));
@@ -147,6 +148,7 @@ template <::tpystd::typing::Iterable<int32_t> T_nums>
 std::expected<int32_t, ::tpy::StopIteration> __gen_doubled<T_nums>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::resumable_iter_init(__for_itr_0, nums);
         __state = S_JOIN_0;
         continue;

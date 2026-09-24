@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration> __gen_dicts::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a.emplace(::tpy::ordered_map<std::string, std::string>());
         ::tpy::__setitem__((*a), "k", "v1");
         __state = S_RESUME_0;
@@ -41,6 +42,7 @@ inline std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIt
 inline std::expected<std::vector<::tpy::BigInt>, ::tpy::StopIteration> __gen_lists::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a.emplace(std::vector<::tpy::BigInt>{10, 20, 30});
         __state = S_RESUME_0;
         return (*a);

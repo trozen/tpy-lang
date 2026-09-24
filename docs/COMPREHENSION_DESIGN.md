@@ -600,7 +600,7 @@ site runs:
 ```cpp
 template <typename F_k>
 struct __genexpr_f_1_frame : ::tpy::next_iter_mixin<__genexpr_f_1_frame<F_k>, int32_t> {
-    int32_t __state;                     // every frame carries it; unread in this form
+    ::tpy::frame_state __state;          // every frame carries it; unread in this form
     const std::vector<int32_t>& __src;   // borrowed source
     F_k k;                               // deduced: `const int32_t&`
     int32_t x;

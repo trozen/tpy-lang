@@ -13,6 +13,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 205;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -40,6 +41,7 @@ __gen_delegated delegated(Outer::Inner& inner) {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_nested_compute::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(inner, delta);
         __state = S_RESUME_0;
         continue;
@@ -136,6 +138,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         inner.emplace(Outer::Inner(1));
         pending.emplace((*inner).compute(1));
         (*inner).value = ::tpy::BigInt(40);
@@ -449,7 +452,7 @@ __coro_async_sections async_sections() {
 //     asyncio.run(async_sections())
 void main() {
     Outer::Inner inner = Outer::Inner(1);
-    auto values = inner.values();
+    __gen_2_5_Outer_5_Inner_6_values values = inner.values();
     inner.value = ::tpy::BigInt(50);
     {
         std::cout << "generator first:" << " " << ({ auto __er_2 = ::tpy::next(values); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
@@ -494,6 +497,7 @@ void main() {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_2_5_Outer_5_Inner_7_compute::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -542,6 +546,8 @@ void main() {
         }
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_0: {
         try {
             __sub_0.emplace(__self, ::tpy::BigInt(1));
@@ -574,6 +580,7 @@ void __coro_2_5_Outer_5_Inner_7_cleanup::__finally_0() {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_2_5_Outer_4_Gate_10___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -600,6 +607,7 @@ void __coro_2_5_Outer_5_Inner_7_cleanup::__finally_0() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_2_5_Outer_4_Gate_9___aexit__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -625,6 +633,7 @@ void __coro_2_5_Outer_5_Inner_7_cleanup::__finally_0() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 201;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -641,6 +650,7 @@ void __coro_2_5_Outer_5_Inner_7_cleanup::__finally_0() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 202;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -657,6 +667,7 @@ void __coro_2_5_Outer_5_Inner_7_cleanup::__finally_0() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 203;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -673,6 +684,7 @@ void __coro_2_5_Outer_5_Inner_7_cleanup::__finally_0() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 204;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));

@@ -166,7 +166,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // async def coro() -> None:
 struct __coro_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::ordered_map<std::string, std::vector<int32_t>>* d = nullptr;
     std::optional<::tpy::ordered_map<std::string, std::vector<int32_t>>> __ptr_slot_f0;
@@ -189,7 +189,7 @@ struct __coro_coro {
 
 // def gen() -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::ordered_map<std::string, std::vector<int32_t>>* d = nullptr;
     int32_t v;
     using __for_src_0_t = decltype((::tpy::__getitem__((*d), "o")));

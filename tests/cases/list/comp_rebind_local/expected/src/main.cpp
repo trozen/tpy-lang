@@ -490,6 +490,7 @@ std::expected<int32_t, Fail> err_ret() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         xs.emplace(std::vector<int32_t>{1, 2, 3});
         xs.emplace(({
             std::vector<int32_t> __result;
@@ -522,7 +523,7 @@ namespace {
 
 // xs = list(x + 1 for x in xs)  # tpyc: ok
 struct __genexpr_call_rebinds_1_frame : public ::tpy::next_iter_mixin<__genexpr_call_rebinds_1_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));

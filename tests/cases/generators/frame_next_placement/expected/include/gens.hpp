@@ -59,7 +59,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 // def squares(n: int32, skip: list[int32]) -> Iterator[int32]:
 struct __gen_squares : public ::tpy::next_iter_mixin<__gen_squares, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     const std::vector<int32_t>& skip;
     int32_t i;
@@ -132,7 +132,7 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, int32_t> {
 
 // def echoed(n: int32) -> Iterator[int32]:
 struct __gen_echoed : public ::tpy::next_iter_mixin<__gen_echoed, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -158,7 +158,7 @@ struct __gen_echoed : public ::tpy::next_iter_mixin<__gen_echoed, int32_t> {
 
 // def evens(self) -> Iterator[Cell]:
 struct __gen_Bag_evens : public ::tpy::next_iter_mixin<__gen_Bag_evens, ::tpy::val_or_ref<Cell>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Bag& __self;
     using __for_src_0_t = decltype((__self.cells));
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;

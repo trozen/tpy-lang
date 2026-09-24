@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Series& obj) {
 
 // def items(self) -> Iterator[int32]:
 struct __gen_Series_items : public ::tpy::next_iter_mixin<__gen_Series_items, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Series& __self;
     ::tpy::frame_slot<std::array<int32_t, 3>> tmp;
     int32_t x;

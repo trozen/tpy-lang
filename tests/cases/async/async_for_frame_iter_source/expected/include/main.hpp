@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 // def __iter__(self) -> Iterator[Point]:
 struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__, ::tpy::val_or_ref<Point>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Bag& __self;
     using __for_src_0_t = decltype((__self.items));
     ::tpy::begin_elem_t<__for_src_0_t>* p = nullptr;
@@ -92,7 +92,7 @@ inline __gen_Bag___iter__ Bag::__iter__() {
 
 // async def bump(bag: Bag) -> int32:
 struct __coro_bump {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Bag& bag;
     int32_t total;
@@ -122,7 +122,7 @@ struct __coro_bump {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Bag> bag;
     int32_t __await_lift_0;

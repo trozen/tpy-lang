@@ -64,7 +64,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counts& obj) {
 
 // async def __anext__(self) -> int:
 struct __coro_Counter___anext__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Counter& __self;
 
@@ -90,7 +90,7 @@ inline __coro_Counter___anext__ Counter::__anext__() {
 
 // async def runner(c: Counts) -> str:
 struct __coro_runner {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Counts& c;
     ::tpy::BigInt x;
@@ -120,7 +120,7 @@ struct __coro_runner {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Counts> c;
     std::string __await_lift_0;

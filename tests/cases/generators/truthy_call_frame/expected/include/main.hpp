@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 
 // def gen_while(n: int) -> Iterator[int]:
 struct __gen_gen_while : public ::tpy::next_iter_mixin<__gen_gen_while, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt n;
     int32_t i;
 
@@ -67,7 +67,7 @@ struct __gen_gen_while : public ::tpy::next_iter_mixin<__gen_gen_while, ::tpy::B
 
 // def gen_branch(n: int) -> Iterator[int]:
 struct __gen_gen_branch : public ::tpy::next_iter_mixin<__gen_gen_branch, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt n;
     int32_t i;
 

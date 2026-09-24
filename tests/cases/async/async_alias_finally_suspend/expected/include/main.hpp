@@ -24,7 +24,7 @@ void main();
 
 // async def make() -> Own[list[int32]]:
 struct __coro_make {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<int32_t>> xs;
     std::vector<int32_t>* ys = nullptr;
@@ -55,7 +55,7 @@ struct __coro_make {
 
 // async def driver() -> int32:
 struct __coro_driver {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<int32_t>> r;
     std::optional<__coro_make> __sub_0;

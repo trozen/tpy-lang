@@ -2049,6 +2049,9 @@ class THIRPtrLocalDecl(THIRStmt):
     # DYN_PROTOCOL only: the protocol base pointer spelling (`Base` of
     # `Base* p`), distinct from `cpp_type` (the concrete/adapter SLOT spelling).
     base_cpp: str | None = None
+    # RECORD_HOISTED over a generator / coroutine frame, which is not
+    # assignable: the slot is re-emplaced instead (see THIRAssign.rebuild).
+    rebuild: bool = False
     # `const T*` (not `T*`): the pointee is a readonly source (name in
     # `const_indirect_locals`); only the pointer line takes
     # the prefix -- the rebind `std::optional<T>` slot stays non-const.
@@ -2078,6 +2081,8 @@ class THIRPtrLocalRebind(THIRStmt):
     # slot (no in-place write exists for them). None: not an rvalue
     # reseat of a reference local (allocate as the kind's first write).
     rebind_storage: 'RebindStorage | None' = None
+    # See THIRAssign.rebuild: the slot holds a generator / coroutine frame.
+    rebuild: bool = False
 
 
 @dataclass(frozen=True)
@@ -2130,6 +2135,10 @@ class THIRAssign(THIRStmt):
     # spells the pointee for the OWN slot. None on every other assign.
     rebind_storage: 'RebindStorage | None' = None
     slot_cpp: 'str | None' = None
+    # The object is a generator / coroutine frame, which is not assignable:
+    # IN_PLACE destroys it and constructs the new one in its storage, OWN
+    # emplaces the site's slot.
+    rebuild: bool = False
 
 
 @dataclass(frozen=True)

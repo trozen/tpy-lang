@@ -31,7 +31,7 @@ __coro_main_async main_async();
 
 // async def opt_branch(v: int32 | None) -> int32:
 struct __coro_opt_branch {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<int32_t> v;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -55,7 +55,7 @@ struct __coro_opt_branch {
 
 // async def list_branch(xs: list[int32]) -> int32:
 struct __coro_list_branch {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<int32_t>& xs;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -79,7 +79,7 @@ struct __coro_list_branch {
 
 // async def str_while(t: str) -> int32:
 struct __coro_str_while {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string t;
     int32_t n;
@@ -105,7 +105,7 @@ struct __coro_str_while {
 
 // async def and_branch(xs: list[int32], v: int32 | None) -> int32:
 struct __coro_and_branch {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<int32_t>& xs;
     std::optional<int32_t> v;
@@ -130,25 +130,25 @@ struct __coro_and_branch {
 
 // async def main_async() -> None:
 struct __coro_main_async {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t __await_lift_0;
     int32_t __await_lift_1;
     int32_t __await_lift_2;
-    int32_t __await_lift_3;
-    int32_t __await_lift_4;
-    int32_t __await_lift_5;
-    int32_t __await_lift_6;
-    int32_t __await_lift_7;
-    int32_t __await_lift_8;
-    int32_t __await_lift_9;
     ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_0;
+    int32_t __await_lift_3;
     ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_1;
+    int32_t __await_lift_4;
     std::string __coro_arg_2;
+    int32_t __await_lift_5;
     std::string __coro_arg_3;
+    int32_t __await_lift_6;
     ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_4;
+    int32_t __await_lift_7;
     ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_5;
+    int32_t __await_lift_8;
     ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_6;
+    int32_t __await_lift_9;
     std::optional<__coro_opt_branch> __sub_0;
     std::optional<__coro_opt_branch> __sub_1;
     std::optional<__coro_opt_branch> __sub_2;

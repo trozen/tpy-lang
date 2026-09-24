@@ -1,0 +1,1 @@
+main.py:30: error: cannot pass this value to @dynamic protocol parameter 's' of generator 'from_getter' inside a generator or async function: the 'Getter' view of it lasts only until the next yield or await, and the generator may outlive that; give 'from_getter' a parameter of the concrete type, or bind the value to a 'Getter'-typed parameter of this function

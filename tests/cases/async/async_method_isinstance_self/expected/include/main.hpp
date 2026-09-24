@@ -100,7 +100,7 @@ namespace tpyapp::main {
 // @readonly
 // async def describe(self) -> str:
 struct __coro_Pet_describe {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Pet& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -128,7 +128,7 @@ inline __coro_Pet_describe Pet::describe() const {
 
 // async def describe_via_pet(p: Pet) -> str:
 struct __coro_describe_via_pet {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Pet& p;
     std::optional<__coro_Pet_describe> __sub_0;
@@ -152,7 +152,7 @@ struct __coro_describe_via_pet {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Dog> d;
     ::tpy::frame_slot<Pet> p;

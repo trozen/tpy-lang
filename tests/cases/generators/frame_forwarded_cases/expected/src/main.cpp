@@ -55,6 +55,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_in_try::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_3: {
         try {
             auto& __for_obj_0 = xs;
@@ -95,6 +97,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_in_with::__next__() {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0.emplace(Ctx("w"));
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_3;
@@ -176,6 +179,7 @@ __gen_in_with in_with(const std::vector<int32_t>& xs) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_in_match::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -238,6 +242,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_break_continue::__next__() {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -328,6 +333,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_return_in_finally::__next__()
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -433,6 +439,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_abandoned::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_3: {
         try {
             auto& __for_obj_0 = xs;
@@ -604,6 +612,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stop_in_region::__next__() {
         continue;
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_4: {
         try {
             auto& __for_obj_0 = xs;
@@ -671,6 +681,7 @@ __gen_stop_in_region stop_in_region(const std::vector<int32_t>& xs) {
 ::tpystd::tpy::Poll<int32_t> __coro_async_loop::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
@@ -730,6 +741,7 @@ __coro_async_loop async_loop(const std::vector<int32_t>& xs) {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         __state = S_JOIN_3;
         continue;

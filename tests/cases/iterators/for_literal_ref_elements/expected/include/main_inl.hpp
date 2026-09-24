@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_in_generator::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         __for_src_0.emplace(std::array<Box, 2>{Box(6), Box(7)});
         auto __beg_0 = (*__for_src_0).begin();

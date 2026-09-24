@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tok& obj) {
 
 // def ints(n: int32) -> Iterator[int32]:
 struct __gen_ints : public ::tpy::next_iter_mixin<__gen_ints, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
 
@@ -72,7 +72,7 @@ struct __gen_ints : public ::tpy::next_iter_mixin<__gen_ints, int32_t> {
 // def make_toks(src: Iterator[int32]) -> Iterator[Own[Tok]]:
 template <::tpystd::typing::Iterator<int32_t> T_src>
 struct __gen_make_toks : public ::tpy::next_iter_mixin<__gen_make_toks<T_src>, Tok> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_src src;
     int32_t n;
     using __for_src_0_t = decltype((src));
@@ -102,6 +102,8 @@ template <::tpystd::typing::Iterator<int32_t> T_src>
 std::expected<Tok, ::tpy::StopIteration> __gen_make_toks<T_src>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_0:  // after: yield Tok(n * 10)
     case S_JOIN_0: {
         __for_r_0.emplace(src.__next__());

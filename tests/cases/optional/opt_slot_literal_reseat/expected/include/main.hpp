@@ -78,7 +78,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // async def coro_literal(c: bool) -> int32:
 struct __coro_coro_literal {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     bool c;
     ::tpy::ordered_map<int32_t, int32_t>* d = nullptr;
@@ -104,7 +104,7 @@ struct __coro_coro_literal {
 
 // def gen_literal(c: bool) -> Iterator[int32]:
 struct __gen_gen_literal : public ::tpy::next_iter_mixin<__gen_gen_literal, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool c;
     std::vector<int32_t>* xs = nullptr;
     std::optional<std::vector<int32_t>> __ptr_slot_f0;
@@ -129,7 +129,7 @@ struct __gen_gen_literal : public ::tpy::next_iter_mixin<__gen_gen_literal, int3
 
 // def gen_call_then_literal(f: F) -> Iterator[int32]:
 struct __gen_gen_call_then_literal : public ::tpy::next_iter_mixin<__gen_gen_call_then_literal, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     F& f;
     std::vector<int32_t>* a = nullptr;
     std::optional<std::vector<int32_t>> __ptr_slot_f0;

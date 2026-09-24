@@ -59,7 +59,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 // def describe(a: Dog | Cat) -> Iterator[str]:
 struct __gen_describe : public ::tpy::next_iter_mixin<__gen_describe, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<Cat*, Dog*> a;
 
     enum : int32_t {

@@ -22,7 +22,7 @@ __coro_amain amain();
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t v;
     std::optional<::tpyapp::definer::__coro_deep> __sub_0;

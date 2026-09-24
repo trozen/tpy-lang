@@ -64,7 +64,7 @@ _FRESH_COLLECTION_NODES = (
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
 )
-from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, varargs_is_readonly, is_readonly_ptr, VoidType, is_fn_type, is_dyn_protocol
+from ..typesys import IntLiteralType, NominalType, TpyType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, varargs_is_readonly, is_readonly_ptr, VoidType, is_fn_type, is_dyn_protocol, ConcreteFrameType
 from ..value_category import (async_return_form, AsyncReturnForm,
                               for_source_is_rvalue, frame_factory_callee,
                               iterator_source_callee,
@@ -83,6 +83,16 @@ from .context import (INDENT, escape_cpp_name, CodeGenError, FinallyContext,
 from .protocols import protocol_param_template_name, fn_param_template_name
 from .functions import default_to_cpp, default_emittable
 from . import resumable_cfg as rcfg
+
+
+def _bound_local(stmt: TpyStmt) -> str | None:
+    """The local a statement binds, when it binds a plain name."""
+    return stmt.name if isinstance(stmt, TpyVarDecl) else None
+
+
+_OWNING_FRAME_KINDS = frozenset((
+    rcfg.FrameLocalKind.VALUE, rcfg.FrameLocalKind.OWNED_STR,
+    rcfg.FrameLocalKind.FRAME_SLOT, rcfg.FrameLocalKind.OWNING_TUPLE_SLOT))
 
 
 @dataclass
@@ -1431,14 +1441,16 @@ class AsyncCoroCodegen:
                     "await arg has no analyzed type (borrowed-arg lift)",
                     loc=stmt.loc)
             self._seat_arg_on_frame_local(func, call, i, fi.params[i].type,
-                                          source, host, arg_t, pre)
+                                          source, host, arg_t, pre,
+                                          binds=_bound_local(stmt))
         pre.append(stmt)
         return pre
 
     def _seat_arg_on_frame_local(self, func: TpyFunction, call, i: int,
                                  ptype: 'TpyType', source: TpyExpr,
                                  host: 'TpyCoerce | None', arg_t: 'TpyType',
-                                 pre: list[TpyStmt]) -> None:
+                                 pre: list[TpyStmt], *,
+                                 binds: str | None) -> None:
         """Move `source` onto a `__coro_arg_N` local of THIS frame
         (`_frame_local_for`) and point argument `i` of `call` at it.
 
@@ -1455,15 +1467,16 @@ class AsyncCoroCodegen:
         lift_ptype = unwrap_readonly(unwrap_ref_type(ptype))
         if isinstance(arg_t, TupleType) and isinstance(lift_ptype, TupleType):
             arg_t = lift_ptype
-        replacement = self._frame_local_for(func, source, arg_t, pre)
+        replacement = self._frame_local_for(func, source, arg_t, pre,
+                                            binds=binds)
         if host is not None:
             host.expr = replacement
         else:
             call.args[i] = replacement
 
     def _frame_local_for(self, func: TpyFunction, source: TpyExpr,
-                         local_t: 'TpyType',
-                         pre: list[TpyStmt]) -> TpyName:
+                         local_t: 'TpyType', pre: list[TpyStmt], *,
+                         binds: str | None) -> TpyName:
         """Declare `source` as a fresh `__coro_arg_N` local of THIS frame and
         return the name that reads it back.
 
@@ -1481,7 +1494,16 @@ class AsyncCoroCodegen:
         pre.append(TpyVarDecl(name=name, type=local_t, init=source, loc=None))
         if func.generator_locals is None:
             func.generator_locals = []
-        func.generator_locals.append((name, local_t))
+        # Fields are destroyed in reverse declaration order, and both sides
+        # of the lift may read the other from a destructor: what it borrows
+        # (earlier locals) must outlive it, and so must it the local its
+        # statement binds (`binds`, a bound generator or coroutine). So it
+        # goes right before that local, else after every local.
+        names = [n for n, _ in func.generator_locals]
+        if binds is not None and binds in names:
+            func.generator_locals.insert(names.index(binds), (name, local_t))
+        else:
+            func.generator_locals.append((name, local_t))
         replacement = TpyName(name=name, loc=source.loc)
         self.ctx.analyzer.ctx.set_expr_type(replacement, local_t)
         return replacement
@@ -1663,7 +1685,8 @@ class AsyncCoroCodegen:
                         fi, recv, "the receiver",
                         ", or call the method on a named receiver")
                 recv_t = self._frame_seat_type(recv)
-                call.obj = self._frame_local_for(func, recv, recv_t, pre)
+                call.obj = self._frame_local_for(func, recv, recv_t, pre,
+                                                 binds=_bound_local(stmt))
             for i, arg in enumerate(call.args):
                 # Varargs (past the declared params) are a separate dangle
                 # class tracked in BUGS.md; leave them for the *args path.
@@ -1691,7 +1714,8 @@ class AsyncCoroCodegen:
                         ", or declare the parameter 'Own[...]' so the callee "
                         "owns its copy")
                 self._seat_arg_on_frame_local(func, call, i, ptype, source,
-                                              host, temp_slot, pre)
+                                              host, temp_slot, pre,
+                                              binds=_bound_local(stmt))
         pre.append(stmt)
         return pre
 
@@ -2116,13 +2140,17 @@ class AsyncCoroCodegen:
                     if for_source_is_rvalue(s, self.ctx.analyzer):
                         rhs = f"::tpy::for_source_t<{rhs}>"
                     aliases.append(_ForSourceAlias(
-                        alias, rhs, frozenset(read_names(s.iterable)),
+                        alias, rhs,
+                        # A walrus target the source binds is a field its
+                        # render names too.
+                        frozenset(read_names(s.iterable)) | frozenset(
+                            w.target for w in walrus_bindings(s)),
                         s.loc))
         return aliases
 
-    def _emit_frame_locals_and_aliases(self, out: "TextIO", func: TpyFunction,
-                                       record_name: str | None,
-                                       cfg: 'rcfg.CFG') -> None:
+    def _emit_frame_locals_and_aliases(
+            self, out: "TextIO", func: TpyFunction, record_name: str | None,
+            cfg: 'rcfg.CFG') -> 'list[tuple[str, TpyType, rcfg.FrameLocalLayout]]':
         """Emit the hoisted-local fields and the `for` source aliases in
         dependency order.
 
@@ -2176,6 +2204,8 @@ class AsyncCoroCodegen:
                     "variable", loc=a.loc)
             for n in sorted(a.reads):
                 if n in local_types:
+                    if n in deferred and n not in done:
+                        check_pulled_frame(n, a)
                     emit_local(n, stack + (name,))
             done.add(name)
             out.write(f"{INDENT}using {name} = {a.definition};\n")
@@ -2190,10 +2220,63 @@ class AsyncCoroCodegen:
             self._emit_frame_local_field(out, name, local_types[name],
                                          layout.bindings[name], func)
 
+        # A frame object held by value (a bound generator or coroutine)
+        # borrows other fields, and its destructor may run a pending
+        # `finally` over them, so it is declared after every field it could
+        # borrow -- the rebind slots, loop and `with` fields included, which
+        # follow the locals (fields die in reverse order). An alias spelled
+        # off one still pulls it in first.
+        deferred = [lname for lname, ltype in locals_
+                    if self._holds_frame_by_value(ltype,
+                                                  layout.bindings[lname])]
+        durable = {pname for pname, _ in func.params} | {"self"}
+
+        def check_pulled_frame(frame: str, a: '_ForSourceAlias') -> None:
+            """A loop over a frame object spells its source type off the
+            frame's field, which so goes before the loop, `with` and rebind
+            fields it may borrow: admit it only when everything it borrows
+            is already declared -- a parameter or a local that owns its
+            storage."""
+            fact = self.ctx.analyzer.function_frame_local_roots.get(
+                func, {}).get(frame)
+            if fact is None:
+                raise CodeGenError(
+                    f"cannot loop over generator '{frame}' here: what it "
+                    f"borrows cannot be traced; loop over it in a helper "
+                    f"function",
+                    loc=a.loc)
+            roots, plain = fact
+            for root in sorted(roots, key=lambda r: (r is None, r or "")):
+                # A plain call's temporary is lifted into a field declared
+                # ahead of the local.
+                ok = (plain if root is None else root in durable or (
+                    root in done and root in layout.bindings
+                    and layout.bindings[root].kind in _OWNING_FRAME_KINDS))
+                if not ok:
+                    what = (f"'{root}'" if root is not None
+                            else "a temporary")
+                    raise CodeGenError(
+                        f"cannot loop over generator '{frame}' here: it "
+                        f"borrows {what}, and a generator iterated by a "
+                        f"'for' in a generator or async function may borrow "
+                        f"only parameters and locals bound once; loop over "
+                        f"it in a helper function",
+                        loc=a.loc)
         for lname, _ in locals_:
-            emit_local(lname, ())
+            if lname not in deferred:
+                emit_local(lname, ())
         for name in aliases:
             emit_alias(name, ())
+        return [(n, local_types[n], layout.bindings[n])
+                for n in deferred if n not in done]
+
+    @staticmethod
+    def _holds_frame_by_value(ltype: TpyType,
+                              verdict: 'rcfg.FrameLocalLayout') -> bool:
+        inner = unwrap_readonly(unwrap_own(unwrap_ref_type(ltype)))
+        return (isinstance(inner, ConcreteFrameType)
+                and verdict.kind not in (rcfg.FrameLocalKind.PTR_ALIAS,
+                                         rcfg.FrameLocalKind.REBIND_PTR))
 
     def _emit_frame_local_field(self, out: "TextIO", lname: str, ltype,
                                 verdict: 'rcfg.FrameLocalLayout',
@@ -2267,16 +2350,11 @@ class AsyncCoroCodegen:
         base = self._generator_iter_base(func, record_name)
         out.write(f"struct {struct_name}{base} {{\n")
 
-        # State integer (shared) + per-shape extra state (async adds the
-        # cancel flag). Frames with abandonment cleanup (a destructor that
-        # runs pending finallies / with.__exit__) use ::tpy::frame_state so
-        # the defaulted move ctor neuters the source state -- a moved-from
-        # frame's destructor must not re-run cleanup.
+        # State (shared) + per-shape extra state (async adds the cancel
+        # flag). ::tpy::frame_state deletes copy and assignment and panics
+        # on a move once the frame was entered.
         dtor_cases = self._dtor_cleanup_cases(cfg)
-        if dtor_cases:
-            out.write(f"{INDENT}::tpy::frame_state __state;\n")
-        else:
-            out.write(f"{INDENT}int32_t __state;\n")
+        out.write(f"{INDENT}::tpy::frame_state __state;\n")
         self._emit_resumable_extra_state_fields(out)
 
         # Captured param fields
@@ -2287,7 +2365,8 @@ class AsyncCoroCodegen:
         # Hoisted local fields and the `for` source aliases, in dependency
         # order: an alias is `decltype` of a render that names the fields it
         # reads, and a loop var's field is spelled off its loop's alias.
-        self._emit_frame_locals_and_aliases(out, func, record_name, cfg)
+        deferred_frames = self._emit_frame_locals_and_aliases(
+            out, func, record_name, cfg)
 
         # Synthetic fields for for-loops: iterator, sentinel and step result
         # for a CFG-decomposed one, plus the source holder, which a loop that
@@ -2329,6 +2408,8 @@ class AsyncCoroCodegen:
             else:
                 out.write(f"{INDENT}{ftype} {fname};\n")
 
+        for lname, ltype, verdict in deferred_frames:
+            self._emit_frame_local_field(out, lname, ltype, verdict, func)
         self._emit_resumable_sub_future_fields(out, func, cfg, record_name)
 
         # Generators with helper-based finallies that contain a `return` need a
@@ -2859,7 +2940,7 @@ class AsyncCoroCodegen:
             self.ctx.generator_has_finally_stop = old_has_finally_stop
 
     def _emit_resumable_extra_state_fields(self, out: "TextIO") -> None:
-        """Per-shape state fields beyond the shared `int32_t __state`.
+        """Per-shape state fields beyond the shared `::tpy::frame_state __state`.
         Async adds the cancellation flag; the generator shape adds
         nothing."""
         if self._is_generator_shape():
@@ -4787,12 +4868,26 @@ class AsyncCoroCodegen:
             out.write(f"{inner}while (true) switch (__state) {{\n")
         else:
             out.write(f"{inner}switch (__state) {{\n")
+        # The entry case marks the frame done before any body code runs: a
+        # yield overwrites it with its resume point, a return or the end of
+        # the body stores it anyway, and an exception escaping the first
+        # step finishes the frame, as CPython's. It also makes the frame read
+        # "entered" to ::tpy::frame_state's move guard.
+        entered = (f"{inner}{INDENT}__state = S_DONE;  "
+                   f"// until a yield sets where to resume\n")
         for bb_id, label in order:
             if bb_id in forwarded:
                 continue
+            # INITIAL is 0, so it leads its stack and the store it falls
+            # through from runs on entry only.
             for alias in stacked.get(bb_id, ()):
                 out.write(f"{inner}case {alias.cpp_name()}:{note_for(alias)}\n")
+                if alias.kind is _StateKind.INITIAL:
+                    out.write(entered)
+                    out.write(f"{inner}{INDENT}[[fallthrough]];\n")
             out.write(f"{inner}case {label.cpp_name()}: {{{note_for(label)}\n")
+            if label.kind is _StateKind.INITIAL:
+                out.write(entered)
             out.write(bodies[bb_id])
             out.write(f"{inner}}}\n")
         self._emit_resumable_done_case(out, inner)
@@ -4921,7 +5016,14 @@ class AsyncCoroCodegen:
         if form.records_done:
             out.write(f"{inner}if (__state == S_DONE) return {stop};\n")
         if seed.getvalue():
-            out.write(f"{inner}if (__state == S_INITIAL) {{\n")
+            # Past the seed the state is the loop head, so this stays the one
+            # compare per pull. Anything but INITIAL here means the seed threw
+            # on an earlier pull (it runs marked done): the frame is finished.
+            out.write(f"{inner}if (__state != {form.loop_label}) {{\n")
+            out.write(f"{inner}{INDENT}if (__state != S_INITIAL) "
+                      f"return {stop};\n")
+            out.write(f"{inner}{INDENT}__state = S_DONE;  "
+                      f"// until the seed completes\n")
             out.write(seed.getvalue())
             out.write(f"{inner}{INDENT}__state = {form.loop_label};\n")
             out.write(f"{inner}}}\n")
@@ -6787,9 +6889,7 @@ def sub_struct_qualname(
         loc=None) -> str:
     """The sub-coro struct name for a statically-resolved await -- the
     async face of `rcfg.frame_struct_qualname` (which owns the naming
-    grammar; see its docstring). Also the renderer for ConcreteCoroType (a
-    bound coroutine's frame struct), which needs the same naming from the
-    type-to-C++ path where no AsyncCoroCodegen instance exists.
+    grammar; see its docstring).
     """
     return rcfg.frame_struct_qualname(
         types, owner, method, inferred_type_args,

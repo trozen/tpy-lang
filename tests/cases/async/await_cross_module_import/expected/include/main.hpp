@@ -26,7 +26,7 @@ __coro_amain amain();
 
 // async def local_double(x: int32) -> int32:
 struct __coro_local_double {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t x;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -50,7 +50,7 @@ struct __coro_local_double {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t v1;
     int32_t v2;

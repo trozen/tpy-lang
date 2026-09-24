@@ -11,6 +11,7 @@ namespace tpyapp::main {
 inline std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen_for::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = items;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -38,6 +39,7 @@ inline std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen_for::__
 inline std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen_range::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(::tpy::__len__(items)));
         __state = S_JOIN_0;
@@ -66,6 +68,7 @@ inline std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen_range::
 inline std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen_while::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;

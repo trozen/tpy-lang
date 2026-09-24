@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // async def f(items: list[Box]) -> int:
 struct __coro_f {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<Box>& items;
     std::tuple<Box*, Box*> t;
@@ -69,7 +69,7 @@ struct __coro_f {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<Box>> items;
     ::tpy::BigInt __await_lift_0;

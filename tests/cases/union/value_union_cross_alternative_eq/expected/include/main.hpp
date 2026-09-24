@@ -411,7 +411,7 @@ namespace tpyapp::main {
 
 // async def in_async(a: int32 | float64, b: int32 | float64) -> bool:  # async
 struct __coro_in_async {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::Union<double, int32_t> a;
     ::tpy::Union<double, int32_t> b;
@@ -434,7 +434,7 @@ struct __coro_in_async {
 
 // async def amain(x: int32 | float64, y: int32 | float64) -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::Union<double, int32_t> x;
     ::tpy::Union<double, int32_t> y;
@@ -460,7 +460,7 @@ struct __coro_amain {
 
 // def gen(a: int32 | float64, b: int32 | float64) -> Iterator[bool]:  # generator
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, bool> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<double, int32_t> a;
     ::tpy::Union<double, int32_t> b;
 

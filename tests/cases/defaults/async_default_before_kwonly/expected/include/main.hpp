@@ -26,7 +26,7 @@ void main();
 
 // async def scaled(a: int64, b: int64 = 10, *, c: int64) -> int64:
 struct __coro_scaled {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int64_t a;
     int64_t b;
@@ -50,7 +50,7 @@ struct __coro_scaled {
 
 // async def drive() -> None:
 struct __coro_drive {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int64_t __await_lift_0;
     int64_t __await_lift_1;
@@ -77,7 +77,7 @@ struct __coro_drive {
 
 // def counted(n: int64 = 2, *, step: int64) -> Iterator[int64]:
 struct __gen_counted : public ::tpy::next_iter_mixin<__gen_counted, int64_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int64_t n;
     int64_t step;
     int64_t i;

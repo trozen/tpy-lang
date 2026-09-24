@@ -154,7 +154,7 @@ inline std::ostream& operator<<(std::ostream& os, const Map& obj) {
 
 // def gen(things: list[Thing]) -> Iterator[float]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, double> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Thing>& things;
     int32_t i;
     ::tpy::frame_slot<Bump> b;

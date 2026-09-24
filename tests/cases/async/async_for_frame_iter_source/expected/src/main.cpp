@@ -19,6 +19,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_bump::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         ::tpy::resumable_iter_init(__for_itr_0, bag);
         __state = S_JOIN_0;
@@ -64,6 +65,7 @@ __coro_bump bump(Bag& bag) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         bag.emplace(Bag({Point(1), Point(2)}));
         __sub_0.emplace((*bag));
         __state = S_RESUME_0;

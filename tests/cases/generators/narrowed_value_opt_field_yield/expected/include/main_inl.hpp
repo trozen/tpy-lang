@@ -12,6 +12,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_field::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((__self.f.has_value())) {
             __state = S_RESUME_0;
             return (*__self.f);
@@ -43,6 +44,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_field::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reassign::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         q = 0;
         if ((__self.f.has_value())) {
             q = (*__self.f);
@@ -72,6 +74,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reassign::__ne
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reguard::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((__self.f.has_value())) {
             __state = S_RESUME_0;
             return (*__self.f);
@@ -113,6 +116,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reguard::__nex
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         v = __self.f;
         if ((v.has_value())) {
             __state = S_RESUME_0;
@@ -152,6 +156,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind::__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind_loop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         v = __self.f;
         if ((v.has_value())) {
             __for_i_0.emplace(int32_t(0));

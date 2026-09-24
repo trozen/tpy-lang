@@ -23,7 +23,7 @@ __coro_amain amain();
 
 // async def work() -> int32:
 struct __coro_work {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -46,7 +46,7 @@ struct __coro_work {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t v;
     std::optional<__coro_work> __sub_0;

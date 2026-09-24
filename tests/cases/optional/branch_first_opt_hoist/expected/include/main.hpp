@@ -53,7 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // async def coro(c: bool) -> int32:
 struct __coro_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     bool c;
     std::optional<int32_t> n;
@@ -78,7 +78,7 @@ struct __coro_coro {
 
 // def gen(c: bool) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool c;
     std::optional<int32_t> n;
 

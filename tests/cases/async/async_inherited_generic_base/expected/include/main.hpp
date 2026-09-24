@@ -165,7 +165,7 @@ inline std::ostream& operator<<(std::ostream& os, const IntCounter& obj) {
 // async def fetch(self) -> T:
 template <typename T>
 struct __coro_Box_fetch {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Box<T>& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -194,6 +194,7 @@ template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_Box_fetch<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -221,7 +222,7 @@ inline __coro_Box_fetch<T> Box<T>::fetch() {
 // async def __aenter__(self) -> T:
 template <typename T>
 struct __coro_Guard___aenter__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Guard<T>& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -251,6 +252,7 @@ template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_Guard___aenter__<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -279,7 +281,7 @@ inline __coro_Guard___aenter__<T> Guard<T>::__aenter__() {
 // async def __aexit__(self, et: None, ev: None, tb: None) -> None:
 template <typename T>
 struct __coro_Guard___aexit__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Guard<T>& __self;
     std::monostate et;
@@ -310,6 +312,7 @@ template <typename T>
 ::tpystd::tpy::Poll<::std::monostate> __coro_Guard___aexit__<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -336,7 +339,7 @@ inline __coro_Guard___aexit__<T> Guard<T>::__aexit__(std::monostate et, std::mon
 // async def __anext__(self) -> T:
 template <typename T>
 struct __coro_Counter___anext__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Counter<T>& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -368,6 +371,7 @@ template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_Counter___anext__<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -398,7 +402,7 @@ inline __coro_Counter___anext__<T> Counter<T>::__anext__() {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<IntBox> b;
     ::tpy::frame_slot<IntGuard> g;

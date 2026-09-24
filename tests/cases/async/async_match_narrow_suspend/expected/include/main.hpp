@@ -53,7 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 // async def voice(a: Dog | Cat) -> str:
 struct __coro_voice {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::Union<Cat*, Dog*> a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -77,12 +77,12 @@ struct __coro_voice {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::string __await_lift_0;
-    std::string __await_lift_1;
     ::tpy::frame_slot<Dog> __coro_arg_0;
+    std::string __await_lift_0;
     ::tpy::frame_slot<Cat> __coro_arg_1;
+    std::string __await_lift_1;
     std::optional<__coro_voice> __sub_0;
     std::optional<__coro_voice> __sub_1;
 

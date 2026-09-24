@@ -59,7 +59,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // def storage_relay(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
 struct __gen_storage_relay : public ::tpy::next_iter_mixin<__gen_storage_relay, std::tuple<int32_t, C*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<std::tuple<int32_t, C>>& items;
     using __for_src_0_t = decltype((items));
     ::tpy::begin_elem_t<__for_src_0_t>* pair = nullptr;
@@ -86,7 +86,7 @@ struct __gen_storage_relay : public ::tpy::next_iter_mixin<__gen_storage_relay, 
 
 // def relay_twice(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
 struct __gen_relay_twice : public ::tpy::next_iter_mixin<__gen_relay_twice, std::tuple<int32_t, C*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<std::tuple<int32_t, C>>& items;
     using __for_src_0_t = decltype((items));
     ::tpy::begin_elem_t<__for_src_0_t>* pair = nullptr;
@@ -114,7 +114,7 @@ struct __gen_relay_twice : public ::tpy::next_iter_mixin<__gen_relay_twice, std:
 
 // def relay(self) -> Iterator[tuple[int32, C]]:
 struct __gen_Holder_relay : public ::tpy::next_iter_mixin<__gen_Holder_relay, std::tuple<int32_t, C*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Holder& __self;
     using __for_src_0_t = decltype((__self.items));
     ::tpy::begin_elem_t<__for_src_0_t>* pair = nullptr;

@@ -53,7 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // def branch_suspends(v: int32 | None) -> Iterator[int32]:
 struct __gen_branch_suspends : public ::tpy::next_iter_mixin<__gen_branch_suspends, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::optional<int32_t> v;
 
     enum : int32_t {
@@ -77,7 +77,7 @@ struct __gen_branch_suspends : public ::tpy::next_iter_mixin<__gen_branch_suspen
 
 // def branch_no_suspend(v: int32 | None) -> Iterator[int32]:
 struct __gen_branch_no_suspend : public ::tpy::next_iter_mixin<__gen_branch_no_suspend, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::optional<int32_t> v;
     int32_t n;
 
@@ -100,7 +100,7 @@ struct __gen_branch_no_suspend : public ::tpy::next_iter_mixin<__gen_branch_no_s
 
 // def not_form(v: int32 | None) -> Iterator[int32]:
 struct __gen_not_form : public ::tpy::next_iter_mixin<__gen_not_form, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::optional<int32_t> v;
 
     enum : int32_t {
@@ -124,7 +124,7 @@ struct __gen_not_form : public ::tpy::next_iter_mixin<__gen_not_form, int32_t> {
 
 // def while_suspends(v: int32 | None) -> Iterator[int32]:
 struct __gen_while_suspends : public ::tpy::next_iter_mixin<__gen_while_suspends, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::optional<int32_t> v;
 
     enum : int32_t {
@@ -148,7 +148,7 @@ struct __gen_while_suspends : public ::tpy::next_iter_mixin<__gen_while_suspends
 
 // def peephole_while(v: int32 | None) -> Iterator[int32]:
 struct __gen_peephole_while : public ::tpy::next_iter_mixin<__gen_peephole_while, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::optional<int32_t> v;
 
     enum : int32_t {
@@ -171,7 +171,7 @@ struct __gen_peephole_while : public ::tpy::next_iter_mixin<__gen_peephole_while
 
 // def frame_local(b: Box) -> Iterator[int32]:
 struct __gen_frame_local : public ::tpy::next_iter_mixin<__gen_frame_local, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Box& b;
     std::optional<int32_t> v;
 

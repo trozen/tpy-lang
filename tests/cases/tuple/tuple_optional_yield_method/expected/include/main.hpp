@@ -53,7 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // def pairs(self, items: list[P]) -> Iterator[tuple[P | None, P | None]]:
 struct __gen_Holder_pairs : public ::tpy::next_iter_mixin<__gen_Holder_pairs, std::tuple<P*, P*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Holder& __self;
     std::vector<P>& items;
     using __for_src_0_t = decltype((items));

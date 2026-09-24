@@ -29,7 +29,7 @@ void main();
 
 // def unpack_across_yield() -> Iterator[int32]:
 struct __gen_unpack_across_yield : public ::tpy::next_iter_mixin<__gen_unpack_across_yield, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string host;
     std::string port;
 
@@ -53,7 +53,7 @@ struct __gen_unpack_across_yield : public ::tpy::next_iter_mixin<__gen_unpack_ac
 
 // def dict_keys(d: dict[str, int32]) -> Iterator[str]:
 struct __gen_dict_keys : public ::tpy::next_iter_mixin<__gen_dict_keys, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const ::tpy::ordered_map<std::string, int32_t>& d;
     std::string k;
     using __for_src_0_t = decltype((d));
@@ -81,7 +81,7 @@ struct __gen_dict_keys : public ::tpy::next_iter_mixin<__gen_dict_keys, std::str
 
 // def blob_slices(blobs: list[bytes]) -> Iterator[int32]:
 struct __gen_blob_slices : public ::tpy::next_iter_mixin<__gen_blob_slices, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<::tpy::Bytes>& blobs;
     ::tpy::Bytes total;
     ::tpy::Bytes b;
@@ -111,7 +111,7 @@ struct __gen_blob_slices : public ::tpy::next_iter_mixin<__gen_blob_slices, int3
 
 // def static_sources() -> Iterator[int32]:
 struct __gen_static_sources : public ::tpy::next_iter_mixin<__gen_static_sources, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string_view lit;
     std::string_view view;
 

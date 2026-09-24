@@ -43,6 +43,7 @@ __gen_generated generated(::tpy::BigInt a, ::tpy::BigInt b) {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_async_ops::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         before = ((a) / (b));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;

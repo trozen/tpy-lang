@@ -76,7 +76,7 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 
 // def gen(p: Pic, k: int32) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Pic& p;
     int32_t k;
     int32_t i;

@@ -24,7 +24,7 @@ void main();
 
 // async def note(tag: str) -> None:
 struct __coro_note {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string tag;
 
@@ -46,13 +46,13 @@ struct __coro_note {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::optional<__coro_note> c;
-    std::optional<__coro_note> d;
     std::string __coro_arg_0;
     std::string __coro_arg_1;
     std::string __coro_arg_2;
+    std::optional<__coro_note> c;
+    std::optional<__coro_note> d;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
 
     enum : int32_t {

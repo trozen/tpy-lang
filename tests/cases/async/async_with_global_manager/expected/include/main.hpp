@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // async def __aenter__(self) -> int32:
 struct __coro_Counter___aenter__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Counter& __self;
 
@@ -71,7 +71,7 @@ inline __coro_Counter___aenter__ Counter::__aenter__() {
 // async def __aexit__(self, exc_type: None, exc_val: None,
 //                     exc_tb: None) -> None:
 struct __coro_Counter___aexit__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Counter& __self;
     std::monostate exc_type;
@@ -100,7 +100,7 @@ inline __coro_Counter___aexit__ Counter::__aexit__(std::monostate exc_type, std:
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n1;
     int32_t n2;

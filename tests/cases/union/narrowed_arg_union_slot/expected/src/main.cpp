@@ -240,6 +240,7 @@ __gen_gen_match gen_match(::tpy::Union<A*, B*> v) {
 ::tpystd::tpy::Poll<int32_t> __coro_async_body::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (std::holds_alternative<A*>(v)) {
             auto& __v = *std::get<A*>(v);
             ::tpyapp::main::bump(::tpy::Union<A*, B*>{&(__v)});
@@ -287,6 +288,7 @@ __coro_async_body async_body(::tpy::Union<A*, B*> v) {
 ::tpystd::tpy::Poll<int32_t> __coro_async_match::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = v;
         switch (__match_subject_1.index()) {
         case 0: {
@@ -502,6 +504,7 @@ __gen_gen_total gen_total(::tpy::Union<const A*, const B*> v) {
 ::tpystd::tpy::Poll<int32_t> __coro_async_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -840,6 +843,7 @@ int32_t assign_narrowed() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(A(140));
         __sub_0.emplace(::tpy::Union<A*, B*>{&((*t))});
         __state = S_RESUME_0;

@@ -19,6 +19,7 @@ __gen_gen_snapshot gen_snapshot(const Snap& s) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -43,6 +44,7 @@ __coro_tick tick() {
 ::tpystd::tpy::Poll<int32_t> __coro_drain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         n = 0;
         __for_src_0.emplace(s.snapshot());
         __for_it_0.emplace(((*__for_src_0)).begin());

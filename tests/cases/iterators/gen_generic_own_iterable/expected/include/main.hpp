@@ -21,7 +21,7 @@ void main();
 // def indexed[T](items: Own[Iterable[T]]) -> Iterator[tuple[int32, T]]:  # tpyc: warning(/never consumed/)
 template <typename T, ::tpystd::typing::Iterable<T> T_items>
 struct __gen_indexed : public ::tpy::next_iter_mixin<__gen_indexed<T, T_items>, std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_items items;
     int32_t i;
     using __for_src_0_t = decltype((items));
@@ -55,6 +55,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_items>
 std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __gen_indexed<T, T_items>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         ::tpy::resumable_iter_init(__for_itr_0, items);
         __state = S_JOIN_0;

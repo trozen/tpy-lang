@@ -57,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const DerivedAIter& obj) {
 
 // async def __anext__(self) -> int32:
 struct __coro_BaseAIter___anext__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     BaseAIter& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -85,7 +85,7 @@ inline __coro_BaseAIter___anext__ BaseAIter::__anext__() {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t total;
     int32_t x;

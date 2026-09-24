@@ -57,6 +57,7 @@ Holder make_holder(int32_t n) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpy::__len__(::tpy::construct<std::vector<std::tuple<int32_t, int32_t>>>(::tpy::builtin_zip(Quiet(2), xs)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -134,7 +135,7 @@ namespace {
 // print("enum_genexpr_zip", sum(i + s for i, s in enumerate(a + b for a, b in zip(gen(), gen()))))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t a;
@@ -170,7 +171,9 @@ struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_f
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_1_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -202,7 +205,7 @@ __genexpr_main_1_frame<std::invoke_result_t<F_make>> __genexpr_main_1(std::in_pl
 // print("enum_genexpr_zip", sum(i + s for i, s in enumerate(a + b for a, b in zip(gen(), gen()))))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t i;
@@ -238,7 +241,9 @@ struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_f
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_2_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -270,7 +275,7 @@ __genexpr_main_2_frame<std::invoke_result_t<F_make>> __genexpr_main_2(std::in_pl
 // print("genexpr_source", sum(a * b for a, b in zip(Quiet(2), xs)))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t a;
@@ -305,7 +310,9 @@ struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_f
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_3_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -548,7 +555,7 @@ void main() {
         std::cout << "zip_frames" << " " << a << " " << b << "\n";
         }
     }
-    auto rg = ::tpyapp::main::ranged();
+    __gen_ranged rg = ::tpyapp::main::ranged();
     {
         auto __src_8 = ::tpy::builtin_zip(rg, std::array<int32_t, 1>{7});
         auto&& __itr_8 = ::tpy::__iter__(__src_8);

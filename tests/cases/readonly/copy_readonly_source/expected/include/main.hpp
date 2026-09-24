@@ -178,7 +178,7 @@ inline std::ostream& operator<<(std::ostream& os, const Missing& obj) {
 
 // async def copy_in_task(c: readonly[Cell]) -> int32:
 struct __coro_copy_in_task {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Cell& c;
     ::tpy::frame_slot<Cell> d;
@@ -201,7 +201,7 @@ struct __coro_copy_in_task {
 
 // def gen_copies(c: readonly[Cell]) -> Iterator[int32]:
 struct __gen_gen_copies : public ::tpy::next_iter_mixin<__gen_gen_copies, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Cell& c;
     ::tpy::frame_slot<Cell> d;
 

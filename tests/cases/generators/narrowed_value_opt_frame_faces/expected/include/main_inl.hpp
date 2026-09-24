@@ -16,6 +16,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         q = 0;
         if ((p.has_value())) {
             q = (*p);
@@ -53,6 +54,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_g::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_g_loop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpy::dict_values(d));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
@@ -87,6 +89,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_g_loop::__next__() {
 inline std::expected<std::optional<int32_t>, ::tpy::StopIteration> __gen_g_whole::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((p.has_value())) {
             __state = S_RESUME_0;
             return p;
@@ -120,6 +123,7 @@ inline std::expected<std::optional<int32_t>, ::tpy::StopIteration> __gen_g_whole
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_g_frame_whole::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         q2 = std::nullopt;
         if ((p.has_value())) {
             q2 = p;
@@ -160,6 +164,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_g_frame_whole::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_g_global::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((G.has_value())) {
             __state = S_RESUME_0;
             return (*G);
@@ -189,6 +194,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_g_global::__next__() {
 inline std::expected<std::string, ::tpy::StopIteration> __gen_g_view::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((s.has_value())) {
             __state = S_RESUME_0;
             return (*s);

@@ -13,6 +13,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_fill_buf::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -45,6 +46,7 @@ __coro_fill_buf fill_buf(::tpy::ByteArray& b) {
 ::tpystd::tpy::Poll<int32_t> __coro_bump_arr::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -77,6 +79,7 @@ __coro_bump_arr bump_arr(std::array<int32_t, 2>& a) {
 ::tpystd::tpy::Poll<int32_t> __coro_push_list::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -116,6 +119,7 @@ __coro_push_list push_list(std::vector<int32_t>& xs) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         b.emplace(::tpy::ByteArray(::tpy::bytes_literal("a", 1)));
         __sub_0.emplace((*b));
         __state = S_RESUME_0;

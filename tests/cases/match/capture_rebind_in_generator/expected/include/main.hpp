@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 // def counts(a: Cat) -> Iterator[int]:
 struct __gen_counts : public ::tpy::next_iter_mixin<__gen_counts, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Cat& a;
     ::tpy::BigInt v;
 

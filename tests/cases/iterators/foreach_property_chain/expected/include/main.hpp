@@ -98,7 +98,7 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 // async def tick() -> None:
 struct __coro_tick {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -119,7 +119,7 @@ struct __coro_tick {
 
 // async def bump_await(i: Inner) -> int32:
 struct __coro_bump_await {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Inner& i;
     int32_t total;
@@ -149,7 +149,7 @@ struct __coro_bump_await {
 
 // async def main_coro(i: Inner) -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Inner& i;
     int32_t __await_lift_0;
@@ -174,7 +174,7 @@ struct __coro_main_coro {
 
 // def bump_one_hop(i: Inner) -> Iterator[int32]:
 struct __gen_bump_one_hop : public ::tpy::next_iter_mixin<__gen_bump_one_hop, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Inner& i;
     using __for_src_0_t = decltype((i.items()));
     ::tpy::begin_elem_t<__for_src_0_t>* b = nullptr;
@@ -201,7 +201,7 @@ struct __gen_bump_one_hop : public ::tpy::next_iter_mixin<__gen_bump_one_hop, in
 
 // def gen_nosusp(o: Outer) -> Iterator[int32]:
 struct __gen_gen_nosusp : public ::tpy::next_iter_mixin<__gen_gen_nosusp, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Outer& o;
     int32_t total;
     ::tpy::frame_slot<Box> b;

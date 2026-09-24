@@ -102,6 +102,7 @@ __gen_gen gen(B& b) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (::tpy::seq_contains(b.items_m(), 1)) {
             __state = S_DONE;
             int32_t __tpy_async_ret = 1;

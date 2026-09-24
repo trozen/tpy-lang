@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 // def bump(d: dict[int32, C]) -> Iterator[int32]:
 struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::ordered_map<int32_t, C>& d;
     std::tuple<int32_t, C*> __for_tup_0;
     int32_t k;
@@ -69,7 +69,7 @@ struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
 
 // def pairs(d: dict[int32, C]) -> Iterator[int32]:
 struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::ordered_map<int32_t, C>& d;
     std::tuple<int32_t, C*> kv;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpy::dict_items(d)))>;

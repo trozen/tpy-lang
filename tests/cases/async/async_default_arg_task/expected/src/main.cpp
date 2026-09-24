@@ -12,6 +12,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_add::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -42,6 +43,7 @@ __coro_add add(int32_t a, int32_t b) {
 ::tpystd::tpy::Poll<int32_t> __coro_with_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::add(5))));
         __sub_0 = &((*t));
         __state = S_RESUME_0;
@@ -72,6 +74,7 @@ __coro_with_default with_default() {
 ::tpystd::tpy::Poll<int32_t> __coro_with_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::add(5, 2))));
         __sub_0 = &((*t));
         __state = S_RESUME_0;
@@ -102,6 +105,7 @@ __coro_with_override with_override() {
 ::tpystd::tpy::Poll<int32_t> __coro_inline_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(5);
         __state = S_RESUME_0;
         continue;
@@ -131,6 +135,7 @@ __coro_inline_default inline_default() {
 ::tpystd::tpy::Poll<int32_t> __coro_inline_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(5, 2);
         __state = S_RESUME_0;
         continue;
@@ -161,6 +166,7 @@ __coro_inline_override inline_override() {
 ::tpystd::tpy::Poll<int32_t> __coro_generic_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         nums.emplace(std::vector<int32_t>{1, 2, 3});
         __sub_0.emplace((*nums));
         __state = S_RESUME_0;
@@ -192,6 +198,7 @@ __coro_generic_default generic_default() {
 ::tpystd::tpy::Poll<int32_t> __coro_generic_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         nums.emplace(std::vector<int32_t>{1, 2, 3});
         __sub_0.emplace((*nums), 3);
         __state = S_RESUME_0;
@@ -223,6 +230,7 @@ __coro_generic_override generic_override() {
 ::tpystd::tpy::Poll<int32_t> __coro_method_inline_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ad.emplace(Adder(100));
         __sub_0.emplace((*ad), 5);
         __state = S_RESUME_0;
@@ -254,6 +262,7 @@ __coro_method_inline_default method_inline_default() {
 ::tpystd::tpy::Poll<int32_t> __coro_method_inline_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ad.emplace(Adder(100));
         __sub_0.emplace((*ad), 5, 2);
         __state = S_RESUME_0;
@@ -286,6 +295,7 @@ __coro_method_inline_override method_inline_override() {
 ::tpystd::tpy::Poll<int32_t> __coro_method_task_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ad.emplace(Adder(100));
         t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>((*ad).add(5))));
         __sub_0 = &((*t));
@@ -319,6 +329,7 @@ __coro_method_task_default method_task_default() {
 ::tpystd::tpy::Poll<int32_t> __coro_method_task_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ad.emplace(Adder(100));
         t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>((*ad).add(5, 2))));
         __sub_0 = &((*t));
@@ -354,6 +365,7 @@ __coro_method_task_override method_task_override() {
 ::tpystd::tpy::Poll<int32_t> __coro_aenter_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         cm.emplace(CM());
         out = 0;
         __with_ctx_0 = &((*cm));
@@ -423,6 +435,7 @@ __coro_aenter_default aenter_default() {
 ::tpystd::tpy::Poll<int32_t> __coro_aexit_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         cm.emplace(CM2());
         __with_ctx_0 = &((*cm));
         __sub_0.emplace((*__with_ctx_0));
@@ -492,6 +505,7 @@ __coro_aexit_default aexit_default() {
 ::tpystd::tpy::Poll<int32_t> __coro_anext_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         c.emplace(Counts(4));
         total = 0;
         __for_itr_0.emplace(((*c)).__aiter__());
@@ -554,6 +568,7 @@ __coro_anext_default anext_default() {
 ::tpystd::tpy::Poll<int32_t> __coro_cross_module_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(5);
         __state = S_RESUME_0;
         continue;
@@ -583,6 +598,7 @@ __coro_cross_module_default cross_module_default() {
 ::tpystd::tpy::Poll<int32_t> __coro_cross_module_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(5, 7);
         __state = S_RESUME_0;
         continue;
@@ -646,6 +662,7 @@ void main() {
 ::tpystd::tpy::Poll<int32_t> __coro_Adder_add::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -674,6 +691,7 @@ void main() {
 ::tpystd::tpy::Poll<int32_t> __coro_CM___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -701,6 +719,7 @@ void main() {
 ::tpystd::tpy::Poll<bool> __coro_CM___aexit__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -726,6 +745,7 @@ void main() {
 ::tpystd::tpy::Poll<int32_t> __coro_CM2___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -756,6 +776,7 @@ void main() {
 ::tpystd::tpy::Poll<bool> __coro_CM2___aexit__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -787,6 +808,7 @@ void main() {
 ::tpystd::tpy::Poll<int32_t> __coro_Counter___anext__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;

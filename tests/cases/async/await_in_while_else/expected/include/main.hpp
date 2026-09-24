@@ -26,7 +26,7 @@ void main();
 
 // async def tick(label: str) -> None:
 struct __coro_tick {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string label;
 
@@ -48,7 +48,7 @@ struct __coro_tick {
 
 // async def drive(brk: int32) -> None:
 struct __coro_drive {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t brk;
     int32_t i;
@@ -79,7 +79,7 @@ struct __coro_drive {
 
 // async def caller() -> None:
 struct __coro_caller {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<__coro_drive> __sub_0;
     std::optional<__coro_drive> __sub_1;

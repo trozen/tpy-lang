@@ -23,7 +23,7 @@ void main();
 
 // async def roundtrip() -> int:
 struct __coro_roundtrip {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::tpy::channel::Sender<::tpy::BigInt>> tx;
     ::tpy::frame_slot<::tpystd::tpy::channel::Receiver<::tpy::BigInt>> rx;

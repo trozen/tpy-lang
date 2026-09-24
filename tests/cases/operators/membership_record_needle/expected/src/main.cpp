@@ -66,6 +66,7 @@ __gen_gen_found gen_found(const std::vector<Pt>& pts, const std::vector<Pt>& pro
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         bool __tpy_async_ret = ::tpy::seq_contains(pts, p);
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));

@@ -20,6 +20,7 @@ Source make() {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         s = 0;
         __for_itr_0.emplace((::tpyapp::main::make()).__aiter__());
         __state = S_JOIN_0;
@@ -73,6 +74,7 @@ __coro_total total() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -106,6 +108,7 @@ __coro_main main() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((__self.n <= 0)) {
             throw ::tpy::StopAsyncIteration{};
         }

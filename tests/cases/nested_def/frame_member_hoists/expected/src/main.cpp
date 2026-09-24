@@ -59,6 +59,7 @@ __gen_gen_escape_hoist gen_escape_hoist() {
 ::tpystd::tpy::Poll<int32_t> __coro_coro_dyn::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         fl.emplace(Rec(7));
         // def inner: frame member
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));

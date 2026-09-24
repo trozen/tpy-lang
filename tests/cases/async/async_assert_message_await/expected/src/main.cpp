@@ -13,6 +13,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         std::cout << "building" << " " << tag << "\n";
         __state = S_DONE;
         std::string __tpy_async_ret = (::tpy::str_concat(tag, "!"));
@@ -35,6 +36,7 @@ __coro_msg msg(std::string_view tag) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((!((x > 0)))) {
             __coro_arg_0 = "positive";
             __sub_0.emplace(__coro_arg_0);
@@ -79,6 +81,7 @@ __coro_go go(int32_t x) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(2);
         __state = S_RESUME_0;
         continue;

@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 
 // def handles(items: list[Handle]) -> Iterator[Handle]:  # tpyc: ok
 struct __gen_handles : public ::tpy::next_iter_mixin<__gen_handles, ::tpy::val_or_ref<Handle>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Handle>& items;
     using __for_src_0_t = decltype((items));
     ::tpy::begin_elem_t<__for_src_0_t>* h = nullptr;

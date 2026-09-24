@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
 
 // def gen() -> Iterator[list[int32]]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::frame_slot<std::vector<int32_t>> buf;
 
@@ -70,7 +70,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::val_or_ref<st
 
 // def walk() -> Iterator[tuple[int32, list[int32]]]:
 struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<int32_t, std::vector<int32_t>*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::vector<int32_t>> stack;
     int32_t k;
     int32_t cur;
@@ -96,7 +96,7 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<int32_t
 
 // def gen_range() -> Iterator[list[int32]]:
 struct __gen_gen_range : public ::tpy::next_iter_mixin<__gen_gen_range, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t _;
     ::tpy::frame_slot<std::vector<int32_t>> buf;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -122,7 +122,7 @@ struct __gen_gen_range : public ::tpy::next_iter_mixin<__gen_gen_range, ::tpy::v
 
 // def gen_ternary(flag: bool) -> Iterator[list[int32]]:
 struct __gen_gen_ternary : public ::tpy::next_iter_mixin<__gen_gen_ternary, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool flag;
     int32_t i;
     ::tpy::frame_slot<std::vector<int32_t>> a;
@@ -148,7 +148,7 @@ struct __gen_gen_ternary : public ::tpy::next_iter_mixin<__gen_gen_ternary, ::tp
 
 // def gen_walrus() -> Iterator[list[int32]]:
 struct __gen_gen_walrus : public ::tpy::next_iter_mixin<__gen_gen_walrus, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::frame_slot<std::vector<int32_t>> buf;
     std::vector<int32_t>* x = nullptr;
@@ -173,7 +173,7 @@ struct __gen_gen_walrus : public ::tpy::next_iter_mixin<__gen_gen_walrus, ::tpy:
 
 // def gen(self) -> Iterator[list[int32]]:
 struct __gen_Source_gen : public ::tpy::next_iter_mixin<__gen_Source_gen, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Source& __self;
     int32_t i;
     ::tpy::frame_slot<std::vector<int32_t>> buf;

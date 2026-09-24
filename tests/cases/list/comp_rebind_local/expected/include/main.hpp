@@ -130,7 +130,7 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 // async def coro() -> int32:
 struct __coro_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<int32_t>> xs;
 

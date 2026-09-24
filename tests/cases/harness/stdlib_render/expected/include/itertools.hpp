@@ -52,7 +52,7 @@ __gen_filterfalse<T, T_it, F_pred> filterfalse(F_pred&& pred, T_it&& it);
 
 // def count(start: int = 0, step: int = 1) -> Iterator[int]:
 struct __gen_count : public ::tpy::next_iter_mixin<__gen_count, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt start;
     ::tpy::BigInt step;
     ::tpy::BigInt n;
@@ -78,7 +78,7 @@ struct __gen_count : public ::tpy::next_iter_mixin<__gen_count, ::tpy::BigInt> {
 // def repeat[T](object: T, times: Optional[int32] = None) -> Iterator[T]:
 template <typename T>
 struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::val_or_ref_t<T> object;
     std::optional<int32_t> times;
     int32_t _;
@@ -116,6 +116,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((!times.has_value())) {
             __state = S_JOIN_1;
             continue;
@@ -165,7 +166,7 @@ __gen_repeat<T> repeat(::tpy::param_val_or_ref_t<T> object, std::optional<int32_
 // def cycle[T](it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_cycle : public ::tpy::next_iter_mixin<__gen_cycle<T, T_it>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_it it;
     ::tpy::frame_slot<std::vector<T>> saved;
     using __for_src_0_t = decltype((it));
@@ -209,6 +210,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_cycle<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         saved.emplace(std::vector<T>{});
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
@@ -263,7 +265,7 @@ __gen_cycle<T, T_it> cycle(T_it&& it) {
 // def islice[T](it: Iterable[T], stop: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_islice : public ::tpy::next_iter_mixin<__gen_islice<T, T_it>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_it it;
     int32_t stop;
     int32_t i;
@@ -303,6 +305,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_islice<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
@@ -347,7 +350,7 @@ __gen_islice<T, T_it> islice(T_it&& it, int32_t stop) {
 // def takewhile[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 struct __gen_takewhile : public ::tpy::next_iter_mixin<__gen_takewhile<T, T_it, F_pred>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     F_pred pred;
     T_it it;
     using __for_src_0_t = decltype((it));
@@ -382,6 +385,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_takewhile<T, T_it, F_pred>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
@@ -421,7 +425,7 @@ __gen_takewhile<T, T_it, F_pred> takewhile(F_pred&& pred, T_it&& it) {
 // def dropwhile[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 struct __gen_dropwhile : public ::tpy::next_iter_mixin<__gen_dropwhile<T, T_it, F_pred>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     F_pred pred;
     T_it it;
     bool dropping;
@@ -460,6 +464,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_dropwhile<T, T_it, F_pred>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         dropping = true;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
@@ -506,7 +511,7 @@ __gen_dropwhile<T, T_it, F_pred> dropwhile(F_pred&& pred, T_it&& it) {
 // def filterfalse[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 struct __gen_filterfalse : public ::tpy::next_iter_mixin<__gen_filterfalse<T, T_it, F_pred>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     F_pred pred;
     T_it it;
     using __for_src_0_t = decltype((it));
@@ -540,6 +545,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_filterfalse<T, T_it, F_pred>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;

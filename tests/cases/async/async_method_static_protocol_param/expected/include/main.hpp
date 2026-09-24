@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Runner& obj) {
 //                           timeout: float) -> Own[T]:
 template <typename T>
 struct __coro_Runner_with_timeout {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Runner& __self;
     std::unique_ptr<::tpystd::coro::Cancellable<T>> coro;
@@ -75,6 +75,7 @@ template <typename T>
 ::tpystd::tpy::Poll<T> __coro_Runner_with_timeout<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(coro), timeout);
         __state = S_RESUME_0;
         continue;
@@ -100,7 +101,7 @@ inline __coro_Runner_with_timeout<T> Runner::with_timeout(std::unique_ptr<::tpys
 
 // async def inner() -> int:
 struct __coro_inner {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -123,7 +124,7 @@ struct __coro_inner {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Runner> r;
     ::tpy::BigInt v;

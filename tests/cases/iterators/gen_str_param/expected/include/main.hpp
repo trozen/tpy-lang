@@ -18,7 +18,7 @@ void main();
 
 // def greetings(name: str) -> Iterator[str]:
 struct __gen_greetings : public ::tpy::next_iter_mixin<__gen_greetings, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string name;
 
     enum : int32_t {

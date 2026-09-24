@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // async def step(n: int32) -> int32:
 struct __coro_step {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
 
@@ -63,7 +63,7 @@ struct __coro_step {
 
 // async def f(n: int32) -> int32:
 struct __coro_f {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
     ::tpy::frame_slot<::tpy::ordered_map<int32_t, Box>> d;

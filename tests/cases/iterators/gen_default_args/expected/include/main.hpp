@@ -123,7 +123,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box2<T>& obj) {
 
 // def upto(stop: int32 = 3, step: int32 = 1) -> Iterator[int32]:
 struct __gen_upto : public ::tpy::next_iter_mixin<__gen_upto, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t stop;
     int32_t step;
     int32_t i;
@@ -148,7 +148,7 @@ struct __gen_upto : public ::tpy::next_iter_mixin<__gen_upto, int32_t> {
 
 // def upto_final(stop: int32 = DEFAULT_STOP) -> Iterator[int32]:
 struct __gen_upto_final : public ::tpy::next_iter_mixin<__gen_upto_final, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t stop;
     int32_t i;
 
@@ -172,7 +172,7 @@ struct __gen_upto_final : public ::tpy::next_iter_mixin<__gen_upto_final, int32_
 
 // def bounded(limit: int32 = 2) -> Iterator[int32]:
 struct __gen_bounded : public ::tpy::next_iter_mixin<__gen_bounded, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t limit;
     int32_t i;
 
@@ -198,7 +198,7 @@ struct __gen_bounded : public ::tpy::next_iter_mixin<__gen_bounded, int32_t> {
 // def head[T](it: Iterable[T], n: int32 = 2) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_it it;
     int32_t n;
     int32_t c;
@@ -238,6 +238,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         c = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
@@ -281,7 +282,7 @@ __gen_head<T, T_it> head(T_it&& it, int32_t n) {
 
 // def upto_m(self, stop: int32 = 2) -> Iterator[int32]:
 struct __gen_Box_upto_m : public ::tpy::next_iter_mixin<__gen_Box_upto_m, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Box& __self;
     int32_t stop;
     int32_t i;
@@ -310,7 +311,7 @@ inline __gen_Box_upto_m Box::upto_m(int32_t stop) const {
 
 // def bounded_m(self, limit: int32 = 2) -> Iterator[int32]:
 struct __gen_Box_bounded_m : public ::tpy::next_iter_mixin<__gen_Box_bounded_m, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Box& __self;
     int32_t limit;
     int32_t i;
@@ -342,7 +343,7 @@ inline __gen_Box_bounded_m Box::bounded_m(int32_t limit) const {
 //            m: Mode = Mode.B, r: Rec | None = None, w: int32 = int32(3),
 //            neg: int32 = -1, f: int32 = WIDTH) -> Iterator[int32]:
 struct __gen_Box_shapes : public ::tpy::next_iter_mixin<__gen_Box_shapes, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Box& __self;
     std::string tag;
     bool flag;
@@ -378,7 +379,7 @@ inline __gen_Box_shapes Box::shapes(std::string_view tag, bool flag, double rati
 // def take(self, n: int32 = 2) -> Iterator[T]:
 template <typename T>
 struct __gen_Box2_take : public ::tpy::next_iter_mixin<__gen_Box2_take<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Box2<T>& __self;
     int32_t n;
     int32_t c;
@@ -420,6 +421,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Box2_take<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         c = 0;
         auto& __for_obj_0 = __self.items;
         __for_it_0.emplace((__for_obj_0).begin());

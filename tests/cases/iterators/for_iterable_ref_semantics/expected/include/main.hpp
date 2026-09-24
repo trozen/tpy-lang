@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // def gen_double_x(items: Iterable[Point]) -> Iterator[int]:
 template <::tpystd::typing::Iterable<Point> T_items>
 struct __gen_gen_double_x : public ::tpy::next_iter_mixin<__gen_gen_double_x<T_items>, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_items items;
     using __for_src_0_t = decltype((items));
     ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> p;
@@ -79,6 +79,7 @@ template <::tpystd::typing::Iterable<Point> T_items>
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_double_x<T_items>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::resumable_iter_init(__for_itr_0, items);
         __state = S_JOIN_0;
         continue;

@@ -49,7 +49,7 @@ namespace {
 // return sum(v for v in d.values())  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_ro_values_5_frame : public ::tpy::next_iter_mixin<__genexpr_ro_values_5_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t v;
     using __for_src_0_t = decltype((__src));
@@ -83,7 +83,9 @@ struct __genexpr_ro_values_5_frame : public ::tpy::next_iter_mixin<__genexpr_ro_
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_ro_values_5_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -123,7 +125,7 @@ namespace {
 // return sum(k + v for k, v in d.items())  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 struct __genexpr_ro_items_6_frame : public ::tpy::next_iter_mixin<__genexpr_ro_items_6_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t k;
@@ -158,7 +160,9 @@ struct __genexpr_ro_items_6_frame : public ::tpy::next_iter_mixin<__genexpr_ro_i
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_ro_items_6_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -208,6 +212,7 @@ __gen_framegen framegen(const std::vector<int32_t>& xs) {
 ::tpystd::tpy::Poll<int32_t> __coro_aio::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -237,7 +242,7 @@ namespace {
 // t = sum(v for v in d.values())  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_fallible_11_frame : public ::tpy::next_iter_mixin<__genexpr_fallible_11_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t v;
     using __for_src_0_t = decltype((__src));
@@ -271,7 +276,9 @@ struct __genexpr_fallible_11_frame : public ::tpy::next_iter_mixin<__genexpr_fal
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_fallible_11_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -319,7 +326,7 @@ namespace {
 // return sum(x for x in reversed(xs))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_by_match_12_frame : public ::tpy::next_iter_mixin<__genexpr_by_match_12_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -353,7 +360,9 @@ struct __genexpr_by_match_12_frame : public ::tpy::next_iter_mixin<__genexpr_by_
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_by_match_12_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -419,7 +428,7 @@ namespace {
 
 // return sum(b - 96 for b in data)  # tpyc: ok
 struct __genexpr_byte_sum_13_frame : public ::tpy::next_iter_mixin<__genexpr_byte_sum_13_frame, uint8_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Bytes __src;
     uint8_t b;
     using __for_src_0_t = decltype((__src));
@@ -473,7 +482,7 @@ namespace {
 // return sum(v + k for v in d.values())  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src, typename F_k>
 struct __genexpr_inner_14_frame : public ::tpy::next_iter_mixin<__genexpr_inner_14_frame<T___src, F_k>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     F_k k;
     int32_t v;
@@ -508,7 +517,9 @@ struct __genexpr_inner_14_frame : public ::tpy::next_iter_mixin<__genexpr_inner_
 template <::tpystd::typing::Iterable<int32_t> T___src, typename F_k>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_inner_14_frame<T___src, F_k>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -554,7 +565,7 @@ namespace {
 // print("values", sum(v for v in d.values()))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_15_frame : public ::tpy::next_iter_mixin<__genexpr_main_15_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t v;
     using __for_src_0_t = decltype((__src));
@@ -588,7 +599,9 @@ struct __genexpr_main_15_frame : public ::tpy::next_iter_mixin<__genexpr_main_15
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_15_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -617,7 +630,7 @@ __genexpr_main_15_frame<std::invoke_result_t<F_make>> __genexpr_main_15(std::in_
 // print("keys", sum(k for k in d.keys()))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_16_frame : public ::tpy::next_iter_mixin<__genexpr_main_16_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t k;
     using __for_src_0_t = decltype((__src));
@@ -650,7 +663,9 @@ struct __genexpr_main_16_frame : public ::tpy::next_iter_mixin<__genexpr_main_16
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_16_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -679,7 +694,7 @@ __genexpr_main_16_frame<std::invoke_result_t<F_make>> __genexpr_main_16(std::in_
 // print("items", sum(k * v for k, v in d.items()))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 struct __genexpr_main_17_frame : public ::tpy::next_iter_mixin<__genexpr_main_17_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t k;
@@ -714,7 +729,9 @@ struct __genexpr_main_17_frame : public ::tpy::next_iter_mixin<__genexpr_main_17
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_17_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -746,7 +763,7 @@ __genexpr_main_17_frame<std::invoke_result_t<F_make>> __genexpr_main_17(std::in_
 // print("zip", sum(a + b for a, b in zip(xs, ys)))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 struct __genexpr_main_18_frame : public ::tpy::next_iter_mixin<__genexpr_main_18_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t a;
@@ -781,7 +798,9 @@ struct __genexpr_main_18_frame : public ::tpy::next_iter_mixin<__genexpr_main_18
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_18_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -813,7 +832,7 @@ __genexpr_main_18_frame<std::invoke_result_t<F_make>> __genexpr_main_18(std::in_
 // print("enumerate", sum(i * x for i, x in enumerate(xs)))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 struct __genexpr_main_19_frame : public ::tpy::next_iter_mixin<__genexpr_main_19_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t i;
@@ -848,7 +867,9 @@ struct __genexpr_main_19_frame : public ::tpy::next_iter_mixin<__genexpr_main_19
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_19_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -880,7 +901,7 @@ __genexpr_main_19_frame<std::invoke_result_t<F_make>> __genexpr_main_19(std::in_
 // print("reversed", list(x for x in reversed(xs)))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_20_frame : public ::tpy::next_iter_mixin<__genexpr_main_20_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -913,7 +934,9 @@ struct __genexpr_main_20_frame : public ::tpy::next_iter_mixin<__genexpr_main_20
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_20_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -942,7 +965,7 @@ __genexpr_main_20_frame<std::invoke_result_t<F_make>> __genexpr_main_20(std::in_
 // print("filter", list(x for x in filter(big, xs)))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_21_frame : public ::tpy::next_iter_mixin<__genexpr_main_21_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -975,7 +998,9 @@ struct __genexpr_main_21_frame : public ::tpy::next_iter_mixin<__genexpr_main_21
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_21_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -1004,7 +1029,7 @@ __genexpr_main_21_frame<std::invoke_result_t<F_make>> __genexpr_main_21(std::in_
 // print("map", list(x for x in map(triple, xs)))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_22_frame : public ::tpy::next_iter_mixin<__genexpr_main_22_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -1037,7 +1062,9 @@ struct __genexpr_main_22_frame : public ::tpy::next_iter_mixin<__genexpr_main_22
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_22_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -1066,7 +1093,7 @@ __genexpr_main_22_frame<std::invoke_result_t<F_make>> __genexpr_main_22(std::in_
 // print("gen", sum(x for x in gen()))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_23_frame : public ::tpy::next_iter_mixin<__genexpr_main_23_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -1099,7 +1126,9 @@ struct __genexpr_main_23_frame : public ::tpy::next_iter_mixin<__genexpr_main_23
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_23_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -1128,7 +1157,7 @@ __genexpr_main_23_frame<std::invoke_result_t<F_make>> __genexpr_main_23(std::in_
 // print("ranged", sum(x for x in ranged()))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_24_frame : public ::tpy::next_iter_mixin<__genexpr_main_24_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -1161,7 +1190,9 @@ struct __genexpr_main_24_frame : public ::tpy::next_iter_mixin<__genexpr_main_24
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_24_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -1190,7 +1221,7 @@ __genexpr_main_24_frame<std::invoke_result_t<F_make>> __genexpr_main_24(std::in_
 // print("zip_gens", sum(a + b for a, b in zip(gen(), four())))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 struct __genexpr_main_25_frame : public ::tpy::next_iter_mixin<__genexpr_main_25_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t a;
@@ -1227,7 +1258,9 @@ struct __genexpr_main_25_frame : public ::tpy::next_iter_mixin<__genexpr_main_25
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_25_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -1259,7 +1292,7 @@ __genexpr_main_25_frame<std::invoke_result_t<F_make>> __genexpr_main_25(std::in_
 // print("zip_gens_long", sum(a + b for a, b in zip(four(), gen())))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 struct __genexpr_main_26_frame : public ::tpy::next_iter_mixin<__genexpr_main_26_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t a;
@@ -1294,7 +1327,9 @@ struct __genexpr_main_26_frame : public ::tpy::next_iter_mixin<__genexpr_main_26
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_26_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -1326,7 +1361,7 @@ __genexpr_main_26_frame<std::invoke_result_t<F_make>> __genexpr_main_26(std::in_
 // print("enumerate_gen", sum(i * x for i, x in enumerate(gen())))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 struct __genexpr_main_27_frame : public ::tpy::next_iter_mixin<__genexpr_main_27_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t i;
@@ -1361,7 +1396,9 @@ struct __genexpr_main_27_frame : public ::tpy::next_iter_mixin<__genexpr_main_27
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_27_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -1392,7 +1429,7 @@ __genexpr_main_27_frame<std::invoke_result_t<F_make>> __genexpr_main_27(std::in_
 
 // print("enumerate_genexpr", sum(i * v for i, v in enumerate(x * 2 for x in xs)))  # tpyc: ok
 struct __genexpr_main_28_frame : public ::tpy::next_iter_mixin<__genexpr_main_28_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -1436,7 +1473,7 @@ __genexpr_main_28_frame __genexpr_main_28(const std::vector<int32_t>& __src) {
 // print("enumerate_genexpr", sum(i * v for i, v in enumerate(x * 2 for x in xs)))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 struct __genexpr_main_29_frame : public ::tpy::next_iter_mixin<__genexpr_main_29_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t i;
@@ -1473,7 +1510,9 @@ struct __genexpr_main_29_frame : public ::tpy::next_iter_mixin<__genexpr_main_29
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_29_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -1505,7 +1544,7 @@ __genexpr_main_29_frame<std::invoke_result_t<F_make>> __genexpr_main_29(std::in_
 // print("zip_genexpr_gen", sum(a * b for a, b in zip((x for x in gen()), xs)))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_30_frame : public ::tpy::next_iter_mixin<__genexpr_main_30_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -1538,7 +1577,9 @@ struct __genexpr_main_30_frame : public ::tpy::next_iter_mixin<__genexpr_main_30
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_30_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -1567,7 +1608,7 @@ __genexpr_main_30_frame<std::invoke_result_t<F_make>> __genexpr_main_30(std::in_
 // print("zip_genexpr_gen", sum(a * b for a, b in zip((x for x in gen()), xs)))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 struct __genexpr_main_31_frame : public ::tpy::next_iter_mixin<__genexpr_main_31_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t a;
@@ -1602,7 +1643,9 @@ struct __genexpr_main_31_frame : public ::tpy::next_iter_mixin<__genexpr_main_31
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_31_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -1634,7 +1677,7 @@ __genexpr_main_31_frame<std::invoke_result_t<F_make>> __genexpr_main_31(std::in_
 // print("filter_gen", list(x for x in filter(big, gen())))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_32_frame : public ::tpy::next_iter_mixin<__genexpr_main_32_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -1667,7 +1710,9 @@ struct __genexpr_main_32_frame : public ::tpy::next_iter_mixin<__genexpr_main_32
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_32_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -1696,7 +1741,7 @@ __genexpr_main_32_frame<std::invoke_result_t<F_make>> __genexpr_main_32(std::in_
 // print("own_call", sum(x for x in make_list()))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_33_frame : public ::tpy::next_iter_mixin<__genexpr_main_33_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -1729,7 +1774,9 @@ struct __genexpr_main_33_frame : public ::tpy::next_iter_mixin<__genexpr_main_33
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_33_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -1758,7 +1805,7 @@ __genexpr_main_33_frame<std::invoke_result_t<F_make>> __genexpr_main_33(std::in_
 // print("borrow_call", sum(x for x in borrow_list(xs)))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_34_frame : public ::tpy::next_iter_mixin<__genexpr_main_34_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -1791,7 +1838,9 @@ struct __genexpr_main_34_frame : public ::tpy::next_iter_mixin<__genexpr_main_34
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_34_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -1820,7 +1869,7 @@ __genexpr_main_34_frame<std::invoke_result_t<F_make>> __genexpr_main_34(std::in_
 // print("ctor_call_list", sum(x for x in list(xs)))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_35_frame : public ::tpy::next_iter_mixin<__genexpr_main_35_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -1855,7 +1904,9 @@ struct __genexpr_main_35_frame : public ::tpy::next_iter_mixin<__genexpr_main_35
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_35_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -1884,7 +1935,7 @@ __genexpr_main_35_frame<std::invoke_result_t<F_make>> __genexpr_main_35(std::in_
 // print("ctor_call_sorted", list(x for x in sorted(ys) if x > 10))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_36_frame : public ::tpy::next_iter_mixin<__genexpr_main_36_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -1918,7 +1969,9 @@ struct __genexpr_main_36_frame : public ::tpy::next_iter_mixin<__genexpr_main_36
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_36_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -1949,7 +2002,7 @@ __genexpr_main_36_frame<std::invoke_result_t<F_make>> __genexpr_main_36(std::in_
 // print("literal", sum(x * x for x in [1, 2, 3, 4]))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_37_frame : public ::tpy::next_iter_mixin<__genexpr_main_37_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -1982,7 +2035,9 @@ struct __genexpr_main_37_frame : public ::tpy::next_iter_mixin<__genexpr_main_37
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_37_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -2011,7 +2066,7 @@ __genexpr_main_37_frame<std::invoke_result_t<F_make>> __genexpr_main_37(std::in_
 // print("literal_unpack", sum(a for a, b in [(1, 2), (3, 4)]))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 struct __genexpr_main_38_frame : public ::tpy::next_iter_mixin<__genexpr_main_38_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t a;
@@ -2046,7 +2101,9 @@ struct __genexpr_main_38_frame : public ::tpy::next_iter_mixin<__genexpr_main_38
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_38_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -2078,7 +2135,7 @@ __genexpr_main_38_frame<std::invoke_result_t<F_make>> __genexpr_main_38(std::in_
 // print("zip_filter", sum(a for a, b in zip(xs, ys) if b > 10))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 struct __genexpr_main_39_frame : public ::tpy::next_iter_mixin<__genexpr_main_39_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::tuple<int32_t, int32_t> __for_tup_gx;
     int32_t a;
@@ -2115,7 +2172,9 @@ struct __genexpr_main_39_frame : public ::tpy::next_iter_mixin<__genexpr_main_39
 template <::tpystd::typing::Iterable<std::tuple<int32_t, int32_t>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_39_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -2149,7 +2208,7 @@ __genexpr_main_39_frame<std::invoke_result_t<F_make>> __genexpr_main_39(std::in_
 // print("gen_filter", list(x for x in gen() if x != 2))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_40_frame : public ::tpy::next_iter_mixin<__genexpr_main_40_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -2183,7 +2242,9 @@ struct __genexpr_main_40_frame : public ::tpy::next_iter_mixin<__genexpr_main_40
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_40_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -2214,7 +2275,7 @@ __genexpr_main_40_frame<std::invoke_result_t<F_make>> __genexpr_main_40(std::in_
 // print("filter_tail_gen", list(x for x in ranged() if x < 2))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_41_frame : public ::tpy::next_iter_mixin<__genexpr_main_41_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -2250,7 +2311,9 @@ struct __genexpr_main_41_frame : public ::tpy::next_iter_mixin<__genexpr_main_41
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_41_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -2281,7 +2344,7 @@ __genexpr_main_41_frame<std::invoke_result_t<F_make>> __genexpr_main_41(std::in_
 // print("filter_tail_map", list(x for x in map(triple, xs) if x < 6))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_42_frame : public ::tpy::next_iter_mixin<__genexpr_main_42_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -2315,7 +2378,9 @@ struct __genexpr_main_42_frame : public ::tpy::next_iter_mixin<__genexpr_main_42
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_42_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -2346,7 +2411,7 @@ __genexpr_main_42_frame<std::invoke_result_t<F_make>> __genexpr_main_42(std::in_
 // print("filter_mid_view", list(v for v in d.values() if v != 4))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_43_frame : public ::tpy::next_iter_mixin<__genexpr_main_43_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t v;
     using __for_src_0_t = decltype((__src));
@@ -2380,7 +2445,9 @@ struct __genexpr_main_43_frame : public ::tpy::next_iter_mixin<__genexpr_main_43
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_43_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -2411,7 +2478,7 @@ __genexpr_main_43_frame<std::invoke_result_t<F_make>> __genexpr_main_43(std::in_
 // print("drain", drain(x * 2 for x in gen()))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_44_frame : public ::tpy::next_iter_mixin<__genexpr_main_44_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -2444,7 +2511,9 @@ struct __genexpr_main_44_frame : public ::tpy::next_iter_mixin<__genexpr_main_44
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_44_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -2473,7 +2542,7 @@ __genexpr_main_44_frame<std::invoke_result_t<F_make>> __genexpr_main_44(std::in_
 // print("any", any(v > 3 for v in d.values()))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_45_frame : public ::tpy::next_iter_mixin<__genexpr_main_45_frame<T___src>, bool> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t v;
     using __for_src_0_t = decltype((__src));
@@ -2506,7 +2575,9 @@ struct __genexpr_main_45_frame : public ::tpy::next_iter_mixin<__genexpr_main_45
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<bool, ::tpy::StopIteration> __genexpr_main_45_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -2535,7 +2606,7 @@ __genexpr_main_45_frame<std::invoke_result_t<F_make>> __genexpr_main_45(std::in_
 // print("all", all(v > 3 for v in d.values()))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_46_frame : public ::tpy::next_iter_mixin<__genexpr_main_46_frame<T___src>, bool> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t v;
     using __for_src_0_t = decltype((__src));
@@ -2568,7 +2639,9 @@ struct __genexpr_main_46_frame : public ::tpy::next_iter_mixin<__genexpr_main_46
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<bool, ::tpy::StopIteration> __genexpr_main_46_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -2596,7 +2669,7 @@ __genexpr_main_46_frame<std::invoke_result_t<F_make>> __genexpr_main_46(std::in_
 
 // print("bytes", sum(b - 96 for b in data))  # tpyc: ok
 struct __genexpr_main_47_frame : public ::tpy::next_iter_mixin<__genexpr_main_47_frame, uint8_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BytesView __src;
     uint8_t b;
     using __for_src_0_t = decltype((__src));
@@ -2637,7 +2710,7 @@ __genexpr_main_47_frame __genexpr_main_47(::tpy::BytesView __src) {
 
 // print("bytes_dict", len(dict((b, 0.0) for b in data)))  # tpyc: ok
 struct __genexpr_main_48_frame : public ::tpy::next_iter_mixin<__genexpr_main_48_frame, std::tuple<uint8_t, double>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BytesView __src;
     uint8_t b;
     using __for_src_0_t = decltype((__src));
@@ -2679,7 +2752,7 @@ __genexpr_main_48_frame __genexpr_main_48(::tpy::BytesView __src) {
 // print("join", ", ".join(s.upper() for s in names.values()))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::string> T___src>
 struct __genexpr_main_49_frame : public ::tpy::next_iter_mixin<__genexpr_main_49_frame<T___src>, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     std::string s;
     using __for_src_0_t = decltype((__src));
@@ -2712,7 +2785,9 @@ struct __genexpr_main_49_frame : public ::tpy::next_iter_mixin<__genexpr_main_49
 template <::tpystd::typing::Iterable<std::string> T___src>
 std::expected<std::string, ::tpy::StopIteration> __genexpr_main_49_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -2741,7 +2816,7 @@ __genexpr_main_49_frame<std::invoke_result_t<F_make>> __genexpr_main_49(std::in_
 // for n in (n for n in nodes.values()):  # tpyc: ok
 template <::tpystd::typing::Iterable<Node> T___src>
 struct __genexpr_main_50_frame : public ::tpy::next_iter_mixin<__genexpr_main_50_frame<T___src>, ::tpy::val_or_ref<Node>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     using __for_src_0_t = decltype((__src));
     ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> n;
@@ -2774,7 +2849,9 @@ struct __genexpr_main_50_frame : public ::tpy::next_iter_mixin<__genexpr_main_50
 template <::tpystd::typing::Iterable<Node> T___src>
 std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __genexpr_main_50_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -2803,7 +2880,7 @@ __genexpr_main_50_frame<std::invoke_result_t<F_make>> __genexpr_main_50(std::in_
 // for v in (x * 10 for x in noisy()):  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_51_frame : public ::tpy::next_iter_mixin<__genexpr_main_51_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -2837,7 +2914,9 @@ struct __genexpr_main_51_frame : public ::tpy::next_iter_mixin<__genexpr_main_51
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_51_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -2866,7 +2945,7 @@ __genexpr_main_51_frame<std::invoke_result_t<F_make>> __genexpr_main_51(std::in_
 // print("with", sum(v + g for v in d.values()))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src, typename F_g>
 struct __genexpr_main_52_frame : public ::tpy::next_iter_mixin<__genexpr_main_52_frame<T___src, F_g>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     F_g g;
     int32_t v;
@@ -2901,7 +2980,9 @@ struct __genexpr_main_52_frame : public ::tpy::next_iter_mixin<__genexpr_main_52
 template <::tpystd::typing::Iterable<int32_t> T___src, typename F_g>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_52_frame<T___src, F_g>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -2930,7 +3011,7 @@ __genexpr_main_52_frame<std::invoke_result_t<F_make>, F_g> __genexpr_main_52(std
 // print("try", sum(x for x in map(triple, xs)))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_53_frame : public ::tpy::next_iter_mixin<__genexpr_main_53_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -2964,7 +3045,9 @@ struct __genexpr_main_53_frame : public ::tpy::next_iter_mixin<__genexpr_main_53
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_53_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -2993,7 +3076,7 @@ __genexpr_main_53_frame<std::invoke_result_t<F_make>> __genexpr_main_53(std::in_
 // print("finally", sum(k for k in d.keys()))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_54_frame : public ::tpy::next_iter_mixin<__genexpr_main_54_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t k;
     using __for_src_0_t = decltype((__src));
@@ -3026,7 +3109,9 @@ struct __genexpr_main_54_frame : public ::tpy::next_iter_mixin<__genexpr_main_54
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_54_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -3265,7 +3350,7 @@ namespace {
 // print("module", sum(x for x in reversed(XS)))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_module_1_frame : public ::tpy::next_iter_mixin<__genexpr_module_1_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -3299,7 +3384,9 @@ struct __genexpr_module_1_frame : public ::tpy::next_iter_mixin<__genexpr_module
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_module_1_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -3328,7 +3415,7 @@ __genexpr_module_1_frame<std::invoke_result_t<F_make>> __genexpr_module_1(std::i
 // print("module_lit", sum(x for x in [7, 8]))  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_module_2_frame : public ::tpy::next_iter_mixin<__genexpr_module_2_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -3361,7 +3448,9 @@ struct __genexpr_module_2_frame : public ::tpy::next_iter_mixin<__genexpr_module
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_module_2_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }

@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // async def step(n: int32) -> int32:
 struct __coro_step {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
 
@@ -69,7 +69,7 @@ struct __coro_step {
 
 // async def total(ps: readonly[list[Point]]) -> int32:
 struct __coro_total {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<Point>& ps;
     int32_t n;

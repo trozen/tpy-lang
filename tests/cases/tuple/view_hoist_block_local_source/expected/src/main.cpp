@@ -711,7 +711,7 @@ namespace {
 
 // for q in (w.upper() for w in words):
 struct __genexpr_generator_heads_1_frame : public ::tpy::next_iter_mixin<__genexpr_generator_heads_1_frame, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::string>& __src;
     std::string w;
     using __for_src_0_t = decltype((__src));
@@ -752,7 +752,7 @@ __genexpr_generator_heads_1_frame __genexpr_generator_heads_1(const std::vector<
 
 // for q3 in (w for w in words):
 struct __genexpr_generator_heads_2_frame : public ::tpy::next_iter_mixin<__genexpr_generator_heads_2_frame, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::string>& __src;
     std::string w;
     using __for_src_0_t = decltype((__src));

@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Math& obj) {
 
 // async def double_base(self) -> int32:
 struct __coro_Math_double_base {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Math& __self;
 
@@ -68,7 +68,7 @@ inline __coro_Math_double_base Math::double_base() const {
 
 // async def quad_base(self) -> int32:
 struct __coro_Math_quad_base {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Math& __self;
     int32_t d;
@@ -97,7 +97,7 @@ inline __coro_Math_quad_base Math::quad_base() const {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Math> m;
     int32_t q;

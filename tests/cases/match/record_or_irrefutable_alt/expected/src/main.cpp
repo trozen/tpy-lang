@@ -96,6 +96,7 @@ __gen_counts counts(const Cat& c) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_counts_ordered::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = c;
         if (__match_subject_1.lives == 1) {
             if (k) {

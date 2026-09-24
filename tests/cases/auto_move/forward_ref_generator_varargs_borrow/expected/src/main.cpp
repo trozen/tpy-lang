@@ -71,7 +71,7 @@ void main() {
     std::vector<int32_t> a = {1, 2, 3};
     std::vector<int32_t> b = {4};
     std::array<const std::vector<int32_t>*, 2> __tmp_1{&a, &b};
-    auto g = ::tpyapp::main::gen(::tpy::varargs<const std::vector<int32_t>>(__tmp_1));
+    __gen_gen g = ::tpyapp::main::gen(::tpy::varargs<const std::vector<int32_t>>(__tmp_1));
     std::vector<int32_t> __tmp_2 = a;
     std::cout << "gen:" << " " << ::tpyapp::main::drop(std::move(__tmp_2)) << "\n";
     auto& __src_0 = g;
@@ -95,7 +95,7 @@ void main() {
     std::vector<int32_t> f = {3};
     std::vector<int32_t> h = {4, 5, 6, 7};
     std::array<const std::vector<int32_t>*, 2> __tmp_5{&e, &f};
-    auto gk = ::tpyapp::main::kwgen(::tpy::varargs<const std::vector<int32_t>>(__tmp_5), h);
+    __gen_kwgen gk = ::tpyapp::main::kwgen(::tpy::varargs<const std::vector<int32_t>>(__tmp_5), h);
     std::vector<int32_t> __tmp_6 = h;
     std::cout << "kwonly:" << " " << ::tpyapp::main::drop(std::move(__tmp_6)) << "\n";
     auto& __src_2 = gk;
@@ -110,7 +110,7 @@ void main() {
     std::vector<int32_t> q = {3};
     std::vector<int32_t> s = {9};
     std::array<const std::vector<int32_t>*, 2> __tmp_7{&p, &q};
-    auto gp = ::tpyapp::main::kwgen(::tpy::varargs<const std::vector<int32_t>>(__tmp_7), s);
+    __gen_kwgen gp = ::tpyapp::main::kwgen(::tpy::varargs<const std::vector<int32_t>>(__tmp_7), s);
     std::vector<int32_t> __tmp_8 = p;
     std::cout << "kwpack:" << " " << ::tpyapp::main::drop(std::move(__tmp_8)) << "\n";
     auto& __src_4 = gp;
@@ -200,7 +200,7 @@ int32_t Caller::run() const {
     std::vector<int32_t> b = {4};
     Collector c = Collector();
     std::array<const std::vector<int32_t>*, 2> __tmp_13{&a, &b};
-    auto g = c.sizes(::tpy::varargs<const std::vector<int32_t>>(__tmp_13));
+    __gen_Collector_sizes g = c.sizes(::tpy::varargs<const std::vector<int32_t>>(__tmp_13));
     std::vector<int32_t> __tmp_14 = a;
     int32_t n = ::tpyapp::main::drop(std::move(__tmp_14));
     int32_t total = 0;

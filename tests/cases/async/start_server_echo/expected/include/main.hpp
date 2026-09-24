@@ -29,7 +29,7 @@ void main();
 // async def handle(reader: Own[asyncio.StreamReader],
 //                  writer: Own[asyncio.StreamWriter]) -> None:
 struct __coro_handle {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::StreamReader reader;
     ::tpystd::asyncio::StreamWriter writer;
@@ -57,15 +57,15 @@ struct __coro_handle {
 
 // async def client(port: int32, msg: str) -> str:
 struct __coro_client {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t port;
     std::string msg;
     ::tpy::frame_slot<::tpystd::asyncio::StreamReader> reader;
     ::tpy::frame_slot<::tpystd::asyncio::StreamWriter> writer;
     ::tpy::Bytes reply;
-    ::tpy::frame_slot<std::tuple<::tpystd::asyncio::StreamReader, ::tpystd::asyncio::StreamWriter>> __await_lift_0;
     std::string __coro_arg_0;
+    ::tpy::frame_slot<std::tuple<::tpystd::asyncio::StreamReader, ::tpystd::asyncio::StreamWriter>> __await_lift_0;
     std::optional<::tpystd::asyncio::__coro_open_connection> __sub_0;
     std::optional<::tpystd::asyncio::__coro_StreamWriter_drain> __sub_1;
     std::optional<::tpystd::asyncio::__coro_StreamReader_readline> __sub_2;
@@ -93,17 +93,17 @@ struct __coro_client {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
+    std::string __coro_arg_0;
     ::tpy::frame_slot<::tpystd::asyncio::Server> server;
     int32_t port;
+    std::string __coro_arg_1;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::string>> a;
+    std::string __coro_arg_2;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::string>> b;
     std::string __await_lift_0;
     std::string __await_lift_1;
-    std::string __coro_arg_0;
-    std::string __coro_arg_1;
-    std::string __coro_arg_2;
     std::optional<::tpystd::asyncio::__coro_start_server> __sub_0;
     ::tpystd::asyncio::_executor::Task<std::string>* __sub_1 = nullptr;
     ::tpystd::asyncio::_executor::Task<std::string>* __sub_2 = nullptr;

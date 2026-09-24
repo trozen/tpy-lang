@@ -18,7 +18,7 @@ void main();
 
 // def gen() -> Iterator[int]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::vector<std::array<int32_t, 2>>> rows;
     using __for_src_0_t = decltype(((*rows)));
     ::tpy::begin_elem_t<__for_src_0_t>* r = nullptr;

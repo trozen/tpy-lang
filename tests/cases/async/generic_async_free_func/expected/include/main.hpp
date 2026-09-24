@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bin& obj) {
 // async def identity[T](x: T) -> T:
 template <typename T>
 struct __coro_identity {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::val_or_ref_t<T> x;
 
@@ -86,6 +86,7 @@ template <typename T>
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(x));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -105,7 +106,7 @@ __coro_identity<T> identity(::tpy::param_val_or_ref_t<T> x) {
 // async def sized_after[T: Readable](obj: readonly[T], alias: Bin) -> int32:
 template <typename T>
 struct __coro_sized_after {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::val_or_cref_t<T> obj;
     Bin& alias;
@@ -142,6 +143,7 @@ template <typename T>
 ::tpystd::tpy::Poll<int32_t> __coro_sized_after<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -170,13 +172,13 @@ __coro_sized_after<T> sized_after(::tpy::readonly_form_t<T> obj, Bin& alias) {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t result;
+    std::string __coro_arg_0;
     std::string s;
     ::tpy::frame_slot<Bin> b;
     int32_t __await_lift_0;
-    std::string __coro_arg_0;
     std::optional<__coro_identity<int32_t>> __sub_0;
     std::optional<__coro_identity<std::string>> __sub_1;
     std::optional<__coro_sized_after<Bin>> __sub_2;

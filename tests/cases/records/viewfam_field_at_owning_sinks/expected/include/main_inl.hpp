@@ -17,6 +17,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_sec_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         acc.emplace(std::vector<::tpy::Bytes>{});
         (*acc).push_back(o.inner.tag);
         lit.emplace(std::vector<std::string>{o.inner.name});

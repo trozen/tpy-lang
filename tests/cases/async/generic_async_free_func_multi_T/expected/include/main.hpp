@@ -26,7 +26,7 @@ void main();
 // async def make_pair[K, V](k: K, v: V) -> tuple[K, V]:
 template <typename K, typename V>
 struct __coro_make_pair {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::val_or_ref_t<K> k;
     ::tpy::val_or_ref_t<V> v;
@@ -53,6 +53,7 @@ template <typename K, typename V>
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         std::tuple<K, V> __tpy_async_ret = std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<K>>(k), ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<V>>(v)};
         return ::tpystd::tpy::Poll<std::tuple<K, V>>::ready(std::move(__tpy_async_ret));
@@ -71,10 +72,10 @@ __coro_make_pair<K, V> make_pair(::tpy::param_val_or_ref_t<K> k, ::tpy::param_va
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::tuple<int32_t, std::string> p;
     std::string __coro_arg_0;
+    std::tuple<int32_t, std::string> p;
     std::optional<__coro_make_pair<int32_t, std::string>> __sub_0;
 
     enum : int32_t {

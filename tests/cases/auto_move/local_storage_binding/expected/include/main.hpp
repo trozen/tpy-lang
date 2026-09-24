@@ -230,7 +230,7 @@ inline std::ostream& operator<<(std::ostream& os, const StoredCell& obj) {
 
 // async def resumed_value(value: int32) -> int32:
 struct __coro_resumed_value {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t value;
 
@@ -252,7 +252,7 @@ struct __coro_resumed_value {
 
 // async def async_aliases() -> None:
 struct __coro_async_aliases {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t i;
     ::tpy::frame_slot<Cell> source;
@@ -286,7 +286,7 @@ struct __coro_async_aliases {
 
 // def frame_aliases(n: int32) -> Iterator[int32]:
 struct __gen_frame_aliases : public ::tpy::next_iter_mixin<__gen_frame_aliases, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_slot<Cell> source;

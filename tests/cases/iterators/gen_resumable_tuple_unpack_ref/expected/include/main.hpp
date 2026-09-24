@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 
 // def process(rows: list[tuple[int32, Item]]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_process : public ::tpy::next_iter_mixin<__gen_process, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<std::tuple<int32_t, Item>>& rows;
     using __for_src_0_t = decltype((rows));
     ::tpy::begin_elem_t<__for_src_0_t>* __for_tup_0 = nullptr;

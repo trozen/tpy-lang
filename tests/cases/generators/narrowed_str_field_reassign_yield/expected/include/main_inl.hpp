@@ -16,6 +16,7 @@ namespace tpyapp::main {
 inline std::expected<std::string, ::tpy::StopIteration> __gen_Box_gen_reassigned::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         q = "";
         if ((__self.s.has_value())) {
             q = (*__self.s);

@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Worker& obj) {
 
 // async def add(self, n: int32) -> None:
 struct __coro_Worker_add {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Worker& __self;
     int32_t n;
@@ -67,7 +67,7 @@ inline __coro_Worker_add Worker::add(int32_t n) const {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Worker> w;
     std::optional<__coro_Worker_add> __sub_0;

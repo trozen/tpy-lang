@@ -23,6 +23,7 @@ std::tuple<::tpy::Union<::tpy::BigInt, std::string>, ::tpy::BigInt> remake() {
 std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (std::holds_alternative<::tpy::BigInt>(a)) {
             const auto& __a = std::get<::tpy::BigInt>(a);
             __state = S_RESUME_0;

@@ -53,7 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // def my_map[T, U](fn: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
 template <typename T, typename U, ::tpystd::typing::Iterable<T> T_it, typename F_fn>
 struct __gen_my_map : public ::tpy::next_iter_mixin<__gen_my_map<T, U, T_it, F_fn>, U> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     F_fn fn;
     T_it it;
     using __for_src_0_t = decltype((it));
@@ -85,6 +85,7 @@ template <typename T, typename U, ::tpystd::typing::Iterable<T> T_it, typename F
 std::expected<U, ::tpy::StopIteration> __gen_my_map<T, U, T_it, F_fn>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
@@ -115,7 +116,7 @@ __gen_my_map<T, U, T_it, F_fn> my_map(F_fn&& fn, T_it&& it) {
 // def my_enumerate[T](it: Iterable[T]) -> Iterator[tuple[int32, T]]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_my_enumerate : public ::tpy::next_iter_mixin<__gen_my_enumerate<T, T_it>, std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_it it;
     int32_t i;
     using __for_src_0_t = decltype((it));
@@ -149,6 +150,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __gen_my_enumerate<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;

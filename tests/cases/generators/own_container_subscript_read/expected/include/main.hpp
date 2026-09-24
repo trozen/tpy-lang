@@ -31,7 +31,7 @@ void main();
 
 // def dicts() -> Iterator[Own[dict[str, str]]]:
 struct __gen_dicts : public ::tpy::next_iter_mixin<__gen_dicts, ::tpy::ordered_map<std::string, std::string>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<::tpy::ordered_map<std::string, std::string>> a;
     ::tpy::frame_slot<::tpy::ordered_map<std::string, std::string>> b;
 
@@ -55,7 +55,7 @@ struct __gen_dicts : public ::tpy::next_iter_mixin<__gen_dicts, ::tpy::ordered_m
 
 // def lists() -> Iterator[Own[list[int]]]:
 struct __gen_lists : public ::tpy::next_iter_mixin<__gen_lists, std::vector<::tpy::BigInt>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::vector<::tpy::BigInt>> a;
 
     enum : int32_t {

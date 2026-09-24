@@ -78,6 +78,7 @@ __gen_abandoned abandoned() {
 ::tpystd::tpy::Poll<int32_t> __coro_async_position::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         __for_src_0.emplace(::tpyapp::gensrc::walk());
         __state = S_JOIN_0;

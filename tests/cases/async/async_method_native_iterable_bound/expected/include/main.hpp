@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrap<T>& obj) {
 // async def total(self) -> int32:
 template <::tpy::NativeIterable<int32_t> T>
 struct __coro_Wrap_total {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Wrap<T>& __self;
     int32_t result;
@@ -75,6 +75,7 @@ template <::tpy::NativeIterable<int32_t> T>
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         result = 0;
         auto& __obj_0 = __self.items;
         auto __beg_0 = __obj_0.begin();

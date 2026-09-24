@@ -21,7 +21,7 @@ void main();
 // def two_yields[T](a: T, b: T) -> Iterator[T]:  # tpyc: ok
 template <typename T>
 struct __gen_two_yields : public ::tpy::next_iter_mixin<__gen_two_yields<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::val_or_ref_t<T> a;
     ::tpy::val_or_ref_t<T> b;
 
@@ -49,6 +49,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_two_yields<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return a;
     }

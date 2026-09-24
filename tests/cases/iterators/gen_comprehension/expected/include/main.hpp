@@ -70,7 +70,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // def two_then(n: int32) -> Iterator[int32]:
 struct __gen_two_then : public ::tpy::next_iter_mixin<__gen_two_then, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
 
@@ -96,7 +96,7 @@ struct __gen_two_then : public ::tpy::next_iter_mixin<__gen_two_then, int32_t> {
 // def head[T](it: Iterable[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_it it;
     int32_t n;
     int32_t c;
@@ -135,6 +135,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         c = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
@@ -178,7 +179,7 @@ __gen_head<T, T_it> head(T_it&& it, int32_t n) {
 
 // def simple(n: int32) -> Iterator[int32]:
 struct __gen_simple : public ::tpy::next_iter_mixin<__gen_simple, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
 
@@ -202,7 +203,7 @@ struct __gen_simple : public ::tpy::next_iter_mixin<__gen_simple, int32_t> {
 
 // def pairs(n: int32) -> Iterator[tuple[int32, int32]]:
 struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, std::tuple<int32_t, int32_t>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
 
@@ -227,7 +228,7 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, std::tuple<int32
 
 // def make_nodes(n: int32) -> Iterator[Own[Node]]:
 struct __gen_make_nodes : public ::tpy::next_iter_mixin<__gen_make_nodes, Node> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
 
@@ -252,7 +253,7 @@ struct __gen_make_nodes : public ::tpy::next_iter_mixin<__gen_make_nodes, Node> 
 
 // def around(self) -> Iterator[int32]:
 struct __gen_Counter_around : public ::tpy::next_iter_mixin<__gen_Counter_around, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Counter& __self;
 
     enum : int32_t {

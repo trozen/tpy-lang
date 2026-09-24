@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk_free::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -48,6 +49,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk_free::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk_value::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -83,6 +85,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk_value::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk_items::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpy::dict_items(d));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
@@ -118,6 +121,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk_items::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = __self.xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -153,6 +157,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_peek::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = __self.xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

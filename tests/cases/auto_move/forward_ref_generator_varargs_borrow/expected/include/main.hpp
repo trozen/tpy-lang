@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Collector& obj) {
 
 // def gen(*xs: list[int32]) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::varargs<const std::vector<int32_t>> xs;
     int32_t n;
     using __for_src_0_t = decltype((xs));
@@ -89,7 +89,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
 // def kwgen(*xs: list[int32], extra: list[int32]) -> Iterator[int32]:
 struct __gen_kwgen : public ::tpy::next_iter_mixin<__gen_kwgen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::varargs<const std::vector<int32_t>> xs;
     const std::vector<int32_t>& extra;
     int32_t n;
@@ -119,7 +119,7 @@ struct __gen_kwgen : public ::tpy::next_iter_mixin<__gen_kwgen, int32_t> {
 
 // def sizes(self, *xs: list[int32]) -> Iterator[int32]:
 struct __gen_Collector_sizes : public ::tpy::next_iter_mixin<__gen_Collector_sizes, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Collector& __self;
     ::tpy::varargs<const std::vector<int32_t>> xs;
     int32_t n;

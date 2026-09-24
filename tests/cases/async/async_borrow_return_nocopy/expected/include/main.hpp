@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Res& obj) {
 
 // async def me(self) -> "Res":
 struct __coro_Res_me {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Res& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -73,7 +73,7 @@ inline __coro_Res_me Res::me() {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Res> res;
     Res* r = nullptr;

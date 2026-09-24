@@ -14,6 +14,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(1.0)));
         __state = S_RESUME_0;
         continue;
@@ -46,6 +47,7 @@ __coro_slow slow() {
 ::tpystd::tpy::Poll<std::vector<::tpystd::asyncio::Settled<int32_t>>> __coro_gather_helper::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::slow())));
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::slow())));
@@ -88,6 +90,7 @@ __coro_gather_helper gather_helper() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         gtask.emplace(::tpystd::asyncio::create_task<std::vector<::tpystd::asyncio::Settled<int32_t>>>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::vector<::tpystd::asyncio::Settled<int32_t>>>>(::tpyapp::main::gather_helper())));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;

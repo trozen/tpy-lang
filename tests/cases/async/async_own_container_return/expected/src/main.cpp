@@ -12,6 +12,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         std::vector<int32_t> __tpy_async_ret = {1, 2};
         return ::tpystd::tpy::Poll<std::vector<int32_t>>::ready(std::move(__tpy_async_ret));
@@ -33,6 +34,7 @@ __coro_make_list make_list() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::ByteArray __tpy_async_ret = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
         return ::tpystd::tpy::Poll<::tpy::ByteArray>::ready(std::move(__tpy_async_ret));
@@ -54,6 +56,7 @@ __coro_make_bytes make_bytes() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         std::array<int32_t, 3> __tpy_async_ret = {7, 8, 9};
         return ::tpystd::tpy::Poll<std::array<int32_t, 3>>::ready(std::move(__tpy_async_ret));
@@ -75,6 +78,7 @@ __coro_make_array make_array() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         std::vector<::tpystd::tplib::box::Box<int32_t>> __tpy_async_ret = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(1), ::tpystd::tplib::box::Box<int32_t>(2));
         return ::tpystd::tpy::Poll<std::vector<::tpystd::tplib::box::Box<int32_t>>>::ready(std::move(__tpy_async_ret));
@@ -106,6 +110,7 @@ __coro_make_boxes make_boxes() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;

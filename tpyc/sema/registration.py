@@ -3296,8 +3296,8 @@ class TypeRegistrar:
 
     def _stamp_iterator_retention(self, func: TpyFunction, info: FunctionInfo) -> None:
         """Set `return_borrows_from` at registration for a callee whose result
-        is an ITERATOR over its arguments: a generator, or a body-less lazy
-        combinator (`zip`, `enumerate`, `filter`, ...).
+        keeps its reference arguments: a generator or coroutine (its frame),
+        or a body-less lazy combinator (`zip`, `enumerate`, `filter`, ...).
 
         Exact and signature-derived, so a caller whose body is analyzed
         before the generator's still sees the frame's reference captures
@@ -3313,14 +3313,16 @@ class TypeRegistrar:
         params and would both be missed and shift any keyword-only param
         behind it.
         """
-        if func.is_generator or (func.is_stub and iterator_source_callee(info)):
+        if (func.is_generator or func.is_async
+                or (func.is_stub and iterator_source_callee(info))):
             info.return_borrows_from = self.generator_borrow_param_indices(
                 [p.type for p in info.params])
 
     @staticmethod
     def generator_borrow_param_indices(
             param_types: 'list[TpyType]') -> frozenset[int]:
-        """Param indices a generator's returned frame borrows: the frame
+        """Param indices a generator's or coroutine's returned frame borrows:
+        the frame
         stores non-value params as T& references and explicit view params
         (StrView/Span) as views, so the generator object borrows those
         arguments. `str` / `bytes` params are NOT borrowed -- they are captured

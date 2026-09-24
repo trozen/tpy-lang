@@ -22,7 +22,7 @@ __coro_main main();
 
 // async def work() -> int:
 struct __coro_work {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<std::array<int32_t, 2>>> rows;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -46,7 +46,7 @@ struct __coro_work {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt __await_lift_0;
     std::optional<__coro_work> __sub_0;

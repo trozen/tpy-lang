@@ -13,6 +13,7 @@ namespace tpystd::itertools {
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_count::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         n = start;
         __state = S_JOIN_0;
         continue;

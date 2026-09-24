@@ -329,7 +329,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
 
 // async def async_body(xs: list[int32], big: bool) -> int32:
 struct __coro_async_body {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<int32_t>& xs;
     bool big;
@@ -354,7 +354,7 @@ struct __coro_async_body {
 
 // async def src_async_body(xs: list[int32], big: bool) -> int32:
 struct __coro_src_async_body {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<int32_t>& xs;
     bool big;
@@ -377,7 +377,7 @@ struct __coro_src_async_body {
 
 // def gen_body(xs: list[int32], big: bool) -> Iterator[int32]:
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<int32_t>& xs;
     bool big;
     int32_t v;
@@ -405,7 +405,7 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
 
 // def src_gen_body(xs: list[int32], big: bool) -> Iterator[int32]:
 struct __gen_src_gen_body : public ::tpy::next_iter_mixin<__gen_src_gen_body, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<int32_t>& xs;
     bool big;
 
@@ -429,7 +429,7 @@ struct __gen_src_gen_body : public ::tpy::next_iter_mixin<__gen_src_gen_body, in
 // t += v + sum(1 for _ in range(1) if big and grow(xs))  # tpyc: warning(/Borrowed container 'xs' is mutated by a generator expression that captures it/)
 template <typename F_big, typename F_xs>
 struct __genexpr_run_3_frame : public ::tpy::next_iter_mixin<__genexpr_run_3_frame<F_big, F_xs>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     F_big big;
     F_xs xs;
@@ -458,7 +458,9 @@ struct __genexpr_run_3_frame : public ::tpy::next_iter_mixin<__genexpr_run_3_fra
 // t += v + sum(1 for _ in range(1) if big and grow(xs))  # tpyc: warning(/Borrowed container 'xs' is mutated by a generator expression that captures it/)  # -> S_RESUME_0
 template <typename F_big, typename F_xs>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_run_3_frame<F_big, F_xs>::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;
@@ -482,7 +484,7 @@ __genexpr_run_3_frame<F_big, F_xs> __genexpr_run_3(int32_t __r0, F_big&& big, F_
 // self.n += v + sum(1 for _ in range(1) if big and grow(xs))  # tpyc: warning(/Borrowed container 'xs' is mutated by a generator expression that captures it/)
 template <typename F_big, typename F_xs>
 struct __genexpr___init___4_frame : public ::tpy::next_iter_mixin<__genexpr___init___4_frame<F_big, F_xs>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     F_big big;
     F_xs xs;
@@ -511,7 +513,9 @@ struct __genexpr___init___4_frame : public ::tpy::next_iter_mixin<__genexpr___in
 // self.n += v + sum(1 for _ in range(1) if big and grow(xs))  # tpyc: warning(/Borrowed container 'xs' is mutated by a generator expression that captures it/)  # -> S_RESUME_0
 template <typename F_big, typename F_xs>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr___init___4_frame<F_big, F_xs>::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;
@@ -535,7 +539,7 @@ __genexpr___init___4_frame<F_big, F_xs> __genexpr___init___4(int32_t __r0, F_big
 // return sum(v + self.items.pop() for v in self.other)  # tpyc: ok
 template <typename F_self>
 struct __genexpr_drain_5_frame : public ::tpy::next_iter_mixin<__genexpr_drain_5_frame<F_self>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     F_self self;
     int32_t v;
@@ -581,7 +585,7 @@ __genexpr_drain_5_frame<F_self> __genexpr_drain_5(const std::vector<int32_t>& __
 // return sum(v for v in self.other if grow(self.items))  # tpyc: ok
 template <typename F_self>
 struct __genexpr_via_callee_6_frame : public ::tpy::next_iter_mixin<__genexpr_via_callee_6_frame<F_self>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     F_self self;
     int32_t v;
@@ -630,7 +634,7 @@ __genexpr_via_callee_6_frame<F_self> __genexpr_via_callee_6(const std::vector<in
 // return sum(v for v in self.other if self.push())  # tpyc: ok
 template <typename F_self>
 struct __genexpr_via_method_7_frame : public ::tpy::next_iter_mixin<__genexpr_via_method_7_frame<F_self>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     F_self self;
     int32_t v;
@@ -679,7 +683,7 @@ __genexpr_via_method_7_frame<F_self> __genexpr_via_method_7(const std::vector<in
 // return sum(v + (self.items.pop() if big else 0) for v in self.items)  # tpyc: warning(/Mutation of 'self.items' while iterating over it \('pop' invalidates the iterator\)/)
 template <typename F_big, typename F_self>
 struct __genexpr_src_field_8_frame : public ::tpy::next_iter_mixin<__genexpr_src_field_8_frame<F_big, F_self>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     F_big big;
     F_self self;
@@ -726,7 +730,7 @@ __genexpr_src_field_8_frame<F_big, F_self> __genexpr_src_field_8(const std::vect
 // self.n = sum(1 for _ in range(2) if self.push())  # tpyc: ok
 template <typename F_self>
 struct __genexpr___init___9_frame : public ::tpy::next_iter_mixin<__genexpr___init___9_frame<F_self>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     F_self self;
     int32_t _;
@@ -755,7 +759,9 @@ struct __genexpr___init___9_frame : public ::tpy::next_iter_mixin<__genexpr___in
 // self.n = sum(1 for _ in range(2) if self.push())  # tpyc: ok  # -> S_RESUME_0
 template <typename F_self>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr___init___9_frame<F_self>::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;
@@ -779,7 +785,7 @@ __genexpr___init___9_frame<F_self> __genexpr___init___9(int32_t __r0, F_self&& s
 // total = sum(self.retag(x) for x in xs)  # tpyc: ok
 template <typename F_self>
 struct __genexpr_view_via_method_10_frame : public ::tpy::next_iter_mixin<__genexpr_view_via_method_10_frame<F_self>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     F_self self;
     int32_t x;
@@ -825,7 +831,7 @@ __genexpr_view_via_method_10_frame<F_self> __genexpr_view_via_method_10(const st
 // t += v + sum(1 for _ in range(1) if big and self.push())  # tpyc: warning(/Borrowed container 'self' is mutated by a generator expression that captures it/)
 template <typename F_big, typename F_self>
 struct __genexpr_iter_self_11_frame : public ::tpy::next_iter_mixin<__genexpr_iter_self_11_frame<F_big, F_self>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     F_big big;
     F_self self;
@@ -854,7 +860,9 @@ struct __genexpr_iter_self_11_frame : public ::tpy::next_iter_mixin<__genexpr_it
 // t += v + sum(1 for _ in range(1) if big and self.push())  # tpyc: warning(/Borrowed container 'self' is mutated by a generator expression that captures it/)  # -> S_RESUME_0
 template <typename F_big, typename F_self>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_iter_self_11_frame<F_big, F_self>::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;
@@ -878,7 +886,7 @@ __genexpr_iter_self_11_frame<F_big, F_self> __genexpr_iter_self_11(int32_t __r0,
 // t += v + sum(1 for _ in range(1) if big and self.push2())  # tpyc: warning(/Borrowed container 'self' is mutated by a generator expression that captures it/)
 template <typename F_big, typename F_self>
 struct __genexpr_iter_two_hop_12_frame : public ::tpy::next_iter_mixin<__genexpr_iter_two_hop_12_frame<F_big, F_self>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     F_big big;
     F_self self;
@@ -907,7 +915,9 @@ struct __genexpr_iter_two_hop_12_frame : public ::tpy::next_iter_mixin<__genexpr
 // t += v + sum(1 for _ in range(1) if big and self.push2())  # tpyc: warning(/Borrowed container 'self' is mutated by a generator expression that captures it/)  # -> S_RESUME_0
 template <typename F_big, typename F_self>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_iter_two_hop_12_frame<F_big, F_self>::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;
@@ -931,7 +941,7 @@ __genexpr_iter_two_hop_12_frame<F_big, F_self> __genexpr_iter_two_hop_12(int32_t
 // n = sum(1 for _ in range(1) if self.push() and r.k >= 0)  # tpyc: ok
 template <typename F_r, typename F_self>
 struct __genexpr_view_other_13_frame : public ::tpy::next_iter_mixin<__genexpr_view_other_13_frame<F_r, F_self>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     F_r r;
     F_self self;
@@ -961,7 +971,9 @@ struct __genexpr_view_other_13_frame : public ::tpy::next_iter_mixin<__genexpr_v
 // n = sum(1 for _ in range(1) if self.push() and r.k >= 0)  # tpyc: ok  # -> S_RESUME_0
 template <typename F_r, typename F_self>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_view_other_13_frame<F_r, F_self>::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;
@@ -985,7 +997,7 @@ __genexpr_view_other_13_frame<F_r, F_self> __genexpr_view_other_13(int32_t __r0,
 // return sum(v for v in [1, 2] if k > 0 and self.rec(k - 1) >= 0 and self.push())  # tpyc: ok
 template <::tpystd::typing::Iterable<int32_t> T___src, typename F_k, typename F_self>
 struct __genexpr_rec_14_frame : public ::tpy::next_iter_mixin<__genexpr_rec_14_frame<T___src, F_k, F_self>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     F_k k;
     F_self self;
@@ -1021,7 +1033,9 @@ struct __genexpr_rec_14_frame : public ::tpy::next_iter_mixin<__genexpr_rec_14_f
 template <::tpystd::typing::Iterable<int32_t> T___src, typename F_k, typename F_self>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_rec_14_frame<T___src, F_k, F_self>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -1053,7 +1067,7 @@ __genexpr_rec_14_frame<std::invoke_result_t<F_make>, F_k, F_self> __genexpr_rec_
 // yield v + sum(1 for _ in range(1) if big and grow(xs))  # tpyc: warning(/Borrowed container 'xs' is mutated by a generator expression that captures it/)
 template <typename F_big, typename F_xs>
 struct __genexpr_gen_body_19_frame : public ::tpy::next_iter_mixin<__genexpr_gen_body_19_frame<F_big, F_xs>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     F_big big;
     F_xs xs;
@@ -1082,7 +1096,9 @@ struct __genexpr_gen_body_19_frame : public ::tpy::next_iter_mixin<__genexpr_gen
 // yield v + sum(1 for _ in range(1) if big and grow(xs))  # tpyc: warning(/Borrowed container 'xs' is mutated by a generator expression that captures it/)  # -> S_RESUME_0
 template <typename F_big, typename F_xs>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_gen_body_19_frame<F_big, F_xs>::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;
@@ -1106,7 +1122,7 @@ __genexpr_gen_body_19_frame<F_big, F_xs> __genexpr_gen_body_19(int32_t __r0, F_b
 // t += v + sum(1 for _ in range(1) if big and grow(xs))  # tpyc: warning(/Borrowed container 'xs' is mutated by a generator expression that captures it/)
 template <typename F_big, typename F_xs>
 struct __genexpr_async_body_20_frame : public ::tpy::next_iter_mixin<__genexpr_async_body_20_frame<F_big, F_xs>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     F_big big;
     F_xs xs;
@@ -1135,7 +1151,9 @@ struct __genexpr_async_body_20_frame : public ::tpy::next_iter_mixin<__genexpr_a
 // t += v + sum(1 for _ in range(1) if big and grow(xs))  # tpyc: warning(/Borrowed container 'xs' is mutated by a generator expression that captures it/)  # -> S_RESUME_0
 template <typename F_big, typename F_xs>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_async_body_20_frame<F_big, F_xs>::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;
@@ -1159,7 +1177,7 @@ __genexpr_async_body_20_frame<F_big, F_xs> __genexpr_async_body_20(int32_t __r0,
 // yield sum(v for v in xs if big and grow(xs))  # tpyc: warning(/Passing borrowed container 'xs' to non-readonly parameter 'ys'/)
 template <typename F_big, typename F_xs>
 struct __genexpr_src_gen_body_36_frame : public ::tpy::next_iter_mixin<__genexpr_src_gen_body_36_frame<F_big, F_xs>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     F_big big;
     F_xs xs;
@@ -1209,7 +1227,7 @@ __genexpr_src_gen_body_36_frame<F_big, F_xs> __genexpr_src_gen_body_36(const std
 // return sum(v for v in xs if big and grow(xs))  # tpyc: warning(/Passing borrowed container 'xs' to non-readonly parameter 'ys'/)
 template <typename F_big, typename F_xs>
 struct __genexpr_src_async_body_37_frame : public ::tpy::next_iter_mixin<__genexpr_src_async_body_37_frame<F_big, F_xs>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     F_big big;
     F_xs xs;
@@ -1258,7 +1276,7 @@ __genexpr_src_async_body_37_frame<F_big, F_xs> __genexpr_src_async_body_37(const
 
 // def __iter__(self) -> Iterator[int32]:
 struct __gen_Tagged___iter__ : public ::tpy::next_iter_mixin<__gen_Tagged___iter__, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Tagged& __self;
     int32_t v;
     using __for_src_0_t = decltype((__self.items));

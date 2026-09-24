@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Payload& obj) {
 
 // async def make() -> Own[Payload]:
 struct __coro_make {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -66,7 +66,7 @@ struct __coro_make {
 
 // async def used_again() -> int32:
 struct __coro_used_again {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Payload> p;
     int32_t first;
@@ -91,7 +91,7 @@ struct __coro_used_again {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t __await_lift_0;
     std::optional<__coro_used_again> __sub_0;

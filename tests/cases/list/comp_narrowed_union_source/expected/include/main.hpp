@@ -32,7 +32,7 @@ __genexpr_gen_5_frame __genexpr_gen_5(const std::vector<int32_t>& __src);
 
 // def gen(u: list[int32] | bytearray) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<const ::tpy::ByteArray*, const std::vector<int32_t>*> u;
 
     enum : int32_t {
@@ -56,7 +56,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
 // yield sum(x for x in u)  # tpyc: ok
 struct __genexpr_gen_4_frame : public ::tpy::next_iter_mixin<__genexpr_gen_4_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -83,7 +83,7 @@ struct __genexpr_gen_4_frame : public ::tpy::next_iter_mixin<__genexpr_gen_4_fra
 
 // yield sum(x + 1 for x in u)
 struct __genexpr_gen_5_frame : public ::tpy::next_iter_mixin<__genexpr_gen_5_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));

@@ -23,7 +23,7 @@ void main();
 
 // async def pick(n: int32) -> tuple[int32, int32 | None]:
 struct __coro_pick {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
 
@@ -45,7 +45,7 @@ struct __coro_pick {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::tuple<int32_t, std::optional<int32_t>> a;
     std::optional<int32_t> v;

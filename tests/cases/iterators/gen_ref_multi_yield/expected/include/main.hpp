@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // def twice(xs: list[Box]) -> Iterator[Box]:
 struct __gen_twice : public ::tpy::next_iter_mixin<__gen_twice, ::tpy::val_or_ref<Box>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Box>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* b = nullptr;

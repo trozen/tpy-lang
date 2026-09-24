@@ -1,0 +1,1 @@
+main.py:25: error: cannot rebind 'g' to a new generator: a name holding a generator is bound once, since something may still reach the old one; bind the new generator to a new name

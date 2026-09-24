@@ -127,7 +127,7 @@ inline std::ostream& operator<<(std::ostream& os, const _RefPair& obj) {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Counter> c;
     int32_t tag;

@@ -38,7 +38,7 @@ void main() {
         }
     }
     std::string __tmp_1 = ::tpyapp::main::make_tmp();
-    auto g = ::tpyapp::main::lengths(__tmp_1);
+    __gen_lengths g = ::tpyapp::main::lengths(__tmp_1);
     auto& __src_2 = g;
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {

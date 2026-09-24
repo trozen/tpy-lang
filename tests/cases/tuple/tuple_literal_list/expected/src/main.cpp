@@ -8,7 +8,7 @@ namespace {
 
 // d2 = dict[str, int32]((k, v) for k, v in raw)
 struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, std::tuple<std::string, int32_t>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::array<std::tuple<std::string, int32_t>, 2>& __src;
     std::tuple<std::string, int32_t> __for_tup_gx;
     std::string k;

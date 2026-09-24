@@ -17,6 +17,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         src.emplace(Indices(::tpy::__len__(items)));
         __state = S_JOIN_0;
         continue;
@@ -59,6 +60,7 @@ inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_walk::
 inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_dead_pass::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = items;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -95,6 +97,7 @@ inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_dead_p
 inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_dead_break::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = items;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -135,6 +138,7 @@ inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_dead_b
 inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_dead_return::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = items;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

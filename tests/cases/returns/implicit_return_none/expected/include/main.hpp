@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 
 // async def afind(n: int32) -> int32 | None:
 struct __coro_afind {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -89,7 +89,7 @@ struct __coro_afind {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<int32_t> __await_lift_0;
     std::optional<int32_t> __await_lift_1;

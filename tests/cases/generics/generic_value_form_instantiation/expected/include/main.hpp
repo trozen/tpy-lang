@@ -107,7 +107,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
 // async def held[T](x: T) -> T:
 template <typename T>
 struct __coro_held {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::val_or_ref_t<T> x;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -135,6 +135,7 @@ template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_held<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -162,11 +163,11 @@ __coro_held<T> held(::tpy::param_val_or_ref_t<T> x) {
 
 // async def async_frame() -> None:
 struct __coro_async_frame {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     float v;
-    std::optional<__coro_held<float>> c;
     float __await_lift_0;
+    std::optional<__coro_held<float>> c;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -188,7 +189,7 @@ struct __coro_async_frame {
 // def hold[T](x: T) -> Iterator[T]:
 template <typename T>
 struct __gen_hold : public ::tpy::next_iter_mixin<__gen_hold<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::val_or_ref_t<T> x;
     int32_t total;
 
@@ -219,6 +220,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_hold<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return x;
     }

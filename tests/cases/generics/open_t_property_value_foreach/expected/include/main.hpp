@@ -67,7 +67,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
 
 // def chars(c: Cell[str]) -> Iterator[int32]:
 struct __gen_chars : public ::tpy::next_iter_mixin<__gen_chars, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Cell<std::string>& c;
     int32_t n;
     char ch;
@@ -96,7 +96,7 @@ struct __gen_chars : public ::tpy::next_iter_mixin<__gen_chars, int32_t> {
 
 // def chars_m(c: Cell[str]) -> Iterator[int32]:
 struct __gen_chars_m : public ::tpy::next_iter_mixin<__gen_chars_m, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Cell<std::string>& c;
     int32_t n;
     char ch;

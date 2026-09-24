@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // async def bump(b: Box) -> None:
 struct __coro_bump {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Box& b;
     std::tuple<int32_t, Box*> t;
@@ -65,7 +65,7 @@ struct __coro_bump {
 
 // async def driver() -> None:
 struct __coro_driver {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Box> b;
     std::optional<__coro_bump> __sub_0;

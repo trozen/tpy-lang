@@ -16,6 +16,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::val_or_ref<std::vector<::tpy::BigInt>>, ::tpy::StopIteration> __gen_counter::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         buf.emplace(std::vector<::tpy::BigInt>{});
         (*buf).push_back(1);
         __state = S_RESUME_0;
@@ -49,6 +50,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<::tpy::BigInt>>, ::tpy::StopI
 inline std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         dirs.emplace(std::vector<std::string>{});
         (*dirs).push_back("a");
         (*dirs).push_back("skip");
@@ -79,6 +81,7 @@ inline std::expected<std::tuple<std::string, std::vector<std::string>*, std::vec
 inline std::expected<::tpy::val_or_ref<std::vector<::tpy::BigInt>>, ::tpy::StopIteration> __gen_no_later_read::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         buf.emplace(std::vector<::tpy::BigInt>{});
         (*buf).push_back(7);
         __state = S_RESUME_0;

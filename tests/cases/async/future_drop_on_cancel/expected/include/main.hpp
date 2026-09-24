@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tracked& obj) {
 
 // async def waiter(f: Future[Tracked]) -> Own[Tracked]:
 struct __coro_waiter {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::Future<Tracked>& f;
     ::tpystd::asyncio::Future<Tracked>* __sub_0 = nullptr;
@@ -76,7 +76,7 @@ struct __coro_waiter {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::Future<Tracked>> f;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<Tracked>> t;

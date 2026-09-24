@@ -20,6 +20,7 @@ std::tuple<std::string, std::string> pair(int32_t n) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_read_addr::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpyapp::main::pair(9);
         host = std::get<0>(__tup_1);
         port = std::get<1>(__tup_1);

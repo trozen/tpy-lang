@@ -146,7 +146,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // async def async_body(xs: list[int32], big: bool) -> int32:
 struct __coro_async_body {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<int32_t>& xs;
     bool big;
@@ -169,7 +169,7 @@ struct __coro_async_body {
 
 // def gen_body(xs: list[int32], big: bool) -> Iterator[int32]:
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<int32_t>& xs;
     bool big;
 

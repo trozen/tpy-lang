@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 
 // async def get(h: H) -> Box | None:
 struct __coro_get {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     H& h;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -86,7 +86,7 @@ struct __coro_get {
 
 // async def make(present: bool) -> Own[Box] | None:
 struct __coro_make {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     bool present;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -110,7 +110,7 @@ struct __coro_make {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<H> h;
     Box* t = nullptr;

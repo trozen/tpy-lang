@@ -29,6 +29,7 @@ Cell ret_own_twin(const Cell& v) {
 ::tpystd::tpy::Poll<int32_t> __coro_async_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(c);
         __state = S_RESUME_0;
         continue;

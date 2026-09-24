@@ -26,7 +26,7 @@ void main();
 
 // async def add_one(n: int) -> int:
 struct __coro_add_one {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
 
@@ -48,7 +48,7 @@ struct __coro_add_one {
 
 // async def consume(c: Own[Cancellable[int]]) -> int:
 struct __coro_consume {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt>> c;
     ::tpystd::coro::Cancellable<::tpy::BigInt>* __sub_0 = nullptr;
@@ -72,13 +72,13 @@ struct __coro_consume {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
+    ::tpy::BigInt __await_lift_0;
+    ::tpy::BigInt __await_lift_1;
     std::optional<__coro_add_one> c;
     std::optional<__coro_add_one> d;
     std::optional<__coro_add_one> e;
-    ::tpy::BigInt __await_lift_0;
-    ::tpy::BigInt __await_lift_1;
     std::optional<__coro_consume> __sub_1;
 
     enum : int32_t {

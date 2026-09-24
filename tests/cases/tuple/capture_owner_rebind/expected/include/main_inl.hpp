@@ -17,6 +17,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_suspended::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         current = &*(__ptr_slot_f0 = Cell(1));
         saved = std::tuple<Cell*>(current);
         current->value = 4;

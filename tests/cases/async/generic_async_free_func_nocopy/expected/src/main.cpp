@@ -13,6 +13,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         box.emplace(::tpystd::tplib::box::Box<int32_t>(99));
         __sub_0.emplace((*box));
         __state = S_RESUME_0;

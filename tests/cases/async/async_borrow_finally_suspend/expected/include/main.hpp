@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // async def grab(self) -> "Counter":
 struct __coro_Counter_grab {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Counter& __self;
     std::exception_ptr __finally_exc_0;
@@ -73,7 +73,7 @@ inline __coro_Counter_grab Counter::grab() {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Counter> c;
     Counter* r = nullptr;

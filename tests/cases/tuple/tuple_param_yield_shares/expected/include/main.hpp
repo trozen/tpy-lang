@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // def gen(p: tuple[int32, Box]) -> Iterator[tuple[int32, Box]]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<int32_t, Box*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::tuple<int32_t, Box*> p;
 
     enum : int32_t {

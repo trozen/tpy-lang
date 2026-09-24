@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Emitter& obj) {
 
 // def scan(n: int32, onerror: Callable[[int32], None] | None = None) -> Iterator[int32]:
 struct __gen_scan : public ::tpy::next_iter_mixin<__gen_scan, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     std::optional<std::function<void(int32_t)>> onerror;
     int32_t i;

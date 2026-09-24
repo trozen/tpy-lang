@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // def mapped(f: Fn[[int32], int32], xs: list[int32]) -> Iterator[int32]:
 template <typename F_f>
 struct __gen_mapped : public ::tpy::next_iter_mixin<__gen_mapped<F_f>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     F_f f;
     const std::vector<int32_t>& xs;
     int32_t x;
@@ -78,6 +78,7 @@ template <typename F_f>
 std::expected<int32_t, ::tpy::StopIteration> __gen_mapped<F_f>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -109,7 +110,7 @@ __gen_mapped<F_f> mapped(F_f&& f, const std::vector<int32_t>& xs) {
 // return sum(x * self.total for x in xs)  # tpyc: ok
 template <typename F_self>
 struct __genexpr_small_1_frame : public ::tpy::next_iter_mixin<__genexpr_small_1_frame<F_self>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     F_self self;
     int32_t x;

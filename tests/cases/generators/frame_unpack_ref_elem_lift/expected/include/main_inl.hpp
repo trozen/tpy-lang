@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_subscript::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(pairs, 0));
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -43,6 +44,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_subscript::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_field::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -76,6 +78,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_field::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_local::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         own.emplace(std::vector<std::tuple<int32_t, Box>>{std::tuple<int32_t, Box>{4, Box(5)}});
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__((*own), 0));
         a = std::get<0>(__tup_1);
@@ -106,6 +109,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_local::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_value::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpy::__getitem__(pairs, 0);
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
@@ -136,6 +140,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_value::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpyapp::main::borrow_pair(h);
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -168,6 +173,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_call::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_readonly::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(pairs, 0));
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -199,6 +205,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_readonly::__next__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_pack::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(hs, 0).pair);
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -228,6 +235,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_pack::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_pack_bump::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(hs, 0).pair);
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -255,6 +263,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_pack_bump::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_ptr_ro::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(::tpy::deref_check(p).rows, 0).pair);
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -287,6 +296,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_ptr_ro::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_loop_ro::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = g.rows;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -323,6 +333,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_loop_ro::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_loop_ptr_ro::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = ::tpy::deref_check(p).rows;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -359,6 +370,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_loop_ptr_ro::__nex
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_chain::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(hs, 0).pair);
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -390,6 +402,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_chain::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_alias_root::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         h = &(::tpy::__getitem__(hs, 0));
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h->pair);
         a = std::get<0>(__tup_1);
@@ -422,6 +435,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_alias_root::__next
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_loop_root::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = hs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -462,6 +476,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_loop_root::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Keeper_gen_ro::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(__self.h.pair);
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -491,6 +506,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Keeper_gen_ro::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Keeper_gen_bump::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__self.h.pair);
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));

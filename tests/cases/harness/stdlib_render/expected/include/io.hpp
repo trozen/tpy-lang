@@ -379,7 +379,7 @@ namespace tpystd::io {
 
 // def __iter__(self) -> Iterator[str]:
 struct __gen_StringIO___iter__ : public ::tpy::next_iter_mixin<__gen_StringIO___iter__, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     StringIO& __self;
     std::string line;
 
@@ -407,7 +407,7 @@ inline __gen_StringIO___iter__ StringIO::__iter__() {
 
 // def __iter__(self) -> Iterator[bytes]:
 struct __gen_BytesIO___iter__ : public ::tpy::next_iter_mixin<__gen_BytesIO___iter__, ::tpy::Bytes> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     BytesIO& __self;
     ::tpy::Bytes line;
 
@@ -435,7 +435,7 @@ inline __gen_BytesIO___iter__ BytesIO::__iter__() {
 
 // def __iter__(self) -> Iterator[bytes]:
 struct __gen_BufferedReader___iter__ : public ::tpy::next_iter_mixin<__gen_BufferedReader___iter__, ::tpy::Bytes> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     BufferedReader& __self;
     ::tpy::Bytes line;
 

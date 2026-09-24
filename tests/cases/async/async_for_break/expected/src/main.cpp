@@ -16,6 +16,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_first_above::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         result = -1;
         __for_itr_0.emplace((c).__aiter__());
         __state = S_JOIN_1;
@@ -82,6 +83,7 @@ __coro_first_above first_above(const Counts& c, ::tpy::BigInt threshold) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         c.emplace(Counts());
         __sub_0.emplace((*c), ::tpy::BigInt(5));
         __state = S_RESUME_0;
@@ -114,6 +116,7 @@ __coro_main main() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __self.n = (__self.n) + (::tpy::BigInt(1));
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = __self.n;

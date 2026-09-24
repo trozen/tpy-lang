@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // def rvalue_init() -> Iterator[int32]:
 struct __gen_rvalue_init : public ::tpy::next_iter_mixin<__gen_rvalue_init, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Point* saved = nullptr;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -79,7 +79,7 @@ struct __gen_rvalue_init : public ::tpy::next_iter_mixin<__gen_rvalue_init, int3
 
 // def rebind_after_alias(items: list[Point]) -> Iterator[int32]:
 struct __gen_rebind_after_alias : public ::tpy::next_iter_mixin<__gen_rebind_after_alias, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Point>& items;
     Point* saved = nullptr;
     std::optional<Point> __ptr_slot_f0;
@@ -106,7 +106,7 @@ struct __gen_rebind_after_alias : public ::tpy::next_iter_mixin<__gen_rebind_aft
 
 // def rebind_after_none() -> Iterator[int32]:
 struct __gen_rebind_after_none : public ::tpy::next_iter_mixin<__gen_rebind_after_none, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Point* saved = nullptr;
     std::optional<Point> __ptr_slot_f0;
 
@@ -132,7 +132,7 @@ struct __gen_rebind_after_none : public ::tpy::next_iter_mixin<__gen_rebind_afte
 
 // def own_opt_call() -> Iterator[int32]:
 struct __gen_own_opt_call : public ::tpy::next_iter_mixin<__gen_own_opt_call, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Point* got = nullptr;
     std::optional<Point> __ptr_slot_f0;
 
@@ -158,7 +158,7 @@ struct __gen_own_opt_call : public ::tpy::next_iter_mixin<__gen_own_opt_call, in
 
 // def loop_rebind(n: int32) -> Iterator[int32]:
 struct __gen_loop_rebind : public ::tpy::next_iter_mixin<__gen_loop_rebind, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     Point* saved = nullptr;
     int32_t i;

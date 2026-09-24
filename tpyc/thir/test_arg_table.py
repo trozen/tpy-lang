@@ -2165,7 +2165,7 @@ _PTR_OPT_REC = OptionalType(_REC)
 _BORROW_TUPLE = TupleType((INT32, _PTR_OPT_REC))
 _VALUE_TUPLE = TupleType((INT32, INT32))
 _CORO = ConcreteCoroType(name="Cancellable", type_args=(INT32,),
-                         coro_func_name="produce")
+                         frame_func_name="produce")
 
 _DECL_SLOT_ROWS = (
     # (what it stands for, slot, whole_tuple_call, from_call, ptr_local,
@@ -2174,9 +2174,9 @@ _DECL_SLOT_ROWS = (
     # real analyzer -- the driver asserts every Ptr pointee here is a scalar,
     # so such a row fails loudly rather than answering off a None registry.
     ("coro frame slot off a call", OwnType(_CORO), False, True, False,
-     frozenset({SinkForm.CORO_FACTORY})),
+     frozenset({SinkForm.FRAME_FACTORY})),
     ("coro frame slot, Own already peeled", _CORO, False, True, False,
-     frozenset({SinkForm.CORO_FACTORY})),
+     frozenset({SinkForm.FRAME_FACTORY})),
     # The factory FORM is a call result, so a coro slot with no call takes it
     # away again.
     ("coro frame slot, no call", OwnType(_CORO), False, False, False,

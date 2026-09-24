@@ -16,6 +16,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_view::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         n = 0;
         __for_src_0.emplace(h.view());
         __for_it_0.emplace(((*__for_src_0)).begin());
@@ -50,6 +51,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_view::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_name::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         n = 0;
         __for_src_0.emplace(h.name());
         __for_it_0.emplace(((*__for_src_0)).begin());

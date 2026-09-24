@@ -472,7 +472,7 @@ from .context import (
     _ONLY_ADDR_CALL,
     _ONLY_BORROW_RET_PASSTHROUGH,
     _ONLY_BTUPLE_SLOT,
-    _ONLY_CORO_FACTORY,
+    _ONLY_FRAME_FACTORY,
     _ONLY_INDIRECT_READ,
     _ONLY_LITERAL_FOLD,
     _ONLY_PTR_OPT_PASSTHROUGH,
@@ -530,7 +530,8 @@ from .checks import (
     _is_builtin_print,
     _is_len_call,
     _iter_proto_call_ret,
-    _record_rvalue_source_shape,
+    _record_rvalue_source_shape, _frame_factory_source, frame_object_slot,
+    builds_named_frame,
     _record_aug_binop_ok,
     _rvalue_free_call_shape,
     _narrow_cond_info,
@@ -3084,7 +3085,7 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
 
 
 def _rebind_rvalue_source_ok(init: TpyExpr, target_t: TpyType,
-                             analyzer) -> bool:
+                             analyzer, *, frame_borrows_local: bool) -> bool:
     """The rvalue shapes a slot rebind admits (`__slot_N = <init>`): a
     shape-checked container literal or comprehension, an F1-record rvalue,
     or a container-returning by-value/Own call (the storage-call family --
@@ -3094,6 +3095,15 @@ def _rebind_rvalue_source_ok(init: TpyExpr, target_t: TpyType,
     if isinstance(init, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
         return _container_literal_shape_ok(init, target_t, analyzer)
     if _container_comp_arg(init, target_t):
+        return True
+    if frame_object_slot(target_t):
+        # The slot sits at the function's top, so the frame filling it may
+        # borrow only what outlives that (sema's TpyVarDecl stamp).
+        if not _frame_factory_source(init, target_t, analyzer):
+            return False
+        if frame_borrows_local:
+            note_detail("decl.frame_borrows_local")
+            return False
         return True
     if _record_rvalue_source_shape(init, analyzer):
         return True
@@ -3154,7 +3164,9 @@ def _rebind_storage(stmt: 'TpyVarDecl | TpyAssign', name: str,
                     lc: '_LowerCtx') -> RebindStorage:
     """Sema's alias-rebind verdict for this rvalue reseat. A site sema did
     not stamp, or a const-bound pointer (no non-const in-place write),
-    takes storage of its own -- the conservative side."""
+    takes storage of its own -- the conservative side. (A generator is
+    never rebound while a `for` over the name runs: sema refuses it, since
+    the verdict does not count that loop as a holder.)"""
     if (stmt.rebind_storage is RebindStorage.IN_PLACE
             and name not in lc.const_locals):
         return RebindStorage.IN_PLACE
@@ -3173,7 +3185,8 @@ def _lower_rebind_ptr_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
     # The source fills the SLOT, so it is admitted and lowered against what
     # the slot holds -- the pointee for a pointer-repr Optional local.
     slot_t = _rebind_slot_target(vtype, lc.analyzer)
-    if not (_rebind_rvalue_source_ok(stmt.init, slot_t, lc.analyzer)
+    if not (_rebind_rvalue_source_ok(stmt.init, slot_t, lc.analyzer,
+                                     frame_borrows_local=stmt.frame_borrows_local)
             or _rvalue_storage_decl_op(stmt.init, lc.analyzer)):
         note_detail("res.rebind_ptr_source")
         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -3184,7 +3197,8 @@ def _lower_rebind_ptr_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
         _witness("res.rebind_ptr_in_place")
         return THIRAssign(target=target, value=value,
                           rebind_storage=RebindStorage.IN_PLACE,
-                          slot_cpp=_rebind_slot_cpp(vtype, lc), loc=loc)
+                          slot_cpp=_rebind_slot_cpp(vtype, lc),
+                          rebuild=frame_object_slot(vtype), loc=loc)
     fld = rcfg.resumable_state(lc.func).ptr_slot_map.get(stmt)
     if fld is None:
         note_detail("res.rebind_ptr_slot")
@@ -3192,7 +3206,8 @@ def _lower_rebind_ptr_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
     _witness("res.rebind_ptr_own")
     return THIRPtrLocalRebind(
         name=stmt.name, kind=PtrSlotKind.FRAME_RVALUE, value=value,
-        val_cpp=fld, rebind_storage=RebindStorage.OWN, loc=loc)
+        val_cpp=fld, rebind_storage=RebindStorage.OWN,
+        rebuild=frame_object_slot(vtype), loc=loc)
 
 
 def _rebind_slot_target(target_t: TpyType, analyzer) -> TpyType:
@@ -4889,6 +4904,12 @@ def _lower_record_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
         # explicitly -- keep the invariant self-evident rather than implied.
         note_detail("decl.record_slot_const")
         raise ThirUnsupported(stmt_reject_reason(stmt))
+    if (hoisted and frame_object_slot(vtype)
+            and stmt.frame_borrows_local):
+        # The hoisted slot sits at the function's top, older than any local
+        # the frame could borrow.
+        note_detail("decl.frame_borrows_local")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
     init = _lower_storage_value(
         stmt.init, vtype, lc, declared, loc,
         use=(_LOCAL_MOVE_USE if move else
@@ -4910,7 +4931,8 @@ def _lower_record_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
     return THIRPtrLocalDecl(
         name=stmt.name, resolved_type=vtype, kind=kind, init=init,
         owned_storage=borrowed_record(vtype, False, lc.analyzer),
-        cpp_type=lc.render_type(vtype), loc=loc)
+        cpp_type=lc.render_type(vtype), rebuild=frame_object_slot(vtype),
+        loc=loc)
 
 
 def _lower_container_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
@@ -5316,13 +5338,14 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
             value=init, val_cpp=lc.render_type(slot_t),
             rebind_storage=(None if first_write
                             else _rebind_storage(stmt, stmt.name, lc)),
-            loc=loc)
+            rebuild=frame_object_slot(slot_t), loc=loc)
     if stmt.name in lc.global_slot_assigned:
         _witness("top_level.global_slot_reuse")
         return THIRPtrLocalRebind(
             name=stmt.name, kind=PtrSlotKind.GLOBAL_REBIND, value=init,
             val_cpp=lc.render_type(slot_t),
-            rebind_storage=_rebind_storage(stmt, stmt.name, lc), loc=loc)
+            rebind_storage=_rebind_storage(stmt, stmt.name, lc),
+            rebuild=frame_object_slot(slot_t), loc=loc)
     lc.global_slot_assigned.add(stmt.name)
     _witness("top_level.global_slot")
     return THIRPtrLocalDecl(
@@ -5410,8 +5433,8 @@ def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
                                ConcreteCoroType)
                 # The renderer-free spelling slice: no owner record and no
                 # generic targs (both need the codegen TypeResolver).
-                and unwrap_readonly(_own_wrapped).coro_owner is None
-                and not unwrap_readonly(_own_wrapped).coro_inferred_type_args
+                and unwrap_readonly(_own_wrapped).frame_owner is None
+                and not unwrap_readonly(_own_wrapped).frame_inferred_type_args
                 and stmt.name not in lc.prescan.hoisted
                 and not (lc.func.is_generator or lc.func.is_async)):
             init_node = _lower_expr(
@@ -5426,12 +5449,12 @@ def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
             _witness("decl.coro_frame_local")
             _cct = unwrap_readonly(_own_wrapped)
             _frame_cpp = sub_struct_qualname(
-                None, None, _cct.coro_func_name,
-                module_qual=_cct.coro_module_qual)
+                None, None, _cct.frame_func_name,
+                module_qual=_cct.frame_module_qual)
             return THIRVarDecl(
                 name=stmt.name, resolved_type=sema_var_t, init=init_node,
                 # The SHARED naming helper (cross-module qualification via
-                # coro_module_qual); the owner/targ flavors -- which need
+                # frame_module_qual); the owner/targ flavors -- which need
                 # the codegen TypeResolver -- are gate-excluded above.
                 cpp_type=f"std::optional<{_frame_cpp}>", loc=loc)
         note_detail("decl.dyn_protocol_own")
@@ -9864,7 +9887,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         scope.admission_pointers()),
                     loc=loc)
             move = _move_through_source(stmt, target_t, lc)
-            if not (move or _rebind_rvalue_source_ok(stmt.init, target_t, analyzer)):
+            if not (move or _rebind_rvalue_source_ok(
+                    stmt.init, target_t, analyzer,
+                    frame_borrows_local=stmt.frame_borrows_local)):
                 note_detail("reseat.opt_storage_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             _witness("reseat.opt_storage")
@@ -9881,6 +9906,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                                 isinstance(value, (THIRCopy, THIRMove))
                                                 and unwrap_readonly(unwrap_ref_type(value.result_type)) == target_t)
                                             else None),
+                rebuild=frame_object_slot(target_t),
                 loc=loc)
         # A None reseat of a wide-opt POINTER binding nulls the pointer
         # (`z = nullptr;`) -- slot or no slot; checked before the
@@ -9909,7 +9935,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                          and not _own_declared_call_ret(stmt.init))):
             target_t = declared[stmt.name]
             slot_t = _rebind_slot_target(target_t, analyzer)
-            if not _rebind_rvalue_source_ok(stmt.init, slot_t, analyzer):
+            if not _rebind_rvalue_source_ok(
+                    stmt.init, slot_t, analyzer,
+                    frame_borrows_local=stmt.frame_borrows_local):
                 note_detail("reseat.branch_rvalue_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             _witness("reseat.branch_rvalue")
@@ -9919,7 +9947,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     stmt.init, slot_t, lc, declared, loc,
                     use=_rebind_rvalue_use(stmt.init, slot_t)),
                 val_cpp=lc.render_type(slot_t),
-                rebind_storage=_rebind_storage(stmt, stmt.name, lc), loc=loc)
+                rebind_storage=_rebind_storage(stmt, stmt.name, lc),
+                rebuild=frame_object_slot(slot_t), loc=loc)
         # An OPT_STORAGE_CALL-declared name reseats by re-filling ITS slot
         # and re-lifting (`__slot_1 = make(43); z =
         # ::tpy::optional_to_ptr(__slot_1);` -- the rebind-slot reuse).
@@ -10080,9 +10109,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # folding the disjunct in would admit the op shape at two
                 # sinks no witness or pin covers -- and would fire this
                 # face for renders that are not this reseat.
-                if not (_rebind_rvalue_source_ok(stmt.init,
-                                                 declared[stmt.name],
-                                                 analyzer)
+                if not (_rebind_rvalue_source_ok(
+                            stmt.init, declared[stmt.name], analyzer,
+                            frame_borrows_local=stmt.frame_borrows_local)
                         or (_rvalue_storage_decl_op(stmt.init, analyzer)
                             and _witness("reseat.rvalue_op"))):
                     note_detail("decl.rebind_source")
@@ -10095,6 +10124,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         use=_rebind_rvalue_use(stmt.init, declared[stmt.name])),
                     rebind_storage=_rebind_storage(stmt, stmt.name, lc),
                     slot_cpp=_rebind_slot_cpp(declared[stmt.name], lc),
+                    rebuild=frame_object_slot(declared[stmt.name]),
                     loc=loc)
             # An LVALUE reseat of a slot-holding name leaves the slot
             # untouched and re-points the alias (`p = &(lvalue);`) -- fall
@@ -10488,6 +10518,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     and stmt.init.name not in lc.narrow.narrowed):
                 src_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     declared[stmt.init.name])))
+                if frame_object_slot(src_t):
+                    # A generator's slot here is the enclosing BLOCK's
+                    # `std::optional`, which an outer alias would outlive
+                    # (BUGS.md#block-optional-slot-alias-dangles).
+                    note_detail("reseat.frame_opt_storage_alias")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
                 _witness("reseat.opt_storage_lift")
                 return THIRAssign(
                     target=THIRName(result_type=vtype, name=stmt.name,
@@ -11912,7 +11948,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         # (`auto q = p;`), unlike the spelled `T*` of record/scalar pointees.
         # A container decl carrying an enum in its args needs the same
         # render_type spelling rule as a bare enum decl.
-        if _dyn_proto_ptr(vtype) or _protocol_auto_slot(vtype):
+        if (_protocol_auto_slot(vtype) and isinstance(stmt.init, TpyName)
+                and stmt.init.name in lc.iterator_object_locals
+                and not is_reassign
+                and stmt.name not in lc.prescan.reassigned
+                and stmt.name not in lc.prescan.hoisted):
+            # A second name for a generator object whose frame type has no
+            # spelling (its callee's frame takes deduced template args) is
+            # the same object, as a record alias is; a frame is not copyable.
+            cpp_type = "auto&"
+            lc.iterator_object_locals.add(stmt.name)
+            _witness("decl.iterator_object_alias")
+        elif _dyn_proto_ptr(vtype) or _protocol_auto_slot(vtype):
             cpp_type = "auto"
         elif (_eligible_enum(vtype, analyzer) is not None
               or _container_enum_spell(vtype, analyzer)
@@ -13216,7 +13263,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             if coro_proto is not None:
                 inner = _lower_expr(
                     v, lc, declared,
-                    use=_ExprUse(pos=SinkPos.RETURN, forms=_ONLY_CORO_FACTORY,
+                    use=_ExprUse(pos=SinkPos.RETURN, forms=_ONLY_FRAME_FACTORY,
                                  allow_temps=True))
                 _witness("ret.dyn_own_factory")
                 return THIRReturn(

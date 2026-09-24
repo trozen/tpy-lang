@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Src& obj) {
 
 // def local_walk() -> Iterator[int32]:
 struct __gen_local_walk : public ::tpy::next_iter_mixin<__gen_local_walk, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -68,7 +68,7 @@ struct __gen_local_walk : public ::tpy::next_iter_mixin<__gen_local_walk, int32_
 
 // def free_delegator() -> Iterator[int32]:
 struct __gen_free_delegator : public ::tpy::next_iter_mixin<__gen_free_delegator, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t x;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::moda::local_walk()))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
@@ -95,7 +95,7 @@ struct __gen_free_delegator : public ::tpy::next_iter_mixin<__gen_free_delegator
 
 // def steps(self) -> Iterator[int32]:
 struct __gen_Src_steps : public ::tpy::next_iter_mixin<__gen_Src_steps, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Src& __self;
 
     enum : int32_t {
@@ -122,7 +122,7 @@ inline __gen_Src_steps Src::steps() const {
 
 // def method_delegator(s: Src) -> Iterator[int32]:
 struct __gen_method_delegator : public ::tpy::next_iter_mixin<__gen_method_delegator, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Src& s;
     int32_t x;
     using __for_src_0_t = ::tpy::for_source_t<decltype((s.steps()))>;

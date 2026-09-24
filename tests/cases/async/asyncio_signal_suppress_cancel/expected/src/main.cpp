@@ -35,6 +35,8 @@ namespace tpyapp::main {
         }
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_0: {
         try {
             ::tpystd::signal::raise_signal(::tpy_const_sigint);

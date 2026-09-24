@@ -8,7 +8,7 @@ namespace {
 
 // print(sum_items(x * x for x in range(5)))
 struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     int32_t x;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -35,7 +35,9 @@ struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_f
 // # Range source
 // print(sum_items(x * x for x in range(5)))  # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_1_frame::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;
@@ -54,7 +56,7 @@ __genexpr_main_1_frame __genexpr_main_1(int32_t __r0) {
 
 // print(sum_items(x * 2 for x in items))
 struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -95,7 +97,7 @@ __genexpr_main_2_frame __genexpr_main_2(const std::vector<int32_t>& __src) {
 
 // print(sum_items(x for x in range(10) if x % 2 == 0))
 struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     int32_t x;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -123,7 +125,9 @@ struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_f
 // # Filter with if clause
 // print(sum_items(x for x in range(10) if x % 2 == 0))  # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_3_frame::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;
@@ -144,7 +148,7 @@ __genexpr_main_3_frame __genexpr_main_3(int32_t __r0) {
 
 // print(sum_items(x for x in range(5, 10)))
 struct __genexpr_main_4_frame : public ::tpy::next_iter_mixin<__genexpr_main_4_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     int32_t __r1;
     int32_t x;
@@ -172,7 +176,9 @@ struct __genexpr_main_4_frame : public ::tpy::next_iter_mixin<__genexpr_main_4_f
 // # 2-arg range
 // print(sum_items(x for x in range(5, 10)))  # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_4_frame::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(static_cast<int32_t>(__r0));
         __for_stop_0.emplace(static_cast<int32_t>(__r1));
         __state = S_JOIN_0;
@@ -191,7 +197,7 @@ __genexpr_main_4_frame __genexpr_main_4(int32_t __r0, int32_t __r1) {
 
 // print(sum_items(x for x in range(0, 10, 2)))
 struct __genexpr_main_5_frame : public ::tpy::next_iter_mixin<__genexpr_main_5_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     int32_t __r1;
     int32_t __r2;
@@ -221,7 +227,9 @@ struct __genexpr_main_5_frame : public ::tpy::next_iter_mixin<__genexpr_main_5_f
 // # 3-arg range (positive step)
 // print(sum_items(x for x in range(0, 10, 2)))  # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_5_frame::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(static_cast<int32_t>(__r0));
         __for_stop_0.emplace(static_cast<int32_t>(__r1));
         __for_step_0.emplace(static_cast<int32_t>(__r2));
@@ -244,7 +252,7 @@ __genexpr_main_5_frame __genexpr_main_5(int32_t __r0, int32_t __r1, int32_t __r2
 
 // print(sum_items(x for x in range(10, 0, -2)))
 struct __genexpr_main_6_frame : public ::tpy::next_iter_mixin<__genexpr_main_6_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     int32_t __r1;
     int32_t __r2;
@@ -274,7 +282,9 @@ struct __genexpr_main_6_frame : public ::tpy::next_iter_mixin<__genexpr_main_6_f
 // # 3-arg range (negative step)
 // print(sum_items(x for x in range(10, 0, -2)))  # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_6_frame::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(static_cast<int32_t>(__r0));
         __for_stop_0.emplace(static_cast<int32_t>(__r1));
         __for_step_0.emplace(static_cast<int32_t>(__r2));
@@ -298,7 +308,7 @@ __genexpr_main_6_frame __genexpr_main_6(int32_t __r0, int32_t __r1, int32_t __r2
 // print(sum_items(x for x in [10, 20, 30]))
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_7_frame : public ::tpy::next_iter_mixin<__genexpr_main_7_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -332,7 +342,9 @@ struct __genexpr_main_7_frame : public ::tpy::next_iter_mixin<__genexpr_main_7_f
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_7_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -361,7 +373,7 @@ __genexpr_main_7_frame<std::invoke_result_t<F_make>> __genexpr_main_7(std::in_pl
 // print(sum_items(x for x in [1, 2, 3, 4, 5] if x > 2))
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_8_frame : public ::tpy::next_iter_mixin<__genexpr_main_8_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -396,7 +408,9 @@ struct __genexpr_main_8_frame : public ::tpy::next_iter_mixin<__genexpr_main_8_f
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_8_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -427,7 +441,7 @@ __genexpr_main_8_frame<std::invoke_result_t<F_make>> __genexpr_main_8(std::in_pl
 // print(sum_items(x * multiplier for x in range(5)))
 template <typename F_multiplier>
 struct __genexpr_main_9_frame : public ::tpy::next_iter_mixin<__genexpr_main_9_frame<F_multiplier>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     F_multiplier multiplier;
     int32_t x;
@@ -455,7 +469,9 @@ struct __genexpr_main_9_frame : public ::tpy::next_iter_mixin<__genexpr_main_9_f
 // print(sum_items(x * multiplier for x in range(5)))  # -> S_RESUME_0
 template <typename F_multiplier>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_9_frame<F_multiplier>::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;
@@ -476,7 +492,7 @@ __genexpr_main_9_frame<F_multiplier> __genexpr_main_9(int32_t __r0, F_multiplier
 // print(sum_items(x * multiplier for x in items))
 template <typename F_multiplier>
 struct __genexpr_main_10_frame : public ::tpy::next_iter_mixin<__genexpr_main_10_frame<F_multiplier>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     F_multiplier multiplier;
     int32_t x;
@@ -522,7 +538,7 @@ __genexpr_main_10_frame<F_multiplier> __genexpr_main_10(const std::vector<int32_
 // print(sum_items(x for x in range(10) if x > threshold))
 template <typename F_threshold>
 struct __genexpr_main_11_frame : public ::tpy::next_iter_mixin<__genexpr_main_11_frame<F_threshold>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     F_threshold threshold;
     int32_t x;
@@ -551,7 +567,9 @@ struct __genexpr_main_11_frame : public ::tpy::next_iter_mixin<__genexpr_main_11
 // print(sum_items(x for x in range(10) if x > threshold))  # -> S_RESUME_0
 template <typename F_threshold>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_11_frame<F_threshold>::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;
@@ -574,7 +592,7 @@ __genexpr_main_11_frame<F_threshold> __genexpr_main_11(int32_t __r0, F_threshold
 // print(sum_items(x for x in items if x > threshold))
 template <typename F_threshold>
 struct __genexpr_main_12_frame : public ::tpy::next_iter_mixin<__genexpr_main_12_frame<F_threshold>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     F_threshold threshold;
     int32_t x;
@@ -622,7 +640,7 @@ __genexpr_main_12_frame<F_threshold> __genexpr_main_12(const std::vector<int32_t
 
 // print(", ".join(str(x) for x in nums))
 struct __genexpr_main_13_frame : public ::tpy::next_iter_mixin<__genexpr_main_13_frame, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -663,7 +681,7 @@ __genexpr_main_13_frame __genexpr_main_13(const std::vector<int32_t>& __src) {
 
 // print(sum_items(v for _, v in pairs))
 struct __genexpr_main_14_frame : public ::tpy::next_iter_mixin<__genexpr_main_14_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::tuple<std::string, int32_t>>& __src;
     std::tuple<std::string, int32_t> __for_tup_gx;
     int32_t v;

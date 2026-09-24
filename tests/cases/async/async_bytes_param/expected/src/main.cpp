@@ -12,6 +12,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_consume::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -42,6 +43,7 @@ __coro_consume consume(::tpy::BytesView data) {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_head::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -72,6 +74,7 @@ __coro_head head(::tpy::BytesView data) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __coro_arg_0 = ::tpy::bytes_literal_owned("hello", 5);
         __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;

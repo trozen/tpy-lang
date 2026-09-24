@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_rows::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         inside.emplace(::tpy::ordered_map<std::string, std::vector<int32_t>>({{"y", {1, 2}}}));
         ::tpy::__getitem__((*inside), "y").push_back(3);
         __for_src_0.emplace(::tpy::dict_values((*inside)));

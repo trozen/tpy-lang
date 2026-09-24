@@ -19,7 +19,7 @@ std::string loaded();
 
 // async def compute(n: int) -> int:  # tpyc: ok
 struct __coro_compute {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
 

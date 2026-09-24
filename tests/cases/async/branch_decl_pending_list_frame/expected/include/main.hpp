@@ -22,7 +22,7 @@ __coro_drive drive();
 
 // async def pick(n: int) -> int:
 struct __coro_pick {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
     std::vector<int32_t>* xs = nullptr;
@@ -49,7 +49,7 @@ struct __coro_pick {
 
 // async def drive() -> None:
 struct __coro_drive {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt __await_lift_0;
     ::tpy::BigInt __await_lift_1;

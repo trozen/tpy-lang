@@ -10,6 +10,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(x, 1));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -32,6 +33,7 @@ __coro_add_one add_one(int32_t x) {
 ::tpystd::tpy::Poll<int32_t> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(5);
         __state = S_RESUME_0;
         continue;

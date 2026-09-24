@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_first::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         n = 0;
         auto& __for_obj_0 = items;
         __for_it_0.emplace((__for_obj_0).begin());
@@ -57,6 +58,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_first::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_ro_pair::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 0;
     }
@@ -88,6 +90,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_ro_pair::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_rec_val::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return r.v;
     }
@@ -111,6 +114,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_rec_val::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_dvals::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::__len__(d);
     }
@@ -142,6 +146,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_dvals::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_echo::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::__getitem__(xs, 0);
     }

@@ -1728,7 +1728,7 @@ inline std::ostream& operator<<(std::ostream& os, const BoundedSemaphore& obj) {
 
 // async def wait(self) -> bool:
 struct __coro_Event_wait {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Event& __self;
     Event* __sub_0 = nullptr;
@@ -1756,7 +1756,7 @@ inline __coro_Event_wait Event::wait() {
 
 // async def acquire(self) -> bool:
 struct __coro_Lock_acquire {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Lock& __self;
     std::optional<_LockAcquire> __sub_0;
@@ -1784,7 +1784,7 @@ inline __coro_Lock_acquire Lock::acquire() {
 
 // async def __aenter__(self) -> None:
 struct __coro_Lock___aenter__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Lock& __self;
     std::optional<__coro_Lock_acquire> __sub_0;
@@ -1813,7 +1813,7 @@ inline __coro_Lock___aenter__ Lock::__aenter__() {
 // async def __aexit__(self, exc_type: None, exc_val: None,
 //                     exc_tb: None) -> None:
 struct __coro_Lock___aexit__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Lock& __self;
     std::monostate exc_type;
@@ -1842,7 +1842,7 @@ inline __coro_Lock___aexit__ Lock::__aexit__(std::monostate exc_type, std::monos
 
 // async def acquire(self) -> bool:
 struct __coro_Semaphore_acquire {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Semaphore& __self;
     std::optional<_SemAcquire> __sub_0;
@@ -1870,7 +1870,7 @@ inline __coro_Semaphore_acquire Semaphore::acquire() {
 
 // async def __aenter__(self) -> None:
 struct __coro_Semaphore___aenter__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Semaphore& __self;
     std::optional<__coro_Semaphore_acquire> __sub_0;
@@ -1899,7 +1899,7 @@ inline __coro_Semaphore___aenter__ Semaphore::__aenter__() {
 // async def __aexit__(self, exc_type: None, exc_val: None,
 //                     exc_tb: None) -> None:
 struct __coro_Semaphore___aexit__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Semaphore& __self;
     std::monostate exc_type;
@@ -1929,7 +1929,7 @@ inline __coro_Semaphore___aexit__ Semaphore::__aexit__(std::monostate exc_type, 
 // async def put(self, item: Own[T]) -> None:
 template <typename T>
 struct __coro_Queue_put {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Queue<T>& __self;
     T item;
@@ -1959,6 +1959,7 @@ template <typename T>
 ::tpystd::tpy::Poll<::std::monostate> __coro_Queue_put<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(_QueueWait<T>(&__self, 1)));
         __state = S_RESUME_0;
         continue;
@@ -1986,7 +1987,7 @@ inline __coro_Queue_put<T> Queue<T>::put(T item) {
 // async def get(self) -> Own[T]:
 template <typename T>
 struct __coro_Queue_get {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Queue<T>& __self;
     std::optional<_QueueWait<T>> __sub_0;
@@ -2015,6 +2016,7 @@ template <typename T>
 ::tpystd::tpy::Poll<T> __coro_Queue_get<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(_QueueWait<T>(&__self, 0)));
         __state = S_RESUME_0;
         continue;
@@ -2042,7 +2044,7 @@ inline __coro_Queue_get<T> Queue<T>::get() {
 // async def join(self) -> None:
 template <typename T>
 struct __coro_Queue_join {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Queue<T>& __self;
     std::optional<_QueueWait<T>> __sub_0;
@@ -2070,6 +2072,7 @@ template <typename T>
 ::tpystd::tpy::Poll<::std::monostate> __coro_Queue_join<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(_QueueWait<T>(&__self, 2)));
         __state = S_RESUME_0;
         continue;
@@ -2095,7 +2098,7 @@ inline __coro_Queue_join<T> Queue<T>::join() {
 
 // async def _fill(self) -> int32:
 struct __coro_StreamReader__fill {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     StreamReader& __self;
     ::tpy::frame_slot<EventLoop> loop;
@@ -2125,7 +2128,7 @@ inline __coro_StreamReader__fill StreamReader::_fill() {
 
 // async def read(self, n: int32) -> bytes:
 struct __coro_StreamReader_read {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     StreamReader& __self;
     int32_t n;
@@ -2159,7 +2162,7 @@ inline __coro_StreamReader_read StreamReader::read(int32_t n) {
 
 // async def readexactly(self, n: int32) -> bytes:
 struct __coro_StreamReader_readexactly {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     StreamReader& __self;
     int32_t n;
@@ -2189,7 +2192,7 @@ inline __coro_StreamReader_readexactly StreamReader::readexactly(int32_t n) {
 
 // async def readline(self) -> bytes:
 struct __coro_StreamReader_readline {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     StreamReader& __self;
     int32_t idx;
@@ -2219,7 +2222,7 @@ inline __coro_StreamReader_readline StreamReader::readline() {
 
 // async def readuntil(self, separator: bytes) -> bytes:
 struct __coro_StreamReader_readuntil {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     StreamReader& __self;
     ::tpy::Bytes separator;
@@ -2250,7 +2253,7 @@ inline __coro_StreamReader_readuntil StreamReader::readuntil(::tpy::BytesView se
 
 // async def drain(self) -> None:
 struct __coro_StreamWriter_drain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     StreamWriter& __self;
     ::tpy::frame_slot<EventLoop> loop;
@@ -2280,7 +2283,7 @@ inline __coro_StreamWriter_drain StreamWriter::drain() {
 
 // async def wait_closed(self) -> None:
 struct __coro_StreamWriter_wait_closed {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const StreamWriter& __self;
 
@@ -2306,7 +2309,7 @@ inline __coro_StreamWriter_wait_closed StreamWriter::wait_closed() const {
 
 // async def serve_forever(self) -> None:
 struct __coro_Server_serve_forever {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Server& __self;
     ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_0 = nullptr;
@@ -2336,7 +2339,7 @@ inline __coro_Server_serve_forever Server::serve_forever() {
 
 // async def wait_closed(self) -> None:
 struct __coro_Server_wait_closed {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Server& __self;
 
@@ -2362,7 +2365,7 @@ inline __coro_Server_wait_closed Server::wait_closed() const {
 
 // async def __aenter__(self) -> "Server":
 struct __coro_Server___aenter__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Server& __self;
 
@@ -2389,7 +2392,7 @@ inline __coro_Server___aenter__ Server::__aenter__() {
 // async def __aexit__(self, exc_type: None, exc_val: None,
 //                     exc_tb: None) -> None:
 struct __coro_Server___aexit__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Server& __self;
     std::monostate exc_type;
@@ -2419,7 +2422,7 @@ inline __coro_Server___aexit__ Server::__aexit__(std::monostate exc_type, std::m
 // async def wait_for[T](coro: Own[Cancellable[T]], timeout: float) -> Own[T]:
 template <typename T>
 struct __coro_wait_for {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::unique_ptr<::tpystd::coro::Cancellable<T>> coro;
     double timeout;
@@ -2463,6 +2466,7 @@ template <typename T>
 ::tpystd::tpy::Poll<T> __coro_wait_for<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(_WaitForFuture<T>(std::move(coro), timeout)));
         __state = S_RESUME_0;
         continue;
@@ -2490,7 +2494,7 @@ __coro_wait_for<T> wait_for(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro
 // async def gather_list[T](tasks: list[Task[T]]) -> Own[list[T]]:
 template <typename T>
 struct __coro_gather_list {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<::tpystd::asyncio::_executor::Task<T>>& tasks;
     std::optional<_GatherFuture<T>> __sub_0;
@@ -2529,6 +2533,7 @@ template <typename T>
 ::tpystd::tpy::Poll<std::vector<T>> __coro_gather_list<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(_GatherFuture<T>(tasks)));
         __state = S_RESUME_0;
         continue;
@@ -2557,7 +2562,7 @@ __coro_gather_list<T> gather_list(std::vector<::tpystd::asyncio::_executor::Task
 //         tasks: list[Task[T]]) -> Own[list[Settled[T]]]:
 template <typename T>
 struct __coro_gather_list_settled {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<::tpystd::asyncio::_executor::Task<T>>& tasks;
     std::optional<_GatherSettledFuture<T>> __sub_0;
@@ -2605,6 +2610,7 @@ template <typename T>
 ::tpystd::tpy::Poll<std::vector<Settled<T>>> __coro_gather_list_settled<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(_GatherSettledFuture<T>(tasks)));
         __state = S_RESUME_0;
         continue;
@@ -2633,7 +2639,7 @@ __coro_gather_list_settled<T> gather_list_settled(std::vector<::tpystd::asyncio:
 // async def open_connection(
 //         host: str, port: int32) -> tuple[Own[StreamReader], Own[StreamWriter]]:
 struct __coro_open_connection {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string host;
     int32_t port;
@@ -2664,7 +2670,7 @@ struct __coro_open_connection {
 //         cb: Callable[[Own[StreamReader], Own[StreamWriter]],
 //                      Own[Cancellable[None]]]) -> None:
 struct __coro__accept_loop {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::tplib::rc::Rc<::tpystd::socket::socket> listener;
     std::function<std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>>(StreamReader&&, StreamWriter&&)> cb;
@@ -2698,7 +2704,7 @@ struct __coro__accept_loop {
 //                      Own[Cancellable[None]]],
 //         host: str, port: int32) -> Own[Server]:
 struct __coro_start_server {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::function<std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>>(StreamReader&&, StreamWriter&&)> cb;
     std::string host;

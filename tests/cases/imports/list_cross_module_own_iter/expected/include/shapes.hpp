@@ -34,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // def points() -> Iterator[Own[Point]]:
 struct __gen_points : public ::tpy::next_iter_mixin<__gen_points, Point> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::vector<Point>> src;
     using __for_src_0_t = decltype(((*src)));
     ::tpy::begin_elem_t<__for_src_0_t>* p = nullptr;

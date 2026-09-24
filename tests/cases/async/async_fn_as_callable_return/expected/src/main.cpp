@@ -12,6 +12,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_triple::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -48,6 +49,7 @@ std::function<std::unique_ptr<::tpystd::coro::Cancellable<int32_t>>(int32_t)> pi
 ::tpystd::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         factory = ::tpyapp::main::pick();
         __sub_0.emplace(std::move(::tpystd::asyncio::create_task<int32_t>(factory(7))));
         __state = S_RESUME_0;

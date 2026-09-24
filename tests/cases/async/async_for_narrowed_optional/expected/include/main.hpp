@@ -27,7 +27,7 @@ void main();
 
 // async def count_chars(s: str | None) -> int:
 struct __coro_count_chars {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<std::string> s;
     int32_t n;
@@ -57,13 +57,13 @@ struct __coro_count_chars {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t total;
     ::tpy::BigInt v;
+    std::string __coro_arg_1;
     ::tpy::BigInt __await_lift_0;
     ::tpy::Bytes __coro_arg_0;
-    std::string __coro_arg_1;
     std::optional<__coro_count_chars> __sub_0;
 
     enum : int32_t {
@@ -85,7 +85,7 @@ struct __coro_main_coro {
 
 // def each_byte(b: bytes | None) -> Iterator[int]:
 struct __gen_each_byte : public ::tpy::next_iter_mixin<__gen_each_byte, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::optional<::tpy::Bytes> b;
     uint8_t x;
     using __for_src_0_t = decltype(((*b)));

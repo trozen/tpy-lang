@@ -56,6 +56,7 @@ std::expected<bool, Stop> er_twin(int32_t n) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         bool __tpy_async_ret = (val.has_value());
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -77,6 +78,7 @@ __coro_probe_async_twin probe_async_twin(std::optional<int32_t> val) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         bool __tpy_async_ret = (val != nullptr);
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -116,6 +118,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         v = (::tpy::add_check<int32_t>(n, 1));
         v_none = std::nullopt;
         c.emplace(Cell(5));

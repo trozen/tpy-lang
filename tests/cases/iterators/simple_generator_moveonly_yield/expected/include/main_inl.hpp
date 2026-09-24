@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<Tok, ::tpy::StopIteration> __gen_toks_while::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -42,6 +43,7 @@ inline std::expected<Tok, ::tpy::StopIteration> __gen_toks_while::__next__() {
 inline std::expected<Tok, ::tpy::StopIteration> __gen_toks_for::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_0;

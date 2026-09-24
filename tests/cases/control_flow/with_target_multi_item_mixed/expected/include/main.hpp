@@ -87,7 +87,7 @@ inline std::ostream& operator<<(std::ostream& os, const Delegator& obj) {
 
 // def steps() -> Iterator[int32]:
 struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<::tpy::with_enter_t<Owner>> owned;
     ::tpy::frame_slot<::tpy::with_enter_t<Delegator>> lent;
     ::tpy::frame_slot<Owner> __with_ctx_0;

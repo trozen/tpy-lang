@@ -160,6 +160,7 @@ __gen_via_gen via_gen(::tpyapp::keeper::Rec& r) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         f.emplace(::tpyapp::keeper::Factory());
         (*f).touch(r);
         __state = S_DONE;
@@ -197,6 +198,7 @@ __coro_via_async via_async(::tpyapp::keeper::Rec& r) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a.emplace(::tpyapp::keeper::Rec(0));
         std::cout << "local" << " " << ::tpyapp::main::via_local((*a)) << "\n";
         std::cout << "field" << " " << ::tpyapp::main::via_field((*a)) << "\n";

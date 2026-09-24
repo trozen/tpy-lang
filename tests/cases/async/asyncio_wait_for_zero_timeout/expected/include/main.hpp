@@ -27,7 +27,7 @@ void main();
 
 // async def slow() -> int:
 struct __coro_slow {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -50,7 +50,7 @@ struct __coro_slow {
 
 // async def zero_timeout() -> None:
 struct __coro_zero_timeout {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::__coro_wait_for<::tpy::BigInt>> __sub_0;
 
@@ -75,7 +75,7 @@ struct __coro_zero_timeout {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<__coro_zero_timeout> __sub_0;
 

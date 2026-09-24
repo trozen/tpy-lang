@@ -115,7 +115,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 // async def async_body(xs: list[int32], big: bool) -> int32:
 struct __coro_async_body {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<int32_t>& xs;
     bool big;
@@ -140,7 +140,7 @@ struct __coro_async_body {
 
 // for v in (x + 1 for x in self.items):
 struct __genexpr_run_2_frame : public ::tpy::next_iter_mixin<__genexpr_run_2_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -167,7 +167,7 @@ struct __genexpr_run_2_frame : public ::tpy::next_iter_mixin<__genexpr_run_2_fra
 
 // for v in (x * 2 for x in xs):
 struct __genexpr_gen_body_8_frame : public ::tpy::next_iter_mixin<__genexpr_gen_body_8_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -194,7 +194,7 @@ struct __genexpr_gen_body_8_frame : public ::tpy::next_iter_mixin<__genexpr_gen_
 
 // def gen_body(xs: list[int32], big: bool) -> Iterator[int32]:
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<int32_t>& xs;
     bool big;
     int32_t v;
@@ -223,7 +223,7 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
 
 // for v in (x * 2 for x in xs):
 struct __genexpr_async_body_9_frame : public ::tpy::next_iter_mixin<__genexpr_async_body_9_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));

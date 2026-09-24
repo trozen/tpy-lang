@@ -20,7 +20,7 @@ void main();
 
 // def echo_n(s: str, n: int) -> Iterator[str]:
 struct __gen_echo_n : public ::tpy::next_iter_mixin<__gen_echo_n, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string s;
     ::tpy::BigInt n;
     int32_t i;

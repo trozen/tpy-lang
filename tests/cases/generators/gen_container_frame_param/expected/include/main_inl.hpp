@@ -11,6 +11,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::val_or_ref<::tpy::ByteArray>, ::tpy::StopIteration> __gen_twice_buf::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return b;
     }
@@ -33,6 +34,7 @@ inline std::expected<::tpy::val_or_ref<::tpy::ByteArray>, ::tpy::StopIteration> 
 inline std::expected<::tpy::val_or_ref<std::array<int32_t, 2>>, ::tpy::StopIteration> __gen_twice_arr::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return a;
     }
@@ -55,6 +57,7 @@ inline std::expected<::tpy::val_or_ref<std::array<int32_t, 2>>, ::tpy::StopItera
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_twice_list::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return xs;
     }

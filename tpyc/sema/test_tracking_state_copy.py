@@ -51,6 +51,8 @@ def _populated() -> FunctionTrackingState:
     binds[N.TpyAssign(N.TpyName("y"), expr)] = BindKind.RVALUE
     gates: IdentitySet = IdentitySet()
     gates.add(N.TpyPassStmt())
+    frame_rebinds: IdentityMap = IdentityMap()
+    frame_rebinds[N.TpyVarDecl("g", None, None)] = None
     return FunctionTrackingState(
         current_function=func,
         body_root=func,
@@ -72,6 +74,7 @@ def _populated() -> FunctionTrackingState:
         pre_analyzed_method_args=pre_analyzed,
         bind_kinds=binds,
         gate_sites=gates,
+        frame_rebind_sites=frame_rebinds,
         pending_elem_type_fields=[(N.TpyName("comp"), 'result_elem_type')],
         pending_composite_exprs=[N.TpyName("z")],
         borrow_tracker=tracker,
@@ -109,6 +112,7 @@ _FIXTURE_FIELDS = {
     'pending_generic_yield_sources', 'pending_view_storage_checks',
     'unread_coro_locals', 'var_decl_by_name', 'pending_return_borrows',
     'pre_analyzed_method_args', 'bind_kinds', 'gate_sites',
+    'frame_rebind_sites',
     'pending_elem_type_fields', 'pending_composite_exprs', 'borrow_tracker',
     'current_call_edges', 'current_awaited_subframes',
     'pending_generic_instances', 'current_ns', 'own_ns', 'current_scope',

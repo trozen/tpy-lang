@@ -93,7 +93,7 @@ inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
 
 // def bytes_of(n: int32) -> Iterator[uint8]:
 struct __gen_bytes_of : public ::tpy::next_iter_mixin<__gen_bytes_of, uint8_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;

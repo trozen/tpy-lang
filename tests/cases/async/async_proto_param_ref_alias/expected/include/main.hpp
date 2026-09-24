@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // async def bump(items: Iterable[Point]) -> int32:
 template <::tpystd::typing::Iterable<Point> T_items>
 struct __coro_bump {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     T_items items;
     int32_t total;
@@ -81,6 +81,7 @@ template <::tpystd::typing::Iterable<Point> T_items>
 ::tpystd::tpy::Poll<int32_t> __coro_bump<T_items>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         ::tpy::resumable_iter_init(__for_itr_0, items);
         __state = S_JOIN_0;
@@ -122,7 +123,7 @@ __coro_bump<T_items> bump(T_items&& items) {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::array<Point, 2>> pts;
     int32_t got;

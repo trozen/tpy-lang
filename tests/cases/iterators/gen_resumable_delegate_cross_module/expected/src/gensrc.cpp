@@ -60,6 +60,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_guarded::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         __state = S_RESUME_0;
         return 1;

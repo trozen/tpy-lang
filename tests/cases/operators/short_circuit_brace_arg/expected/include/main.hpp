@@ -169,7 +169,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bx& obj) {
 
 // def gen(o: list[int64]) -> Iterator[int64]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int64_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int64_t>& o;
     int64_t x;
     using __for_src_0_t = decltype((o));
@@ -196,7 +196,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int64_t> {
 
 // def gen(self, o: list[int64]) -> Iterator[int64]:
 struct __gen_Bx_gen : public ::tpy::next_iter_mixin<__gen_Bx_gen, int64_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Bx& __self;
     const std::vector<int64_t>& o;
     int64_t x;

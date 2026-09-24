@@ -33,6 +33,8 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_g_assert::__next__
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         __state = S_RESUME_0;
         return "one";
@@ -75,6 +77,8 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_g_post_if::__next_
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         __state = S_RESUME_0;
         return "two";

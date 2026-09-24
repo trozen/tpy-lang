@@ -202,7 +202,7 @@ inline std::ostream& operator<<(std::ostream& os, const CellBox& obj) {
 // async def probe_async[T](val: T | None) -> bool:
 template <typename T>
 struct __coro_probe_async {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::opt_param_t<T> val;
 
@@ -229,6 +229,7 @@ template <typename T>
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         bool __tpy_async_ret = (::tpy::opt_has_value(val));
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -247,7 +248,7 @@ __coro_probe_async<T> probe_async(::tpy::opt_param_t<T> val) {
 
 // async def probe_async_twin(val: int32 | None) -> bool:
 struct __coro_probe_async_twin {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<int32_t> val;
 
@@ -269,7 +270,7 @@ struct __coro_probe_async_twin {
 
 // async def probe_pinned_twin(val: Pinned | None) -> bool:
 struct __coro_probe_pinned_twin {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Pinned* val;
 
@@ -291,7 +292,7 @@ struct __coro_probe_pinned_twin {
 
 // async def amain(n: int32) -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
     std::optional<int32_t> v;
@@ -299,10 +300,9 @@ struct __coro_amain {
     ::tpy::frame_slot<Cell> c;
     Cell* none_cell = nullptr;
     ::tpy::frame_slot<Pinned> pin;
-    std::optional<__coro_probe_async<Pinned>> co;
-    std::optional<__coro_probe_pinned_twin> co_twin;
     bool __await_lift_0;
     bool __await_lift_1;
+    int32_t __coro_arg_0;
     bool __await_lift_2;
     bool __await_lift_3;
     bool __await_lift_4;
@@ -310,9 +310,10 @@ struct __coro_amain {
     bool __await_lift_6;
     bool __await_lift_7;
     bool __await_lift_8;
-    bool __await_lift_9;
-    int32_t __coro_arg_0;
     int32_t __coro_arg_1;
+    bool __await_lift_9;
+    std::optional<__coro_probe_async<Pinned>> co;
+    std::optional<__coro_probe_pinned_twin> co_twin;
     std::optional<__coro_probe_async<int32_t>> __sub_0;
     std::optional<__coro_probe_async<int32_t>> __sub_1;
     std::optional<__coro_probe_async_twin> __sub_2;
@@ -350,7 +351,7 @@ struct __coro_amain {
 
 // def gen_body(n: int32) -> Iterator[bool]:
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, bool> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
 
     enum : int32_t {

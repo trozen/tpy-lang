@@ -10,6 +10,7 @@ namespace tpyapp::main {
 inline std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return p;
     }

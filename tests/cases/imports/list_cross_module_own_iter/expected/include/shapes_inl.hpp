@@ -12,6 +12,7 @@ namespace tpyapp::shapes {
 inline std::expected<Point, ::tpy::StopIteration> __gen_points::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         src.emplace(std::vector<Point>{Point(3), Point(1), Point(2)});
         auto& __for_obj_0 = (*src);
         __for_it_0.emplace((__for_obj_0).begin());

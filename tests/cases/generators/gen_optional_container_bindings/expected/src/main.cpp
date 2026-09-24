@@ -29,6 +29,7 @@ __gen_twice_r twice_r(R* r) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((d == nullptr)) {
             __state = S_DONE;
             int32_t __tpy_async_ret = -1;

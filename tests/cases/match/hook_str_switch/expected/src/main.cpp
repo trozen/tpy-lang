@@ -26,6 +26,7 @@ namespace tpyapp::main {
 std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = s;
         if (__match_subject_1 == "z") {
             if (flag) {
@@ -132,6 +133,7 @@ __gen_gen gen(std::string_view s, bool flag) {
 ::tpystd::tpy::Poll<std::string> __coro_acoro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = s;
         switch (__match_subject_1.size()) {
         case 1: {
@@ -235,6 +237,7 @@ __coro_acoro acoro(std::string_view s) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __coro_arg_0 = "a";
         __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;

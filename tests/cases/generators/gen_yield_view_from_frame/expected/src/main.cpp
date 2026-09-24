@@ -37,6 +37,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_with_view_target::__next_
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0 = &(h);
         label = (*__with_ctx_0).__enter__();
         __state = S_JOIN_1;

@@ -49,7 +49,7 @@ namespace {
 
 // print(sum(score(Box(i)) for i in range(n) if is_small(Box(i))))
 struct __genexpr_genexpr_1_frame : public ::tpy::next_iter_mixin<__genexpr_genexpr_1_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -78,7 +78,9 @@ struct __genexpr_genexpr_1_frame : public ::tpy::next_iter_mixin<__genexpr_genex
 // # condition (is_small(Box(i))) -- each must flush inside the frame body.
 // print(sum(score(Box(i)) for i in range(n) if is_small(Box(i))))  # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_genexpr_1_frame::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;

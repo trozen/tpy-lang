@@ -101,7 +101,7 @@ namespace {
 
 // joined = "-".join(r.name for r in rows)  # tpyc: ok
 struct __genexpr_sec_comp_1_frame : public ::tpy::next_iter_mixin<__genexpr_sec_comp_1_frame, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<Inner>& __src;
     using __for_src_0_t = decltype((__src));
     ::tpy::begin_elem_t<__for_src_0_t>* r = nullptr;

@@ -19,7 +19,7 @@ __coro_deep deep();
 
 // async def deep() -> int32:
 struct __coro_deep {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 

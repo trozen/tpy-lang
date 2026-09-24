@@ -27,7 +27,7 @@ void main();
 
 // async def producer() -> None:
 struct __coro_producer {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -48,7 +48,7 @@ struct __coro_producer {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> _t;
     int32_t x;

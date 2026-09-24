@@ -8,7 +8,7 @@ namespace {
 
 // squares: list[int32] = list(x * x for x in range(5))
 struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     int32_t x;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -35,7 +35,9 @@ struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_f
 // # list() from genexpr
 // squares: list[int32] = list(x * x for x in range(5))  # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_1_frame::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;
@@ -54,7 +56,7 @@ __genexpr_main_1_frame __genexpr_main_1(int32_t __r0) {
 
 // items.extend(x * 10 for x in range(3))
 struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     int32_t x;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -80,7 +82,9 @@ struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_f
 
 // items.extend(x * 10 for x in range(3))  # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_2_frame::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;
@@ -99,7 +103,7 @@ __genexpr_main_2_frame __genexpr_main_2(int32_t __r0) {
 
 // mods: set[int32] = set(x % 3 for x in range(10))
 struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     int32_t x;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -126,7 +130,9 @@ struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_f
 // # set() from genexpr
 // mods: set[int32] = set(x % 3 for x in range(10))  # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_3_frame::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;
@@ -145,7 +151,7 @@ __genexpr_main_3_frame __genexpr_main_3(int32_t __r0) {
 
 // d: dict[str, int32] = dict((str(x), x * x) for x in range(4))
 struct __genexpr_main_4_frame : public ::tpy::next_iter_mixin<__genexpr_main_4_frame, std::tuple<std::string, int32_t>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     int32_t x;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -172,7 +178,9 @@ struct __genexpr_main_4_frame : public ::tpy::next_iter_mixin<__genexpr_main_4_f
 // # dict() from genexpr of tuples
 // d: dict[str, int32] = dict((str(x), x * x) for x in range(4))  # -> S_RESUME_0
 std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> __genexpr_main_4_frame::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;
@@ -191,7 +199,7 @@ __genexpr_main_4_frame __genexpr_main_4(int32_t __r0) {
 
 // print(" ".join(w.upper() for w in words))
 struct __genexpr_main_5_frame : public ::tpy::next_iter_mixin<__genexpr_main_5_frame, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::string>& __src;
     std::string w;
     using __for_src_0_t = decltype((__src));

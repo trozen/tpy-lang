@@ -88,7 +88,7 @@ inline std::ostream& operator<<(std::ostream& os, const Runner& obj) {
 
 // async def asynchronous() -> int32:
 struct __coro_asynchronous {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Cell* current = nullptr;
     std::tuple<Cell*> saved;
@@ -115,7 +115,7 @@ struct __coro_asynchronous {
 
 // def suspended() -> Iterator[int32]:
 struct __gen_suspended : public ::tpy::next_iter_mixin<__gen_suspended, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Cell* current = nullptr;
     std::tuple<Cell*> saved;
     std::optional<Cell> __ptr_slot_f0;

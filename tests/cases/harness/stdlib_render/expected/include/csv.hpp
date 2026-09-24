@@ -282,7 +282,7 @@ inline std::ostream& operator<<(std::ostream& os, const DictWriter<W>& obj) {
 // ) -> Iterator[Own[list[str]]]:
 template <typename R>
 struct __gen__parse_rows : public ::tpy::next_iter_mixin<__gen__parse_rows<R>, std::vector<std::string>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     R* fp;
     std::string delimiter;
     std::string quotechar;
@@ -399,6 +399,8 @@ template <typename R>
 std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<R>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_0:  // after: yield row
     case S_JOIN_0: {
         if (true) {
@@ -512,7 +514,7 @@ __gen__parse_rows<R> _parse_rows(R* fp, std::string_view delimiter, std::string_
 // ) -> Iterator[Own[list[str]]]:
 template <::tpystd::tpy::Readable T_fp>
 struct __gen_reader : public ::tpy::next_iter_mixin<__gen_reader<T_fp>, std::vector<std::string>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_fp fp;
     std::string delimiter;
     std::string quotechar;
@@ -625,6 +627,8 @@ template <::tpystd::tpy::Readable T_fp>
 std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_0:  // after: yield row
     case S_JOIN_0: {
         if (true) {
@@ -732,7 +736,7 @@ __gen_reader<T_fp> reader(T_fp&& fp, std::string_view delimiter, std::string_vie
 // def __iter__(self) -> Iterator[Own[dict[str, str]]]:
 template <::tpystd::tpy::Readable W>
 struct __gen_DictReader___iter__ : public ::tpy::next_iter_mixin<__gen_DictReader___iter__<W>, ::tpy::ordered_map<std::string, std::string>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     DictReader<W>& __self;
     bool first;
     std::string name;
@@ -797,6 +801,7 @@ template <::tpystd::tpy::Readable W>
 std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration> __gen_DictReader___iter__<W>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         first = true;
         __for_src_0.emplace(::tpystd::csv::_parse_rows<W>(__self._fp, __self._delimiter, __self._quotechar, __self._doublequote, __self._skipinitialspace));
         __state = S_JOIN_0;

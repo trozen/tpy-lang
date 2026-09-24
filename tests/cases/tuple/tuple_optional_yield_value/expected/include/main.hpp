@@ -18,7 +18,7 @@ void main();
 
 // def gen_value_pairs(items: list[int32]) -> Iterator[tuple[int32 | None, int32 | None]]:
 struct __gen_gen_value_pairs : public ::tpy::next_iter_mixin<__gen_gen_value_pairs, std::tuple<std::optional<int32_t>, std::optional<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& items;
     int32_t it;
     using __for_src_0_t = decltype((items));

@@ -137,7 +137,7 @@ inline std::ostream& operator<<(std::ostream& os, const Failure& obj) {
 
 // async def async_read(app: App) -> int32:
 struct __coro_async_read {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const App& app;
 
@@ -159,7 +159,7 @@ struct __coro_async_read {
 
 // def generate(app: App) -> Iterator[int32]:
 struct __gen_generate : public ::tpy::next_iter_mixin<__gen_generate, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const App& app;
 
     enum : int32_t {

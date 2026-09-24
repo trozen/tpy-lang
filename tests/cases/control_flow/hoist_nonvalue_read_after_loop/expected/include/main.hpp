@@ -323,7 +323,7 @@ inline std::ostream& operator<<(std::ostream& os, const SibBuilt& obj) {
 
 // async def async_sibling(pics: list[Pic]) -> int32:
 struct __coro_async_sibling {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<Pic>& pics;
     int32_t i;
@@ -358,7 +358,7 @@ struct __coro_async_sibling {
 
 // async def async_blk_if(flag: bool, pics: list[Pic]) -> int32:
 struct __coro_async_blk_if {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     bool flag;
     std::vector<Pic>& pics;
@@ -395,7 +395,7 @@ struct __coro_async_blk_if {
 
 // async def async_all() -> None:
 struct __coro_async_all {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<Pic>> pics;
     ::tpy::frame_slot<std::vector<Pic>> pics2;
@@ -428,7 +428,7 @@ struct __coro_async_all {
 
 // def gen_section() -> Iterator[int32]:
 struct __gen_gen_section : public ::tpy::next_iter_mixin<__gen_gen_section, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Pic* p = nullptr;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -458,7 +458,7 @@ struct __gen_gen_section : public ::tpy::next_iter_mixin<__gen_gen_section, int3
 
 // def gen_while_section() -> Iterator[int32]:
 struct __gen_gen_while_section : public ::tpy::next_iter_mixin<__gen_gen_while_section, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     Pic* p = nullptr;
     std::optional<Pic> __ptr_slot_f0;
@@ -486,7 +486,7 @@ struct __gen_gen_while_section : public ::tpy::next_iter_mixin<__gen_gen_while_s
 
 // def gen_for_single() -> Iterator[int32]:
 struct __gen_gen_for_single : public ::tpy::next_iter_mixin<__gen_gen_for_single, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::frame_slot<Flat> f;
     int32_t x;
@@ -514,7 +514,7 @@ struct __gen_gen_for_single : public ::tpy::next_iter_mixin<__gen_gen_for_single
 
 // def gen_slice_view(line: str) -> Iterator[int32]:
 struct __gen_gen_slice_view : public ::tpy::next_iter_mixin<__gen_gen_slice_view, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string line;
     int32_t i;
     std::string_view c;
@@ -539,7 +539,7 @@ struct __gen_gen_slice_view : public ::tpy::next_iter_mixin<__gen_gen_slice_view
 
 // def gen_while_single() -> Iterator[str]:
 struct __gen_gen_while_single : public ::tpy::next_iter_mixin<__gen_gen_while_single, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::frame_slot<Flat> f;
     int32_t a;
@@ -566,7 +566,7 @@ struct __gen_gen_while_single : public ::tpy::next_iter_mixin<__gen_gen_while_si
 
 // def gen_sibling(pics: list[Pic]) -> Iterator[int32]:
 struct __gen_gen_sibling : public ::tpy::next_iter_mixin<__gen_gen_sibling, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Pic>& pics;
     int32_t i;
     Pic* p = nullptr;
@@ -599,7 +599,7 @@ struct __gen_gen_sibling : public ::tpy::next_iter_mixin<__gen_gen_sibling, int3
 
 // def gen_blk_if(flag: bool, pics: list[Pic]) -> Iterator[int32]:
 struct __gen_gen_blk_if : public ::tpy::next_iter_mixin<__gen_gen_blk_if, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool flag;
     std::vector<Pic>& pics;
     int32_t i;

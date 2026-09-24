@@ -96,7 +96,7 @@ void enum_instantiation() {
 //         print("generator_frame: stop")
 void generator_frame() {
     float v = 1.5f;
-    auto it = ::tpyapp::main::hold<float>(v);
+    __gen_hold<float> it = ::tpyapp::main::hold<float>(v);
     float first;
     float second;
     {
@@ -129,6 +129,7 @@ void generator_frame() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_frame::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         v = 1.5;
         c.emplace(::tpyapp::main::held<float>(v));
         v = 2.5;

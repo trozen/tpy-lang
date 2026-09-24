@@ -22,6 +22,7 @@ namespace tpyapp::main {
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         h.emplace(Holder(7));
         auto& __ctx_1 = (*h);
         m = __ctx_1.__enter__();

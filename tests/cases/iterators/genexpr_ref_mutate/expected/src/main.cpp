@@ -8,7 +8,7 @@ namespace {
 
 // for b in (n for n in data):
 struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, ::tpy::val_or_ref<Node>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::array<Node, 3>& __src;
     using __for_src_0_t = decltype((__src));
     ::tpy::begin_elem_t<__for_src_0_t>* n = nullptr;

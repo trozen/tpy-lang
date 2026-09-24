@@ -12,6 +12,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_double_::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -44,6 +45,7 @@ __coro_double_ double_(int32_t n) {
 ::tpystd::tpy::Poll<int32_t> __coro_run_twice::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t1.emplace(::tpystd::asyncio::create_task<int32_t>(factory(a)));
         t2.emplace(::tpystd::asyncio::create_task<int32_t>(factory(b)));
         __sub_0 = &((*t1));
@@ -85,6 +87,7 @@ __coro_run_twice run_twice(std::function<std::unique_ptr<::tpystd::coro::Cancell
 ::tpystd::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace([](int32_t __a0) -> std::unique_ptr<::tpystd::coro::Cancellable<int32_t>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::double_(__a0)); }, 3, 5);
         __state = S_RESUME_0;
         continue;

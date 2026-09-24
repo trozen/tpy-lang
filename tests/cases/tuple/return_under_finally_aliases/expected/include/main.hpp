@@ -207,7 +207,7 @@ inline std::ostream& operator<<(std::ostream& os, const Taker& obj) {
 
 // async def async_body() -> tuple[Own[Box], int32]:
 struct __coro_async_body {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Box> b;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -231,7 +231,7 @@ struct __coro_async_body {
 
 // async def async_rebind() -> tuple[Own[Box], int32]:
 struct __coro_async_rebind {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Box> b;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -255,7 +255,7 @@ struct __coro_async_rebind {
 
 // async def drive() -> None:
 struct __coro_drive {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Box> r;
     int32_t k;

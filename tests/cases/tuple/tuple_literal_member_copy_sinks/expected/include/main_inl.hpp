@@ -11,6 +11,7 @@ namespace tpyapp::main {
 inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_param::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return std::tuple<int32_t, C>{1, c};
     }
@@ -31,6 +32,7 @@ inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_p
 inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_live_local::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         c.emplace(C(10));
         __state = S_RESUME_0;
         return std::tuple<int32_t, C>{1, (*c)};
@@ -53,6 +55,7 @@ inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_l
 inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_repack::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<int32_t, C>{1, C(20)});
         __state = S_RESUME_0;
         return std::tuple<int32_t, C>{std::get<0>((*t)), std::get<1>((*t))};
@@ -73,6 +76,7 @@ inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_r
 inline std::expected<std::tuple<C, C*>, ::tpy::StopIteration> __gen_yield_mixed::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return std::tuple<C, C*>{a, &(b)};
     }

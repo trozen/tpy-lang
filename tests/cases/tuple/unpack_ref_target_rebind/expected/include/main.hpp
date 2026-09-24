@@ -187,7 +187,7 @@ inline std::ostream& operator<<(std::ostream& os, const Built& obj) {
 
 // def cells(a: Cell, b: Cell) -> Iterator[tuple[Cell, int32]]:
 struct __gen_cells : public ::tpy::next_iter_mixin<__gen_cells, std::tuple<Cell*, int32_t>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Cell& a;
     Cell& b;
 

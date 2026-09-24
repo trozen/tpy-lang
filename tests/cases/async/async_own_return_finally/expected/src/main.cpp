@@ -17,6 +17,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         b.emplace(Box(v));
         {
             bool __fin_ran_1 = false;
@@ -54,6 +55,7 @@ __coro_make make(int32_t v) {
 ::tpystd::tpy::Poll<int32_t> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(7);
         __state = S_RESUME_0;
         continue;

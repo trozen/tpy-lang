@@ -32,7 +32,7 @@ void main();
 
 // async def producer(e: Event) -> None:
 struct __coro_producer {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::Event& e;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -56,7 +56,7 @@ struct __coro_producer {
 
 // async def consumer(e: Event) -> None:
 struct __coro_consumer {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::Event& e;
     ::tpystd::asyncio::Event* __sub_0 = nullptr;
@@ -80,7 +80,7 @@ struct __coro_consumer {
 
 // async def fast_path_consumer(e: Event) -> None:
 struct __coro_fast_path_consumer {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::Event& e;
     ::tpystd::asyncio::Event* __sub_0 = nullptr;
@@ -104,7 +104,7 @@ struct __coro_fast_path_consumer {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::Event> e_fast;
     ::tpy::frame_slot<::tpystd::asyncio::Event> e;

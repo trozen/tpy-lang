@@ -226,7 +226,7 @@ inline std::ostream& operator<<(std::ostream& os, const Scope& obj) {
 
 // async def total(self) -> int32:
 struct __coro_Bag_total {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Bag& __self;
     int32_t n;
@@ -260,7 +260,7 @@ inline __coro_Bag_total Bag::total() const {
 
 // async def async_fn() -> int32:
 struct __coro_async_fn {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
@@ -289,7 +289,7 @@ struct __coro_async_fn {
 
 // async def run_async() -> None:
 struct __coro_run_async {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Bag> bag;
     int32_t __await_lift_0;
@@ -359,7 +359,7 @@ struct __gen_counted : public ::tpy::next_iter_mixin<__gen_counted, int32_t> {
 
 // def gen_plain() -> Iterator[str]:
 struct __gen_gen_plain : public ::tpy::next_iter_mixin<__gen_gen_plain, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
@@ -387,7 +387,7 @@ struct __gen_gen_plain : public ::tpy::next_iter_mixin<__gen_gen_plain, std::str
 
 // def gen_unpack() -> Iterator[str]:
 struct __gen_gen_unpack : public ::tpy::next_iter_mixin<__gen_gen_unpack, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
@@ -416,7 +416,7 @@ struct __gen_gen_unpack : public ::tpy::next_iter_mixin<__gen_gen_unpack, std::s
 
 // def gen_field() -> Iterator[str]:
 struct __gen_gen_field : public ::tpy::next_iter_mixin<__gen_gen_field, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
     Inner* r = nullptr;
@@ -444,7 +444,7 @@ struct __gen_gen_field : public ::tpy::next_iter_mixin<__gen_gen_field, std::str
 
 // def gen_two_arms(pick: bool) -> Iterator[str]:
 struct __gen_gen_two_arms : public ::tpy::next_iter_mixin<__gen_gen_two_arms, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool pick;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
@@ -473,7 +473,7 @@ struct __gen_gen_two_arms : public ::tpy::next_iter_mixin<__gen_gen_two_arms, st
 
 // def gen_nested() -> Iterator[str]:
 struct __gen_gen_nested : public ::tpy::next_iter_mixin<__gen_gen_nested, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     ::tpy::frame_slot<Cell> y;
     Cell* r = nullptr;
@@ -505,7 +505,7 @@ struct __gen_gen_nested : public ::tpy::next_iter_mixin<__gen_gen_nested, std::s
 
 // def gen_literal() -> Iterator[str]:
 struct __gen_gen_literal : public ::tpy::next_iter_mixin<__gen_gen_literal, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
@@ -533,7 +533,7 @@ struct __gen_gen_literal : public ::tpy::next_iter_mixin<__gen_gen_literal, std:
 
 // def gen_slice() -> Iterator[str]:
 struct __gen_gen_slice : public ::tpy::next_iter_mixin<__gen_gen_slice, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::vector<Cell>> cells;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
@@ -561,7 +561,7 @@ struct __gen_gen_slice : public ::tpy::next_iter_mixin<__gen_gen_slice, std::str
 
 // def gen_const_param(cells: list[Cell]) -> Iterator[str]:
 struct __gen_gen_const_param : public ::tpy::next_iter_mixin<__gen_gen_const_param, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<Cell>& cells;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
@@ -587,7 +587,7 @@ struct __gen_gen_const_param : public ::tpy::next_iter_mixin<__gen_gen_const_par
 
 // def gen_break_finally() -> Iterator[str]:
 struct __gen_gen_break_finally : public ::tpy::next_iter_mixin<__gen_gen_break_finally, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t t;
     int32_t v;
 
@@ -610,7 +610,7 @@ struct __gen_gen_break_finally : public ::tpy::next_iter_mixin<__gen_gen_break_f
 
 // def gen_param_slice(cells: list[Cell]) -> Iterator[str]:
 struct __gen_gen_param_slice : public ::tpy::next_iter_mixin<__gen_gen_param_slice, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Cell>& cells;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
@@ -638,7 +638,7 @@ struct __gen_gen_param_slice : public ::tpy::next_iter_mixin<__gen_gen_param_sli
 
 // def gen_in_match(k: int32) -> Iterator[str]:
 struct __gen_gen_in_match : public ::tpy::next_iter_mixin<__gen_gen_in_match, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t k;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
@@ -667,7 +667,7 @@ struct __gen_gen_in_match : public ::tpy::next_iter_mixin<__gen_gen_in_match, st
 
 // def gen_str_literal() -> Iterator[str]:
 struct __gen_gen_str_literal : public ::tpy::next_iter_mixin<__gen_gen_str_literal, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     char ch;
 
@@ -690,7 +690,7 @@ struct __gen_gen_str_literal : public ::tpy::next_iter_mixin<__gen_gen_str_liter
 
 // def rsum(n: int32) -> Iterator[int32]:
 struct __gen_rsum : public ::tpy::next_iter_mixin<__gen_rsum, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t t;
     int32_t v;
@@ -715,7 +715,7 @@ struct __gen_rsum : public ::tpy::next_iter_mixin<__gen_rsum, int32_t> {
 
 // def gen_combinator() -> Iterator[str]:
 struct __gen_gen_combinator : public ::tpy::next_iter_mixin<__gen_gen_combinator, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t t;
     int32_t n;
     std::tuple<int32_t, int32_t> __for_tup_0;
@@ -745,7 +745,7 @@ struct __gen_gen_combinator : public ::tpy::next_iter_mixin<__gen_gen_combinator
 
 // def gen_user_iter() -> Iterator[str]:
 struct __gen_gen_user_iter : public ::tpy::next_iter_mixin<__gen_gen_user_iter, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t t;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
@@ -773,7 +773,7 @@ struct __gen_gen_user_iter : public ::tpy::next_iter_mixin<__gen_gen_user_iter, 
 
 // def gen_ptr_local() -> Iterator[str]:
 struct __gen_gen_ptr_local : public ::tpy::next_iter_mixin<__gen_gen_ptr_local, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
     Cell* p;
@@ -801,7 +801,7 @@ struct __gen_gen_ptr_local : public ::tpy::next_iter_mixin<__gen_gen_ptr_local, 
 
 // def gen_ptr_field() -> Iterator[str]:
 struct __gen_gen_ptr_field : public ::tpy::next_iter_mixin<__gen_gen_ptr_field, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
     ::tpy::frame_slot<Holder> h;
@@ -829,7 +829,7 @@ struct __gen_gen_ptr_field : public ::tpy::next_iter_mixin<__gen_gen_ptr_field, 
 
 // def gen_value_elem() -> Iterator[str]:
 struct __gen_gen_value_elem : public ::tpy::next_iter_mixin<__gen_gen_value_elem, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     char ch;
     char c;
@@ -854,7 +854,7 @@ struct __gen_gen_value_elem : public ::tpy::next_iter_mixin<__gen_gen_value_elem
 
 // def gen_named(cells: list[Cell]) -> Iterator[str]:
 struct __gen_gen_named : public ::tpy::next_iter_mixin<__gen_gen_named, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Cell>& cells;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
@@ -880,7 +880,7 @@ struct __gen_gen_named : public ::tpy::next_iter_mixin<__gen_gen_named, std::str
 
 // def gen_same_block() -> Iterator[str]:
 struct __gen_gen_same_block : public ::tpy::next_iter_mixin<__gen_gen_same_block, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t v;
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
@@ -906,7 +906,7 @@ struct __gen_gen_same_block : public ::tpy::next_iter_mixin<__gen_gen_same_block
 
 // def gen_in_try() -> Iterator[str]:
 struct __gen_gen_in_try : public ::tpy::next_iter_mixin<__gen_gen_in_try, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
     Cell* r = nullptr;
@@ -934,7 +934,7 @@ struct __gen_gen_in_try : public ::tpy::next_iter_mixin<__gen_gen_in_try, std::s
 
 // def gen_in_with() -> Iterator[str]:
 struct __gen_gen_in_with : public ::tpy::next_iter_mixin<__gen_gen_in_with, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t one;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
@@ -963,7 +963,7 @@ struct __gen_gen_in_with : public ::tpy::next_iter_mixin<__gen_gen_in_with, std:
 
 // def rows(self) -> Iterator[str]:
 struct __gen_Bag_rows : public ::tpy::next_iter_mixin<__gen_Bag_rows, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Bag& __self;
     int32_t n;
     ::tpy::frame_slot<Cell> x;
@@ -996,7 +996,7 @@ inline __gen_Bag_rows Bag::rows() const {
 
 // def own_rows(self) -> Iterator[str]:
 struct __gen_Bag_own_rows : public ::tpy::next_iter_mixin<__gen_Bag_own_rows, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Bag& __self;
     int32_t n;
     ::tpy::frame_slot<Cell> x;

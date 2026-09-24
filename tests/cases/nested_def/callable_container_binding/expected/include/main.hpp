@@ -74,7 +74,7 @@ inline std::ostream& operator<<(std::ostream& os, const Failure& obj) {
 
 // async def async_bindings() -> int32:
 struct __coro_async_bindings {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<std::function<int32_t(int32_t)>>> callbacks;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -98,7 +98,7 @@ struct __coro_async_bindings {
 
 // def gen() -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::vector<std::function<int32_t(int32_t)>>> callbacks;
 
     enum : int32_t {

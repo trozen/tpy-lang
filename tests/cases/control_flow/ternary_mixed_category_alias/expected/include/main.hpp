@@ -205,7 +205,7 @@ inline std::ostream& operator<<(std::ostream& os, const KeepElem& obj) {
 
 // async def async_own_sel(a: C, c: bool) -> Own[C]:
 struct __coro_async_own_sel {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const C& a;
     bool c;
@@ -228,7 +228,7 @@ struct __coro_async_own_sel {
 
 // async def async_receiver(a: C, c: bool) -> int32:
 struct __coro_async_receiver {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     C& a;
     bool c;
@@ -254,7 +254,7 @@ struct __coro_async_receiver {
 
 // def gen_receiver(a: C, c: bool) -> Iterator[int32]:
 struct __gen_gen_receiver : public ::tpy::next_iter_mixin<__gen_gen_receiver, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     C& a;
     bool c;
     ::tpy::frame_slot<std::vector<std::string>> log;

@@ -12,6 +12,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         Payload __tpy_async_ret = Payload(n);
         return ::tpystd::tpy::Poll<Payload>::ready(std::move(__tpy_async_ret));
@@ -41,6 +42,7 @@ int32_t take(Payload&& p) {
 ::tpystd::tpy::Poll<int32_t> __coro_into_container::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         out.emplace(std::vector<Payload>{});
         __sub_0.emplace(1);
         __state = S_RESUME_0;
@@ -73,6 +75,7 @@ __coro_into_container into_container() {
 ::tpystd::tpy::Poll<int32_t> __coro_into_call_arg::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(2);
         __state = S_RESUME_0;
         continue;
@@ -104,6 +107,7 @@ __coro_into_call_arg into_call_arg() {
 ::tpystd::tpy::Poll<int32_t> __coro_into_field::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(3);
         __state = S_RESUME_0;
         continue;
@@ -142,6 +146,7 @@ __coro_into_field into_field() {
 ::tpystd::tpy::Poll<int32_t> __coro_in_a_loop::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         out.emplace(std::vector<Payload>{});
         i = 0;
         __state = S_JOIN_0;
@@ -185,6 +190,7 @@ __coro_in_a_loop in_a_loop() {
 ::tpystd::tpy::Poll<Payload> __coro_from_return::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(4);
         __state = S_RESUME_0;
         continue;
@@ -219,6 +225,7 @@ __coro_from_return from_return() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;

@@ -20,6 +20,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<Box> __coro_capture_mutate::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         b.emplace(Box());
         // def bump: frame member
         bump();
@@ -63,6 +64,7 @@ __coro_capture_mutate capture_mutate() {
 ::tpystd::tpy::Poll<int32_t> __coro_across_await::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         base = 100;
         // def scaled: frame member
         first = scaled(1);
@@ -109,6 +111,7 @@ int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
 ::tpystd::tpy::Poll<int32_t> __coro_lambda_capture::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         first = ::tpyapp::main::apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 1);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
@@ -141,6 +144,7 @@ __coro_lambda_capture lambda_capture(int32_t n) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;

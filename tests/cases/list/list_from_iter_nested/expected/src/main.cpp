@@ -9,7 +9,7 @@ namespace {
 // print(list(x * 2 for x in [1, 2, 3]))
 template <::tpystd::typing::Iterable<int32_t> T___src>
 struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -42,7 +42,9 @@ struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_f
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_1_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -70,7 +72,7 @@ __genexpr_main_1_frame<std::invoke_result_t<F_make>> __genexpr_main_1(std::in_pl
 
 // print(sorted(list(x * 2 for x in nums)))
 struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::array<int32_t, 5>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));

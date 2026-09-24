@@ -9,7 +9,7 @@ namespace {
 
 // d = dict(((str(x), 0.0) for x in LETTERS))  # tpyc: ok
 struct __genexpr_from_global_1_frame : public ::tpy::next_iter_mixin<__genexpr_from_global_1_frame, std::tuple<std::string, double>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string __src;
     char x;
     using __for_src_0_t = decltype((__src));
@@ -65,7 +65,7 @@ namespace {
 // d = dict(((str(c), scale) for c in letters))  # tpyc: ok
 template <typename F_scale>
 struct __genexpr_from_local_2_frame : public ::tpy::next_iter_mixin<__genexpr_from_local_2_frame<F_scale>, std::tuple<std::string, double>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string_view __src;
     F_scale scale;
     char c;

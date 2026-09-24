@@ -58,7 +58,7 @@ inline std::ostream& operator<<(std::ostream& os, const Emit& obj) {
 
 // def run() -> Iterator[int]:
 struct __gen_run : public ::tpy::next_iter_mixin<__gen_run, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<std::vector<::tpy::Union<Emit, Push>>> work;
     ::tpy::BigInt n;
     ::tpy::frame_slot<::tpy::Union<Emit, Push>> t;
@@ -86,7 +86,7 @@ struct __gen_run : public ::tpy::next_iter_mixin<__gen_run, ::tpy::BigInt> {
 
 // def first_value(t: Push | Emit) -> Iterator[int]:
 struct __gen_first_value : public ::tpy::next_iter_mixin<__gen_first_value, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<const Emit*, const Push*> t;
 
     enum : int32_t {

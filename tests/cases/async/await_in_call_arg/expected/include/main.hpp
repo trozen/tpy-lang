@@ -23,7 +23,7 @@ void main();
 
 // async def get_val() -> int32:
 struct __coro_get_val {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -44,7 +44,7 @@ struct __coro_get_val {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t __await_lift_0;
     int32_t __await_lift_1;

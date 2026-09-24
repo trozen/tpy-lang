@@ -12,6 +12,7 @@ namespace tpyapp::main {
 inline std::expected<std::string, ::tpy::StopIteration> __gen_static_source_view::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         lit = "static";
         __state = S_RESUME_0;
         return std::string(lit);
@@ -36,6 +37,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_static_source_view
 inline std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_static_bytes_view::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         raw = ::tpy::bytes_literal_owned("xy", 2);
         __state = S_RESUME_0;
         return ::tpy::Bytes(raw);
@@ -60,6 +62,7 @@ inline std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_static_bytes_view
 inline std::expected<std::string, ::tpy::StopIteration> __gen_explicit_view_local::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         v = s;
         __state = S_RESUME_0;
         return std::string(v);
@@ -89,6 +92,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_explicit_view_loca
 inline std::expected<std::string, ::tpy::StopIteration> __gen_peephole_view::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         lit = "peephole";
         i = 0;
         __state = S_JOIN_0;
@@ -119,6 +123,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_peephole_view::__n
 inline std::expected<std::string, ::tpy::StopIteration> __gen_owned_param_stays_bare::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return s;
     }

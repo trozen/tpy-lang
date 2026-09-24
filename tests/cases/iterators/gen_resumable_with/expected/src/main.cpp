@@ -13,6 +13,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_yield::__next_
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0.emplace(Tracer("g"));
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_2;

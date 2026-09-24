@@ -25,7 +25,7 @@ __coro_amain amain();
 
 // async def step() -> int32:
 struct __coro_step {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpyapp::helper::__coro_other> __sub_0;
 
@@ -48,7 +48,7 @@ struct __coro_step {
 
 // async def other() -> int32:
 struct __coro_other {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpyapp::helper::__coro_step> __sub_0;
 
@@ -71,7 +71,7 @@ struct __coro_other {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t __await_lift_0;
     int32_t __await_lift_1;

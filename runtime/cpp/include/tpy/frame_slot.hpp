@@ -29,30 +29,32 @@
 
 namespace tpy {
 
-// State discriminant for resumable frames that carry a cleanup
-// destructor (pending finally / with.__exit__ on abandonment). A plain
-// int32_t state would survive memberwise move, so the moved-from frame's
-// destructor would re-run cleanup; this wrapper's move resets the source
-// to MOVED_FROM (no state enumerator uses negative values), letting the
-// frame keep `F(F&&) = default` without codegen enumerating its fields.
+// State discriminant of every resumable frame (generator, generator
+// expression, coroutine). It makes the frame non-copyable and
+// non-assignable, and movable only while it has never been entered: the
+// frame's iterators, sub-frames and borrow slots start pointing into the
+// frame at the first resume, so a move after it would leave them aimed at
+// the old storage. The entry case stores a non-zero state before running
+// any code (INITIAL is always 0), so "never entered" is the state reading
+// INITIAL. (A generator expression whose constructor seeds its loop keeps
+// INITIAL while it runs; nothing in it points into the frame.) A moved-from frame reads MOVED_FROM (no state enumerator is
+// negative), so its destructor does not re-run pending cleanup.
 class frame_state {
 public:
+    static constexpr int32_t INITIAL = 0;
     static constexpr int32_t MOVED_FROM = -1;
 
     explicit frame_state(int32_t v) noexcept : v_(v) {}
 
     frame_state(const frame_state&) = delete;
     frame_state& operator=(const frame_state&) = delete;
+    frame_state& operator=(frame_state&&) = delete;
 
     frame_state(frame_state&& other) noexcept : v_(other.v_) {
-        other.v_ = MOVED_FROM;
-    }
-    frame_state& operator=(frame_state&& other) noexcept {
-        v_ = other.v_;
-        if (this != &other) {
-            other.v_ = MOVED_FROM;
+        if (v_ != INITIAL && v_ != MOVED_FROM) {
+            tpy_panic("generator or coroutine moved after it started");
         }
-        return *this;
+        other.v_ = MOVED_FROM;
     }
 
     frame_state& operator=(int32_t v) noexcept {

@@ -17,6 +17,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<std::vector<int32_t>> __coro_make::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         xs.emplace(std::vector<int32_t>{1, 2, 3});
         ys = &((*xs));
         __state = S_JOIN_1;
@@ -79,6 +80,7 @@ __coro_make make() {
 ::tpystd::tpy::Poll<int32_t> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;

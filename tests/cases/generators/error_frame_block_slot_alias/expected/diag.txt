@@ -1,0 +1,2 @@
+main.py:30: warning: 'h' will not keep the object it was given -- 'g' is rebound on each iteration and both names share its storage; 'g' cannot be copied
+main.py:30: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.var_decl:reseat.frame_opt_storage_alias)

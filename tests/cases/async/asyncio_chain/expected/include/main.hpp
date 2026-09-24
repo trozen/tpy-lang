@@ -26,7 +26,7 @@ void entry();
 
 // async def add(x: int32, y: int32) -> int32:
 struct __coro_add {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t x;
     int32_t y;
@@ -49,7 +49,7 @@ struct __coro_add {
 
 // async def compute() -> int32:
 struct __coro_compute {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t a;
     int32_t b;
@@ -76,7 +76,7 @@ struct __coro_compute {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t result;
     std::optional<__coro_compute> __sub_0;

@@ -11,6 +11,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 1;
     }
@@ -33,6 +34,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_src::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpyapp::main::src());
         __state = S_JOIN_0;
         continue;

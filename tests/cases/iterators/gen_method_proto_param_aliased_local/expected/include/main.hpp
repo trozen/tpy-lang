@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Repeater& obj) {
 // def run(self, it: Iterable[int32]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 struct __gen_Repeater_run : public ::tpy::next_iter_mixin<__gen_Repeater_run<T_it>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Repeater& __self;
     T_it it;
     int32_t _;
@@ -78,6 +78,7 @@ template <::tpystd::typing::Iterable<int32_t> T_it>
 std::expected<int32_t, ::tpy::StopIteration> __gen_Repeater_run<T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;

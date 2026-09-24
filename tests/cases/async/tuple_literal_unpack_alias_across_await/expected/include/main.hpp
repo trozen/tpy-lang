@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // async def work(items: list[Counter]) -> None:
 struct __coro_work {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<Counter>& items;
     Counter* __unpack_0_0 = nullptr;
@@ -68,7 +68,7 @@ struct __coro_work {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<Counter>> items;
     std::optional<__coro_work> __sub_0;

@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Server& obj) {
 
 // async def __aenter__(self) -> "Server":
 struct __coro_Server___aenter__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Server& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -71,7 +71,7 @@ inline __coro_Server___aenter__ Server::__aenter__() {
 // async def __aexit__(self, exc_type: None, exc_val: None,
 //                     exc_tb: None) -> None:
 struct __coro_Server___aexit__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Server& __self;
     std::monostate exc_type;
@@ -102,7 +102,7 @@ inline __coro_Server___aexit__ Server::__aexit__(std::monostate exc_type, std::m
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Server> server;
     Server* s = nullptr;

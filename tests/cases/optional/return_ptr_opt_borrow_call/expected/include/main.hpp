@@ -104,7 +104,7 @@ inline std::ostream& operator<<(std::ostream& os, const Host& obj) {
 
 // async def in_async(b: B) -> None:
 struct __coro_in_async {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     B& b;
     R* r = nullptr;
@@ -127,7 +127,7 @@ struct __coro_in_async {
 
 // def in_generator(b: B) -> Iterator[int32]:
 struct __gen_in_generator : public ::tpy::next_iter_mixin<__gen_in_generator, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     B& b;
     R* r = nullptr;
 

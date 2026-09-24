@@ -17,6 +17,7 @@ namespace tpyapp::main {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         x = 1;
         __state = S_JOIN_0;
         continue;

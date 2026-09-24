@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // async def worker(lock: Lock, box: Box) -> None:
 struct __coro_worker {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::Lock& lock;
     Box& box;
@@ -81,7 +81,7 @@ struct __coro_worker {
 
 // async def raise_holding(lock: Lock) -> None:
 struct __coro_raise_holding {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::Lock& lock;
     ::tpystd::asyncio::Lock* __with_ctx_0 = nullptr;
@@ -114,7 +114,7 @@ struct __coro_raise_holding {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::Lock> lock;
     ::tpy::frame_slot<Box> box;

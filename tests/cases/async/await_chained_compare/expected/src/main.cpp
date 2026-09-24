@@ -13,6 +13,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         std::cout << "eval" << " " << tag << "\n";
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
@@ -40,6 +41,7 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __coro_arg_0 = "a";
         __sub_0.emplace(__coro_arg_0, ::tpy::BigInt(1));
         __state = S_RESUME_0;

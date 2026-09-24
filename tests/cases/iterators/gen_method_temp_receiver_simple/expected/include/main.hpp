@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // def each(self) -> Iterator[int]:
 struct __gen_Counter_each : public ::tpy::next_iter_mixin<__gen_Counter_each, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Counter& __self;
     ::tpy::BigInt i;
     ::tpy::frame_loop_slot<::tpy::BigInt> __for_i_0;

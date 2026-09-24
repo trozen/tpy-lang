@@ -39,6 +39,8 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_exception_then_fina
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_2: {
         try {
             if ((x < 0)) {

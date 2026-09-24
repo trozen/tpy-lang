@@ -27,7 +27,7 @@ from ..typesys import (
     is_integer_type, is_any_int_type, is_union_or_optional_type,
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
     unwrap_own, coro_struct_owner, is_readonly_span, collapse_tuple_own_elements, global_binds_by_reference, owned_tuple_storage_type,
-    ConcreteCoroType,
+    ConcreteCoroType, make_concrete_gen, is_dyn_protocol,
     RecursiveAliasInstanceType, recursive_union_alternatives)
 from ..parse.nodes import GENEXPR_FUNC_PREFIX
 from ..parse import (
@@ -63,7 +63,7 @@ from ..coercions import CoercionContext, resolve_coercion
 from ..prescan import _expr_to_narrowing_key, bound_names_of, walrus_names_of
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
-from .context import PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf
+from .context import PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_generator_object, frame_binding_fact, record_frame_binding_roots, call_param_args
 from ..value_category import (is_rvalue_source, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers)
 from .alias_rebind import bind_kind_of
@@ -336,6 +336,79 @@ class ExpressionAnalyzer:
                 f"into *args", node)
         return elem
 
+    def _concrete_generator_call(self, init: TpyExpr,
+                                 iterator: TpyType) -> TpyType:
+        """The type of a direct generator call: the concrete frame it builds
+        (a non-copyable reference type, bound and aliased like a record),
+        or `iterator` unchanged where the frame struct is not nameable from
+        the call site -- a callee with static-protocol / Fn params (its
+        struct takes call-site-deduced template args) or an overloaded
+        generator."""
+        fi = getattr(init, "resolved_function_info", None)
+        it = unwrap_readonly(iterator)
+        if (fi is None or not fi.is_generator
+                or not isinstance(it, NominalType)
+                or it.qualified_name() != qnames.ITERATOR):
+            return iterator
+        self._reject_frame_held_adapter(init, fi)
+        for p in fi.params:
+            pt = unwrap_readonly(unwrap_ref_type(p.type))
+            if (is_protocol_type(pt) and not is_dyn_protocol(pt)) or is_fn_type(pt):
+                return iterator
+        owner = None
+        if isinstance(init, TpyMethodCall):
+            recv_type = self.ctx.get_expr_type(init.obj)
+            recv_inner = unwrap_own(unwrap_ref_type(recv_type)) if recv_type else None
+            if not isinstance(recv_inner, NominalType):
+                return iterator
+            owner = coro_struct_owner(
+                fi.owning_type_qname, recv_inner,
+                self.ctx.registry.get_record_for_type(recv_inner))
+            # Inside a generic class's own body the owner's args are its
+            # open parameters: the struct is spelled by the class template's
+            # member context there, not from a call site.
+            if any(contains_type_param(a) for a in owner.type_args
+                   if isinstance(a, TpyType)):
+                return iterator
+        module_qual = None
+        if (owner is None and fi.originating_module is not None
+                and fi.originating_module != self.ctx.module_name):
+            module_qual = fi.originating_module
+        targs = getattr(init, "inferred_type_args", None)
+        return make_concrete_gen(
+            it, fi.name, owner=owner,
+            inferred_type_args=tuple(targs) if targs else None,
+            module_qual=module_qual)
+
+    def _reject_frame_held_adapter(self, call: TpyExpr,
+                                   fi: 'FunctionInfo') -> None:
+        """Inside a generator or coroutine body, a generator given a value
+        for a @dynamic protocol parameter keeps the protocol view of it,
+        which lives only until the next suspension, while the generator may
+        live in the frame across it."""
+        func = self.ctx.func.current_function
+        if not (getattr(func, "is_generator", False)
+                or getattr(func, "is_async", False)):
+            return
+        for p, arg in call_param_args(call):
+            pt = unwrap_readonly(unwrap_ref_type(p.type))
+            if not is_dyn_protocol(pt):
+                continue
+            while isinstance(arg, TpyCoerce):
+                arg = arg.expr
+            at = self.ctx.get_expr_type(arg)
+            if at is not None and unwrap_readonly(unwrap_ref_type(
+                    unwrap_own(at))) == pt:
+                continue
+            raise self.ctx.error(
+                f"cannot pass this value to @dynamic protocol parameter "
+                f"'{p.name}' of generator '{fi.name}' inside a generator or "
+                f"async function: the '{pt}' view of it lasts only until the "
+                f"next yield or await, and the generator may outlive that; "
+                f"give '{fi.name}' a parameter of the concrete type, or bind "
+                f"the value to a '{pt}'-typed parameter of this function",
+                call)
+
     def analyze_expr(self, expr: TpyExpr) -> TpyType:
         """Analyze an expression and return its type."""
         if is_property_getter_read(expr):
@@ -383,11 +456,13 @@ class ExpressionAnalyzer:
         elif isinstance(expr, TpyUnaryOp):
             typ = self._analyze_unaryop(expr)
         elif isinstance(expr, TpyCall):
-            typ = self.calls.analyze_call(expr)
+            typ = self._concrete_generator_call(
+                expr, self.calls.analyze_call(expr))
             self.narrowing.invalidate_field_facts_for_call(expr)
             self.narrowing.invalidate_closure_written_facts()
         elif isinstance(expr, TpyMethodCall):
-            typ = self.methods.analyze_method_call(expr)
+            typ = self._concrete_generator_call(
+                expr, self.methods.analyze_method_call(expr))
             self.narrowing.invalidate_field_facts_for_method_call(expr)
             self.narrowing.invalidate_closure_written_facts()
         elif isinstance(expr, TpyFieldAccess):
@@ -2913,9 +2988,11 @@ class ExpressionAnalyzer:
                 self.compat.check_tuple_literal_members(
                     bound_lit, bound_tuple, TupleSink.LOCAL, "owned storage")
             if not unwrap_readonly(resolved).is_value_type():
+                if holds_generator_object(resolved):
+                    record_frame_binding_roots(
+                        self.ctx, name, frame_binding_fact(expr.value), expr)
                 if is_rvalue_source(self.ctx, expr.value):
-                    self.ctx.func.owned_locals.add(name)
-                    self.ctx.func.ever_owned_locals.add(name)
+                    note_owned_local(self.ctx, name, resolved)
                 else:
                     record_stmt_borrow_binding(self.ctx, name, resolved, expr.value)
                     register_binding_borrow(self.ctx, name, expr.value)

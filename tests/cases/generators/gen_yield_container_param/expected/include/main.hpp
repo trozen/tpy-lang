@@ -30,7 +30,7 @@ void main();
 
 // def repeat_list(xs: list[int32], n: int32) -> Iterator[list[int32]]:  # tpyc: ok
 struct __gen_repeat_list : public ::tpy::next_iter_mixin<__gen_repeat_list, ::tpy::val_or_ref<std::vector<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<int32_t>& xs;
     int32_t n;
     int32_t i;
@@ -55,7 +55,7 @@ struct __gen_repeat_list : public ::tpy::next_iter_mixin<__gen_repeat_list, ::tp
 
 // def repeat_dict(d: dict[str, int32], n: int32) -> Iterator[dict[str, int32]]:  # tpyc: ok
 struct __gen_repeat_dict : public ::tpy::next_iter_mixin<__gen_repeat_dict, ::tpy::val_or_ref<::tpy::ordered_map<std::string, int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::ordered_map<std::string, int32_t>& d;
     int32_t n;
     int32_t i;
@@ -80,7 +80,7 @@ struct __gen_repeat_dict : public ::tpy::next_iter_mixin<__gen_repeat_dict, ::tp
 
 // def repeat_set(s: set[int32], n: int32) -> Iterator[set[int32]]:  # tpyc: ok
 struct __gen_repeat_set : public ::tpy::next_iter_mixin<__gen_repeat_set, ::tpy::val_or_ref<::tpy::ordered_set<int32_t>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::ordered_set<int32_t>& s;
     int32_t n;
     int32_t i;
@@ -105,7 +105,7 @@ struct __gen_repeat_set : public ::tpy::next_iter_mixin<__gen_repeat_set, ::tpy:
 
 // def repeat_buf(b: bytearray, n: int32) -> Iterator[bytearray]:  # tpyc: ok
 struct __gen_repeat_buf : public ::tpy::next_iter_mixin<__gen_repeat_buf, ::tpy::val_or_ref<::tpy::ByteArray>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::ByteArray& b;
     int32_t n;
     int32_t i;
@@ -130,7 +130,7 @@ struct __gen_repeat_buf : public ::tpy::next_iter_mixin<__gen_repeat_buf, ::tpy:
 
 // def repeat_arr(a: Array[int32, 2], n: int32) -> Iterator[Array[int32, 2]]:  # tpyc: ok
 struct __gen_repeat_arr : public ::tpy::next_iter_mixin<__gen_repeat_arr, ::tpy::val_or_ref<std::array<int32_t, 2>>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::array<int32_t, 2>& a;
     int32_t n;
     int32_t i;

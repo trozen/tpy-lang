@@ -207,7 +207,7 @@ namespace tpyapp::main {
 
 // def free_gen(s: Src) -> Iterator[int32]:  # tpyc: ok
 struct __gen_free_gen : public ::tpy::next_iter_mixin<__gen_free_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Src& s;
 
     enum : int32_t {
@@ -230,7 +230,7 @@ struct __gen_free_gen : public ::tpy::next_iter_mixin<__gen_free_gen, int32_t> {
 
 // def ro_gen(s: readonly[RoSrc]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_ro_gen : public ::tpy::next_iter_mixin<__gen_ro_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const RoSrc& s;
 
     enum : int32_t {
@@ -253,7 +253,7 @@ struct __gen_ro_gen : public ::tpy::next_iter_mixin<__gen_ro_gen, int32_t> {
 
 // def generic_gen(s: Src2[int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_generic_gen : public ::tpy::next_iter_mixin<__gen_generic_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Src2<int32_t>& s;
 
     enum : int32_t {
@@ -276,7 +276,7 @@ struct __gen_generic_gen : public ::tpy::next_iter_mixin<__gen_generic_gen, int3
 
 // def forward_gen(s: Src) -> Iterator[int32]:  # tpyc: ok
 struct __gen_forward_gen : public ::tpy::next_iter_mixin<__gen_forward_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Src& s;
     int32_t n;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::free_gen(s)))>;
@@ -305,7 +305,7 @@ struct __gen_forward_gen : public ::tpy::next_iter_mixin<__gen_forward_gen, int3
 
 // def own_gen(s: Own[Src]) -> Iterator[int32]:  # tpyc: warning(/never consumed/)
 struct __gen_own_gen : public ::tpy::next_iter_mixin<__gen_own_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::unique_ptr<Src> s;
 
     enum : int32_t {
@@ -328,7 +328,7 @@ struct __gen_own_gen : public ::tpy::next_iter_mixin<__gen_own_gen, int32_t> {
 
 // def walk(self, s: Src) -> Iterator[int32]:  # tpyc: ok
 struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Holder& __self;
     Src& s;
 

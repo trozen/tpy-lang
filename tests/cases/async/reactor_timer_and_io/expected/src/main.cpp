@@ -13,6 +13,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_delayed_send::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.02)));
         __state = S_RESUME_0;
         continue;
@@ -58,6 +59,7 @@ __coro_delayed_send delayed_send(::tpystd::socket::socket& sock) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpystd::socket::socketpair();
         a.emplace(std::move(std::get<0>(__tup_1)));
         b.emplace(std::move(std::get<1>(__tup_1)));

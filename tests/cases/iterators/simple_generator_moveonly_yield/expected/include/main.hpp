@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tok& obj) {
 
 // def toks_while(n: int32) -> Iterator[Own[Tok]]:
 struct __gen_toks_while : public ::tpy::next_iter_mixin<__gen_toks_while, Tok> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
 
@@ -69,7 +69,7 @@ struct __gen_toks_while : public ::tpy::next_iter_mixin<__gen_toks_while, Tok> {
 
 // def toks_for(n: int32) -> Iterator[Own[Tok]]:
 struct __gen_toks_for : public ::tpy::next_iter_mixin<__gen_toks_for, Tok> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;

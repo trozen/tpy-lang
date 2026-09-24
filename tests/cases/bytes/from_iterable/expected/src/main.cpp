@@ -8,7 +8,7 @@ namespace {
 
 // print(bytes(x * 2 for x in xs))
 struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -50,7 +50,7 @@ __genexpr_main_1_frame __genexpr_main_1(const std::vector<int32_t>& __src) {
 
 // print(bytearray(x + 1 for x in xs))
 struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -91,7 +91,7 @@ __genexpr_main_2_frame __genexpr_main_2(const std::vector<int32_t>& __src) {
 
 // ba.extend(v for v in ys)
 struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_frame, uint8_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<uint8_t>& __src;
     uint8_t v;
     using __for_src_0_t = decltype((__src));

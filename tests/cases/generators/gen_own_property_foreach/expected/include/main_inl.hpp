@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_snapshot::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(s.snapshot());
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
@@ -42,6 +43,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_snapshot::__next__
 inline std::expected<std::vector<int32_t>, ::tpy::StopIteration> __gen_Snap_yield_own::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.snapshot();
     }
@@ -61,6 +63,7 @@ inline std::expected<std::vector<int32_t>, ::tpy::StopIteration> __gen_Snap_yiel
 inline std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_Holder_yield_rec::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.rec();
     }
@@ -79,6 +82,7 @@ inline std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_Holde
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_Holder_yield_data::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.data();
     }

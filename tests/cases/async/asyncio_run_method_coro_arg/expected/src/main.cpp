@@ -23,6 +23,7 @@ void main() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __self.n = ::tpy::add_check<int32_t>(__self.n, 1);
         std::cout << __self.n << "\n";
         __state = S_DONE;

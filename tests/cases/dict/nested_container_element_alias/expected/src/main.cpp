@@ -184,6 +184,7 @@ __gen_deep_gen deep_gen(std::vector<std::vector<std::vector<int32_t>>>& cube, in
 ::tpystd::tpy::Poll<int32_t> __coro_deep_async::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         row = &(::tpy::__getitem__(::tpy::__getitem__(cube, i), i));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;

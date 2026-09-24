@@ -32,6 +32,7 @@ int32_t _N{};
 ::tpystd::tpy::Poll<::std::monostate> __coro_sender::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         loop.emplace(::tpystd::asyncio::get_running_loop());
         __sub_0.emplace(std::move((*loop).sock_sendall(sock, _PAYLOAD)));
         __state = S_RESUME_0;
@@ -75,6 +76,7 @@ __coro_sender sender(::tpystd::socket::socket& sock) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_receiver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         loop.emplace(::tpystd::asyncio::get_running_loop());
         pos = 0;
         mismatches = 0;
@@ -139,6 +141,7 @@ __coro_receiver receiver(::tpystd::socket::socket& sock) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpystd::socket::socketpair();
         a.emplace(std::move(std::get<0>(__tup_1)));
         b.emplace(std::move(std::get<1>(__tup_1)));

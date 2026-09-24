@@ -171,7 +171,7 @@ inline std::ostream& operator<<(std::ostream& os, const Reader& obj) {
 
 // def count(n: int32) -> Iterator[int32]:
 struct __gen_count : public ::tpy::next_iter_mixin<__gen_count, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -198,7 +198,7 @@ struct __gen_count : public ::tpy::next_iter_mixin<__gen_count, int32_t> {
 // def pairs(it: Iterator[int32]) -> Iterator[int32]:
 template <::tpystd::typing::Iterator<int32_t> T_it>
 struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs<T_it>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T_it it;
     int32_t a;
 
@@ -231,6 +231,8 @@ template <::tpystd::typing::Iterator<int32_t> T_it>
 std::expected<int32_t, ::tpy::StopIteration> __gen_pairs<T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_0:  // after: yield a * 10
     case S_JOIN_0: {
         if (true) {

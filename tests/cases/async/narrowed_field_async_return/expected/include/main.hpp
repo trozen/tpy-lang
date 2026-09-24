@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // async def direct(self) -> int32:
 struct __coro_Holder_direct {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Holder& __self;
 
@@ -69,7 +69,7 @@ inline __coro_Holder_direct Holder::direct() const {
 
 // async def reguard(self) -> int32:
 struct __coro_Holder_reguard {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Holder& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -97,7 +97,7 @@ inline __coro_Holder_reguard Holder::reguard() const {
 
 // async def drive() -> None:
 struct __coro_drive {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Holder> h;
     ::tpy::frame_slot<Holder> n;

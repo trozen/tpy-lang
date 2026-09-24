@@ -16,7 +16,7 @@ __gen_walk walk();
 
 // def walk() -> Iterator[int32]:
 struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
 
     enum : int32_t {
         S_INITIAL = 0,

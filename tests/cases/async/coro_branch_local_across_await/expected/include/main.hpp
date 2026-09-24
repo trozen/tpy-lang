@@ -27,7 +27,7 @@ void main();
 
 // async def coro_if(n: int) -> int:
 struct __coro_coro_if {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
     ::tpy::BigInt r;
@@ -52,7 +52,7 @@ struct __coro_coro_if {
 
 // async def coro_elif(n: int) -> int:
 struct __coro_coro_elif {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
     ::tpy::BigInt r;
@@ -77,7 +77,7 @@ struct __coro_coro_elif {
 
 // async def coro_match(n: int) -> int:
 struct __coro_coro_match {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
     ::tpy::BigInt r;

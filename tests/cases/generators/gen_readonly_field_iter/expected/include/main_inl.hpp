@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_alias_param::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a = &(h.plain);
         __state = S_RESUME_0;
         return ::tpy::__getitem__((*a), 1);
@@ -40,6 +41,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_alias_param::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_direct::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((__self.lst.has_value())) {
             auto& __for_obj_0 = (*__self.lst);
             __for_it_0.emplace((__for_obj_0).begin());
@@ -78,6 +80,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_direct::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_via_alias::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         h = ::tpy::optional_to_ptr(__self.lst);
         if ((h != nullptr)) {
             auto& __for_obj_0 = (*h);
@@ -117,6 +120,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_via_alias::__ne
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_simple_alias::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a = &(__self.plain);
         auto& __for_obj_0 = (*a);
         __for_it_0.emplace((__for_obj_0).begin());
@@ -150,6 +154,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_simple_alias::_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_live_alias::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a = &(__self.plain);
         __state = S_RESUME_0;
         return ::tpy::__getitem__((*a), 0);
@@ -175,6 +180,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_live_alias::__n
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Bumper_bump::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = __self.cells;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

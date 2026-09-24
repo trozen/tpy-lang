@@ -15,6 +15,7 @@ Source* g{};
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         __for_itr_0.emplace((*(g)).__aiter__());
         __state = S_JOIN_0;
@@ -85,6 +86,7 @@ void main() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((__self.n >= __self.limit)) {
             throw ::tpy::StopAsyncIteration{};
         }

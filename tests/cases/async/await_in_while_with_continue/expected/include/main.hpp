@@ -23,7 +23,7 @@ void main();
 
 // async def value(n: int) -> int:
 struct __coro_value {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
 
@@ -45,7 +45,7 @@ struct __coro_value {
 
 // async def go(n: int) -> int:
 struct __coro_go {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
     ::tpy::BigInt total;

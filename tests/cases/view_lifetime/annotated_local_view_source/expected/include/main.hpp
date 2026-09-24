@@ -32,7 +32,7 @@ void main();
 
 // def gen_frame(sv: StrView) -> Iterator[int]:
 struct __gen_gen_frame : public ::tpy::next_iter_mixin<__gen_gen_frame, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string_view sv;
     std::string_view label;
 

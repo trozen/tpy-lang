@@ -11,6 +11,7 @@ namespace tpyapp::main {
 inline std::expected<Node, ::tpy::StopIteration> __gen_boxes::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(::tpy::BigInt(0));
         __for_stop_0.emplace(static_cast<::tpy::BigInt>(n));
         __state = S_JOIN_0;
@@ -40,6 +41,7 @@ inline std::expected<Node, ::tpy::StopIteration> __gen_boxes::__next__() {
 inline std::expected<Node, ::tpy::StopIteration> __gen_fresh_records::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = src;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -74,6 +76,7 @@ inline std::expected<Node, ::tpy::StopIteration> __gen_fresh_records::__next__()
 inline std::expected<std::vector<int32_t>, ::tpy::StopIteration> __gen_fresh_rows::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = src;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -107,6 +110,7 @@ inline std::expected<std::vector<int32_t>, ::tpy::StopIteration> __gen_fresh_row
 inline std::expected<Node, ::tpy::StopIteration> __gen_Bag_drain::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = __self.items;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

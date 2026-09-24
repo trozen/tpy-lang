@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // async def __aenter__(self) -> None:
 struct __coro_Counter___aenter__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Counter& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -79,7 +79,7 @@ inline __coro_Counter___aenter__ Counter::__aenter__() {
 // async def __aexit__(self, exc_type: None, exc_val: None,
 //                     exc_tb: None) -> None:
 struct __coro_Counter___aexit__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Counter& __self;
     std::monostate exc_type;
@@ -110,7 +110,7 @@ inline __coro_Counter___aexit__ Counter::__aexit__(std::monostate exc_type, std:
 
 // async def guard_scope(c: Counter) -> None:
 struct __coro_guard_scope {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Counter& c;
     Counter* __with_ctx_0 = nullptr;
@@ -141,7 +141,7 @@ struct __coro_guard_scope {
 
 // async def raise_scope(c: Counter) -> None:
 struct __coro_raise_scope {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Counter& c;
     Counter* __with_ctx_0 = nullptr;
@@ -174,7 +174,7 @@ struct __coro_raise_scope {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Counter> c;
     ::tpy::frame_slot<Counter> d;

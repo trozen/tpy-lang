@@ -57,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Limiter& obj) {
 
 // def take(items: list[int32], n: int32) -> Iterator[int32]:
 struct __gen_take : public ::tpy::next_iter_mixin<__gen_take, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& items;
     int32_t n;
     int32_t i;
@@ -87,7 +87,7 @@ struct __gen_take : public ::tpy::next_iter_mixin<__gen_take, int32_t> {
 
 // def evens(items: list[int32]) -> Iterator[int32]:
 struct __gen_evens : public ::tpy::next_iter_mixin<__gen_evens, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& items;
     int32_t x;
     using __for_src_0_t = decltype((items));
@@ -114,7 +114,7 @@ struct __gen_evens : public ::tpy::next_iter_mixin<__gen_evens, int32_t> {
 
 // def stride() -> Iterator[int32]:
 struct __gen_stride : public ::tpy::next_iter_mixin<__gen_stride, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
     ::tpy::frame_loop_slot<int32_t> __for_stop_0;
@@ -141,7 +141,7 @@ struct __gen_stride : public ::tpy::next_iter_mixin<__gen_stride, int32_t> {
 
 // def upto_range(n: int32) -> Iterator[int32]:
 struct __gen_upto_range : public ::tpy::next_iter_mixin<__gen_upto_range, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -168,7 +168,7 @@ struct __gen_upto_range : public ::tpy::next_iter_mixin<__gen_upto_range, int32_
 
 // def upto_while() -> Iterator[int32]:
 struct __gen_upto_while : public ::tpy::next_iter_mixin<__gen_upto_while, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
 
     enum : int32_t {
@@ -192,7 +192,7 @@ struct __gen_upto_while : public ::tpy::next_iter_mixin<__gen_upto_while, int32_
 
 // def iter_post_break(items: list[int32]) -> Iterator[int32]:
 struct __gen_iter_post_break : public ::tpy::next_iter_mixin<__gen_iter_post_break, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& items;
     int32_t x;
     using __for_src_0_t = decltype((items));
@@ -220,7 +220,7 @@ struct __gen_iter_post_break : public ::tpy::next_iter_mixin<__gen_iter_post_bre
 
 // def post_continue(items: list[int32]) -> Iterator[int32]:
 struct __gen_post_continue : public ::tpy::next_iter_mixin<__gen_post_continue, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& items;
     int32_t x;
     using __for_src_0_t = decltype((items));
@@ -247,7 +247,7 @@ struct __gen_post_continue : public ::tpy::next_iter_mixin<__gen_post_continue, 
 
 // def first_positives(self, items: list[int32]) -> Iterator[int32]:
 struct __gen_Limiter_first_positives : public ::tpy::next_iter_mixin<__gen_Limiter_first_positives, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Limiter& __self;
     const std::vector<int32_t>& items;
     int32_t c;

@@ -63,7 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // def each(self) -> Iterator[Handle]:  # tpyc: ok
 struct __gen_Box_each : public ::tpy::next_iter_mixin<__gen_Box_each, ::tpy::val_or_ref<Handle>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Box& __self;
     using __for_src_0_t = decltype((__self.items));
     ::tpy::begin_elem_t<__for_src_0_t>* h = nullptr;

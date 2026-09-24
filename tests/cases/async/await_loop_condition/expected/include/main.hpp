@@ -21,7 +21,7 @@ __coro_main main();
 
 // async def below(i: int, limit: int) -> bool:
 struct __coro_below {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt i;
     ::tpy::BigInt limit;
@@ -44,7 +44,7 @@ struct __coro_below {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t i;
     bool __await_lift_0;

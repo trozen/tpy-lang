@@ -21,7 +21,7 @@ void main();
 
 // async def w() -> None:
 struct __coro_w {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::array<int32_t, 3>> nums;
     ::tpy::frame_slot<::tpy::ordered_map<int32_t, int32_t>> d;

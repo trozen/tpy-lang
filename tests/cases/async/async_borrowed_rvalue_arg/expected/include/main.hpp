@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 // async def via_union(a: Dog | Cat) -> str:
 struct __coro_via_union {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::Union<const Cat*, const Dog*> a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -90,7 +90,7 @@ struct __coro_via_union {
 
 // async def via_optional(a: Dog | None) -> str:
 struct __coro_via_optional {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Dog* a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -114,7 +114,7 @@ struct __coro_via_optional {
 
 // async def via_ref(a: Dog) -> str:
 struct __coro_via_ref {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Dog& a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -138,7 +138,7 @@ struct __coro_via_ref {
 
 // async def via_mixed(tag: str, a: Dog | Cat) -> str:
 struct __coro_via_mixed {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string tag;
     ::tpy::Union<const Cat*, const Dog*> a;
@@ -163,25 +163,25 @@ struct __coro_via_mixed {
 
 // async def main() -> None:
 struct __coro_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Dog> held;
     int32_t i;
+    ::tpy::frame_slot<Dog> __coro_arg_0;
     std::string __await_lift_0;
+    ::tpy::frame_slot<Cat> __coro_arg_1;
     std::string __await_lift_1;
+    ::tpy::frame_slot<Dog> __coro_arg_2;
     std::string __await_lift_2;
+    ::tpy::frame_slot<Dog> __coro_arg_3;
     std::string __await_lift_3;
     std::string __await_lift_4;
     std::string __await_lift_5;
-    std::string __await_lift_6;
-    std::string __await_lift_7;
-    ::tpy::frame_slot<Dog> __coro_arg_0;
-    ::tpy::frame_slot<Cat> __coro_arg_1;
-    ::tpy::frame_slot<Dog> __coro_arg_2;
-    ::tpy::frame_slot<Dog> __coro_arg_3;
     std::string __coro_arg_4;
     ::tpy::frame_slot<Dog> __coro_arg_5;
+    std::string __await_lift_6;
     ::tpy::frame_slot<Dog> __coro_arg_6;
+    std::string __await_lift_7;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
     ::tpy::frame_loop_slot<int32_t> __for_stop_0;
     std::optional<__coro_via_union> __sub_0;

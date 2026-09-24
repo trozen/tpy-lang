@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<std::string, ::tpy::StopIteration> __gen_voices::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 1: {
@@ -59,6 +60,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_voices::__next__()
 inline std::expected<std::string, ::tpy::StopIteration> __gen_capture::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 1: {

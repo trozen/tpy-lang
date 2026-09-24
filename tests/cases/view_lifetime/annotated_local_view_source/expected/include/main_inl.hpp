@@ -12,6 +12,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_frame::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         label = sv;
         std::cout << label << "\n";
         __state = S_RESUME_0;

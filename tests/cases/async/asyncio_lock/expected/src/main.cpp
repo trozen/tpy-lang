@@ -14,6 +14,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_worker::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0 = &(lock);
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
@@ -143,6 +144,8 @@ __coro_worker worker(::tpystd::asyncio::Lock& lock, Box& box) {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         try {
             __with_ctx_0 = &(lock);
@@ -219,6 +222,7 @@ __coro_raise_holding raise_holding(::tpystd::asyncio::Lock& lock) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         lock.emplace(::tpystd::asyncio::Lock());
         box.emplace(Box());
         std::cout << "locked0:" << " " << ::tpy::print_bool((*lock).locked()) << "\n";

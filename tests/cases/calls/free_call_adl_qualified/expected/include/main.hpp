@@ -75,7 +75,7 @@ inline std::ostream& operator<<(std::ostream& os, const Scaler& obj) {
 
 // async def async_double(n: int32) -> int32:
 struct __coro_async_double {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -100,7 +100,7 @@ struct __coro_async_double {
 // async def run_factory(factory: Callable[[int32], Own[Cancellable[int32]]],
 //                       v: int32) -> int32:
 struct __coro_run_factory {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::function<std::unique_ptr<::tpystd::coro::Cancellable<int32_t>>(int32_t)> factory;
     int32_t v;
@@ -125,7 +125,7 @@ struct __coro_run_factory {
 
 // async def async_main() -> int32:
 struct __coro_async_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<__coro_run_factory> __sub_0;
 
@@ -148,7 +148,7 @@ struct __coro_async_main {
 
 // def gen(n: int32) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;

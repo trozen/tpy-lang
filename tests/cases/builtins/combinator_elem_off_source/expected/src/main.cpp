@@ -409,7 +409,7 @@ namespace {
 // return sum(c.v + i for i, c in enumerate(cells))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, Cell>> T___src>
 struct __genexpr_genexpr_ro_1_frame : public ::tpy::next_iter_mixin<__genexpr_genexpr_ro_1_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     using __for_src_0_t = decltype((__src));
     ::tpy::for_step_elem_t<__for_src_0_t>* __for_tup_gx = nullptr;
@@ -444,7 +444,9 @@ struct __genexpr_genexpr_ro_1_frame : public ::tpy::next_iter_mixin<__genexpr_ge
 template <::tpystd::typing::Iterable<std::tuple<int32_t, Cell>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_genexpr_ro_1_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -488,7 +490,7 @@ namespace {
 // return sum(c.bump(i + 1) for i, c in enumerate(cells))  # tpyc: ok
 template <::tpystd::typing::Iterable<std::tuple<int32_t, Cell>> T___src>
 struct __genexpr_genexpr_mut_2_frame : public ::tpy::next_iter_mixin<__genexpr_genexpr_mut_2_frame<T___src>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     T___src __src;
     using __for_src_0_t = decltype((__src));
     ::tpy::for_step_elem_t<__for_src_0_t>* __for_tup_gx = nullptr;
@@ -523,7 +525,9 @@ struct __genexpr_genexpr_mut_2_frame : public ::tpy::next_iter_mixin<__genexpr_g
 template <::tpystd::typing::Iterable<std::tuple<int32_t, Cell>> T___src>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_genexpr_mut_2_frame<T___src>::__next__() {
     if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         ::tpy::resumable_iter_init(__for_itr_0, __src);
         __state = S_JOIN_0;
     }
@@ -731,6 +735,7 @@ void comp_shapes() {
 ::tpystd::tpy::Poll<int32_t> __coro_async_mut::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t = 0;
         __for_src_0.emplace(::tpy::builtin_enumerate(cells));
         __state = S_JOIN_0;
@@ -883,7 +888,7 @@ namespace {
 
 // return sum(c.v for c in cells)
 struct __genexpr_match_arm_3_frame : public ::tpy::next_iter_mixin<__genexpr_match_arm_3_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<Cell>& __src;
     using __for_src_0_t = decltype((__src));
     ::tpy::begin_elem_t<__for_src_0_t>* c = nullptr;
@@ -1022,6 +1027,7 @@ int32_t match_arm(std::vector<Cell>& cells, int32_t k) {
 //     print("match_arm", match_arm(cells, 3), match_arm(cells, 0))
 //     show("match_arm", cells)
 void main() {
+    std::optional<std::vector<Cell>> __slot_2;
     std::vector<Cell> __slot_1 = {Cell(1), Cell(2)};
     std::vector<Cell>* cells = &__slot_1;
     std::cout << "ro_enumerate" << " " << ::tpyapp::main::ro_enumerate((*cells)) << "\n";
@@ -1075,7 +1081,7 @@ void main() {
     std::vector<std::string> __tmp_7 = {"a", "bb"};
     std::vector<int32_t> __tmp_8 = {1, 2};
     ::tpyapp::main::values(__tmp_7, __tmp_8);
-    (*cells) = {Cell(1), Cell(2)};
+    cells = &*(__slot_2 = {Cell(1), Cell(2)});
     {
         std::cout << "er_body" << " " << ({ auto __er_2 = ::tpyapp::main::er_body((*cells)); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
         goto __after_try_1;

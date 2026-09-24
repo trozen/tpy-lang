@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 // async def step(i: int32) -> int32:
 struct __coro_step {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t i;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -80,7 +80,7 @@ struct __coro_step {
 
 // async def val_scalar() -> None:
 struct __coro_val_scalar {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t i;
     int32_t n;
@@ -109,7 +109,7 @@ struct __coro_val_scalar {
 
 // async def owning() -> None:
 struct __coro_owning {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t i;
     ::tpy::frame_slot<std::array<int32_t, 2>> xs;
@@ -135,7 +135,7 @@ struct __coro_owning {
 
 // async def borrow_alias(rows: list[list[int32]]) -> None:
 struct __coro_borrow_alias {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<std::vector<int32_t>>& rows;
     int32_t i;
@@ -162,7 +162,7 @@ struct __coro_borrow_alias {
 
 // async def opt_ptr(nodes: list[Node]) -> None:
 struct __coro_opt_ptr {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<Node>& nodes;
     int32_t i;
@@ -190,7 +190,7 @@ struct __coro_opt_ptr {
 
 // async def drive() -> None:
 struct __coro_drive {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<std::vector<int32_t>>> rows;
     ::tpy::frame_slot<std::vector<Node>> nodes;

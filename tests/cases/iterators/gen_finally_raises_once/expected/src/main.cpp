@@ -65,6 +65,8 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_handler_exit::__next__(
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
@@ -104,6 +106,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_with_exit::__next__() {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0.emplace(Thrower());
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_1;
@@ -192,6 +195,8 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_nested_exit::__next__()
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1:
     case S_JOIN_2: {
         __state = S_RESUME_0;
@@ -233,6 +238,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_break_exit::__next__() 
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(3));
         __state = S_JOIN_0;
@@ -309,6 +315,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_continue_exit::__next__
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
         __state = S_JOIN_0;

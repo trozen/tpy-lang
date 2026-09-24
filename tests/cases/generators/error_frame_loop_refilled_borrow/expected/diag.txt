@@ -1,0 +1,1 @@
+main.py:23: error: cannot bind generator 'g' here: it borrows 'xs', which a loop around it binds again on its next pass while this generator is still open; bind the generator outside the loop, or iterate it inside a helper function

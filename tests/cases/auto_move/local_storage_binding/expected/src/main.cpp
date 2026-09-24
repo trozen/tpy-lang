@@ -606,6 +606,62 @@ void closure_controls() {
     std::cout << "nested owner" << " " << own_local() << "\n";
 }
 
+// def frame_aliases(n: int32) -> Iterator[int32]:
+//     for i in range(n):
+//         source = Cell(i)
+//         # Both names cross a suspension; writes through one reach the other.
+//         target = source  # tpyc: ok
+//         yield target.value                                                    # -> S_RESUME_0
+//         target.value += 10
+//         yield source.value                                                    # -> S_RESUME_1
+//         original = Cell(i)
+//         # Last-use eligibility still leaves storage selection to the frame.
+//         moved = original  # tpyc: ok
+//         yield moved.value                                                     # -> S_RESUME_2
+//         moved.value += 20
+//         yield moved.value                                                     # -> S_RESUME_3
+std::expected<int32_t, ::tpy::StopIteration> __gen_frame_aliases::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(n));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield target.value
+        target->value = ::tpy::add_check<int32_t>(target->value, 10);
+        __state = S_RESUME_1;
+        return (*source).value;
+    }
+    case S_RESUME_1: {  // after: yield source.value
+        original.emplace(Cell(i));
+        moved = &((*original));
+        __state = S_RESUME_2;
+        return moved->value;
+    }
+    case S_RESUME_2: {  // after: yield moved.value
+        moved->value = ::tpy::add_check<int32_t>(moved->value, 20);
+        __state = S_RESUME_3;
+        return moved->value;
+    }
+    case S_RESUME_3:  // after: yield moved.value
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        i = ((*__for_i_0))++;
+        source.emplace(Cell(i));
+        target = &((*source));
+        __state = S_RESUME_0;
+        return target->value;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 
 // def frame_aliases(n: int32) -> Iterator[int32]:
 __gen_frame_aliases frame_aliases(int32_t n) {
@@ -618,6 +674,7 @@ __gen_frame_aliases frame_aliases(int32_t n) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         int32_t __tpy_async_ret = value;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -650,6 +707,7 @@ __coro_resumed_value resumed_value(int32_t value) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_aliases::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
         __state = S_JOIN_0;

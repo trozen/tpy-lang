@@ -30,6 +30,7 @@ __gen_gen gen(int32_t x) {
 ::tpystd::tpy::Poll<std::string> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __ptr_slot_f0 = ::tpyapp::main::make_holder(x).value;
         p = ::tpy::optional_to_ptr(__ptr_slot_f0);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -118,6 +119,8 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen_try::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         try {
             __ptr_slot_f0 = ::tpyapp::main::make_holder(x).value;

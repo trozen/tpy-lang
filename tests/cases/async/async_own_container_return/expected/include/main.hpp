@@ -34,7 +34,7 @@ __coro_drive drive();
 
 // async def make_list() -> Own[list[int32]]:
 struct __coro_make_list {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -55,7 +55,7 @@ struct __coro_make_list {
 
 // async def make_bytes() -> Own[bytearray]:      # the bytearray return slot
 struct __coro_make_bytes {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -76,7 +76,7 @@ struct __coro_make_bytes {
 
 // async def make_array() -> Own[Array[int32, 3]]:  # the Array return slot
 struct __coro_make_array {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -97,7 +97,7 @@ struct __coro_make_array {
 
 // async def make_boxes() -> Own[list[Box[int32]]]:   # the @nocopy payload
 struct __coro_make_boxes {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -118,7 +118,7 @@ struct __coro_make_boxes {
 
 // async def drive() -> None:
 struct __coro_drive {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<int32_t>> xs;
     ::tpy::frame_slot<::tpy::ByteArray> ba;

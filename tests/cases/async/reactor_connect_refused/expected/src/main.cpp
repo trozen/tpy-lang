@@ -29,6 +29,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         loop.emplace(::tpystd::asyncio::get_running_loop());
         probe.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
         (*probe).bind(std::tuple<std::string, int32_t>{"127.0.0.1", 0});

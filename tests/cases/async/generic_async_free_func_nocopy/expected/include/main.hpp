@@ -30,7 +30,7 @@ void main();
 // async def unwrap[T](b: Box[T]) -> T:
 template <typename T>
 struct __coro_unwrap {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::tplib::box::Box<T>& b;
 
@@ -56,6 +56,7 @@ template <typename T>
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(b.get());
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -74,7 +75,7 @@ __coro_unwrap<T> unwrap(::tpystd::tplib::box::Box<T>& b) {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::tplib::box::Box<int32_t>> box;
     int32_t result;

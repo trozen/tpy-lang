@@ -29,7 +29,7 @@ void main();
 
 // async def slow(start: Event) -> int32:
 struct __coro_slow {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::Event& start;
     ::tpystd::asyncio::Event* __sub_0 = nullptr;
@@ -53,7 +53,7 @@ struct __coro_slow {
 
 // async def fast(start: Event) -> int32:
 struct __coro_fast {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::Event& start;
 
@@ -75,7 +75,7 @@ struct __coro_fast {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::Event> start;
     ::tpy::frame_slot<std::vector<::tpystd::asyncio::_executor::Task<int32_t>>> tasks;

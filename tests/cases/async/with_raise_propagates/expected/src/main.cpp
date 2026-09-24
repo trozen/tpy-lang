@@ -62,6 +62,8 @@ namespace tpyapp::main {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         try {
             __with_ctx_0.emplace(CM());
@@ -117,6 +119,7 @@ __coro_main_coro main_coro() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         std::cout << "aenter" << "\n";
         __state = S_DONE;
         int32_t __tpy_async_ret = 0;
@@ -134,6 +137,7 @@ __coro_main_coro main_coro() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         std::cout << "aexit" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});

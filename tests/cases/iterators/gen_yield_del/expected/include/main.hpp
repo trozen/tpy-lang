@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Res& obj) {
 
 // def gen(items: list[Res]) -> Iterator[Res]:  # tpyc: ok
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::val_or_ref<Res>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Res>& items;
     using __for_src_0_t = decltype((items));
     ::tpy::begin_elem_t<__for_src_0_t>* r = nullptr;

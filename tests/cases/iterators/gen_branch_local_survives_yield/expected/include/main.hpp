@@ -21,7 +21,7 @@ void main();
 
 // def gen_if(n: int) -> Iterator[int]:
 struct __gen_gen_if : public ::tpy::next_iter_mixin<__gen_gen_if, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt n;
     ::tpy::BigInt r;
 
@@ -45,7 +45,7 @@ struct __gen_gen_if : public ::tpy::next_iter_mixin<__gen_gen_if, ::tpy::BigInt>
 
 // def gen_match(n: int) -> Iterator[int]:
 struct __gen_gen_match : public ::tpy::next_iter_mixin<__gen_gen_match, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt n;
     ::tpy::BigInt r;
 

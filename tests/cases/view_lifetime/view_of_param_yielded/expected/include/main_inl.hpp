@@ -11,6 +11,7 @@ namespace tpyapp::main {
 inline std::expected<std::string_view, ::tpy::StopIteration> __gen_tails::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::str_slice(s, ::tpy::BasicSlice{1, std::nullopt});
     }
@@ -35,6 +36,7 @@ inline std::expected<std::string_view, ::tpy::StopIteration> __gen_tails::__next
 inline std::expected<std::string_view, ::tpy::StopIteration> __gen_owned_local::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         v = ::tpy::str_strip(s);
         __state = S_RESUME_0;
         return v;
@@ -59,6 +61,7 @@ inline std::expected<std::string_view, ::tpy::StopIteration> __gen_owned_local::
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_slice_of_ref_param::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         c = ::tpy::Bytes(::tpy::bytes_slice(ba, ::tpy::BasicSlice{0, 4}));
         __state = S_RESUME_0;
         return 0;

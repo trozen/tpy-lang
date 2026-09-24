@@ -261,6 +261,7 @@ std::tuple<P, int32_t> ret_match(const P& p, int32_t k) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         std::tuple<P, int32_t> __tpy_async_ret = std::tuple<P, int32_t>{p, 0};
         return ::tpystd::tpy::Poll<std::tuple<P, int32_t>>::ready(std::move(__tpy_async_ret));
@@ -283,6 +284,7 @@ __coro_ret_async ret_async(const P& p) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t = std::tuple<P*, int32_t>{&(p), 1};
         __state = S_DONE;
         std::tuple<P, int32_t> __tpy_async_ret = ::tpy::tuple_to_storage<std::tuple<P, int32_t>>(t);
@@ -376,6 +378,7 @@ __gen_arg_generator arg_generator(P& p) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t = std::tuple<P*, int32_t>{&(p), 1};
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpyapp::main::sink(::tpy::tuple_to_storage<std::tuple<P, int32_t>>(t));
@@ -475,6 +478,7 @@ int32_t arg_with(const P& p) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a.emplace(P(1));
         __sub_0.emplace((*a));
         __state = S_RESUME_0;

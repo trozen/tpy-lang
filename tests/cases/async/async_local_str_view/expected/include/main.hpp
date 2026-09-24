@@ -34,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Greeter& obj) {
 
 // async def run(self) -> None:
 struct __coro_Greeter_run {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Greeter& __self;
     std::string_view view;

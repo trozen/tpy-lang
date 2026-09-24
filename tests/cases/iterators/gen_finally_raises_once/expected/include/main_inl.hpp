@@ -33,6 +33,8 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_normal_exit::__n
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
@@ -71,6 +73,8 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_return_exit::__n
         }
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_0: {
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);

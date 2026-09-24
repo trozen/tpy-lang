@@ -21,7 +21,7 @@ void main();
 
 // async def payload() -> bytes:
 struct __coro_payload {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 

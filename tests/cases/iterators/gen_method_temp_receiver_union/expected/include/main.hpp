@@ -63,7 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // def describe(self) -> Iterator[str]:
 struct __gen_Box_describe : public ::tpy::next_iter_mixin<__gen_Box_describe, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Box& __self;
 
     enum : int32_t {

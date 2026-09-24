@@ -228,7 +228,7 @@ inline std::ostream& operator<<(std::ostream& os, const ElseHolder& obj) {
 
 // async def async_pos() -> int32:
 struct __coro_async_pos {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t i;
     int32_t v;
@@ -253,7 +253,7 @@ struct __coro_async_pos {
 
 // async def else_async(flag: bool) -> int32:
 struct __coro_else_async {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     bool flag;
     int32_t i;
@@ -279,7 +279,7 @@ struct __coro_else_async {
 
 // def gen_pos() -> Iterator[int32]:
 struct __gen_gen_pos : public ::tpy::next_iter_mixin<__gen_gen_pos, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     int32_t v;
 
@@ -303,7 +303,7 @@ struct __gen_gen_pos : public ::tpy::next_iter_mixin<__gen_gen_pos, int32_t> {
 
 // def else_gen(flag: bool) -> Iterator[int32]:
 struct __gen_else_gen : public ::tpy::next_iter_mixin<__gen_else_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool flag;
     int32_t i;
     int32_t v;

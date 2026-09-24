@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_cell::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         step = 1;
         f = [step = step](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, step)); };
         step = 100;
@@ -49,6 +50,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_cell::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_copied::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         f = [xs = xs](int32_t i) -> int32_t { return ::tpy::__getitem__(xs, i); };
         __state = S_RESUME_0;
         return ::tpyapp::main::apply(f, 0);

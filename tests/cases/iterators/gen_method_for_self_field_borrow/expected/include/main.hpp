@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // def bump(self) -> Iterator[int32]:
 struct __gen_Holder_bump : public ::tpy::next_iter_mixin<__gen_Holder_bump, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Holder& __self;
     using __for_src_0_t = decltype((__self.nodes));
     ::tpy::begin_elem_t<__for_src_0_t>* n = nullptr;

@@ -12,6 +12,7 @@ namespace tpyapp::main {
 inline std::expected<std::tuple<int32_t, P*>, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpyapp::main::mk(xs, 0);
     }
@@ -35,6 +36,7 @@ inline std::expected<std::tuple<int32_t, P*>, ::tpy::StopIteration> __gen_g::__n
 inline std::expected<std::tuple<int32_t, P*>, ::tpy::StopIteration> __gen_Box_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.pair(0);
     }

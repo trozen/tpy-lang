@@ -867,6 +867,9 @@ class TpyVarDecl(TpyStmt):
     # promote it to a module global even at top level (set by the tuple-unpack
     # desugar for its hidden evaluate-all-then-bind temps).
     module_init_local: bool = field(default=False, kw_only=True)
+    # A target bind of a tuple unpack, `x = __unpack_N_i` (the init names
+    # the parser's temp holding the element).
+    unpack_target: bool = field(default=False, kw_only=True)
     # Set by sema: union assignment narrowing facts for codegen
     then_type_facts: dict[str, TpyType] = field(default_factory=dict)
     # Stamped by liveness: names still live AFTER this statement (see
@@ -877,6 +880,11 @@ class TpyVarDecl(TpyStmt):
     # sites the alias-rebind storage pass decides (see RebindStorage); read
     # by the lowering and the frame layout.
     rebind_storage: RebindStorage | None = field(default=None, repr=False)
+    # Stamped by sema when the init builds a generator frame: does the frame
+    # borrow storage that is not a parameter, the receiver or a module
+    # global? Such a frame cannot fill storage the lowering places at the
+    # function's top (a rebind slot, a hoisted name), which is older.
+    frame_borrows_local: bool = field(default=False, repr=False)
 
     def exprs(self) -> list[TpyExpr]:
         return [self.init] if self.init else []

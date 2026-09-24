@@ -98,7 +98,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 
 // def walk() -> Iterator[int32]:
 struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -120,7 +120,7 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
 
 // def walk_once() -> Iterator[int32]:
 struct __gen_walk_once : public ::tpy::next_iter_mixin<__gen_walk_once, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
     ::tpy::frame_loop_slot<int32_t> __for_stop_0;
@@ -146,7 +146,7 @@ struct __gen_walk_once : public ::tpy::next_iter_mixin<__gen_walk_once, int32_t>
 // def pair[T](a: T, b: T) -> Iterator[T]:
 template <typename T>
 struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::val_or_ref_t<T> a;
     ::tpy::val_or_ref_t<T> b;
 
@@ -174,6 +174,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_pair<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return a;
     }
@@ -199,7 +200,7 @@ __gen_pair<T> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> 
 
 // def chatty() -> Iterator[int32]:
 struct __gen_chatty : public ::tpy::next_iter_mixin<__gen_chatty, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -261,7 +262,7 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, int32_t> {
 
 // def steps(self) -> Iterator[int32]:
 struct __gen_Src_steps : public ::tpy::next_iter_mixin<__gen_Src_steps, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Src& __self;
 
     enum : int32_t {
@@ -288,7 +289,7 @@ inline __gen_Src_steps Src::steps() const {
 
 // def readings(self) -> Iterator[int32]:
 struct __gen_Bag_readings : public ::tpy::next_iter_mixin<__gen_Bag_readings, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Bag& __self;
 
     enum : int32_t {
@@ -316,7 +317,7 @@ inline __gen_Bag_readings Bag::readings() const {
 // def two(self) -> Iterator[T]:
 template <typename T>
 struct __gen_Box_two : public ::tpy::next_iter_mixin<__gen_Box_two<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Box<T>& __self;
 
     enum : int32_t {
@@ -344,6 +345,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Box_two<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return ::tpy::__getitem__(__self.items, 0);
     }

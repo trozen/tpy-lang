@@ -22,6 +22,7 @@ void main() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_Greeter_run::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         view = "hello";
         owned = "wor";
         owned += "ld";

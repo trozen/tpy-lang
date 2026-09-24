@@ -21,7 +21,7 @@ void main();
 // def doubled[T](xs: list[T]) -> Iterator[T]:  # tpyc: ok
 template <typename T>
 struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<T>& xs;
     using __for_src_0_t = decltype((xs));
     ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
@@ -54,6 +54,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_doubled<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());

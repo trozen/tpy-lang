@@ -129,7 +129,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 // async def coro(d: Dog) -> str:
 struct __coro_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Dog& d;
     Pet* p = nullptr;
@@ -154,7 +154,7 @@ struct __coro_coro {
 
 // def gen(d: Dog) -> Iterator[str]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Dog& d;
     Pet* p = nullptr;
 
@@ -178,7 +178,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
 
 // def gen_same(x: Pet) -> Iterator[str]:
 struct __gen_gen_same : public ::tpy::next_iter_mixin<__gen_gen_same, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Pet& x;
     Pet* p = nullptr;
 

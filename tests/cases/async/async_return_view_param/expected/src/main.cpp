@@ -12,6 +12,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         std::string __tpy_async_ret = std::string(tag);
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -36,6 +37,7 @@ __coro_direct direct(std::string_view tag) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         {
             bool __fin_ran_1 = false;
             try {
@@ -96,6 +98,8 @@ __coro_in_finally in_finally(std::string_view tag) {
         ::tpy::tpy_panic("async def fell through without returning a value");
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         try {
             this->__finally_ret_0 = std::string(tag);
@@ -130,6 +134,7 @@ __coro_pending_slot pending_slot(std::string_view tag) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         std::string __tpy_async_ret = std::string((((tag.has_value())) ? ((*tag)) : ("fallback")));
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -154,6 +159,7 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __coro_arg_0 = "a";
         __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;

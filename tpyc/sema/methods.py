@@ -14,7 +14,7 @@ from ..typesys import (
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
     PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type, unwrap_qualifiers, unwrap_send_sync, is_any_int_type,
-    is_callable_type,
+    is_callable_type, unwrap_own, ConcreteCoroType,
     RecordInfo,
     contains_type_param,
 )
@@ -718,6 +718,7 @@ class MethodAnalyzer:
         _coro_unread = None
         if expr.method == "cancel" and isinstance(expr.obj, TpyName):
             _coro_unread = self.ctx.func.unread_coro_locals.get(expr.obj.name)
+        self._mark_coro_started(expr)
         try:
             result = self._analyze_method_call_impl(expr, obj_type)
             # Walks after sema must see only the resolved receiver, never its alternative.
@@ -726,6 +727,19 @@ class MethodAnalyzer:
         finally:
             if _coro_unread is not None:
                 self.ctx.func.unread_coro_locals[expr.obj.name] = _coro_unread
+
+    def _mark_coro_started(self, expr: TpyMethodCall) -> None:
+        """A method call on a bound coroutine frame may start it (every
+        method a frame has changes it): record it, so a later move of the
+        started frame is rejected. An erased handle is a pointer to its
+        frame, which a move of the handle leaves in place."""
+        if not isinstance(expr.obj, TpyName) or self.ctx.func.current_scope is None:
+            return
+        t = self.ctx.func.current_scope.lookup(expr.obj.name)
+        inner = unwrap_readonly(unwrap_own(unwrap_ref_type(t))) if t else None
+        if isinstance(inner, ConcreteCoroType):
+            self.ctx.func.started_coro_locals.setdefault(
+                expr.obj.name, expr.loc.line if expr.loc else 0)
 
     def _analyze_method_call_impl(self, expr: TpyMethodCall,
                                   obj_type: TpyType | None = None) -> TpyType:

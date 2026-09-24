@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_ro_param::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a = &((*std::get<1>(p)));
         __state = S_RESUME_0;
         return a->x;
@@ -39,6 +40,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_ro_param::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_mut_param::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a = &((*std::get<0>(p)));
         __state = S_RESUME_0;
         return a->x;
@@ -70,6 +72,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_mut_param::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_nested::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a = &((*std::get<0>(p)));
         // def bump: frame member
         __state = S_RESUME_0;
@@ -99,6 +102,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_nested::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_frame_local::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t = std::tuple<A*, A*>{&(r0), &(r1)};
         a = &((*std::get<0>(t)));
         __state = S_RESUME_0;
@@ -128,6 +132,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_frame_local::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_borrowed::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<A, A*>{A(1), &(b)});
         saved = &((*std::get<1>((*t))));
         __state = S_RESUME_0;
@@ -158,6 +163,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_borrowed::__next
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_owning_no_rebind::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<A, A>{A(1), A(2)});
         saved = &(std::get<1>((*t)));
         __state = S_RESUME_0;
@@ -187,6 +193,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_owning_no_rebind::__ne
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_owned_no_rebind::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<A, A*>{A(1), &(b)});
         saved = &(std::get<0>((*t)));
         __state = S_RESUME_0;
@@ -219,6 +226,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_owned_no_rebind:
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_borrowed_rebound::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<A, A*>{A(1), &(b)});
         saved = &((*std::get<1>((*t))));
         __state = S_RESUME_0;
@@ -255,6 +263,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_borrowed_rebound
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_before_alias::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<A, A>{A(1), A(2)});
         if (c) {
             t.emplace(std::tuple<A, A>{A(9), A(8)});
@@ -288,6 +297,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_before_alias::_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_alias_after_last_rebind::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<A, A>{A(1), A(2)});
         t.emplace(std::tuple<A, A>{A(3), A(4)});
         saved = &(std::get<1>((*t)));
@@ -322,6 +332,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_alias_after_last_rebin
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_orelse_alias::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<A, A>{A(1), A(2)});
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(1));
@@ -362,6 +373,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_orelse_alias::__next__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Walker_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a = &((*std::get<1>(p)));
         __state = S_RESUME_0;
         return 1;

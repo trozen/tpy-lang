@@ -130,6 +130,7 @@ __gen_gen_body gen_body(std::string_view k) {
 ::tpystd::tpy::Poll<bool> __coro_async_body::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;

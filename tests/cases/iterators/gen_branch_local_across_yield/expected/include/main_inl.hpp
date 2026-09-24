@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_if::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((n == 0)) {
             r = 100;
         } else {
@@ -48,6 +49,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_if::__next__
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_elif::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((n == 0)) {
             r = 1;
         } else if ((n == 1)) {
@@ -82,6 +84,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_elif::__next
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_match::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = n;
         if (__match_subject_1 == 0) {
             r = 100;

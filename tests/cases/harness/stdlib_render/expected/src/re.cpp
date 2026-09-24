@@ -186,6 +186,7 @@ std::vector<std::string> split(std::string_view pattern, std::string_view subjec
 std::expected<Match, ::tpy::StopIteration> __gen_Pattern_finditer::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         offset = 0;
         sub_len = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(subject));
         s_data = reinterpret_cast<const uint8_t*>(subject.data());

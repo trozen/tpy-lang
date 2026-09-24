@@ -127,7 +127,7 @@ from .checks import (
     check_polymorphic_rvalue_opt_rebind,
 )
 from .context import (_ExprResultUse, _ExprUse, _LowerCtx,
-                      _ONLY_BTUPLE_SLOT, _ONLY_CORO_FACTORY, _Prescan,
+                      _ONLY_BTUPLE_SLOT, _ONLY_FRAME_FACTORY, _Prescan,
                       narrow_alias_taken, SinkPos, ValueOptKind)
 from .expressions import (
     _is_move_source,
@@ -412,19 +412,19 @@ def _res_param_ok(t: 'TpyType | None', analyzer, gen_frame: bool) -> bool:
         # that borrows one can outlive it today. The adapter is emitted as a
         # NAMED local of the block that holds the handle, immediately before
         # it (`RefAdapter<Src, Impl> __tmp_1{src}; auto g = free_gen(__tmp_1);`),
-        # so it is destroyed after every handle in that block -- including a
-        # copy into a sibling local, which shares the block (that copy copies
-        # the frame, BUGS.md#generator-object-binds-copy-the-frame, and is
-        # safe for the same scope reason). Returning the handle is refused
-        # outright: `Iterator` is not a legal return type. The two ways it
-        # could leave the block -- a container literal holding it
-        # (`expr.container_literal`) and a re-seat into an outer binding, the
-        # loop-body-creates / outer-pulls shape
-        # (`stmt.var_decl:reseat.opt_storage_source`) -- are CODEGEN GAPS, not
-        # escape checks, so a lowering arm for either has to re-examine this
-        # admission. An async frame already leaves (a `create_task`ed frame
-        # dangles even on a module global, and an inline `await` drops the
-        # adapter wrap outright), so it keeps its reject --
+        # so it is destroyed after every handle in that block -- including an
+        # alias in a sibling local, which shares the block. Returning the
+        # handle is refused outright: `Iterator` is not a legal return type.
+        # Storage that outlives the block is refused in sema: a rebind
+        # borrows nothing (the alias-rebind pass), a hoisted name may not
+        # borrow a temporary (`TpyVarDecl.frame_borrows_local`), and inside a
+        # generator or async body no generator takes an adapter at all, since
+        # the frame would hold it across a suspension
+        # (`_reject_frame_held_adapter`). A container literal holding the
+        # handle (`expr.container_literal`) is a codegen gap, so a lowering
+        # arm for it has to re-examine this admission. An async frame keeps
+        # its reject (a `create_task`ed frame dangles even on a module
+        # global, and an inline `await` drops the adapter wrap outright) --
         # BUGS.md#res-param-dyn-protocol-frame.
         return gen_frame
     # An OWN-wrapped static protocol (`s: Own[Sink]`) rides that same
@@ -2106,7 +2106,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 value = _lower_expr(
                     init, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                 pos=SinkPos.FRAME_SLOT_WRITE, forms=_ONLY_CORO_FACTORY,
+                                 pos=SinkPos.FRAME_SLOT_WRITE, forms=_ONLY_FRAME_FACTORY,
                                  allow_temps=True))
                 _witness("res.coro_handle_write")
                 # ConcreteCoroType has no self-contained C++ spelling; the

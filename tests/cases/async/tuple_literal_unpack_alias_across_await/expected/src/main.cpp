@@ -15,6 +15,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_work::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __unpack_0_0 = &(::tpy::__getitem__(items, 0));
         __unpack_0_1 = &(::tpy::__getitem__(items, 1));
         a = __unpack_0_0;
@@ -51,6 +52,7 @@ __coro_work work(std::vector<Counter>& items) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         items.emplace(std::vector<Counter>{Counter(1), Counter(2)});
         __sub_0.emplace((*items));
         __state = S_RESUME_0;

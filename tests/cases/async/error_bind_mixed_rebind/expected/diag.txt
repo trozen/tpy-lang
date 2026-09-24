@@ -1,1 +1,1 @@
-main.py:17: error: cannot rebind 'c' to a different coroutine: the binding holds a concrete coroutine frame (one frame type per name); bind to a new name
+main.py:17: error: cannot rebind 'c' to a different coroutine: 'c' holds a 'add_one' coroutine, and one name holds one async function's objects; bind 'times_ten(...)' to a new name

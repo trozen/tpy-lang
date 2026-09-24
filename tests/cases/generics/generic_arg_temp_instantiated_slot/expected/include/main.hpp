@@ -163,7 +163,7 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 // async def echo[T](value: T) -> T:
 template <typename T>
 struct __coro_echo {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::val_or_ref_t<T> value;
 
@@ -189,6 +189,7 @@ template <typename T>
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(value));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -207,7 +208,7 @@ __coro_echo<T> echo(::tpy::param_val_or_ref_t<T> value) {
 
 // async def async_main() -> int32:
 struct __coro_async_main {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<__coro_echo<int32_t>> __sub_0;
 
@@ -231,7 +232,7 @@ struct __coro_async_main {
 // def repeat[T](value: T, count: int32) -> Iterator[T]:
 template <typename T>
 struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::val_or_ref_t<T> value;
     int32_t count;
     int32_t i;
@@ -265,6 +266,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -297,7 +299,7 @@ __gen_repeat<T> repeat(::tpy::param_val_or_ref_t<T> value, int32_t count) {
 
 // def gen_body() -> Iterator[int32]:
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
 
     enum : int32_t {

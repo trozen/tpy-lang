@@ -11,6 +11,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::val_or_ref<Cell>, ::tpy::StopIteration> __gen_each::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = cells;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -40,6 +41,7 @@ inline std::expected<::tpy::val_or_ref<Cell>, ::tpy::StopIteration> __gen_each::
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_ro::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpy::builtin_enumerate(cells));
         __state = S_JOIN_0;
         continue;
@@ -69,6 +71,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_ro::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_mut::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpy::builtin_enumerate(cells));
         __state = S_JOIN_0;
         continue;
@@ -98,6 +101,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_mut::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_zip_mut::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(::tpy::builtin_zip(cells, ws));
         __state = S_JOIN_0;
         continue;

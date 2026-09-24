@@ -27,7 +27,7 @@ void main();
 
 // def gen(x: Optional[int]) -> Iterator[int]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::optional<::tpy::BigInt> x;
     ::tpy::BigInt v;
 
@@ -53,7 +53,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
 
 // def chain(x: Optional[int32]) -> Iterator[int32]:
 struct __gen_chain : public ::tpy::next_iter_mixin<__gen_chain, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::optional<int32_t> x;
 
     enum : int32_t {
@@ -80,7 +80,7 @@ struct __gen_chain : public ::tpy::next_iter_mixin<__gen_chain, int32_t> {
 
 // def chain_capture(x: Optional[int32]) -> Iterator[int32]:
 struct __gen_chain_capture : public ::tpy::next_iter_mixin<__gen_chain_capture, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::optional<int32_t> x;
     std::optional<int32_t> y;
 
@@ -109,7 +109,7 @@ struct __gen_chain_capture : public ::tpy::next_iter_mixin<__gen_chain_capture, 
 
 // def chain_guarded(x: Optional[int32], k: bool) -> Iterator[int32]:
 struct __gen_chain_guarded : public ::tpy::next_iter_mixin<__gen_chain_guarded, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::optional<int32_t> x;
     bool k;
 

@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Range___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return -1;
     }
@@ -50,6 +51,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Range___iter__::__next
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Range_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = __self.start;
         __state = S_JOIN_0;
         continue;

@@ -278,7 +278,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pattern& obj) {
 
 // def finditer(self, subject: str) -> Iterator[Own[Match]]:
 struct __gen_Pattern_finditer : public ::tpy::next_iter_mixin<__gen_Pattern_finditer, Match> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Pattern& __self;
     std::string subject;
     uint64_t offset;

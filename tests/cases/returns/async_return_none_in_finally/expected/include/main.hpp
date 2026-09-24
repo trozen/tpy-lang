@@ -22,7 +22,7 @@ __coro_main_coro main_coro();
 
 // async def f(n: int32) -> int32 | None:
 struct __coro_f {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
     std::exception_ptr __finally_exc_0;
@@ -52,7 +52,7 @@ struct __coro_f {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<int32_t> __await_lift_0;
     std::optional<int32_t> __await_lift_1;

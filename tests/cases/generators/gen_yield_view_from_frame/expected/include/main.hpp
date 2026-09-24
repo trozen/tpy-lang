@@ -57,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // def static_source_view() -> Iterator[str]:
 struct __gen_static_source_view : public ::tpy::next_iter_mixin<__gen_static_source_view, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string_view lit;
 
     enum : int32_t {
@@ -80,7 +80,7 @@ struct __gen_static_source_view : public ::tpy::next_iter_mixin<__gen_static_sou
 
 // def static_bytes_view() -> Iterator[bytes]:
 struct __gen_static_bytes_view : public ::tpy::next_iter_mixin<__gen_static_bytes_view, ::tpy::Bytes> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BytesView raw;
 
     enum : int32_t {
@@ -103,7 +103,7 @@ struct __gen_static_bytes_view : public ::tpy::next_iter_mixin<__gen_static_byte
 
 // def explicit_view_local(s: StrView) -> Iterator[str]:
 struct __gen_explicit_view_local : public ::tpy::next_iter_mixin<__gen_explicit_view_local, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string_view s;
     std::string_view v;
 
@@ -170,7 +170,7 @@ struct __gen_with_view_target : public ::tpy::next_iter_mixin<__gen_with_view_ta
 
 // def peephole_view(n: int32) -> Iterator[str]:
 struct __gen_peephole_view : public ::tpy::next_iter_mixin<__gen_peephole_view, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     std::string_view lit;
     int32_t i;
@@ -195,7 +195,7 @@ struct __gen_peephole_view : public ::tpy::next_iter_mixin<__gen_peephole_view, 
 
 // def owned_param_stays_bare(s: str) -> Iterator[str]:
 struct __gen_owned_param_stays_bare : public ::tpy::next_iter_mixin<__gen_owned_param_stays_bare, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string s;
 
     enum : int32_t {

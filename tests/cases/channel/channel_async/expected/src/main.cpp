@@ -15,6 +15,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -78,6 +79,8 @@ __coro_producer producer(::tpystd::tpy::channel::Sender<Counter> tx) {
         }
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_2:
     case S_JOIN_0: {
         if (true) {
@@ -124,6 +127,7 @@ __coro_consumer consumer(::tpystd::tpy::channel::Receiver<Counter> rx) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_co::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpystd::tpy::channel::channel<Counter>(2);
         tx.emplace(std::move(std::get<0>(__tup_1)));
         rx.emplace(std::move(std::get<1>(__tup_1)));

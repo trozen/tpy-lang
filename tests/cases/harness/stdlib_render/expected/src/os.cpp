@@ -146,6 +146,7 @@ std::vector<std::string> listdir(std::string_view path) {
 std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((!(topdown))) {
             bstack.emplace(std::vector<::tpy::Union<_WalkEmit, _WalkExpand>>{});
             (*bstack).push_back(_WalkExpand(top));

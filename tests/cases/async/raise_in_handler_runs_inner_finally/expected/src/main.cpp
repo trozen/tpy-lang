@@ -12,6 +12,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         throw ::tpy::ValueError("inner-fail");
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -103,6 +104,8 @@ __coro_fail_value fail_value() {
         ::tpy::tpy_panic("async def fell through without returning a value");
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1:
     case S_JOIN_2: {
         __sub_0.emplace();

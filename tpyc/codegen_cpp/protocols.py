@@ -13,7 +13,7 @@ from ..typesys import (
     OptionalType, UnionType, OwnType, MethodSignature, is_protocol_type,
     unwrap_readonly, unwrap_own, is_protocol_union, protocol_union_protocols,
     protocol_union_has_none, unwrap_ref_type, shadowed_local_cpp_name,
-    ConcreteCoroType, is_dyn_protocol, unwrap_send_sync,
+    ConcreteCoroType, ConcreteFrameType, is_dyn_protocol, unwrap_send_sync,
 )
 from ..parse import TpyCall, TpyMethodCall, TpyProtocol, TpyRecord
 from .. import qnames
@@ -362,6 +362,10 @@ class ProtocolGenerator:
         Excludes @dynamic protocols.
         """
         unwrapped = unwrap_own(unwrap_readonly(unwrap_ref_type(typ)))
+        # A bound generator / coroutine object is one concrete frame struct,
+        # not a template slot deduced per argument.
+        if isinstance(unwrapped, ConcreteFrameType):
+            return False
         # Optional[Protocol]
         if isinstance(unwrapped, OptionalType):
             resolved = self.resolve_type_for_codegen(unwrapped.inner)

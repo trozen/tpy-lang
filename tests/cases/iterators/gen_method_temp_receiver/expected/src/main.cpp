@@ -25,7 +25,7 @@ namespace tpyapp::main {
 //         print(v)
 void main() {
     Box __tmp_1 = Box(::tpy::BigInt(11), ::tpy::BigInt(22), ::tpy::BigInt(33));
-    auto it = __tmp_1.vals();
+    __gen_Box_vals it = __tmp_1.vals();
     std::cout << ::tpyapp::main::clobber() << "\n";
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

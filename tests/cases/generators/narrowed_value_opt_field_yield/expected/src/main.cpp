@@ -83,7 +83,7 @@ void main() {
         std::cout << "bind_loop" << " " << x << "\n";
         }
     }
-    auto it = b.gen_reguard();
+    __gen_Box_gen_reguard it = b.gen_reguard();
     {
         std::cout << ({ auto __er_2 = ::tpy::next(it); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
         b.f = std::nullopt;
@@ -135,6 +135,7 @@ void main() {
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_try_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((__self.f.has_value())) {
             __state = S_JOIN_2;
             continue;

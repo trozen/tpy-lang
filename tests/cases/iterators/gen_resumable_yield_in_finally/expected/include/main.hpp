@@ -21,7 +21,7 @@ void main();
 
 // def gen_return_then_finally_yield() -> Iterator[int]:
 struct __gen_gen_return_then_finally_yield : public ::tpy::next_iter_mixin<__gen_gen_return_then_finally_yield, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::exception_ptr __finally_exc_0;
     bool __finally_pending_0 = false;
 
@@ -47,7 +47,7 @@ struct __gen_gen_return_then_finally_yield : public ::tpy::next_iter_mixin<__gen
 
 // def gen_exception_then_finally_yield(x: int) -> Iterator[int]:
 struct __gen_gen_exception_then_finally_yield : public ::tpy::next_iter_mixin<__gen_gen_exception_then_finally_yield, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt x;
     std::exception_ptr __finally_exc_0;
 

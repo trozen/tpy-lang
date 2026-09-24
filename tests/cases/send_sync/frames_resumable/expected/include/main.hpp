@@ -68,7 +68,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // async def bump(self) -> int32:      # tpyc: frame_send(no)
 struct __coro_Counter_bump {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Counter& __self;
 
@@ -94,7 +94,7 @@ inline __coro_Counter_bump Counter::bump() const {
 
 // async def inner(n: int32) -> int32:     # tpyc: frame_send(yes)
 struct __coro_inner {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
 
@@ -116,7 +116,7 @@ struct __coro_inner {
 
 // async def outer(n: int32) -> int32:     # tpyc: frame_send(yes)
 struct __coro_outer {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
     int32_t a;
@@ -141,7 +141,7 @@ struct __coro_outer {
 
 // async def borrowing(xs: list[int32]) -> int32:  # tpyc: frame_send(no)
 struct __coro_borrowing {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<int32_t>& xs;
 
@@ -163,7 +163,7 @@ struct __coro_borrowing {
 
 // async def chained(n: int32) -> int32:   # tpyc: frame_send(no)
 struct __coro_chained {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
     ::tpy::frame_slot<std::vector<int32_t>> xs;
@@ -188,7 +188,7 @@ struct __coro_chained {
 
 // async def tup_ref(pair: tuple[Counter, Counter]) -> int32:  # tpyc: frame_send(no)
 struct __coro_tup_ref {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::tuple<const Counter*, const Counter*> pair;
 
@@ -210,7 +210,7 @@ struct __coro_tup_ref {
 
 // async def tup_val(pair: tuple[int32, int32]) -> int32:      # tpyc: frame_send(yes)
 struct __coro_tup_val {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::tuple<int32_t, int32_t> pair;
 
@@ -232,7 +232,7 @@ struct __coro_tup_val {
 
 // def gen_while(n: int32) -> Iterator[int32]:     # tpyc: frame_send(yes)
 struct __gen_gen_while : public ::tpy::next_iter_mixin<__gen_gen_while, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
 
@@ -256,7 +256,7 @@ struct __gen_gen_while : public ::tpy::next_iter_mixin<__gen_gen_while, int32_t>
 
 // def gen_for(n: int32) -> Iterator[int32]:       # tpyc: frame_send(no)
 struct __gen_gen_for : public ::tpy::next_iter_mixin<__gen_gen_for, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -282,7 +282,7 @@ struct __gen_gen_for : public ::tpy::next_iter_mixin<__gen_gen_for, int32_t> {
 
 // def gen_str(s: str) -> Iterator[int32]:         # tpyc: frame_send(no) frame_sync(yes)
 struct __gen_gen_str : public ::tpy::next_iter_mixin<__gen_gen_str, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string s;
 
     enum : int32_t {
@@ -304,7 +304,7 @@ struct __gen_gen_str : public ::tpy::next_iter_mixin<__gen_gen_str, int32_t> {
 
 // def gen_own(xs: Own[list[int32]]) -> Iterator[int32]:  # tpyc: frame_send(yes)
 struct __gen_gen_own : public ::tpy::next_iter_mixin<__gen_gen_own, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<int32_t> xs;
 
     enum : int32_t {

@@ -24,6 +24,7 @@ __gen_each_byte each_byte(std::optional<::tpy::BytesView> b) {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_count_chars::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((!s.has_value())) {
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = -1;
@@ -76,6 +77,7 @@ __coro_count_chars count_chars(std::optional<std::string_view> s) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         __coro_arg_0 = (::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)));
         {

@@ -97,7 +97,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // async def in_async() -> None:
 struct __coro_in_async {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Box> b;
     using __for_src_0_t = ::tpy::for_source_t<decltype((std::array<Box, 2>{Box(8), Box(9)}))>;
@@ -121,7 +121,7 @@ struct __coro_in_async {
 
 // def in_generator() -> Iterator[int32]:
 struct __gen_in_generator : public ::tpy::next_iter_mixin<__gen_in_generator, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t total;
     ::tpy::frame_slot<Box> b;
     using __for_src_0_t = ::tpy::for_source_t<decltype((std::array<Box, 2>{Box(6), Box(7)}))>;

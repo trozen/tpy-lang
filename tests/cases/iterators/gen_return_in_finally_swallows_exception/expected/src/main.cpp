@@ -29,6 +29,8 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
         continue;
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_0: {
         __state = S_RESUME_0;
         return "before";

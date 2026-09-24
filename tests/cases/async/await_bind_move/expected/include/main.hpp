@@ -86,7 +86,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // async def make(n: int32) -> Own[Payload]:
 struct __coro_make {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
 
@@ -108,7 +108,7 @@ struct __coro_make {
 
 // async def into_container() -> int32:
 struct __coro_into_container {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<Payload>> out;
     ::tpy::frame_slot<Payload> p;
@@ -133,7 +133,7 @@ struct __coro_into_container {
 
 // async def into_call_arg() -> int32:
 struct __coro_into_call_arg {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Payload> p;
     std::optional<__coro_make> __sub_0;
@@ -157,7 +157,7 @@ struct __coro_into_call_arg {
 
 // async def into_field() -> int32:
 struct __coro_into_field {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Payload> p;
     ::tpy::frame_slot<Holder> h;
@@ -182,7 +182,7 @@ struct __coro_into_field {
 
 // async def in_a_loop() -> int32:
 struct __coro_in_a_loop {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<Payload>> out;
     int32_t i;
@@ -209,7 +209,7 @@ struct __coro_in_a_loop {
 
 // async def from_return() -> Own[Payload]:
 struct __coro_from_return {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Payload> p;
     std::optional<__coro_make> __sub_0;
@@ -233,7 +233,7 @@ struct __coro_from_return {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Payload> r;
     int32_t __await_lift_0;

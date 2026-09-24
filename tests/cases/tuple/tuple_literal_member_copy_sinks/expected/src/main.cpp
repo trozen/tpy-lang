@@ -68,6 +68,7 @@ std::tuple<C, C> dup() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         b.emplace(C(1));
         __state = S_DONE;
         std::tuple<C, C> __tpy_async_ret = std::tuple<C, C>{(*b), (*b)};
@@ -91,6 +92,7 @@ __coro_adup adup() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_run_adup::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;

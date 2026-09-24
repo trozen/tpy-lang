@@ -18,6 +18,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         srv.emplace(::tpystd::socket::create_server(std::tuple<std::string, int32_t>{"127.0.0.1", 0}));
         (*srv).setblocking(false);
         loop.emplace(::tpystd::asyncio::get_running_loop());

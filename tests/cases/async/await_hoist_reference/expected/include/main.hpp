@@ -27,7 +27,7 @@ void main();
 
 // async def make_list() -> Own[list[int32]]:
 struct __coro_make_list {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -48,7 +48,7 @@ struct __coro_make_list {
 
 // async def get_multiplier() -> int32:
 struct __coro_get_multiplier {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -69,7 +69,7 @@ struct __coro_get_multiplier {
 
 // async def caller() -> int32:
 struct __coro_caller {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<int32_t>> xs;
     int32_t multiplier;

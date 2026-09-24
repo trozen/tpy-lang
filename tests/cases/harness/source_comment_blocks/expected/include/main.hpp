@@ -77,7 +77,7 @@ inline std::ostream& operator<<(std::ostream& os, const Reader& obj) {
 
 // async def doubled(n: int32) -> int32:
 struct __coro_doubled {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -101,7 +101,7 @@ struct __coro_doubled {
 
 // def upto(n: int32) -> Iterator[int32]:
 struct __gen_upto : public ::tpy::next_iter_mixin<__gen_upto, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -127,7 +127,7 @@ struct __gen_upto : public ::tpy::next_iter_mixin<__gen_upto, int32_t> {
 
 // def pair(n: int32) -> Iterator[int32]:
 struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
 
     enum : int32_t {

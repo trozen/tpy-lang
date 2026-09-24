@@ -238,6 +238,7 @@ __gen_suspended suspended() {
 ::tpystd::tpy::Poll<int32_t> __coro_asynchronous::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         current = &*(__ptr_slot_f0 = Cell(1));
         saved = std::tuple<Cell*>(current);
         current->value = 4;

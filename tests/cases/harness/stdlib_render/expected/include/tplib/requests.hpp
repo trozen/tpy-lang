@@ -694,7 +694,7 @@ inline std::ostream& operator<<(std::ostream& os, const SSLError& obj) {
 
 // def __iter__(self) -> Iterator[str]:
 struct __gen_CaseInsensitiveDict___iter__ : public ::tpy::next_iter_mixin<__gen_CaseInsensitiveDict___iter__, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const CaseInsensitiveDict& __self;
     std::string lk;
     using __for_src_0_t = decltype((__self._store));
@@ -725,7 +725,7 @@ inline __gen_CaseInsensitiveDict___iter__ CaseInsensitiveDict::__iter__() const 
 
 // def __iter__(self) -> Iterator[str]:
 struct __gen_CookieJar___iter__ : public ::tpy::next_iter_mixin<__gen_CookieJar___iter__, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const CookieJar& __self;
     std::string name;
     using __for_src_0_t = decltype((__self._store));
@@ -757,7 +757,7 @@ inline __gen_CookieJar___iter__ CookieJar::__iter__() const {
 
 // def iter_content(self, chunk_size: int32) -> Iterator[bytes]:
 struct __gen_Response_iter_content : public ::tpy::next_iter_mixin<__gen_Response_iter_content, ::tpy::Bytes> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Response& __self;
     int32_t chunk_size;
     ::tpystd::http::client::HTTPResponse* r = nullptr;
@@ -795,7 +795,7 @@ inline __gen_Response_iter_content Response::iter_content(int32_t chunk_size) {
 
 // def iter_lines(self) -> Iterator[bytes]:
 struct __gen_Response_iter_lines : public ::tpy::next_iter_mixin<__gen_Response_iter_lines, ::tpy::Bytes> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Response& __self;
     ::tpy::frame_slot<::tpy::ByteArray> pending;
     ::tpy::Bytes tail;

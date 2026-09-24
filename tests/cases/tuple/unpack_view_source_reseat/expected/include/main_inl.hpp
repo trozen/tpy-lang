@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t = ::tpyapp::main::mk(::tpy::BigInt(1));
         const auto& __tup_1 = t;
         a = std::get<0>(__tup_1);

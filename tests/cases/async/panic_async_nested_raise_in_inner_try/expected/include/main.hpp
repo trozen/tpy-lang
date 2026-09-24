@@ -23,7 +23,7 @@ void main();
 
 // async def sub(label: str) -> None:
 struct __coro_sub {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string label;
 
@@ -45,7 +45,7 @@ struct __coro_sub {
 
 // async def caller() -> None:
 struct __coro_caller {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string __coro_arg_0;
     std::string __coro_arg_1;

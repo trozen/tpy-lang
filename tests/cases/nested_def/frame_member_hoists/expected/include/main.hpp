@@ -185,7 +185,7 @@ namespace tpyapp::main {
 
 // async def coro_dyn() -> int32:
 struct __coro_coro_dyn {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Rec> fl;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -210,7 +210,7 @@ struct __coro_coro_dyn {
 
 // def gen_own_slot() -> Iterator[int32]:
 struct __gen_gen_own_slot : public ::tpy::next_iter_mixin<__gen_gen_own_slot, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<Rec> fl;
 
     enum : int32_t {
@@ -234,7 +234,7 @@ struct __gen_gen_own_slot : public ::tpy::next_iter_mixin<__gen_gen_own_slot, in
 
 // def gen_escape_hoist() -> Iterator[int32]:
 struct __gen_gen_escape_hoist : public ::tpy::next_iter_mixin<__gen_gen_escape_hoist, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -256,7 +256,7 @@ struct __gen_gen_escape_hoist : public ::tpy::next_iter_mixin<__gen_gen_escape_h
 
 // def gen_per_resume() -> Iterator[int32]:
 struct __gen_gen_per_resume : public ::tpy::next_iter_mixin<__gen_gen_per_resume, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<Rec> fl;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -283,7 +283,7 @@ struct __gen_gen_per_resume : public ::tpy::next_iter_mixin<__gen_gen_per_resume
 
 // def gen(self) -> Iterator[int32]:
 struct __gen_Holder_gen : public ::tpy::next_iter_mixin<__gen_Holder_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Holder& __self;
 
     enum : int32_t {

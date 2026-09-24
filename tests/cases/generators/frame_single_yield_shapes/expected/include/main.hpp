@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Labels<T>& obj) {
 
 // def drain(items: Own[list[int32]]) -> Iterator[int32]:  # tpyc: warning(/never consumed/)
 struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<int32_t> items;
     int32_t x;
     using __for_src_0_t = decltype((items));
@@ -76,7 +76,7 @@ struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain, int32_t> {
 
 // def over_global() -> Iterator[int32]:  # tpyc: ok
 struct __gen_over_global : public ::tpy::next_iter_mixin<__gen_over_global, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t v;
     using __for_src_0_t = decltype(((*xs)));
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
@@ -103,7 +103,7 @@ struct __gen_over_global : public ::tpy::next_iter_mixin<__gen_over_global, int3
 // def gen_it(self, v: T) -> Iterator[T]:
 template <typename T>
 struct __gen_Labels_gen_it : public ::tpy::next_iter_mixin<__gen_Labels_gen_it<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Labels<T>& __self;
     ::tpy::val_or_ref_t<T> v;
 
@@ -132,6 +132,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Labels_gen_it<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.first;
     }

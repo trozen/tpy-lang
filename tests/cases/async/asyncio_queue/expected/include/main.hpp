@@ -31,7 +31,7 @@ void main();
 
 // async def producer(q: Queue[int32]) -> None:
 struct __coro_producer {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::Queue<int32_t>& q;
     int32_t i;
@@ -57,7 +57,7 @@ struct __coro_producer {
 
 // async def consumer(q: Queue[int32], out: list[int32]) -> None:
 struct __coro_consumer {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::asyncio::Queue<int32_t>& q;
     std::vector<int32_t>& out;
@@ -85,7 +85,7 @@ struct __coro_consumer {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::Queue<int32_t>> q;
     ::tpy::frame_slot<std::vector<int32_t>> out;

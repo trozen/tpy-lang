@@ -13,6 +13,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         w.emplace(Worker("alice"));
         __sub_0.emplace((*w));
         __state = S_RESUME_0;
@@ -44,6 +45,7 @@ __coro_main_coro main_coro() {
 ::tpystd::tpy::Poll<std::string> __coro_Worker_run::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.01)));
         __state = S_RESUME_0;
         continue;

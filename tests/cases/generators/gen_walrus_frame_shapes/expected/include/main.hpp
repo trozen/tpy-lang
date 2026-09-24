@@ -116,7 +116,7 @@ inline std::ostream& operator<<(std::ostream& os, const Src& obj) {
 
 // def val_scalar() -> Iterator[int32]:
 struct __gen_val_scalar : public ::tpy::next_iter_mixin<__gen_val_scalar, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     int32_t n;
 
@@ -141,7 +141,7 @@ struct __gen_val_scalar : public ::tpy::next_iter_mixin<__gen_val_scalar, int32_
 
 // def val_str(words: list[str]) -> Iterator[int]:
 struct __gen_val_str : public ::tpy::next_iter_mixin<__gen_val_str, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<std::string>& words;
     int32_t i;
     std::string s;
@@ -167,7 +167,7 @@ struct __gen_val_str : public ::tpy::next_iter_mixin<__gen_val_str, ::tpy::BigIn
 
 // def val_tuple() -> Iterator[int32]:
 struct __gen_val_tuple : public ::tpy::next_iter_mixin<__gen_val_tuple, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     std::tuple<int32_t, int32_t> t;
 
@@ -192,7 +192,7 @@ struct __gen_val_tuple : public ::tpy::next_iter_mixin<__gen_val_tuple, int32_t>
 
 // def owning() -> Iterator[int32]:
 struct __gen_owning : public ::tpy::next_iter_mixin<__gen_owning, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::frame_slot<std::array<int32_t, 2>> xs;
 
@@ -217,7 +217,7 @@ struct __gen_owning : public ::tpy::next_iter_mixin<__gen_owning, int32_t> {
 
 // def borrow_alias(rows: list[list[int32]]) -> Iterator[int32]:
 struct __gen_borrow_alias : public ::tpy::next_iter_mixin<__gen_borrow_alias, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<std::vector<int32_t>>& rows;
     int32_t i;
     std::vector<int32_t>* row = nullptr;
@@ -243,7 +243,7 @@ struct __gen_borrow_alias : public ::tpy::next_iter_mixin<__gen_borrow_alias, in
 
 // def opt_ptr(nodes: list[Node]) -> Iterator[int32]:
 struct __gen_opt_ptr : public ::tpy::next_iter_mixin<__gen_opt_ptr, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Node>& nodes;
     int32_t i;
     Node* m = nullptr;
@@ -269,7 +269,7 @@ struct __gen_opt_ptr : public ::tpy::next_iter_mixin<__gen_opt_ptr, int32_t> {
 
 // def borrow_tuple(nodes: list[Node]) -> Iterator[int32]:
 struct __gen_borrow_tuple : public ::tpy::next_iter_mixin<__gen_borrow_tuple, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<Node>& nodes;
     int32_t i;
     std::tuple<int32_t, Node*> bt;
@@ -295,7 +295,7 @@ struct __gen_borrow_tuple : public ::tpy::next_iter_mixin<__gen_borrow_tuple, in
 
 // def own_tuple() -> Iterator[int32]:
 struct __gen_own_tuple : public ::tpy::next_iter_mixin<__gen_own_tuple, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::frame_slot<std::tuple<int32_t, Node>> ot;
 
@@ -320,7 +320,7 @@ struct __gen_own_tuple : public ::tpy::next_iter_mixin<__gen_own_tuple, int32_t>
 
 // def exc_binding() -> Iterator[int32]:
 struct __gen_exc_binding : public ::tpy::next_iter_mixin<__gen_exc_binding, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::frame_slot<Boom> caught;
 
@@ -348,7 +348,7 @@ struct __gen_exc_binding : public ::tpy::next_iter_mixin<__gen_exc_binding, int3
 
 // def exc_binding_for() -> Iterator[int32]:
 struct __gen_exc_binding_for : public ::tpy::next_iter_mixin<__gen_exc_binding_for, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::frame_slot<Boom> caught;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -378,7 +378,7 @@ struct __gen_exc_binding_for : public ::tpy::next_iter_mixin<__gen_exc_binding_f
 
 // def gen(self) -> Iterator[int32]:
 struct __gen_Src_gen : public ::tpy::next_iter_mixin<__gen_Src_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Src& __self;
     int32_t i;
     int32_t k;

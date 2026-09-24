@@ -13,6 +13,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_each_byte::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((!b.has_value())) {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});

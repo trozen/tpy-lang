@@ -13,6 +13,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_runner::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         src.emplace(Source(::tpy::BigInt(3)));
         __for_itr_0.emplace(((*src)).__aiter__());
         __state = S_JOIN_0;
@@ -78,6 +79,7 @@ __coro_runner runner() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_post_loop::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         src.emplace(Source(::tpy::BigInt(2)));
         __for_itr_0.emplace(((*src)).__aiter__());
         __state = S_JOIN_0;
@@ -143,6 +145,7 @@ __coro_post_loop post_loop() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_nested::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         outer.emplace(Source(::tpy::BigInt(2)));
         inner.emplace(Source(::tpy::BigInt(1)));
         __for_itr_0.emplace(((*outer)).__aiter__());
@@ -247,6 +250,7 @@ __coro_nested nested() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_hop::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_itr_0.emplace((::tpy::__getitem__(sh.rows, 0)).__aiter__());
         __state = S_JOIN_0;
         continue;
@@ -312,6 +316,7 @@ __coro_hop hop(Shelf& sh) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_field_hop::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_itr_0.emplace((sh.one).__aiter__());
         __state = S_JOIN_0;
         continue;
@@ -375,6 +380,7 @@ __coro_field_hop field_hop(Shelf& sh) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_elem_distinct::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_itr_0.emplace((::tpy::__getitem__(rows, 0)).__aiter__());
         __state = S_JOIN_0;
         continue;
@@ -438,6 +444,7 @@ __coro_elem_distinct elem_distinct(std::vector<Source>& rows) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_elem_unknown::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_itr_0.emplace((::tpy::__getitem__(rows, 0)).__aiter__());
         __state = S_JOIN_0;
         continue;
@@ -503,6 +510,7 @@ __coro_elem_unknown elem_unknown(std::vector<Source>& rows, ::tpy::BigInt i) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_elem_container::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_itr_0.emplace((::tpy::__getitem__(rows, 0)).__aiter__());
         __state = S_JOIN_0;
         continue;
@@ -577,6 +585,7 @@ __coro_elem_container elem_container(std::vector<Source>& rows) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_ptr_iter::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_itr_0.emplace((::tpy::__getitem__(feeds, 0)).__aiter__());
         __state = S_JOIN_0;
         continue;
@@ -669,6 +678,7 @@ void main() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((__self.cursor >= __self.limit)) {
             throw ::tpy::StopAsyncIteration{};
         }
@@ -694,6 +704,7 @@ void main() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((__self.cur >= ::tpy::deref_check(__self.p).lim)) {
             throw ::tpy::StopAsyncIteration{};
         }

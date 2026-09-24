@@ -23,7 +23,7 @@ void main();
 
 // async def value(n: int) -> int:
 struct __coro_value {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
 
@@ -45,10 +45,10 @@ struct __coro_value {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::optional<__coro_value> c;
     ::tpy::BigInt __await_lift_0;
+    std::optional<__coro_value> c;
 
     enum : int32_t {
         S_INITIAL = 0,

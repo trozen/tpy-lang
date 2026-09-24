@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
 
 // async def __aenter__(self) -> int32:
 struct __coro_Gate___aenter__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Gate& __self;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -90,7 +90,7 @@ inline __coro_Gate___aenter__ Gate::__aenter__() const {
 
 // async def __aexit__(self, et: None, ev: None, tb: None) -> None:
 struct __coro_Gate___aexit__ {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Gate& __self;
     std::monostate et;
@@ -121,7 +121,7 @@ inline __coro_Gate___aexit__ Gate::__aexit__(std::monostate et, std::monostate e
 
 // async def go(self) -> int32:
 struct __coro_Runner_go {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Runner& __self;
     int32_t v;
@@ -157,7 +157,7 @@ inline __coro_Runner_go Runner::go() {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Runner> r;
     int32_t __await_lift_0;

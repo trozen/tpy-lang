@@ -1966,6 +1966,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # = g();`): a generator/iterator factory result feeding the universal
     # __iter__/__next__ loop; single-assignment only.
     "decl.iterator_object",
+    "decl.iterator_object_alias",
     # REF_ALIAS from a borrow-record-returning call (lowering; the
     # `T& p = shared(x);` bind of the callee's returned reference).
     "decl.record_borrow_call",

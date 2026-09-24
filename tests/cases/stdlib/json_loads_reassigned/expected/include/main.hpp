@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // async def in_async() -> None:
 struct __coro_in_async {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpystd::json::JsonValue* v = nullptr;
     std::optional<::tpystd::json::JsonValue> __ptr_slot_f0;
@@ -70,7 +70,7 @@ struct __coro_in_async {
 
 // def in_generator() -> Iterator[str]:
 struct __gen_in_generator : public ::tpy::next_iter_mixin<__gen_in_generator, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpystd::json::JsonValue* v = nullptr;
     std::optional<::tpystd::json::JsonValue> __ptr_slot_f0;
     std::optional<::tpystd::json::JsonValue> __ptr_slot_f1;

@@ -16,6 +16,7 @@ bool ran{};
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ran = true;
         hits = (hits) + (::tpy::BigInt(1));
         __state = S_DONE;
@@ -40,6 +41,7 @@ __coro_bg bg() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::bg()));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.01)));
         __state = S_RESUME_0;

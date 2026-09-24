@@ -23,7 +23,7 @@ void main();
 
 // async def raise_from_finally() -> None:
 struct __coro_raise_from_finally {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -44,7 +44,7 @@ struct __coro_raise_from_finally {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<__coro_raise_from_finally> __sub_0;
 

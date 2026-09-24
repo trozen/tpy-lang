@@ -1,0 +1,1 @@
+main.py:17: error: Cannot copy non-copyable type 'Iterator[int32]'. Non-copyable values can only be moved (pass directly at last use).

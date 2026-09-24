@@ -20,7 +20,7 @@ void main();
 
 // def g() -> Iterator[int]:
 struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt a;
     ::tpy::BigInt b;
 

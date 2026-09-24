@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 // def pairs(items: list[P]) -> Iterator[readonly[tuple[P, P]]]:
 struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, std::tuple<const P*, const P*>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<P>& items;
     int32_t n;
     int32_t i;

@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 
 // def gen() -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Resource* saved = nullptr;
     std::optional<Resource> __ptr_slot_f0;
 

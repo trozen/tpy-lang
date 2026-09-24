@@ -26,7 +26,7 @@ void main();
 
 // async def add_one(n: int) -> int:
 struct __coro_add_one {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
 
@@ -48,7 +48,7 @@ struct __coro_add_one {
 
 // async def spawn_via(factory: Callable[[int], Own[Cancellable[int]]], n: int) -> int:
 struct __coro_spawn_via {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::function<std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt>>(const ::tpy::BigInt&)> factory;
     ::tpy::BigInt n;

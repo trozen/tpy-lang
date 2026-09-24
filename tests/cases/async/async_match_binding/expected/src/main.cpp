@@ -12,6 +12,7 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((n) * (::tpy::BigInt(10)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -37,6 +38,7 @@ __coro_sub sub(::tpy::BigInt n) {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = tag;
         if (__match_subject_1 == 0) {
             __sub_0.emplace(::tpy::BigInt(1));
@@ -92,6 +94,7 @@ __coro_caller caller(::tpy::BigInt tag) {
 ::tpystd::tpy::Poll<int32_t> __coro_opt_chain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __match_subject_1 = o;
         if (__match_subject_1.has_value() && (*__match_subject_1) == 1) {
             __sub_0.emplace(::tpy::BigInt(1));

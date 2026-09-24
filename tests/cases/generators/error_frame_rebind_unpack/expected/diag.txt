@@ -1,0 +1,1 @@
+main.py:25: error: cannot rebind generator 'g' in a tuple unpack: rebind it with an assignment of its own ('g = ...'), or unpack into a new name

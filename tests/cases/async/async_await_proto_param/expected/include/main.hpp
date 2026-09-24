@@ -82,7 +82,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 // async def consume(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 struct __coro_consume {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     T_it it;
     int32_t x;
@@ -116,6 +116,7 @@ template <::tpystd::typing::Iterable<int32_t> T_it>
 ::tpystd::tpy::Poll<::std::monostate> __coro_consume<T_it>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
@@ -155,7 +156,7 @@ __coro_consume<T_it> consume(T_it&& it) {
 // async def driver(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 struct __coro_driver {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     T_it it;
     std::optional<__coro_consume<::tpy::await_arg_capture_t<decltype((it))>>> __sub_0;
@@ -182,6 +183,7 @@ template <::tpystd::typing::Iterable<int32_t> T_it>
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver<T_it>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(it);
         __state = S_RESUME_0;
         continue;

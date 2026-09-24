@@ -26,7 +26,7 @@ void main();
 
 // async def value(n: int) -> int:
 struct __coro_value {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
 
@@ -48,7 +48,7 @@ struct __coro_value {
 
 // async def cleanup() -> None:
 struct __coro_cleanup {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
 
     enum : int32_t {
@@ -69,7 +69,7 @@ struct __coro_cleanup {
 
 // async def caller() -> int:
 struct __coro_caller {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt x;
     std::exception_ptr __finally_exc_0;

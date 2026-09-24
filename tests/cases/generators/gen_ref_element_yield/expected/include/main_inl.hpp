@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each_list::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -48,6 +49,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
 inline std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_rec::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -81,6 +83,7 @@ inline std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_re
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each_pack::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -118,6 +121,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each_local::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         own.emplace(std::vector<std::vector<int32_t>>{{1}, {2}});
         auto& __for_obj_0 = (*own);
         __for_it_0.emplace((__for_obj_0).begin());
@@ -154,6 +158,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
 inline std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_alias::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         b = &(::tpy::__getitem__(xs, 0));
         __state = S_RESUME_0;
         return (*b);
@@ -182,6 +187,7 @@ inline std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_al
 inline std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_ternary::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         p.emplace(Box(1));
         q.emplace(Box(2));
         __state = S_RESUME_0;
@@ -209,6 +215,7 @@ inline std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_te
 inline std::expected<::tpy::val_or_ref<::tpy::ordered_map<int32_t, int32_t>>, ::tpy::StopIteration> __gen_each_dict::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -241,6 +248,7 @@ inline std::expected<::tpy::val_or_ref<::tpy::ordered_map<int32_t, int32_t>>, ::
 inline std::expected<::tpy::val_or_ref<::tpy::ordered_set<int32_t>>, ::tpy::StopIteration> __gen_each_set::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -277,6 +285,7 @@ inline std::expected<::tpy::val_or_ref<::tpy::ordered_set<int32_t>>, ::tpy::Stop
 inline std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_boxes::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -310,6 +319,7 @@ inline std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_boxes::
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_Rows_each::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __for_obj_0 = xs;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -343,6 +353,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_Rows_field_twice::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.buf;
     }
@@ -365,6 +376,7 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
 inline std::expected<::tpy::val_or_ref<const std::vector<int32_t>>, ::tpy::StopIteration> __gen_ROBag_twice::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.buf;
     }

@@ -74,7 +74,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dispatcher& obj) {
 
 // async def run(self, count: int32) -> None:
 struct __coro_Dispatcher_run {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Dispatcher& __self;
     int32_t count;
@@ -110,7 +110,7 @@ inline __coro_Dispatcher_run Dispatcher::run(int32_t count) const {
 
 // async def handle(c: Own[Conn]) -> None:
 struct __coro_handle {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     Conn c;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -134,7 +134,7 @@ struct __coro_handle {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Dispatcher> d;
     std::optional<__coro_Dispatcher_run> __sub_0;

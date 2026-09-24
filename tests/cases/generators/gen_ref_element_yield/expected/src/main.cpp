@@ -63,6 +63,7 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
     try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0.emplace(Guard());
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_2;
@@ -180,6 +181,8 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
         continue;
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_3: {
         try {
             std::cout << "finally-try" << "\n";

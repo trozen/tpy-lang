@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // def __iter__(self) -> Iterator[int32]:
 struct __gen_Holder___iter__ : public ::tpy::next_iter_mixin<__gen_Holder___iter__, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Holder& __self;
     int32_t x;
     using __for_src_0_t = decltype((__self.items));
@@ -74,7 +74,7 @@ inline __gen_Holder___iter__ Holder::__iter__() const {
 
 // def g_simple() -> Iterator[int32]:
 struct __gen_g_simple : public ::tpy::next_iter_mixin<__gen_g_simple, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t x;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make()))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
@@ -101,7 +101,7 @@ struct __gen_g_simple : public ::tpy::next_iter_mixin<__gen_g_simple, int32_t> {
 
 // def g_resumable() -> Iterator[int32]:
 struct __gen_g_resumable : public ::tpy::next_iter_mixin<__gen_g_resumable, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t x;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::make()))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;

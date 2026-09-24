@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // def gs(s: str, n: int32) -> Iterator[str]:
 struct __gen_gs : public ::tpy::next_iter_mixin<__gen_gs, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string s;
     int32_t n;
     int32_t i;
@@ -75,7 +75,7 @@ struct __gen_gs : public ::tpy::next_iter_mixin<__gen_gs, std::string> {
 
 // def gb(b: bytes, n: int32) -> Iterator[int32]:
 struct __gen_gb : public ::tpy::next_iter_mixin<__gen_gb, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Bytes b;
     int32_t n;
     int32_t i;
@@ -102,7 +102,7 @@ struct __gen_gb : public ::tpy::next_iter_mixin<__gen_gb, int32_t> {
 
 // def gi(v: int, n: int32) -> Iterator[int]:
 struct __gen_gi : public ::tpy::next_iter_mixin<__gen_gi, ::tpy::BigInt> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt v;
     int32_t n;
     int32_t i;
@@ -129,7 +129,7 @@ struct __gen_gi : public ::tpy::next_iter_mixin<__gen_gi, ::tpy::BigInt> {
 
 // def gstr(s: String, n: int32) -> Iterator[str]:
 struct __gen_gstr : public ::tpy::next_iter_mixin<__gen_gstr, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::String s;
     int32_t n;
     int32_t i;
@@ -156,7 +156,7 @@ struct __gen_gstr : public ::tpy::next_iter_mixin<__gen_gstr, std::string> {
 
 // def walk(self, s: str, n: int32) -> Iterator[str]:
 struct __gen_Box_walk : public ::tpy::next_iter_mixin<__gen_Box_walk, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Box& __self;
     std::string s;
     int32_t n;

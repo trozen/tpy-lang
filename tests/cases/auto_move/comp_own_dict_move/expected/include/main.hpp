@@ -94,7 +94,7 @@ namespace tpyapp::main {
 
 // def widgets(n: int) -> Iterator[Own[Widget]]:
 struct __gen_widgets : public ::tpy::next_iter_mixin<__gen_widgets, Widget> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt n;
     int32_t i;
 
@@ -118,7 +118,7 @@ struct __gen_widgets : public ::tpy::next_iter_mixin<__gen_widgets, Widget> {
 
 // def nodes(n: int) -> Iterator[Own[Node]]:
 struct __gen_nodes : public ::tpy::next_iter_mixin<__gen_nodes, Node> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt n;
     int32_t i;
 

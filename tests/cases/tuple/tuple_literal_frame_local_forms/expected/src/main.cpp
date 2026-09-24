@@ -133,6 +133,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_try_body::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_JOIN_1: {
         try {
             t.emplace(std::tuple<A, int32_t>{A(1), 2});
@@ -170,6 +172,7 @@ __gen_try_body try_body() {
 ::tpystd::tpy::Poll<int32_t> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<A, A*>{A(1), &(a)});
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
@@ -202,6 +205,7 @@ __coro_coro coro(A& a) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_section::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         a.emplace(A(5));
         __sub_0.emplace((*a));
         __state = S_RESUME_0;

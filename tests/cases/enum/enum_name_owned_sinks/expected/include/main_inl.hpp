@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_frame_view::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         label = ::tpy::EnumUtil<Color>::name(c);
         __state = S_RESUME_0;
         return ::tpy::__len__(label);

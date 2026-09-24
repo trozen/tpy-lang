@@ -139,7 +139,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrap& obj) {
 
 // async def via_async(p: NPt) -> int32:  # tpyc: ok
 struct __coro_via_async {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     NPt& p;
 
@@ -161,7 +161,7 @@ struct __coro_via_async {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<NPt> n;
     ::tpy::frame_slot<Pt> a;
@@ -189,7 +189,7 @@ struct __coro_main_coro {
 
 // def via_gen(p: NPt) -> Iterator[int32]:  # tpyc: ok
 struct __gen_via_gen : public ::tpy::next_iter_mixin<__gen_via_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     NPt& p;
 
     enum : int32_t {

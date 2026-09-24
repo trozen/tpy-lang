@@ -15,6 +15,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_bump_all::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 0;
     }
@@ -48,6 +49,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_bump_all::__next__() {
 inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_Holder_nodes_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.a;
     }

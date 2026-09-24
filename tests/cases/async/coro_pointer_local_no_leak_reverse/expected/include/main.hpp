@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 // async def first(n: int32) -> int32:
 struct __coro_first {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t n;
     int32_t x;
@@ -76,7 +76,7 @@ struct __coro_first {
 
 // async def second(items: list[P], i: int32) -> int32:
 struct __coro_second {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::vector<P>& items;
     int32_t i;
@@ -102,7 +102,7 @@ struct __coro_second {
 
 // async def driver() -> None:
 struct __coro_driver {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<P>> items;
     int32_t __await_lift_0;

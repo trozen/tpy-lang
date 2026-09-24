@@ -27,7 +27,7 @@ void main();
 
 // async def acoro(s: str) -> str:
 struct __coro_acoro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::string s;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -55,14 +55,14 @@ struct __coro_acoro {
 
 // async def amain() -> None:
 struct __coro_amain {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::string __await_lift_0;
-    std::string __await_lift_1;
-    std::string __await_lift_2;
     std::string __coro_arg_0;
+    std::string __await_lift_0;
     std::string __coro_arg_1;
+    std::string __await_lift_1;
     std::string __coro_arg_2;
+    std::string __await_lift_2;
     std::optional<__coro_acoro> __sub_0;
     std::optional<__coro_acoro> __sub_1;
     std::optional<__coro_acoro> __sub_2;
@@ -88,7 +88,7 @@ struct __coro_amain {
 
 // def gen(s: str, flag: bool) -> Iterator[str]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string s;
     bool flag;
     std::string other;

@@ -1259,6 +1259,59 @@ void two_loop_dict_arm(bool flag) {
     std::cout << "two_loop_dict_arm" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::tuple<int32_t, int32_t>>(::tpy::dict_items((*d)))) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::tuple<int32_t, int32_t>>(::tpy::dict_items((*held)))) << "\n";
 }
 
+// # Generator, sibling loop between the binding loop and the read. The name binds
+// # the CALLER's element, so the post-loop mutation is observed on `pics` -- a
+// # frame-slot copy would leave it behind.
+// def gen_sibling(pics: list[Pic]) -> Iterator[int32]:
+//     for i in range(2):
+//         p = pics[i]  # tpyc: ok
+//         yield p.n                                     # -> S_RESUME_0
+//     for k in range(2):
+//         yield k + 50                                  # -> S_RESUME_1
+//     p.n += 100
+//     yield p.n                                         # -> S_RESUME_2
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen_sibling::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(2));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_2: {  // after: yield p.n
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_RESUME_0:  // after: yield p.n
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __for_i_1.emplace(int32_t(0));
+            __for_stop_1.emplace(static_cast<int32_t>(2));
+            __state = S_JOIN_1;
+            continue;
+        }
+        i = ((*__for_i_0))++;
+        p = &(::tpy::__getitem__(pics, i));
+        __state = S_RESUME_0;
+        return p->n;
+    }
+    case S_RESUME_1:  // after: yield k + 50
+    case S_JOIN_1: {
+        if (!((*__for_i_1) < (*__for_stop_1))) {
+            p->n = ::tpy::add_check<int32_t>(p->n, 100);
+            __state = S_RESUME_2;
+            return p->n;
+        }
+        k = ((*__for_i_1))++;
+        __state = S_RESUME_1;
+        return (::tpy::add_check<int32_t>(k, 50));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 
 // def gen_sibling(pics: list[Pic]) -> Iterator[int32]:
 __gen_gen_sibling gen_sibling(std::vector<Pic>& pics) {
@@ -1280,6 +1333,7 @@ __gen_gen_sibling gen_sibling(std::vector<Pic>& pics) {
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_blk_if::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (flag) {
             __for_i_0.emplace(int32_t(0));
             __for_stop_0.emplace(static_cast<int32_t>(2));
@@ -1346,6 +1400,7 @@ __gen_gen_blk_if gen_blk_if(bool flag, std::vector<Pic>& pics) {
 ::tpystd::tpy::Poll<int32_t> __coro_async_sibling::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
         __state = S_JOIN_0;
@@ -1418,6 +1473,7 @@ __coro_async_sibling async_sibling(std::vector<Pic>& pics) {
 ::tpystd::tpy::Poll<int32_t> __coro_async_blk_if::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (flag) {
             __for_i_0.emplace(int32_t(0));
             __for_stop_0.emplace(static_cast<int32_t>(2));
@@ -1495,6 +1551,7 @@ __coro_async_blk_if async_blk_if(bool flag, std::vector<Pic>& pics) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_all::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         pics.emplace(std::vector<Pic>{Pic(0), Pic(1)});
         __sub_0.emplace((*pics));
         __state = S_RESUME_0;

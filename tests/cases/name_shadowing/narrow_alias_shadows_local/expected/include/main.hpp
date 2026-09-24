@@ -200,7 +200,7 @@ namespace tpyapp::main {
 
 // async def coro(a: Dog | Cat) -> None:
 struct __coro_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::Union<Cat*, Dog*> a;
     int32_t __a;
@@ -225,7 +225,7 @@ struct __coro_coro {
 
 // async def coro_complement(a: Dog | Cat) -> str:
 struct __coro_coro_complement {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::Union<Cat*, Dog*> a;
     int32_t __a;
@@ -250,7 +250,7 @@ struct __coro_coro_complement {
 
 // async def coro_global(acache: Dog | Cat) -> str:
 struct __coro_coro_global {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::Union<Cat*, Dog*> acache;
     int32_t before;
@@ -275,7 +275,7 @@ struct __coro_coro_global {
 
 // def gen(a: Dog | Cat) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<Cat*, Dog*> a;
     int32_t __a;
 
@@ -298,7 +298,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
 // def gen_across(a: Dog | Cat) -> Iterator[int32]:
 struct __gen_gen_across : public ::tpy::next_iter_mixin<__gen_gen_across, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<Cat*, Dog*> a;
     int32_t __a;
 
@@ -322,7 +322,7 @@ struct __gen_gen_across : public ::tpy::next_iter_mixin<__gen_gen_across, int32_
 
 // def gen_cross(a: Dog | Cat, a_narrowed: Dog | Cat) -> Iterator[int32]:
 struct __gen_gen_cross : public ::tpy::next_iter_mixin<__gen_gen_cross, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<Cat*, Dog*> a;
     ::tpy::Union<Cat*, Dog*> a_narrowed;
     int32_t __a;
@@ -346,7 +346,7 @@ struct __gen_gen_cross : public ::tpy::next_iter_mixin<__gen_gen_cross, int32_t>
 
 // def gen_assert(a: Dog | Cat) -> Iterator[int32]:
 struct __gen_gen_assert : public ::tpy::next_iter_mixin<__gen_gen_assert, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<Cat*, Dog*> a;
     int32_t __a;
 
@@ -369,7 +369,7 @@ struct __gen_gen_assert : public ::tpy::next_iter_mixin<__gen_gen_assert, int32_
 
 // def gen_bumped_frame(a: Dog | Cat) -> Iterator[int32]:
 struct __gen_gen_bumped_frame : public ::tpy::next_iter_mixin<__gen_gen_bumped_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<Cat*, Dog*> a;
     int32_t __a;
     int32_t __a_narrowed;
@@ -394,7 +394,7 @@ struct __gen_gen_bumped_frame : public ::tpy::next_iter_mixin<__gen_gen_bumped_f
 
 // def gen_resume_cross(a: Dog | Cat, a_narrowed: Dog | Cat) -> Iterator[int32]:
 struct __gen_gen_resume_cross : public ::tpy::next_iter_mixin<__gen_gen_resume_cross, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<Cat*, Dog*> a;
     ::tpy::Union<Cat*, Dog*> a_narrowed;
     int32_t __a;
@@ -418,7 +418,7 @@ struct __gen_gen_resume_cross : public ::tpy::next_iter_mixin<__gen_gen_resume_c
 
 // def gen_sibling(a: Dog | Cat, a_narrowed: int32) -> Iterator[int32]:
 struct __gen_gen_sibling : public ::tpy::next_iter_mixin<__gen_gen_sibling, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::Union<Cat*, Dog*> a;
     int32_t a_narrowed;
     int32_t __a;

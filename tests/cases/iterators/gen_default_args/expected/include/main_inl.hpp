@@ -14,6 +14,7 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_upto::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -46,6 +47,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_upto::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_upto_final::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -79,6 +81,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_upto_final::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_bounded::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return 0;
     }
@@ -115,6 +118,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_bounded::__next__() {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_upto_m::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -148,6 +152,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_upto_m::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_bounded_m::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.base;
     }
@@ -186,6 +191,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_bounded_m::__next_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_shapes::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return __self.base;
     }

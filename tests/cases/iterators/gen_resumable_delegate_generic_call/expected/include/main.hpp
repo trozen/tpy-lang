@@ -24,7 +24,7 @@ void main();
 // def pair[T](a: T, b: T) -> Iterator[T]:
 template <typename T>
 struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, ::tpy::yield_slot_t<T>> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::val_or_ref_t<T> a;
     ::tpy::val_or_ref_t<T> b;
 
@@ -52,6 +52,7 @@ template <typename T>
 std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_pair<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
         return a;
     }
@@ -77,7 +78,7 @@ __gen_pair<T> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> 
 
 // def gen() -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t x;
     using __for_src_0_t = ::tpy::for_source_t<decltype((::tpyapp::main::pair<int32_t>(7, 8)))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;

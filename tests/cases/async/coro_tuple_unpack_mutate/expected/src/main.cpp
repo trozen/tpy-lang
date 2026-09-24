@@ -16,6 +16,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_process::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         total = 0;
         auto& __for_obj_0 = rows;
         __for_it_0.emplace((__for_obj_0).begin());
@@ -65,6 +66,7 @@ __coro_process process(std::vector<std::tuple<int32_t, Item>>& rows) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         rows.emplace(std::vector<std::tuple<int32_t, Item>>{std::tuple<int32_t, Item>{1, Item(0)}, std::tuple<int32_t, Item>{2, Item(0)}});
         __sub_0.emplace((*rows));
         __state = S_RESUME_0;

@@ -70,6 +70,7 @@ __gen_in_generator in_generator() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __for_src_0.emplace(std::array<Box, 2>{Box(8), Box(9)});
         auto __beg_0 = (*__for_src_0).begin();
         auto __end_0 = (*__for_src_0).end();

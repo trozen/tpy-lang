@@ -54,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 
 // async def asum(pair: readonly[tuple[Tag, Tag]]) -> int32:
 struct __coro_asum {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::tuple<const Tag*, const Tag*> pair;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -78,16 +78,16 @@ struct __coro_asum {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Tag> a;
     ::tpy::frame_slot<Tag> b;
     int32_t total;
     int32_t v;
-    int32_t __await_lift_0;
-    int32_t __await_lift_1;
     std::tuple<Tag*, Tag*> __coro_arg_0;
+    int32_t __await_lift_0;
     std::tuple<Tag*, Tag*> __coro_arg_1;
+    int32_t __await_lift_1;
     std::optional<__coro_asum> __sub_0;
     std::optional<__coro_asum> __sub_1;
 
@@ -111,7 +111,7 @@ struct __coro_main_coro {
 
 // def gsum(pair: readonly[tuple[Tag, Tag]]) -> Iterator[int32]:
 struct __gen_gsum : public ::tpy::next_iter_mixin<__gen_gsum, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::tuple<const Tag*, const Tag*> pair;
 
     enum : int32_t {

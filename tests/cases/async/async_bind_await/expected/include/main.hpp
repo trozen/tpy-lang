@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // async def bump(self, n: int) -> int:
 struct __coro_Counter_bump {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Counter& __self;
     ::tpy::BigInt n;
@@ -71,7 +71,7 @@ inline __coro_Counter_bump Counter::bump(::tpy::BigInt n) const {
 
 // async def add_one(n: int) -> int:
 struct __coro_add_one {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt n;
 
@@ -93,13 +93,13 @@ struct __coro_add_one {
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::optional<__coro_add_one> c;
     ::tpy::frame_slot<Counter> w;
-    std::optional<__coro_Counter_bump> m;
     ::tpy::BigInt __await_lift_0;
     ::tpy::BigInt __await_lift_1;
+    std::optional<__coro_add_one> c;
+    std::optional<__coro_Counter_bump> m;
 
     enum : int32_t {
         S_INITIAL = 0,

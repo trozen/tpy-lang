@@ -13,6 +13,8 @@ namespace tpyapp::main {
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_drain_list::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_0:  // after: yield xs.pop()
     case S_JOIN_0: {
         if ((::tpy::__len__(xs) != 0)) {
@@ -38,6 +40,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_drain_list::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_drain_dict::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -67,6 +70,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_drain_dict::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_drain_set::__next__() {
     while (true) switch (__state) {
     case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
     case S_RESUME_0:  // after: yield s.pop()
     case S_JOIN_0: {
         if ((::tpy::__len__(s) != 0)) {
@@ -89,6 +94,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_drain_set::__next__() 
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_str_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((!t.empty())) {
             __state = S_RESUME_0;
             return 1;
@@ -118,6 +124,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_str_branch::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_bytes_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((!b.empty())) {
             __state = S_RESUME_0;
             return 1;
@@ -147,6 +154,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_bytes_branch::__next__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_record_len_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((::tpy::__len__(g) != 0)) {
             __state = S_RESUME_0;
             return 1;
@@ -176,6 +184,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_record_len_branch::__n
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_record_bool_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (::tpy::__bool__(f)) {
             __state = S_RESUME_0;
             return 1;
@@ -208,6 +217,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_record_bool_branch::__
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_enum_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((static_cast<void>(c), true)) {
             __state = S_RESUME_0;
             return 1;
@@ -237,6 +247,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_enum_branch::__next__(
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_int_enum_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((static_cast<int32_t>(lv) != 0)) {
             __state = S_RESUME_0;
             return 1;
@@ -266,6 +277,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_int_enum_branch::__nex
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_plain_record_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((static_cast<void>(p), true)) {
             __state = S_RESUME_0;
             return 1;
@@ -295,6 +307,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_plain_record_branch::_
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_any_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (::tpy::to_bool(v)) {
             __state = S_RESUME_0;
             return 1;
@@ -326,6 +339,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_any_branch::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_and_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (((::tpy::__len__(xs) != 0) && (!t.empty()))) {
             __state = S_RESUME_0;
             return 1;
@@ -360,6 +374,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_and_branch::__next__()
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_peephole_or::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         rest = t;
         __state = S_JOIN_0;
         continue;

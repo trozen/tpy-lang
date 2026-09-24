@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 // async def echo[T](self, x: T) -> T:
 template <typename T>
 struct __coro_Container_echo {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Container& __self;
     ::tpy::val_or_ref_t<T> x;
@@ -77,6 +77,7 @@ template <typename T>
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(x));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -95,7 +96,7 @@ inline __coro_Container_echo<T> Container::echo(::tpy::param_val_or_ref_t<T> x) 
 // async def labeled[T](self, x: T) -> tuple[str, T]:
 template <typename T>
 struct __coro_Container_labeled {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     const Container& __self;
     ::tpy::val_or_ref_t<T> x;
@@ -123,6 +124,7 @@ template <typename T>
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         std::tuple<std::string, T> __tpy_async_ret = std::tuple<std::string, ::tpy::val_or_ptr_t<T>>{__self.label, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x)};
         return ::tpystd::tpy::Poll<std::tuple<std::string, T>>::ready(std::move(__tpy_async_ret));
@@ -140,13 +142,13 @@ inline __coro_Container_labeled<T> Container::labeled(::tpy::param_val_or_ref_t<
 
 // async def main_coro() -> None:
 struct __coro_main_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<Container> c;
     int32_t a;
+    std::string __coro_arg_0;
     std::string b;
     std::tuple<std::string, int32_t> p;
-    std::string __coro_arg_0;
     std::optional<__coro_Container_echo<int32_t>> __sub_0;
     std::optional<__coro_Container_echo<std::string>> __sub_1;
     std::optional<__coro_Container_labeled<int32_t>> __sub_2;

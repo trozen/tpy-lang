@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 // def gen() -> Iterator[str]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     Animal* p = nullptr;
     std::optional<Animal> __ptr_slot_f0;
 

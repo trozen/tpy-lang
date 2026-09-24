@@ -52,7 +52,7 @@ __gen_merge<T> merge(::tpy::varargs<const std::vector<T>> iterables);
 // def merge[T: Comparable](*iterables: list[T]) -> Iterator[Own[T]]:
 template <typename T>
 struct __gen_merge : public ::tpy::next_iter_mixin<__gen_merge<T>, T> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::varargs<const std::vector<T>> iterables;
     ::tpy::frame_slot<std::vector<int32_t>> cursors;
     ::tpy::frame_slot<std::vector<T>> src;
@@ -113,6 +113,7 @@ template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_merge<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         cursors.emplace(std::vector<int32_t>{});
         auto& __obj_0 = iterables;
         auto __beg_0 = __obj_0.begin();

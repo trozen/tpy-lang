@@ -14,6 +14,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_opt_branch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (::tpy::is_truthy(v)) {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
@@ -52,6 +53,7 @@ __coro_opt_branch opt_branch(std::optional<int32_t> v) {
 ::tpystd::tpy::Poll<int32_t> __coro_list_branch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if ((::tpy::__len__(xs) != 0)) {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
@@ -92,6 +94,7 @@ __coro_list_branch list_branch(const std::vector<int32_t>& xs) {
 ::tpystd::tpy::Poll<int32_t> __coro_str_while::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         n = 0;
         __state = S_JOIN_0;
         continue;
@@ -138,6 +141,7 @@ __coro_str_while str_while(std::string_view t) {
 ::tpystd::tpy::Poll<int32_t> __coro_and_branch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         if (((::tpy::__len__(xs) != 0) && ::tpy::is_truthy(v))) {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
@@ -179,6 +183,7 @@ __coro_and_branch and_branch(const std::vector<int32_t>& xs, std::optional<int32
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_async::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(0);
         __state = S_RESUME_0;
         continue;

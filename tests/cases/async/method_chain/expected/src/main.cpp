@@ -13,6 +13,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         m.emplace(Math(7));
         __sub_0.emplace((*m));
         __state = S_RESUME_0;
@@ -44,6 +45,7 @@ __coro_main_coro main_coro() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::mul_check<int32_t>(__self.base, 2));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -60,6 +62,7 @@ __coro_main_coro main_coro() {
 ::tpystd::tpy::Poll<int32_t> __coro_Math_quad_base::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __sub_0.emplace(__self);
         __state = S_RESUME_0;
         continue;

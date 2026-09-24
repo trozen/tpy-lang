@@ -120,6 +120,7 @@ __gen_gen gen(B& b) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         auto& __ctx_8 = b.guard_m();
         q = __ctx_8.__enter__();
         try {

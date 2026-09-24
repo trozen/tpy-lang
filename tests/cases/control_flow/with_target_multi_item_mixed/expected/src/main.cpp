@@ -16,6 +16,7 @@ Item* SHARED{};
 std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
         __with_ctx_0.emplace(Owner(5));
         auto& __ctx_1 = (*__with_ctx_0);
         owned.emplace(__ctx_1.__enter__());

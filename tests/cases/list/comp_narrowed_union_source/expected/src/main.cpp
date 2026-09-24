@@ -9,7 +9,7 @@ namespace {
 
 // return sum(x for x in u)  # tpyc: ok
 struct __genexpr_total_1_frame : public ::tpy::next_iter_mixin<__genexpr_total_1_frame, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     int32_t x;
     using __for_src_0_t = decltype((__src));
@@ -95,7 +95,7 @@ namespace {
 // return sum(x * len(w) for x in u)  # tpyc: ok
 template <typename F_w>
 struct __genexpr_scaled_2_frame : public ::tpy::next_iter_mixin<__genexpr_scaled_2_frame<F_w>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const std::vector<int32_t>& __src;
     F_w w;
     int32_t x;
@@ -165,7 +165,7 @@ namespace {
 // return sum(i * len(w) for i in range(3))  # tpyc: ok
 template <typename F_w>
 struct __genexpr_ranged_3_frame : public ::tpy::next_iter_mixin<__genexpr_ranged_3_frame<F_w>, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t __r0;
     F_w w;
     int32_t i;
@@ -193,7 +193,9 @@ struct __genexpr_ranged_3_frame : public ::tpy::next_iter_mixin<__genexpr_ranged
 // return sum(i * len(w) for i in range(3))  # tpyc: ok  # -> S_RESUME_0
 template <typename F_w>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_ranged_3_frame<F_w>::__next__() {
-    if (__state == S_INITIAL) {
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(__r0));
         __state = S_JOIN_0;

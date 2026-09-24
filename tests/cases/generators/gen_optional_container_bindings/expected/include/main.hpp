@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const R& obj) {
 
 // async def fill(d: Optional[dict[str, int32]]) -> int32:  # tpyc: ok
 struct __coro_fill {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::ordered_map<std::string, int32_t>* d;
 
@@ -66,7 +66,7 @@ struct __coro_fill {
 
 // def twice(b: Optional[bytearray]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_twice : public ::tpy::next_iter_mixin<__gen_twice, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::ByteArray* b;
 
     enum : int32_t {
@@ -89,7 +89,7 @@ struct __gen_twice : public ::tpy::next_iter_mixin<__gen_twice, int32_t> {
 
 // def twice_r(r: Optional[R]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_twice_r : public ::tpy::next_iter_mixin<__gen_twice_r, int32_t> {
-    int32_t __state;
+    ::tpy::frame_state __state;
     R* r;
 
     enum : int32_t {
