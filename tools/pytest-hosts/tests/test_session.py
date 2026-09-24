@@ -86,8 +86,10 @@ def test_after_sync_command_gates_on_venv_and_hash():
     forced = session.after_sync_command(REMOTE, SETTINGS, "abc", force_setup=True)
     assert "if " not in forced and "bash -lc" in forced
 
-    no_setup = session.after_sync_command(REMOTE, cfg.ProjectSettings(), "abc", force_setup=True)
-    assert no_setup == f"cd {REMOTE.tree} && touch {REMOTE.stamp}"
+    no_setup = session.after_sync_command(REMOTE, cfg.ProjectSettings(), "abc", force_setup=True,
+                                          host_tmp="/srv/tmp")
+    roots = " ".join(REMOTE.worker_tmp("/srv/tmp", i) for i in range(REMOTE.workers))
+    assert no_setup == f"cd {REMOTE.tree} && touch {REMOTE.stamp} && mkdir -p {roots}"
 
 
 def test_quoting_survives_odd_paths():
@@ -128,16 +130,21 @@ def test_after_sync_reports_and_dedups_pytest():
     assert "PYTEST" not in session.after_sync_command(REMOTE, SETTINGS, "abc", force_setup=False)
 
 
-def test_probe_reports_home_and_path():
-    assert session.probe_command() == 'printf "%s\\n%s" "$HOME" "$PATH"'
+def test_probe_reports_home_path_and_tmp():
+    assert session.probe_command() == 'printf "%s\\n%s\\n%s" "$HOME" "$PATH" "${TMPDIR:-/tmp}"'
 
 
-def test_worker_env_prepends_path_only_when_configured():
-    hs = session.HostSession(remote=REMOTE, path="/usr/bin:/bin")
-    assert hs.worker_env() == {"PATH": "/opt/tc/bin:/usr/bin:/bin"}
-    plain = plan.plan_remote(cfg.HostConfig(name="p", ssh="p", workers=1), Path("/x"), "l",
-                             ssh_config="/c", control_dir="/d")
-    assert session.HostSession(remote=plain, path="/usr/bin").worker_env() == {}
+def test_worker_env_has_a_temp_root_per_worker_and_the_path_prefix():
+    hs = session.HostSession(remote=REMOTE, path="/usr/bin:/bin", tmp="/srv/tmp")
+    tid = REMOTE.parent.rsplit("/", 1)[1]
+    assert hs.worker_env(0) == {"PYTEST_DEBUG_TEMPROOT": f"/srv/tmp/pytest-hosts-{tid}/w0",
+                                "PATH": "/opt/tc/bin:/usr/bin:/bin"}
+    assert hs.worker_env(7)["PYTEST_DEBUG_TEMPROOT"].endswith("/w7")
+    plain = plan.plan_remote(cfg.HostConfig(name="p", ssh="p", workers=1, tmp="/fast"),
+                             Path("/x"), "l", ssh_config="/c", control_dir="/d")
+    env = session.HostSession(remote=plain, path="/usr/bin", tmp="/tmp").worker_env(0)
+    assert set(env) == {"PYTEST_DEBUG_TEMPROOT"}
+    assert env["PYTEST_DEBUG_TEMPROOT"].startswith("/fast/pytest-hosts-")  # config beats the host
 
 
 # --- the slot gate, with a fake ssh holder ------------------------------------
@@ -372,6 +379,18 @@ def test_pull_all_skips_hosts_that_never_prepared(monkeypatch):
     monkeypatch.setattr(s, "pull", lambda hs: pulled.append(hs))
     s.pull_all()
     assert pulled == [ready]
+
+
+def test_probe_learns_home_path_and_tmp(monkeypatch):
+    s = make_session()
+    hs = session.HostSession(remote=s.remotes[0])
+    monkeypatch.setattr(session.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(
+        a[0], 0, stdout="/home/u\n/usr/bin:/bin\n/scratch/\n", stderr=""))
+    s.probe(hs)
+    assert hs.remote.parent.startswith("/home/u/.pytest-hosts/")
+    assert hs.path == "/usr/bin:/bin"
+    assert hs.tmp == "/scratch/"
+    assert hs.worker_env(0)["PYTEST_DEBUG_TEMPROOT"].startswith("/scratch/pytest-hosts-")
 
 
 def test_run_converts_a_timeout_into_a_host_error():

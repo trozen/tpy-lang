@@ -175,6 +175,7 @@ def remote_project(pytester, monkeypatch):
         workers = 2
         root = "{root}"
         lock_dir = "{pytester.path / 'locks'}"
+        tmp = "{pytester.path / 'hosttmp'}"
         path_prepend = "/opt/fake-toolchain/bin"
         [projects.demo]
         local = 1
@@ -208,7 +209,8 @@ def remote_project(pytester, monkeypatch):
             if wid:
                 with open(f"where-{os.getpid()}.txt", "w") as f:
                     f.write(os.getcwd() + " TOKEN=" + os.environ.get("DEMO_TOKEN", "-")
-                            + " PATH0=" + os.environ["PATH"].split(":")[0])
+                            + " PATH0=" + os.environ["PATH"].split(":")[0]
+                            + " TMP=" + os.environ.get("PYTEST_DEBUG_TEMPROOT", "-"))
                 # by rootdir: lands in the tree on a remote worker, so it must be pulled back
                 root = session.config.rootpath
                 (root / f"out-{wid}.txt").write_text("from " + wid)
@@ -258,10 +260,13 @@ def test_distributed_session_over_fake_ssh(remote_project, monkeypatch):
     # remote workers run with the tree's parent as cwd (xdist's layout) and
     # the tree as rootdir; both got the forwarded env
     remote_marks = sorted(p.read_text() for p in parent.glob("where-*.txt"))
-    assert remote_marks == [f"{parent} TOKEN=forwarded PATH0=/opt/fake-toolchain/bin"] * 2
+    tmp_root = pytester.path / "hosttmp" / f"pytest-hosts-{parent.name}"
+    assert remote_marks == [f"{parent} TOKEN=forwarded PATH0=/opt/fake-toolchain/bin TMP={tmp_root}/w{i}"
+                            for i in range(2)]  # one temp root per worker
+    assert (tmp_root / "w1").is_dir()
     local_marks = [p.read_text() for p in checkout.glob("where-*.txt")]
     assert len(local_marks) == 1 and local_marks[0].startswith(f"{checkout} TOKEN=forwarded PATH0=")
-    assert "fake-toolchain" not in local_marks[0]  # path_prepend is per host
+    assert "fake-toolchain" not in local_marks[0] and "hosttmp" not in local_marks[0]  # both per host
     # pull-back: what the remote workers wrote by rootdir is in the checkout
     # now, gitignored output is not, and the summary says so per host
     assert sorted(p.name for p in checkout.glob("out-*.txt")) == ["out-gw0.txt", "out-gw1.txt",
@@ -364,6 +369,7 @@ def test_cli_status_setup_clean(remote_project):
 
     assert cli.main(["clean"]) == 0
     assert not parent.exists()
+    assert not (pytester.path / "hosttmp" / f"pytest-hosts-{parent.name}").exists()
     with contextlib.redirect_stdout(io.StringIO()):
         assert cli.main(["status"]) == 0
 
@@ -443,6 +449,7 @@ def test_two_hosts(remote_project):
         workers = 1
         root = "{second_root}"
         lock_dir = "{pytester.path / 'locks2'}"
+        tmp = "{pytester.path / 'hosttmp2'}"
         [projects.demo.hosts.box2]
     """))
     (checkout / "test_more.py").write_text(
@@ -458,7 +465,14 @@ def test_two_hosts(remote_project):
     assert set(tallies) == {"local", "box", "box2"} and sum(tallies.values()) == 12
     assert tallies["box2"] >= 1
     assert sorted(p.name for p in checkout.glob("out-gw*.txt")) == [f"out-gw{i}.txt" for i in range(4)]
-    assert (next(second_root.iterdir()) / "demo" / "test_more.py").exists()
+    second_parent = next(second_root.iterdir())
+    assert (second_parent / "demo" / "test_more.py").exists()
+    # worker indices restart per host: box has w0 and w1, box2 its own w0
+    box_marks = sorted(p.read_text().rsplit("TMP=", 1)[1] for p in next(root.iterdir()).glob("where-*.txt"))
+    box2_marks = [p.read_text().rsplit("TMP=", 1)[1] for p in second_parent.glob("where-*.txt")]
+    assert [m.rsplit("/", 1)[1] for m in box_marks] == ["w0", "w1"]
+    assert [m.rsplit("/", 1)[1] for m in box2_marks] == ["w0"]
+    assert box2_marks[0].startswith(str(pytester.path / "hosttmp2"))
 
 
 def test_cli_overview(pytester, monkeypatch, capsys):

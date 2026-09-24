@@ -104,6 +104,8 @@ def test_checkout_override_alone_is_a_config(tmp_path):
     ('[local]\nworkers = -1', "positive integer"),
     ('[local]\nworker = 8', "[local]: unknown key 'worker' (valid: workers)"),
     ('[projects.p]\nbogus = 1', "[projects.p]: unknown key 'bogus' (valid: local, hosts)"),
+    ('[hosts.a]\nssh = "a"\nworkers = 1\ntmp = 3', "tmp must be a string"),
+    ('[hosts.a]\nssh = "a"\nworkers = 1\ntmp = "scratch"', "tmp must be an absolute path or start with ~"),
     ('[hosts.a]\nssh = "box"\nworkers = 1\n[hosts.b]\nssh = "box"\nworkers = 2',
      "[hosts.b] and [hosts.a] share the ssh alias 'box'"),
     ('[projects.p]\nhosts.nope = {}', "names no [hosts.nope]"),
@@ -178,7 +180,7 @@ def test_reference_matches_the_schema():
     assert hosts.hosts["bigbox"].workers == 60
     assert cfg.project_hosts(hosts, "my-project").host("bigbox").workers == 40
     for key in cfg.HOST_KEYS:
-        assert key in cfg.HOSTS_REFERENCE
+        assert f"{key} = " in cfg.HOSTS_REFERENCE  # a commented-out line still counts
     settings = cfg.parse_settings(tomllib.loads(cfg.PROJECT_REFERENCE))
     assert settings.setup == "uv sync -q"
     for key in cfg.SETTINGS_KEYS:

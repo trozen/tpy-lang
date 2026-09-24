@@ -101,13 +101,13 @@ def clean(project: cfg.Project, remotes: tuple[RemoteHost, ...]) -> int:
         hs = HostSession(remote=remote)
         try:
             session.probe(hs)
-            session.run(ssh_argv(hs.remote, f"rm -rf {shlex.quote(hs.remote.parent)}"),
-                        what=f"{hs.name}: clean")
+            targets = f"{shlex.quote(hs.remote.parent)} {shlex.quote(hs.remote.tmp_root(hs.tmp))}"
+            session.run(ssh_argv(hs.remote, f"rm -rf {targets}"), what=f"{hs.name}: clean")
         except HostError as exc:
             print(f"  {exc}")  # names the host itself
             failed += 1
             continue
-        print(f"  {hs.name}: removed {hs.remote.parent}")
+        print(f"  {hs.name}: removed {hs.remote.parent} and {hs.remote.tmp_root(hs.tmp)}")
     return 1 if failed else 0
 
 
@@ -120,7 +120,7 @@ def config_reference() -> int:
 COMMANDS = {
     "status": "reachability, free slots, this checkout's trees",
     "setup": "sync the trees and run the setup command, no tests",
-    "clean": "remove this checkout's trees and venvs from every host",
+    "clean": "remove this checkout's trees, venvs and temp roots from every host",
     "config": "print the annotated reference for both config files",
 }
 

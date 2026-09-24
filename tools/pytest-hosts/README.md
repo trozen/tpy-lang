@@ -27,7 +27,7 @@ project, the session is distributed. Otherwise nothing changes.
     pytest-hosts                # resolved config and the sub-commands
     pytest-hosts status         # reachability, slots, this checkout's trees
     pytest-hosts setup          # seed the trees without running tests
-    pytest-hosts clean          # remove this checkout's trees and venvs
+    pytest-hosts clean          # remove this checkout's trees, venvs, temp roots
     pytest-hosts config         # annotated reference for both config files
 
 ## Configuration
@@ -49,6 +49,7 @@ unknown key is rejected with the list of valid ones.
     root = "~/.pytest-hosts"    # where synced trees and venvs live
     unreachable = "error"       # or "local": run without this host, loudly
     lock_dir = "/tmp/pytest-hosts"   # slot lock files; shared by every user of the box
+    # tmp = "/scratch"                   # workers' temp root (absolute or ~); host TMPDIR when unset
     # ssh_config = "~/.ssh/bigbox.cfg"   # replaces the generated ssh config for this host
     # path_prepend = "/opt/toolchain/bin" # in front of PATH for workers and setup
 
@@ -107,9 +108,10 @@ beyond the missing-entry warning from the Rules above, which is an
 ordinary pytest config warning.
 
 1. Probe each host: one ssh command with a short connect timeout that
-   prints `$HOME` and the non-interactive `$PATH`. The home makes a `~`
-   root absolute (execnet chdirs without expanding it); the PATH is what
-   a configured `path_prepend` goes in front of for the workers. The
+   prints `$HOME`, the non-interactive `$PATH` and the host's temp dir.
+   The home makes a `~` root absolute (execnet chdirs without expanding
+   it); the PATH is what a configured `path_prepend` goes in front of
+   for the workers; the temp dir is where their temp roots go. The
    probe also opens the ControlMaster the rest of the session rides on.
    Unreachable: error, or, when the host says `unreachable = "local"`,
    a loud line and the run goes on without that host (the other hosts
@@ -140,7 +142,12 @@ ordinary pytest config warning.
    `ssh=` specs per host with the remote venv's python (or `python3` from
    the ssh session's PATH when the project has no setup command) and
    `chdir` set to the tree's parent (`<root>/<hash8>`); a `path_prepend`
-   becomes each worker's `PATH`. In `pytest_xdist_setupnodes`
+   becomes each worker's `PATH`, and each worker gets its own temp root
+   (`<tmp>/pytest-hosts-<hash8>/w<n>`, via `PYTEST_DEBUG_TEMPROOT`):
+   xdist hands a local worker its own basetemp but an ssh worker nothing,
+   and many workers sharing one `pytest-of-<user>` dir race each other's
+   cleanup. `pytest-hosts clean` removes the temp roots with the tree.
+   In `pytest_xdist_setupnodes`
    the checkout is appended to xdist's rsync roots (so its path
    rewriting keeps working) and marked as already synced for every spec.
    xdist would still ship its own `pytest` package to each worker, one

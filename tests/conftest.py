@@ -37,8 +37,9 @@ _LOG_PREFIX = "tpy|"
 
 
 def _log(msg: str, *, err: bool = False) -> None:
-    """Print a harness status/diagnostic line with the shared prefix."""
-    print(f"{_LOG_PREFIX} {msg}", file=sys.stderr if err else sys.stdout)
+    """Print a harness status/diagnostic line with the shared prefix.
+    Flushed, so a line announcing a long build shows before the build."""
+    print(f"{_LOG_PREFIX} {msg}", file=sys.stderr if err else sys.stdout, flush=True)
 
 
 # Import the compiler
@@ -529,6 +530,9 @@ def _get_or_build_persistent_stdlib_cache(root: Path) -> _StdlibCache | None:
             loaded = _load_persistent_stdlib_cache(cache_dir)
             if loaded is not None:
                 return loaded
+        _log("stdlib cache: building the stdlib .o files (keyed on the toolchain, "
+             "the runtime, the stdlib and the compiler source: the first run on a "
+             "machine and the first run after a tpyc edit wait here)...")
         t0 = time.monotonic()
         cache = _build_persistent_stdlib_cache(cache_dir)
         if cache is not None:
@@ -627,6 +631,7 @@ def get_pch_header() -> Path | None:
             if pch_gch.exists() and pch_header.exists():
                 _pch_path = pch_header
             else:
+                _log("PCH: building tpy_pch.hpp.gch (once per toolchain and runtime)...")
                 t0 = time.monotonic()
                 _pch_path = get_or_build_pch(
                     CPP_CONFIG, RUNTIME_DIR, opt_flags=[], pch_dir=pch_dir,

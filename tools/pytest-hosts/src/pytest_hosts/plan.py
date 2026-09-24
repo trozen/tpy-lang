@@ -38,6 +38,7 @@ class RemoteHost:
     ssh_config: str
     control_dir: str
     python: str
+    tmp_base: str | None = None  # the configured `tmp`, with `~` expanded like `root`
 
     @property
     def stamp(self) -> str:
@@ -46,6 +47,15 @@ class RemoteHost:
     @property
     def setup_hash_file(self) -> str:
         return f"{self.parent}/setup.hash"
+
+    def tmp_root(self, host_tmp: str) -> str:
+        """Where this checkout's workers keep their temp files on the host:
+        under the configured `tmp`, else the host's own temp dir."""
+        base = (self.tmp_base or host_tmp).rstrip("/")
+        return f"{base}/pytest-hosts-{self.parent.rsplit('/', 1)[1]}"
+
+    def worker_tmp(self, host_tmp: str, index: int) -> str:
+        return f"{self.tmp_root(host_tmp)}/w{index}"
 
 
 def tree_id(source_host: str, checkout: Path) -> str:
@@ -61,9 +71,7 @@ def plan_remote(host: HostConfig, checkout: Path, source_host: str, *, ssh_confi
     once the probe has learned it (execnet chdirs without expanding it).
     Without a setup command there is no venv to point at, so the workers
     run whatever `python3` the ssh session finds."""
-    root = host.root
-    if home is not None and (root == "~" or root.startswith("~/")):
-        root = home + root[1:]
+    root = _expand_home(host.root, home)
     parent = f"{root.rstrip('/')}/{tree_id(source_host, checkout)}"
     venv = f"{parent}/{VENV_NAME}"
     return RemoteHost(
@@ -75,7 +83,16 @@ def plan_remote(host: HostConfig, checkout: Path, source_host: str, *, ssh_confi
         ssh_config=host.ssh_config or ssh_config,
         control_dir=control_dir,
         python=f"{venv}/bin/python" if use_venv else "python3",
+        tmp_base=_expand_home(host.tmp, home) if host.tmp else None,
     )
+
+
+def _expand_home(path: str, home: str | None) -> str:
+    """A leading `~` becomes the probed home; until the probe ran it stays
+    (execnet chdirs without expanding it, so nothing may use it before)."""
+    if home is not None and (path == "~" or path.startswith("~/")):
+        return home + path[1:]
+    return path
 
 
 def with_home(remote: RemoteHost, home: str, checkout: Path, source_host: str) -> RemoteHost:

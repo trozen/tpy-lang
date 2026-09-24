@@ -104,9 +104,10 @@ def ssh_argv(remote: RemoteHost, command: str, *, connect_timeout: int | None = 
 
 
 def probe_command() -> str:
-    """Home (to make the root absolute) and the non-interactive PATH (the
-    base a configured path_prepend goes in front of for the workers)."""
-    return 'printf "%s\\n%s" "$HOME" "$PATH"'
+    """Home (to make the root absolute), the non-interactive PATH (the base
+    a configured path_prepend goes in front of for the workers) and the
+    host's temp dir (where the workers' temp roots go)."""
+    return 'printf "%s\\n%s\\n%s" "$HOME" "$PATH" "${TMPDIR:-/tmp}"'
 
 
 def lock_command(host: HostConfig, slot: int) -> str:
@@ -141,7 +142,8 @@ def setup_hash(settings: ProjectSettings, checkout: Path) -> str:
 
 
 def after_sync_command(remote: RemoteHost, settings: ProjectSettings, digest: str, *,
-                       force_setup: bool, local_pytest: str | None = None) -> str:
+                       force_setup: bool, local_pytest: str | None = None,
+                       host_tmp: str = "/tmp") -> str:
     """Run the setup command when the venv is missing, the setup inputs
     changed, or it was asked for; then touch the stamp, so what setup wrote
     in the tree (a lockfile) does not count as written by the run. Prints
@@ -164,6 +166,9 @@ def after_sync_command(remote: RemoteHost, settings: ProjectSettings, digest: st
                      f'[ "$(cat {shlex.quote(remote.setup_hash_file)} 2>/dev/null)" != {digest} ]')
             parts.append(f"if {stale}; then {run}; fi")
     parts.append(f"touch {shlex.quote(remote.stamp)}")
+    # pytest needs the temp root to exist; one per worker
+    roots = " ".join(shlex.quote(remote.worker_tmp(host_tmp, i)) for i in range(remote.workers))
+    parts.append(f"mkdir -p {roots}")
     if local_pytest is not None:
         version = (f'v=$({shlex.quote(remote.python)} -c "import pytest; print(pytest.__version__)")'
                    f' && echo "PYTEST=$v"')
@@ -219,6 +224,7 @@ class HostSession:
     prepared: bool = False  # synced and set up: the only hosts pulled back from
     drain: threading.Thread | None = None  # reads what ssh says after LOCKED
     path: str = ""  # the host's non-interactive PATH, from the probe
+    tmp: str = "/tmp"  # the host's temp dir, from the probe
     pytest_version: str | None = None  # the tree's; None until after_sync
     ran_tests: int = 0
     pulled: list[str] = field(default_factory=list)
@@ -229,14 +235,18 @@ class HostSession:
     def name(self) -> str:
         return self.remote.host.name
 
-    def worker_env(self) -> dict[str, str]:
-        """What every worker on this host gets on top of the forwarded env:
+    def worker_env(self, index: int) -> dict[str, str]:
+        """What worker `index` on this host gets on top of the forwarded env.
         execnet launches the worker's python straight over ssh, so a
-        configured path_prepend has to be applied there by hand."""
+        configured path_prepend has to be applied there by hand. Each
+        worker gets its own temp root: xdist hands a local worker its own
+        basetemp but an ssh worker nothing, and eighty workers sharing one
+        pytest-of-<user> dir race each other's numbered-dir cleanup."""
+        env = {"PYTEST_DEBUG_TEMPROOT": self.remote.worker_tmp(self.tmp, index)}
         prepend = self.remote.host.path_prepend
-        if not prepend:
-            return {}
-        return {"PATH": f"{prepend}:{self.path}" if self.path else prepend}
+        if prepend:
+            env["PATH"] = f"{prepend}:{self.path}" if self.path else prepend
+        return env
 
     def uses_tree_pytest(self, local_pytest: str) -> bool:
         return self.pytest_version == local_pytest
@@ -286,11 +296,12 @@ class Session:
             raise HostError(f"{hs.name}: unreachable (ssh timed out)") from None
         if proc.returncode != 0:
             raise HostError(f"{hs.name}: unreachable: {proc.stderr.strip()}")
-        home, _, path = proc.stdout.strip().partition("\n")
+        home, path, tmp = (proc.stdout.strip().split("\n") + ["", ""])[:3]
         if not home.startswith("/"):
             raise HostError(f"{hs.name}: probe returned no home directory ({home!r})")
         hs.remote = with_home(hs.remote, home, self.checkout, self.source_host)
         hs.path = path
+        hs.tmp = tmp or "/tmp"
 
     def take_slot(self, hs: HostSession) -> None:
         host = hs.remote.host
@@ -357,7 +368,7 @@ class Session:
     def after_sync(self, hs: HostSession) -> None:
         digest = setup_hash(self.settings, self.checkout)
         command = after_sync_command(hs.remote, self.settings, digest, force_setup=self.force_setup,
-                                     local_pytest=self.local_pytest)
+                                     local_pytest=self.local_pytest, host_tmp=hs.tmp)
         proc = self.run(ssh_argv(hs.remote, command), what=f"{hs.name}: setup")
         lines = proc.stdout.splitlines()
         hs.setup_ran = "SETUP" in lines

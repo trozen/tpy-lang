@@ -299,15 +299,19 @@ def pytest_xdist_setupnodes(config: pytest.Config, specs) -> None:
         nodemanager.roots.append(checkout)
     forwarded = {name: os.environ[name] for name in project.settings.env if name in os.environ}
     by_alias = {hs.remote.host.ssh: hs for hs in hosts.active}
+    index_on_host: dict[str, int] = {}
     for spec in specs:
         nodemanager._rsynced_specs.add((spec, checkout))
         if spec.ssh is None:
             continue
         spec.env.update(forwarded)
-        hs = by_alias.get(spec.ssh.split()[-1])
+        alias = spec.ssh.split()[-1]
+        hs = by_alias.get(alias)
         if hs is None:
             continue
-        spec.env.update(hs.worker_env())
+        index = index_on_host.get(alias, 0)
+        index_on_host[alias] = index + 1
+        spec.env.update(hs.worker_env(index))
         if hs.uses_tree_pytest(pytest.__version__):
             for root in nodemanager.roots:
                 nodemanager._rsynced_specs.add((spec, root))

@@ -19,7 +19,7 @@ TOOL_TABLE = "pytest-hosts"
 TOP_KEYS = ("local", "hosts", "projects")
 LOCAL_KEYS = ("workers",)
 HOST_KEYS = ("ssh", "workers", "slots", "root", "unreachable", "ssh_config", "path_prepend",
-             "lock_dir")
+             "lock_dir", "tmp")
 PROJECT_KEYS = ("local", "hosts")
 PROJECT_HOST_KEYS = ("workers",)
 SETTINGS_KEYS = ("setup", "setup_when", "env", "ignore", "pull")
@@ -41,6 +41,7 @@ slots = 1                   # concurrent sessions this host accepts; others queu
 root = "~/.pytest-hosts"    # where synced trees and venvs live
 unreachable = "error"       # or "local": run without this host, loudly
 lock_dir = "/tmp/pytest-hosts"  # slot lock files; shared by every user of the box
+# tmp = "/scratch"                    # workers' temp root; the host's TMPDIR when unset
 # ssh_config = "~/.ssh/bigbox.cfg"    # replaces the generated ssh config for this host
 # path_prepend = "/opt/toolchain/bin"  # in front of PATH for workers and setup
 
@@ -79,6 +80,7 @@ class HostConfig:
     ssh_config: str | None = None
     path_prepend: str | None = None
     lock_dir: str = "/tmp/pytest-hosts"
+    tmp: str | None = None  # workers' temp root; the host's TMPDIR when unset
 
 
 @dataclass(frozen=True)
@@ -189,6 +191,15 @@ def _str(table: dict[str, Any], key: str, where: str, default: str | None = None
     return value
 
 
+def _path(table: dict[str, Any], key: str, where: str) -> str | None:
+    """An absolute or `~`-relative host path; a relative one would be taken
+    against whatever cwd the command happens to run in."""
+    value = _str(table, key, where)
+    if value is not None and not (value.startswith("/") or value == "~" or value.startswith("~/")):
+        raise ConfigError(f"{where}: {key} must be an absolute path or start with ~, got {value!r}")
+    return value
+
+
 def _host(name: str, table: Any, where: str) -> HostConfig:
     if not isinstance(table, dict):
         raise ConfigError(f"{where}: must be a table")
@@ -214,6 +225,7 @@ def _host(name: str, table: Any, where: str) -> HostConfig:
         ssh_config=_str(table, "ssh_config", where),
         path_prepend=_str(table, "path_prepend", where),
         lock_dir=_str(table, "lock_dir", where, "/tmp/pytest-hosts") or "/tmp/pytest-hosts",
+        tmp=_path(table, "tmp", where),
     )
 
 

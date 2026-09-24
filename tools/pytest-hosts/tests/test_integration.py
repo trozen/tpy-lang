@@ -5,12 +5,14 @@ otherwise."""
 import contextlib
 import io
 import os
+import socket
 import subprocess
 import textwrap
 
 import pytest
 
 from pytest_hosts import cli as cli_module
+from pytest_hosts.plan import tree_id
 
 HOST = os.environ.get("PYTEST_HOSTS_TEST_HOST")
 
@@ -95,6 +97,14 @@ def test_real_host_session(real_project, monkeypatch):
                                  capture_output=True, text=True, check=True).stdout.strip()
     for i in range(1, 13):
         assert (checkout / f"out-gw{i}.txt").read_text() == f"{remote_host} forwarded"
+    # one temp root per remote worker, under the host's own temp dir
+    host_tmp = subprocess.run(["ssh", "-o", "BatchMode=yes", HOST, 'printf %s "${TMPDIR:-/tmp}"'],
+                              capture_output=True, text=True, check=True).stdout
+    tid = tree_id(socket.gethostname(), checkout)  # this checkout's roots, not another tree's
+    listing = subprocess.run(["ssh", "-o", "BatchMode=yes", HOST,
+                              f"ls {host_tmp.rstrip('/')}/pytest-hosts-{tid}/"],
+                             capture_output=True, text=True, check=True).stdout.split()
+    assert {f"w{i}" for i in range(12)} <= set(listing)
     # the local worker's log is written in place; the remote ones stay remote
     assert [p.name for p in checkout.glob("noise-gw*.log")] == ["noise-gw0.log"]
 

@@ -49,6 +49,19 @@ def test_tree_id_separates_machines_and_checkouts():
     assert a != plan.tree_id("laptop", Path("/home/me/src/demo-wt2"))
 
 
+def test_tmp_base_expands_home_and_drops_a_trailing_slash():
+    host = cfg.HostConfig(name="t", ssh="t", workers=1, tmp="~/fast/tmp/")
+    before = plan.plan_remote(host, CHECKOUT, "l", ssh_config=CFG, control_dir="/d")
+    assert before.tmp_base == "~/fast/tmp/"  # untouched until the probe knows home
+    after = plan.with_home(before, "/home/u", CHECKOUT, "l")
+    tid = plan.tree_id("l", CHECKOUT)
+    assert after.tmp_root("/tmp") == f"/home/u/fast/tmp/pytest-hosts-{tid}"
+    assert after.worker_tmp("/tmp", 3).endswith(f"/pytest-hosts-{tid}/w3")
+    # no tmp configured: the probed host temp dir, trailing slash dropped
+    plain = plan_remote(HF.hosts["big"])  # source host "laptop"
+    assert plain.tmp_root("/srv/tmp/") == f"/srv/tmp/pytest-hosts-{plan.tree_id('laptop', CHECKOUT)}"
+
+
 def test_home_expands_tilde_root_only():
     tilde = plan_remote(HF.hosts["big"], home="/home/u")
     assert tilde.parent.startswith("/home/u/.pytest-hosts/")
