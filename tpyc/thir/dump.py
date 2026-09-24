@@ -57,6 +57,7 @@ from .nodes import (
     THIRModuleVar,
     THIRConsumingIter,
     THIRCopy,
+    THIRSlotEmplace,
     THIRDecayCopy,
     THIRMove,
     THIRName,
@@ -259,6 +260,8 @@ def _expr(e: THIRExpr) -> str:
         # the module-cumulative sink.
         mods = (" move" if e.move else "") + (" addr" if e.addr_of else "")
         return f"%argtmp({e.cpp_type or 'auto'}{mods}){{{_expr(e.init)}}}"
+    if isinstance(e, THIRSlotEmplace):
+        return f"slot_emplace[{e.cpp_type}]({_expr(e.value)})"
     if isinstance(e, THIRCopy):
         return f"copy[{e.cpp_type}]({_expr(e.value)})"
     if isinstance(e, THIRConsumingIter):

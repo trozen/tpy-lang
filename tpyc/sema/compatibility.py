@@ -27,7 +27,7 @@ from ..typesys import (
     disambiguated_pair, ConcreteCoroType, recorded_return_borrow_sources)
 from .. import qnames
 from ..value_category import (
-    async_result_aliases, peel_value_wrappers,
+    async_result_aliases, is_rvalue_source, peel_value_wrappers,
     property_access_returns_cpp_ref, returns_borrow)
 from . import own_copy
 from .frame_traits import frame_traits_of_function, frame_type_of_function
@@ -2128,11 +2128,16 @@ class TypeCompatibility:
         # Subscript on an lvalue is also an lvalue (e.g., arr[i])
         if isinstance(expr, TpySubscript):
             return self.is_lvalue(expr.obj)
-        # A ternary of two lvalue arms is itself an lvalue (C++ binds it as a
-        # reference) -- so passing it to an Own[T] slot copies the chosen arm,
-        # which must route through the same "copies into owned storage" warning
-        # a plain lvalue does (a mixed lvalue/rvalue ternary is a prvalue and is
-        # handled by the reference-ternary copy diagnostic instead).
+        # A non-value ternary or and/or select is the classifier's: an lvalue
+        # unless every operand is fresh (a fresh operand beside an lvalue one
+        # is emplaced into a slot).
+        # So an owning slot copies the chosen arm and warns, and a local
+        # bound from it borrows rather than owns.
+        if isinstance(expr, TpyIfExpr) or (
+                isinstance(expr, TpyBinOp) and expr.op in ("&&", "||")):
+            rt = self.ctx.get_expr_type(expr)
+            if rt is not None and not rt.is_value_type():
+                return not is_rvalue_source(self.ctx, expr)
         if isinstance(expr, TpyIfExpr):
             return self.is_lvalue(expr.then_expr) and self.is_lvalue(expr.else_expr)
         # A `@property` read is a method call from the moment sema resolves
@@ -3990,10 +3995,11 @@ class TypeCompatibility:
         slot and owned-storage member asks before its copy rule.
 
         A walrus renders `(d = &(c), *d)`, a read of the named object that
-        never moves, so the bound name takes no last-use exemption. A mixed
-        ternary is judged wherever it lowers; a RECORD or protocol result is
-        the one shape the lowering refuses at an owning slot, so it is left
-        to that reject rather than pre-empted by a per-arm verdict."""
+        never moves, so the bound name takes no last-use exemption. A
+        reference-type ternary with an existing-object arm is an lvalue to
+        the classifier, so `is_lvalue` answers it; the per-arm fallback below
+        serves the ternaries it does not, and a protocol or record result is
+        left to the lowering."""
         if expr is None:
             return False
         if (self.is_lvalue(expr) or self._tuple_call_carries_borrow(expr)
@@ -4034,8 +4040,14 @@ class TypeCompatibility:
                     return True
                 continue
             # A prvalue arm (constructor call, literal) materializes in place;
-            # only a named arm names storage that outlives the store.
+            # an arm the classifier calls an lvalue (an element, a field, a
+            # borrow-returning call) names storage that outlives the store.
             if not isinstance(arm, TpyName):
+                if not is_rvalue_source(self.ctx, arm):
+                    at = self.ctx.get_expr_type(arm)
+                    if (at is not None and not unwrap_qualifiers(
+                            at).is_value_type()):
+                        return True
                 continue
             scope_type = (self.ctx.func.current_scope.lookup(arm.name)
                           if self.ctx.func.current_scope else None)

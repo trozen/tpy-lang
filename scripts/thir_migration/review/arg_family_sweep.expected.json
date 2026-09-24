@@ -25490,29 +25490,29 @@
   ""
  ],
  "rec_own__mut__ternary_calls__ctor": [
-  "reject:expr.ifexpr",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(R move){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}]) print(%k0.tag [raw])"
  ],
  "rec_own__mut__ternary_calls__fn": [
-  "reject:expr.ifexpr",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(R move){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "rec_own__mut__ternary_calls__gen": [
-  "reject:expr.ifexpr",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(R move){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "rec_own__mut__ternary_calls__genrec": [
-  "reject:expr.ifexpr",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%g, CALLEE, [%argtmp(R move){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "rec_own__mut__ternary_calls__meth": [
-  "reject:expr.ifexpr",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%t, CALLEE, [%argtmp(R move){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "rec_own__mut__ternary_calls__nested": [
   "reject:expr.call:call.ctor_arg.own_record_f1",
@@ -25525,9 +25525,9 @@
   ""
  ],
  "rec_own__mut__ternary_calls__static": [
-  "reject:expr.ifexpr",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(R move){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "rec_own__mut__ternary_names__ctor": [
   "ok",
@@ -26450,29 +26450,29 @@
   ""
  ],
  "rec_own__ro__ternary_calls__ctor": [
-  "reject:expr.ifexpr",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(R move){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}]) print(%k0.tag [raw])"
  ],
  "rec_own__ro__ternary_calls__fn": [
-  "reject:expr.ifexpr",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(R move){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "rec_own__ro__ternary_calls__gen": [
-  "reject:expr.ifexpr",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(R move){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "rec_own__ro__ternary_calls__genrec": [
-  "reject:expr.ifexpr",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%g, CALLEE, [%argtmp(R move){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "rec_own__ro__ternary_calls__meth": [
-  "reject:expr.ifexpr",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%t, CALLEE, [%argtmp(R move){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "rec_own__ro__ternary_calls__nested": [
   "reject:expr.call:call.ctor_arg.own_record_f1",
@@ -26485,9 +26485,9 @@
   ""
  ],
  "rec_own__ro__ternary_calls__static": [
-  "reject:expr.ifexpr",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(R move){ifexpr(call(cond, []) ? call(mk, []) : call(mk, []))}])"
  ],
  "rec_own__ro__ternary_names__ctor": [
   "ok",

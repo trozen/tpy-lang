@@ -1,0 +1,73 @@
+decl True 2 2 0
+ctor True 2 2
+elem True 2 2
+list_ctor True 3 3
+list True 4 4
+recv True 2 0
+recv_ba True 2 0
+own_arg True 1 0
+own_arg_copy True 1 0
+append True 1 0
+append_copy True 2 1 0
+return True 1 0
+ctor_init True 1 1 3 0
+fresh True 3 3 2 2 2 2 3
+nested True 2 2 1 0 2
+nested True 2 2 1 2 2
+copy True 1 2 0
+own_list True 1
+decl False 1 11 1
+ctor False 1 11
+elem False 1 10
+list_ctor False 2 4
+list False 3 2
+recv False 1 1
+recv_ba False 1 1
+own_arg False 10 1
+own_arg_copy False 10 2
+append False 10 1
+append_copy False 11 1 2
+return False 10 1
+ctor_init False 10 2 9 1
+fresh False 1 3 1 2 1 3 4
+nested False 1 2 2 0 2
+nested False 1 2 2 1 2
+copy False 1 11 1
+own_list False 2
+match 1 True 2 2 0
+match 1 False 1 11 1
+params True 1 10 1
+params True 3 12 2
+params False 1 10 1
+params False 2 10 1
+dict_elem True 2 2
+dict_elem False 1 2
+alias_bump 2 2 1
+str_recv DFLT False
+str_recv AB True
+closure_aliases 4 1 2
+closure_escape 3 3
+closure_escape 2 3
+give_or 1 2
+give_or 0 3
+or_pos 1 2 3
+async_own_sel 1 2
+or_pos 0 3 4
+async_own_sel 0 51
+async 203 3
+async 1104 4
+branch 1 0 1 4 1
+branch 1 7 1 7 1
+branch 2 2 0 2 0
+branch 2 8 1 8 0
+async_zero 1106 0
+gen_zero [11, 6] 0
+gen [2, 3] 3
+gen [11, 4] 4
+loop 0 2
+loop 1 3
+loop 2 11
+loop_a 3 1
+comp [2, 11] 2 1
+closure 2 11 2 1
+meth 2 2 1

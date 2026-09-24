@@ -1,6 +1,7 @@
 # A NAME arm beside a CALL arm at an `Own[@dynamic protocol]` return: only the
 # call-pair ternary is admitted. Concretely, `make() if flag else q` mixes a
-# call arm with a plain name arm; TPy rejects that ternary today.
+# call arm with a plain name arm; TPy rejects that ternary today, at sema
+# (BUGS.md#reference-ternary-position-gaps).
 from typing import Protocol
 from tpy import Own, dynamic, readonly
 
@@ -22,7 +23,9 @@ def make() -> Own[Pet]:
 
 
 def pick(flag: bool, q: Own[Pet]) -> Own[Pet]:
-    return make() if flag else q  # tpyc: error(/expr.ifexpr/)
+    # The `q` arm could only reach the owning slot by a copy, and an owned
+    # dynamic-protocol handle has none.
+    return make() if flag else q  # tpyc: error(/cannot be returned as return type Own\[Pet\]/)
 
 
 def main() -> None:

@@ -155,6 +155,7 @@ from ...symbol_binding import SymbolKind, lookup_imported
 from ...coercions import wrap_into_any, CoercionContext
 from ...compilation_context import get_current_compiler
 from ...value_category import (
+    CONTAINER_LITERAL_NODES,
     lends_from_dying_source,
     property_access_returns_cpp_ref,
     frame_factory_callee, call_returns_cpp_ref, is_rvalue_source,
@@ -213,6 +214,7 @@ from ..nodes import (
     THIROptionalRead,
     THIRUnionLayout, THIRUnionTest, THIRUnionExtraction,
     THIRWalrus,
+    THIRSlotEmplace,
     THIRValueSelect,
     THIRNarrowedRead,
     THIROptionalPtrArg,
@@ -543,8 +545,9 @@ from .context import (_call_arg_forms, _ExprResultUse, _ExprUse, _LowerCtx,
                       _recv_forms, _NO_FORMS, _LEND_OK, _TRANSIENT_OK,
                       _ONLY_BTUPLE_SLOT,
                       _ONLY_FIELD_RECV_BORROW, _ONLY_INDIRECT_READ,
-                      _ONLY_PTR_OPT_PASSTHROUGH, _ONLY_TUPLE_SOURCE,
-                      _RecordCtorUse, CallArgKind,
+                      _ONLY_PTR_OPT_PASSTHROUGH, _ONLY_SELECT_PRVALUE,
+                      _ONLY_SELECT_SLOT,
+                      _ONLY_TUPLE_SOURCE, _RecordCtorUse, CallArgKind,
                       SinkForm, SinkPos, ValueOptKind,
                       _POS_FORMS)
 from .generics import expand_fi_template
@@ -777,7 +780,10 @@ from .checks import (
 )
 
 
-_COPY_SRC_USE = _ExprUse(result=_ExprResultUse.BORROW_BIND)
+# The copy-construct is a direct-init of owned storage, so a reference
+# ternary source takes its prvalue `?:` (`T(c ? a : make())` elides).
+_COPY_SRC_USE = _ExprUse(result=_ExprResultUse.BORROW_BIND,
+                         forms=_ONLY_SELECT_PRVALUE)
 
 
 def _lower_copy_record(e: TpyExpr, lc: '_LowerCtx',
@@ -3090,7 +3096,8 @@ def _contains_isinstance_fact(e: TpyExpr) -> bool:
 
 def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
                         lc: '_LowerCtx', declared: dict[str, TpyType],
-                        loc, *, temps_ok: bool = False) -> THIRExpr:
+                        loc, *, temps_ok: bool = False,
+                        slot_ok: bool = False) -> THIRExpr:
     """Value-position and/or -> THIRValueSelect (tier A: scalar / float /
     BigInt / str / bytes results -- the two view families share the
     `.empty()` truthiness and the view-vs-owned form split). Record results,
@@ -3120,7 +3127,8 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
         if res_u is not None and record_like(res_u, analyzer):
             if _contains_isinstance_fact(e.left):
                 rej("valuesel.isinstance_lhs")
-            return _lower_container_select(e, res_u, lc, declared, loc, rej)
+            return _lower_container_select(e, res_u, lc, declared, loc, rej,
+                                           slot_ok=slot_ok)
         rej("valuesel.result_type")
     if _contains_isinstance_fact(e.left):
         rej("valuesel.isinstance_lhs")
@@ -3237,13 +3245,12 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
 
 def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
                             declared: dict[str, TpyType], loc,
-                            rej) -> THIRExpr:
+                            rej, *, slot_ok: bool = False) -> THIRExpr:
     """Non-value and/or -- the reference slice over a
     container (list/dict/set) or F1-record result. An all-lvalue select is
     the truthy ternary aliasing the chosen operand
     (`((::tpy::__len__(a) != 0) ? a : b)`, a BORROW lvalue); an RVALUE RHS
-    takes the hoisted-`__logical_slot` pointer-select (`ptr_select_cpp`),
-    materializing lazily so short-circuit holds. Truthiness comes from the
+    takes a `THIRSlotEmplace` operand, materializing lazily so short-circuit holds. Truthiness comes from the
     shared classifier over the LHS operand's type, so the select and a plain
     `if` spell the same test (`.empty()` for bytearray, `__bool__` /
     `__len__` for a dunder-carrying record, the folded `true` otherwise).
@@ -3296,6 +3303,8 @@ def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
     rhs_rvalue = is_rvalue_source(analyzer, e.right)
     if not rhs_rvalue and not isinstance(e.right, TpyName):
         rej("valuesel.ref_shape")
+    if rhs_rvalue and not slot_ok:
+        rej("valuesel.ref_slot_position")
     rt = _ref_operand_type(e.right)
     # The lhs arm binds/aliases as the result type (`&(lhs)` / the bare
     # ternary arm), so its render must match; the rvalue RHS is
@@ -3308,13 +3317,16 @@ def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
     lowered_lhs = _lower_operand(e.left, lt)
     lhs_temp_cpp = None if isinstance(e.left, TpyName) else "auto&&"
     lowered_rhs = _lower_operand(e.right, rt)
+    if rhs_rvalue:
+        lowered_rhs = THIRSlotEmplace(result_type=rtu, value=lowered_rhs,
+                                      cpp_type=lc.render_type(rtu),
+                                      form=Form.BORROW, loc=loc)
     _witness("binop.container_select")
     if truthy_mode is TruthinessMode.RECORD_BOOL:
         _witness("binop.select_bool_dunder")
     return THIRValueSelect(
         result_type=rtu, lhs=lowered_lhs, rhs=lowered_rhs, op=e.op,
         truthy_mode=truthy_mode, lhs_temp_cpp=lhs_temp_cpp,
-        ptr_select_cpp=lc.render_type(rtu) if rhs_rvalue else None,
         form=Form.BORROW, loc=loc)
 
 
@@ -3413,7 +3425,7 @@ def _arith_operand_use(side: TpyExpr, analyzer, *, temps_ok: bool,
 def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                  declared: dict[str, TpyType], loc, *,
                  fold_ok: bool = False, slot_threaded: bool = False,
-                 temps_ok: bool = False) -> THIRExpr:
+                 temps_ok: bool = False, slot_ok: bool = False) -> THIRExpr:
     # `temps_ok` rides the enclosing use's allow_temps: operand temps flush
     # at the enclosing statement, so a flushable position's right extends
     # into call-shaped operands. Cond positions thread False (unchanged).
@@ -3922,7 +3934,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # carries the incoming flush right (temps_ok itself was left
             # unchanged for the operand path above).
             return _lower_value_select(e, rtype, lc, declared, loc,
-                                       temps_ok=logical_rhs_temps)
+                                       temps_ok=logical_rhs_temps,
+                                       slot_ok=slot_ok)
         lt = _declared_type(e.left, declared, analyzer)
         rt = _declared_type(e.right, declared, analyzer)
         if (lt is None or not is_bool_type(lt)
@@ -7400,7 +7413,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         return _lower_binop(e, rtype, lc, declared, loc,
                             fold_ok=use.admits(SinkForm.LITERAL_FOLD),
                             slot_threaded=use.slot_target is not None,
-                            temps_ok=use.allow_temps)
+                            temps_ok=use.allow_temps,
+                            slot_ok=_select_slot_ok(use, lc))
     if isinstance(e, TpyUnaryOp):
         # A negated int literal folds to a plain literal (the negated value
         # renders directly); otherwise only logical `not` is admitted (bool
@@ -7948,8 +7962,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         return _lower_if_expr(e, rtype, lc, declared, loc,
                               cond_temps_ok=use.allow_temps,
                               elem_storage=elem_storage,
-                              record_prvalue_ok=use.admits(
-                                  SinkForm.RECORD_PRVALUE))
+                              prvalue_ok=use.admits(
+                                  SinkForm.SELECT_PRVALUE),
+                              slot_ok=_select_slot_ok(use, lc))
     if isinstance(e, TpyCall):
         if not isinstance(e.func, TpyName):
             return _lower_computed_call(e, e.func, rtype, lc, declared, use)
@@ -9954,6 +9969,15 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                           and _witness("method.ptr_template_call_recv"))):
                 note_detail(_recv_shape_reject(e.obj, declared, analyzer))
                 raise ThirUnsupported(call_reject_reason("expr.method_call"))
+            if (_select_has_fresh_operand(e.obj, analyzer)
+                    and (fi is None or frame_factory_callee(fi)
+                         or fi.is_async or not arg_lend_ok(fi, -1))):
+                # The select's fresh operand lives in a slot that dies with
+                # the statement's block; a result that borrows the receiver
+                # (a `self` reference, a view, an iterator, a frame holding
+                # `self`) could outlive it.
+                note_detail("method.recv.select_slot_lend")
+                raise ThirUnsupported(call_reject_reason("expr.method_call"))
             if (e.needs_optional_runtime_check
                     # The WIDE pointee class: the checked deref is
                     # pointee-blind (a `T*` null check plus a `.` member
@@ -11292,6 +11316,8 @@ def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
                   declared: dict[str, TpyType]) -> THIRExpr:
     global_scope = lc.global_binding_scope
     lc.global_binding_scope = False
+    in_lambda_body = lc.in_lambda_body
+    lc.in_lambda_body = True
     try:
         return _lower_lambda_impl(e, lc, declared)
     except ThirUnsupported as ex:
@@ -11303,6 +11329,7 @@ def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
         raise ThirUnsupported(f"expr.lambda:{cause}", loc=e.loc) from None
     finally:
         lc.global_binding_scope = global_scope
+        lc.in_lambda_body = in_lambda_body
 
 
 def _lower_lambda_impl(e: TpyLambda, lc: '_LowerCtx',
@@ -14347,6 +14374,12 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # second answer is a second chance to disagree.
     _lend_ok = arg_lend_ok(callee_fi, arg_index)
     _lend_forms = _LEND_OK if _lend_ok else _NO_FORMS
+    # An `Own[T]` slot direct-initializes storage of its own, so a reference
+    # ternary takes its prvalue `?:` here rather than the lvalue render.
+    _own_slot_forms = (_ONLY_SELECT_PRVALUE
+                       if isinstance(unwrap_readonly(unwrap_ref_type(
+                           unwrap_send_sync(ptype))), OwnType)
+                       else _NO_FORMS)
     if lends_from_dying_source(lc.analyzer, a) and not _lend_ok:
         # THE argument sink, asserted at its ENTRY. Every argument -- free
         # call, method, builtin stub, ctor -- reaches this function, but it
@@ -15707,7 +15740,10 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                        or is_str_view_type(ow))
             lowered = _lower_expr(a, lc, declared,
                                   use=replace(_NESTED_ARG_USE,
-                                              pos=SinkPos.CALL_ARG),
+                                              pos=SinkPos.CALL_ARG,
+                                              forms=(_POS_FORMS[
+                                                  SinkPos.CALL_ARG]
+                                                  | _own_slot_forms)),
                                   allow_unrouted_name=True,
                                   own_slot_coerce=isinstance(a, TpyCoerce),
                                   field_owned_str_ok=own_str)
@@ -16180,7 +16216,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                       # took, carried to the render: one
                                       # predicate, read twice, never decided
                                       # twice.
-                                      forms=_lend_forms,
+                                      forms=_lend_forms | _own_slot_forms,
                                       # The param threads into a
                                       # FREE-call/ctor arg render, so a
                                       # both-literal binop arg never folds
@@ -17255,9 +17291,8 @@ def _lvalue_container_ternary(e: TpyExpr, analyzer) -> bool:
     container leg, whose C++ `?:` over two same-type lvalues is itself an
     LVALUE.
 
-    Receiver positions take only this arm pair: a MIXED lvalue/prvalue pair
-    makes the `?:` a prvalue that silently copies the lvalue arm
-    (BUGS.md#ternary-receiver-mixed-category-copies)."""
+    The subscript receiver takes only this arm pair; other arm shapes are
+    unlowered there (BUGS.md#reference-ternary-position-gaps)."""
     return (isinstance(e, TpyIfExpr)
             and isinstance(e.then_expr, TpyName)
             and isinstance(e.else_expr, TpyName)
@@ -17608,11 +17643,99 @@ def _lower_record_prvalue_arm(arm: TpyExpr, rec_t: 'TpyType',
     return None
 
 
+def _select_has_fresh_operand(e: TpyExpr, analyzer) -> bool:
+    """Whether a (possibly nested) reference-type ternary or value and/or
+    select has a fresh operand -- one it emplaces into a slot when the
+    select itself is an lvalue. A value-type select never takes a slot."""
+    et = analyzer.get_expr_type(e)
+    if et is None or et.is_value_type():
+        return False
+    if isinstance(e, TpyIfExpr):
+        arms = (e.then_expr, e.else_expr)
+    elif isinstance(e, TpyBinOp) and e.op in ("&&", "||"):
+        arms = (e.left, e.right)
+    else:
+        return False
+    return any(is_rvalue_source(analyzer, arm)
+               or _select_has_fresh_operand(arm, analyzer) for arm in arms)
+
+
+def _select_slot_ok(use: _ExprUse, lc: '_LowerCtx') -> bool:
+    """Whether a select at this sink may emplace its fresh operand into a
+    slot declared before the enclosing statement (`THIRSlotEmplace`).
+
+    Two facts. LIFETIME: the slot lives until the end of that statement's
+    block, so the consumer must be proven not to hold the result longer --
+    a local binding that aliases or copies it (`SELECT_SLOT`), a transient
+    consumer (one that may even borrow dying storage; a method receiver
+    additionally asks the callee, `method.recv.select_slot_lend`), or a
+    direct-init of owned storage (`SELECT_PRVALUE`). A coercion is none of
+    these: it can turn the select into a view (`Span`, `StrView`) a
+    longer-lived name holds. PLACEMENT: a declaration must land before the
+    select's statement and in its scope -- the sink's own flush right
+    (`use.allow_temps`, which every flushing position already carries), or
+    a statement whose emitter declares pending slots before its first line
+    (`lc.slot_hoist_ok`, set per statement kind) -- and never in a lambda's
+    expression body, which has no statement of its own. Anything
+    unclassified rejects."""
+    if (not (use.allow_temps or lc.slot_hoist_ok) or lc.in_lambda_body
+            or use.pos in (SinkPos.MIL_INIT, SinkPos.COERCE_INNER)):
+        return False
+    return (use.admits(SinkForm.SELECT_SLOT)
+            or use.admits(SinkForm.DYING_SOURCE_LEND)
+            or use.admits(SinkForm.SELECT_PRVALUE))
+
+
+def _lower_fresh_ref_arm(arm: TpyExpr, rec_t: 'TpyType', lc: '_LowerCtx',
+                         declared: dict[str, TpyType]) -> 'THIRExpr | None':
+    """A fresh (rvalue) arm of a record / container ternary, lowered as the
+    value it initializes, or None: a record prvalue
+    (`_lower_record_prvalue_arm`), or any fresh container expression of the
+    ternary's type -- a list comprehension, a literal (spelling its type:
+    a bare brace-init cannot deduce in ternary context), a call, an
+    operator result. The arm evaluates lazily, so a temp it would hoist
+    eagerly rejects (`_check_cond_eager_temps`)."""
+    analyzer = lc.analyzer
+    prv = _lower_record_prvalue_arm(arm, rec_t, lc, declared)
+    if prv is not None:
+        return prv
+    if (_ifexpr_container(rec_t, analyzer) is None
+            or not is_rvalue_source(analyzer, arm)):
+        return None
+    if isinstance(arm, TpyListComprehension):
+        if not is_list(rec_t):
+            return None
+        from .comprehensions import _lower_comprehension
+        lowered = _lower_comprehension(
+            arm, rec_t, lc, declared,
+            _comp_shadow_pointers(lc.pointers, declared, analyzer))
+    elif isinstance(arm, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
+        lowered = _lower_expr(arm, lc, declared,
+                              use=_ExprUse(slot_target=rec_t))
+        if (isinstance(lowered, THIRContainerLiteral)
+                and lowered.typed_brace_cpp is None):
+            lowered = replace(lowered,
+                              typed_brace_cpp=lc.render_type(rec_t))
+    elif isinstance(arm, CONTAINER_LITERAL_NODES):
+        # The dict / set comprehension, repeat and genexpr flavours have
+        # no witness as an arm yet.
+        return None
+    else:
+        # The ternary is the call's storage sink exactly as a direct decl
+        # init would be -- the same bare render.
+        lowered = _lower_expr(arm, lc, declared,
+                              use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                           slot_target=rec_t))
+    _check_cond_eager_temps(lowered)
+    return lowered
+
+
 def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                    declared: dict[str, TpyType], loc, *,
                    cond_temps_ok: bool = False,
                    elem_storage: bool = False,
-                   record_prvalue_ok: bool = False) -> THIRIfExpr:
+                   prvalue_ok: bool = False,
+                   slot_ok: bool = False) -> THIRIfExpr:
     """`a if c else b` -> `((cond) ? (then) : (else))`.
     The arm slot is the ternary's OWN resolved type (`branch_target =
     result_type` -- the consumer's target is ignored), so the target-typed
@@ -17751,28 +17874,11 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         # deferred temp into the loop body (the degrade seam). The literal
         # arm self-spells (`std::vector<int32_t>{0}` -- the array-literal
         # branch prefix).
-        from .comprehensions import _lower_comprehension
-
-        def _rv_container_arm(arm) -> THIRExpr:
-            if isinstance(arm, _comp_kinds):
-                _ptrs = _comp_shadow_pointers(lc.pointers, declared,
-                                              lc.analyzer)
-                lowered_arm = _lower_comprehension(arm, rec_t, lc, declared,
-                                                   _ptrs)
-            else:
-                lowered_arm = _lower_expr(
-                    arm, lc, declared,
-                    use=_ExprUse(slot_target=rec_t))
-                if (isinstance(lowered_arm, THIRContainerLiteral)
-                        and lowered_arm.typed_brace_cpp is None):
-                    lowered_arm = replace(lowered_arm,
-                                          typed_brace_cpp=lc.render_type(
-                                              rec_t))
-            _check_cond_eager_temps(lowered_arm)
-            return lowered_arm
-
-        then = _rv_container_arm(e.then_expr)
-        orelse = _rv_container_arm(e.else_expr)
+        then = _lower_fresh_ref_arm(e.then_expr, rec_t, lc, declared)
+        orelse = _lower_fresh_ref_arm(e.else_expr, rec_t, lc, declared)
+        if then is None or orelse is None:
+            note_detail("ifexpr.container_comp_arm")
+            raise ThirUnsupported("expr.ifexpr")
         _witness("ifexpr.container_comp_arm")
         return THIRIfExpr(result_type=result_t, cond=cond, then=then,
                           orelse=orelse, form=Form.VALUE, loc=loc)
@@ -17782,13 +17888,12 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         # so bare NAME arms render with no per-arm conversion (each a plain
         # deref read) and the result is a BORROW lvalue its consumer copies
         # or aliases. NAME arms and BORROW-returning call arms are in the
-        # slice (a `T&` call result is an lvalue too); a VALUE-returning
-        # call/ctor arm makes the C++ ternary a prvalue whose consumers
-        # (REF_ALIAS binds, the Own copy temp) have per-shape renders.
+        # slice (a `T&` call result is an lvalue too); a fresh arm beside
+        # one of them is emplaced into a slot so the `?:` stays an lvalue.
         #
-        # Only the RECORD half rejects off-slice: a container result has the
-        # generic tail below as its own renderer, so it falls through there
-        # rather than de-routing bodies that compile today.
+        # Two fresh arms are a prvalue: only the RECORD half rejects them
+        # here, a container result has the generic tail below as its
+        # renderer.
         _rec_result = _f1_record(rec_t, analyzer)
 
         def _rec_arm_borrow_call(arm) -> bool:
@@ -17804,79 +17909,115 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                     and not is_rvalue_source(analyzer, arm))
 
         def _ref_arm_lvalue(arm) -> bool:
-            return (isinstance(arm, TpyName)
-                    or _rec_arm_borrow_call(arm)
-                    # A container-ELEMENT subscript arm (`rs[0] if c else
-                    # rs[1]`) is an lvalue too, so the `?:` stays one.
-                    or _container_elem_lvalue_subscript(arm, declared,
+            # The value-category classifier's own per-arm answer, so the
+            # lowering and every consumer that asks the classifier about the
+            # whole select (a `T&` binding, an owning slot's copy) agree.
+            return not is_rvalue_source(analyzer, arm)
+
+        def _rec_arm_lower(arm):
+            if _rec_arm_borrow_call(arm):
+                return _lower_expr(
+                    arm, lc, declared,
+                    use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
+            if isinstance(arm, TpySubscript):
+                # A container-ELEMENT subscript arm (`rs[0] if c else
+                # rs[1]`) keeps the `?:` an lvalue; any other element read
+                # has no lvalue render here.
+                if not _container_elem_lvalue_subscript(arm, declared,
                                                         analyzer,
-                                                        lc.pointers))
-        if record_prvalue_ok:
-            prv = [_lower_record_prvalue_arm(a, rec_t, lc, declared)
-                   for a in (e.then_expr, e.else_expr)]
-            if all(p is not None for p in prv):
-                # Every arm is a prvalue, so the C++ `?:` is a prvalue too --
-                # a VALUE result the position direct-initializes. Admitted
-                # only where the caller confirmed such a sink; the lvalue
-                # slice below keeps the BORROW form.
-                _witness("ifexpr.record_prvalue")
-                return THIRIfExpr(result_type=result_t, cond=cond,
-                                  then=prv[0], orelse=prv[1],
-                                  form=Form.VALUE, loc=loc)
-            if any(p is not None for p in prv):
-                # A record NAME arm beside a prvalue arm
-                # (`V3(0.0) if e is None else e`): C++ converts the lvalue
-                # operand into the prvalue result, so the member-init still
-                # direct-initializes from a VALUE -- a copy of the named
-                # object, which is what a record FIELD stores anyway. TWO
-                # lvalue arms make the `?:` an lvalue and belong to the
-                # BORROW slice below, so at least one prvalue arm is
-                # required here.
-                mixed: 'list[THIRExpr] | None' = []
-                for arm, p in zip((e.then_expr, e.else_expr), prv):
-                    if p is not None:
-                        mixed.append(p)
-                        continue
+                                                        lc.pointers):
+                    note_detail("ifexpr.ref_elem_arm")
+                    raise ThirUnsupported("expr.ifexpr")
+                _witness("ifexpr.record_elem_arm")
+                return _lower_expr(arm, lc, declared,
+                                   subscript_prechecked=True)
+            # A nested select arm is consumed exactly as this select is.
+            return _lower_expr(arm, lc, declared,
+                               use=_ExprUse(
+                                   pos=SinkPos.IF_EXPR_ARM,
+                                   slot_target=rec_t,
+                                   forms=(_POS_FORMS[SinkPos.IF_EXPR_ARM]
+                                          | (_ONLY_SELECT_SLOT if slot_ok
+                                             else _NO_FORMS))))
+        lvalue_arms = [_ref_arm_lvalue(arm)
+                       for arm in (e.then_expr, e.else_expr)]
+        if all(lvalue_arms):
+            then = _rec_arm_lower(e.then_expr)
+            orelse = _rec_arm_lower(e.else_expr)
+            _witness("ifexpr.record")
+            return THIRIfExpr(result_type=result_t, cond=cond,
+                              then=then, orelse=orelse,
+                              form=Form.BORROW, loc=loc)
+        if prvalue_ok and not _rec_result:
+            # A container at a direct-init sink: the generic tail below
+            # renders the prvalue `?:`.
+            pass
+        elif prvalue_ok:
+            # A direct-init sink (a ctor member-init, an `Own[T]` slot)
+            # takes the prvalue `?:`: C++ converts an lvalue arm into the
+            # prvalue result -- a copy of the named object, which is what
+            # owned storage holds anyway -- and a fresh arm initializes it
+            # directly.
+            vals: 'list[THIRExpr] | None' = []
+            for arm, is_lvalue in zip((e.then_expr, e.else_expr),
+                                      lvalue_arms):
+                if not is_lvalue:
+                    p = _lower_record_prvalue_arm(arm, rec_t, lc, declared)
+                    if p is None:
+                        vals = None
+                        break
+                    vals.append(p)
+                elif isinstance(arm, TpyName):
                     at = analyzer.get_expr_type(arm)
-                    if not (isinstance(arm, TpyName) and arm.name in declared
+                    if not (arm.name in declared
                             and unwrap_readonly(unwrap_ref_type(
                                 unwrap_send_sync(at))) == rec_t):
-                        mixed = None
+                        vals = None
                         break
                     # The same read the copy arm takes for its source: a
                     # pointer-bound name (a narrowed `T | None` param)
                     # carries its `(*p)` deref here too.
-                    mixed.append(_lower_expr(
+                    vals.append(_lower_expr(
                         arm, lc, declared,
                         use=_ExprUse(pos=SinkPos.IF_EXPR_ARM)))
-                if mixed is not None:
-                    _witness("ifexpr.record_prvalue_name_arm")
-                    return THIRIfExpr(result_type=result_t, cond=cond,
-                                      then=mixed[0], orelse=mixed[1],
-                                      form=Form.VALUE, loc=loc)
-            if _rec_result:
+                else:
+                    vals.append(_rec_arm_lower(arm))
+            if vals is None:
                 note_detail("ifexpr.record_prvalue_arm")
                 raise ThirUnsupported("expr.ifexpr")
-        elif all(_ref_arm_lvalue(arm)
-                 for arm in (e.then_expr, e.else_expr)):
-            def _rec_arm_lower(arm):
-                if _rec_arm_borrow_call(arm):
-                    return _lower_expr(
-                        arm, lc, declared,
-                        use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
-                if isinstance(arm, TpySubscript):
-                    _witness("ifexpr.record_elem_arm")
-                    return _lower_expr(arm, lc, declared,
-                                       subscript_prechecked=True)
-                return _lower_expr(arm, lc, declared,
-                                   use=_ExprUse(
-                                       pos=SinkPos.IF_EXPR_ARM,
-                                       slot_target=rec_t))
-            then = _rec_arm_lower(e.then_expr)
-            orelse = _rec_arm_lower(e.else_expr)
-            _witness("ifexpr.record")
-            return THIRIfExpr(result_type=result_t, cond=cond, then=then,
-                              orelse=orelse, form=Form.BORROW, loc=loc)
+            _witness("ifexpr.record_prvalue_name_arm" if any(lvalue_arms)
+                     else "ifexpr.record_prvalue")
+            return THIRIfExpr(result_type=result_t, cond=cond,
+                              then=vals[0], orelse=vals[1],
+                              form=Form.VALUE, loc=loc)
+        elif any(lvalue_arms):
+            # One lvalue arm beside a fresh one: the fresh arm is
+            # emplaced into a hoisted slot so the `?:` stays an lvalue
+            # aliasing the other arm. A position the slot may not serve,
+            # or a fresh shape with no lowering, rejects for a container
+            # too -- the classifier already calls the pair an lvalue, so
+            # the copying tail below would bind a reference to a prvalue.
+            if not slot_ok:
+                note_detail("ifexpr.ref_mixed_position")
+                raise ThirUnsupported("expr.ifexpr")
+            arms = []
+            for arm, is_lvalue in zip((e.then_expr, e.else_expr),
+                                      lvalue_arms):
+                if is_lvalue:
+                    arms.append(_rec_arm_lower(arm))
+                    continue
+                fresh = _lower_fresh_ref_arm(arm, rec_t, lc, declared)
+                if fresh is None:
+                    note_detail("ifexpr.ref_mixed_fresh_arm")
+                    raise ThirUnsupported("expr.ifexpr")
+                arms.append(THIRSlotEmplace(
+                    result_type=rec_t, value=fresh,
+                    cpp_type=lc.render_type(rec_t), form=Form.BORROW,
+                    loc=loc))
+            _witness("ifexpr.ref_mixed_slot")
+            return THIRIfExpr(result_type=result_t, cond=cond,
+                              then=arms[0], orelse=arms[1],
+                              form=Form.BORROW, loc=loc)
         elif _rec_result:
             note_detail("ifexpr.record_arm")
             raise ThirUnsupported("expr.ifexpr")
@@ -17887,8 +18028,10 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
     # Both arms land at the ternary's own sink, whatever their shape: the
     # IF_EXPR_ARM row is what says a value bound out of a ternary outlives the
     # expression that built it.
+    # A nested select arm is consumed exactly as this select is.
+    _arm_forms = _ONLY_SELECT_SLOT if slot_ok else _NO_FORMS
     _arm_use = _ExprUse(allow_temps=cond_temps_ok,
-                        pos=SinkPos.IF_EXPR_ARM, forms=_NO_FORMS)
+                        pos=SinkPos.IF_EXPR_ARM, forms=_arm_forms)
     _cont_slot = _ifexpr_container(slot, analyzer)
 
     def _container_arm_use(arm: TpyExpr) -> _ExprUse:
@@ -17899,7 +18042,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         if (_cont_slot is not None
                 and isinstance(arm, (TpyCall, TpyMethodCall))):
             return _ExprUse(result=_ExprResultUse.STORAGE,
-                            pos=SinkPos.IF_EXPR_ARM, forms=_NO_FORMS,
+                            pos=SinkPos.IF_EXPR_ARM, forms=_arm_forms,
                             allow_temps=cond_temps_ok)
         return _arm_use
     # A str-family FIELD arm (`r.s if cond else t.s`) is the same bare

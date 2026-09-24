@@ -280,11 +280,19 @@ class SinkForm(Enum):
     # the render. Narrower than the BORROW_BIND result use, which also
     # unlocks the record / container / pointer-repr-tuple field legs.
     FIELD_VALUE_TUPLE = auto()
-    # A record ternary of PRVALUE arms rendered as a C++ prvalue `?:`, which
-    # only a direct-init sink consumes. Every other consumer of a record
-    # ternary (REF_ALIAS binds, the Own copy temp, arg slots) has a
-    # per-shape render, so it keeps the lvalue slice.
-    RECORD_PRVALUE = auto()
+    # A record / container ternary rendered as a C++ prvalue `?:` -- its
+    # lvalue arm copied, its fresh arm moved -- which only a sink that
+    # direct-initializes storage of its own consumes: a ctor member-init and
+    # an `Own[T]` slot. A consumer that names the object (a binding, a
+    # receiver, a reference parameter) keeps the lvalue render.
+    SELECT_PRVALUE = auto()
+    # A select whose fresh operand is emplaced into a slot hoisted before the
+    # statement (`THIRSlotEmplace`), at a local binding that either aliases
+    # it single-assignment in the statement's own block (the slot lives
+    # exactly as long as the alias) or copies it into its own storage. The
+    # other admitted consumers are the transient ones -- a slot outlives any
+    # temporary -- which need no row of their own.
+    SELECT_SLOT = auto()
 
 
 _NO_FORMS: frozenset[SinkForm] = frozenset()
@@ -310,8 +318,9 @@ _ONLY_BORROW_RET_PASSTHROUGH: frozenset[SinkForm] = frozenset(
 _ONLY_FIELD_RECV_BORROW: frozenset[SinkForm] = frozenset(
     {SinkForm.FIELD_RECV_BORROW})
 _ONLY_ADDR_CALL: frozenset[SinkForm] = frozenset({SinkForm.ADDR_CALL})
-_ONLY_RECORD_PRVALUE: frozenset[SinkForm] = frozenset(
-    {SinkForm.RECORD_PRVALUE})
+_ONLY_SELECT_PRVALUE: frozenset[SinkForm] = frozenset(
+    {SinkForm.SELECT_PRVALUE})
+_ONLY_SELECT_SLOT: frozenset[SinkForm] = frozenset({SinkForm.SELECT_SLOT})
 _ONLY_UNION_SUBJECT: frozenset[SinkForm] = frozenset({SinkForm.UNION_SUBJECT})
 _ONLY_TRUTHY_DISCARD: frozenset[SinkForm] = frozenset(
     {SinkForm.TRUTHY_DISCARD})
@@ -1128,7 +1137,8 @@ class _LowerCtx:
                  "const_storage_tuple_locals", "const_loop_vars",
                  "frame_own_tuple_types",
                  "frame_slots",
-                 "resumable_leaf_mode", "in_container_elem",
+                 "resumable_leaf_mode", "in_lambda_body", "slot_hoist_ok",
+                 "in_container_elem",
                  "nested_returns", "in_finally_helper",
                  "plain_frame_fields", "borrow_tuple_frame_locals",
                  "coro_handle_slots", "frame_local_types",
@@ -1471,6 +1481,14 @@ class _LowerCtx:
         # Their nested frame writes and async-return shapes reject at the
         # statement arm rather than through a predictive leaf-tree scan.
         self.resumable_leaf_mode = False
+        # Inside a lambda's single-expression body: no statement of the
+        # lambda's own encloses its expressions, so nothing may be hoisted
+        # "before the statement" there -- that would land outside the lambda.
+        self.in_lambda_body = False
+        # The statement being lowered declares pending named slots before
+        # its first line (see `_SLOT_HOIST_STMTS`); off everywhere else, so
+        # an unclassified position cannot place one after its use.
+        self.slot_hoist_ok = False
         # True anywhere inside a container-element subtree, sticky through
         # nesting: the Optional ternary carve-out is only CORRECT at the
         # immediate element (a pointer-form arm deeper in renders ill-formed

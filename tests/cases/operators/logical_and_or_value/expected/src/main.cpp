@@ -299,12 +299,12 @@ void test_record_without_bool() {
 //     print(y.count)
 void test_record_or_constructor() {
     Counter zero = Counter(0);
-    std::optional<Counter> __logical_slot_3;
-    Counter& x = (*(::tpy::__bool__(zero) ? &(zero) : (__logical_slot_3.emplace(Counter(5)), &*__logical_slot_3)));
+    std::optional<Counter> __select_slot_3;
+    Counter& x = (::tpy::__bool__(zero) ? zero : __select_slot_3.emplace(Counter(5)));
     std::cout << x.count << "\n";
     Counter five = Counter(5);
-    std::optional<Counter> __logical_slot_4;
-    Counter& y = (*(::tpy::__bool__(five) ? (__logical_slot_4.emplace(Counter(0)), &*__logical_slot_4) : &(five)));
+    std::optional<Counter> __select_slot_4;
+    Counter& y = (::tpy::__bool__(five) ? __select_slot_4.emplace(Counter(0)) : five);
     std::cout << y.count << "\n";
 }
 

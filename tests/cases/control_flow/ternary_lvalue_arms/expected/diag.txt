@@ -1,2 +1,0 @@
-main.py:26: warning: ternary copies a reference type where CPython would alias the variable arm; use copy() to acknowledge the copy
-main.py:36: warning: ternary copies a reference type where CPython would alias the variable arm; use copy() to acknowledge the copy

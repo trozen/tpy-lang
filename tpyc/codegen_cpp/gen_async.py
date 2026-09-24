@@ -3640,23 +3640,26 @@ class AsyncCoroCodegen:
                         info = GeneratorForInfo(
                             uid=cur_uid, strategy="async_for", fields=[])
                     else:
-                        if (for_source_is_rvalue(s, self.ctx.analyzer)
-                                and ternary_iterable_lends_storage(
+                        if (ternary_iterable_lends_storage(
                                     s.iterable,
                                     self.ctx.analyzer.registry.get_record,
-                                    self.types.get_resolved_type)):
-                            # The frame would OWN a head one of whose arms is
-                            # storage it must not own: emplacing the whole
-                            # conditional copies that arm away from its owner.
+                                    self.types.get_resolved_type)
+                                and any(self.ctx.is_rvalue_source(arm)
+                                        for arm in (s.iterable.then_expr,
+                                                    s.iterable.else_expr))):
+                            # One arm lends storage the frame must not own and
+                            # the other is fresh storage it must: no single
+                            # capture holds both. Asked of the ARMS, since the
+                            # whole head reads as an lvalue once one arm is.
                             # Two arms that agree are fine -- both lend, or
                             # both are fresh.
                             raise CodeGenError(
                                 "iterating a conditional whose arms are an "
                                 "existing object and a fresh one is not "
                                 "supported: the loop would have to borrow "
-                                "and own the same source. Bind the iterable "
-                                "to a name before the loop and iterate that "
-                                "name instead", loc=s.loc)
+                                "and own the same source. Write the loop "
+                                "once in each branch of an `if` instead",
+                                loc=s.loc)
                         # Sync for-loop: reuse the legacy strategy analysis so
                         # range / begin_end peepholes (a plain counter / begin-
                         # end iterators) carry over instead of the slower

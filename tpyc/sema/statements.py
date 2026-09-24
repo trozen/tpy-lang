@@ -55,7 +55,7 @@ from ..namespace import BindingKind, NameBinding
 from ..symbol_binding import SymbolKind, lookup_imported
 from ..prescan import (
     bound_names_of, ScanResult, scan_reassigned_vars, parse_deref_view_key,
-    FactKills, collect_fact_kills, liveness_alias_sources,
+    FactKills, collect_fact_kills, liveness_alias_sources, is_scan_rvalue,
 )
 from ..liveness import (analyze_last_uses, collect_finally_return_candidates,
                         collect_deleted_names, collect_finally_rebound_returns,
@@ -168,6 +168,12 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
     """
     while isinstance(expr, TpyCoerce):
         expr = expr.expr
+    if isinstance(expr, TpyIfExpr):
+        # A select binds whichever arm is taken, so a borrow-returning call
+        # arm loans its callee's sources exactly as a direct call init would.
+        _register_call_result_borrow(ctx, borrower, expr.then_expr)
+        _register_call_result_borrow(ctx, borrower, expr.else_expr)
+        return
     if isinstance(expr, TpyAwait):
         # A borrow-returning await aliases the awaited call's receiver /
         # borrowed args exactly like the sync call it wraps -- recurse so
@@ -316,6 +322,20 @@ def _local_traces_to_self(borrow_tracker: 'BorrowTracker', name: str) -> bool:
     """
     roots = borrow_tracker.storage_roots_or_self(name)
     return any(root == "self" or root.startswith("self.") for root in roots)
+
+
+def _receiver_leaves(expr: TpyExpr) -> list[TpyExpr]:
+    """The operands a method-call receiver may BE: the receiver itself, or
+    for a ternary / value and/or select every operand it can pick
+    (recursively) -- the call mutates whichever one it runs on."""
+    while isinstance(expr, TpyCoerce):
+        expr = expr.expr
+    if isinstance(expr, TpyIfExpr):
+        return (_receiver_leaves(expr.then_expr)
+                + _receiver_leaves(expr.else_expr))
+    if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
+        return _receiver_leaves(expr.left) + _receiver_leaves(expr.right)
+    return [expr]
 
 
 def _is_self_call_deferred(
@@ -4830,37 +4850,15 @@ class StatementAnalyzer:
         else:
             self.deduction.mark_container_return_context(value, elem_type)
 
-    def _warn_ternary_ref_copy(self, init: TpyExpr, var_type: TpyType,
-                               stmt: TpyStmt) -> None:
-        """A reference-type local bound from a ternary with MIXED arm
-        value categories (one lvalue arm, one rvalue arm) copies the lvalue
-        arm where CPython would alias it. The binding can take only one C++
-        shape and codegen picks the copying prvalue form, so a write through
-        the local is not seen on the variable arm -- a silent divergence.
-        Surface it; `copy()` acknowledges the copy.
-
-        A both-lvalue ternary already aliases (codegen binds a reference), and
-        a both-rvalue ternary shares nothing -- neither diverges, so neither
-        warns.
-        """
-        if stmt.loc is None or self.compat.is_copy_call(init):
-            return
-        val = init
-        while isinstance(val, TpyCoerce):
-            val = val.expr
-        if not isinstance(val, TpyIfExpr):
-            return
-        # An arm aliases (no copy) iff it is NOT an rvalue source. Use the
-        # value-category predicate, not a syntactic lvalue check: a BORROWING
-        # call (returns T&, e.g. a function returning its param) aliases too,
-        # so `seed if c else trusted(seed)` does not copy. Only a genuine
-        # mix -- one aliasing arm, one fresh rvalue arm -- loses aliasing.
-        then_alias = not is_rvalue_source(self.ctx, val.then_expr)
-        else_alias = not is_rvalue_source(self.ctx, val.else_expr)
-        if then_alias != else_alias:
-            self.ctx.warning(
-                "ternary copies a reference type where CPython would alias the "
-                "variable arm; use copy() to acknowledge the copy", stmt)
+    def _bar_unscanned_lvalue_reassign(self, name: str,
+                                       value: TpyExpr) -> None:
+        """A reassign from an lvalue the prescan's untyped scan calls fresh
+        (a select, a borrow-returning call, a field of one) is invisible to
+        the alias maps the liveness walk reads, so the name is barred from
+        the movable set -- else an auto-move at its last use would steal
+        from the source it aliases."""
+        if is_scan_rvalue(value):
+            self.ctx.func.borrow_reassigned_vars.add(name)
 
     def _analyze_var_decl(self, stmt: TpyVarDecl) -> None:
         """Analyze a variable declaration."""
@@ -5720,6 +5718,8 @@ class StatementAnalyzer:
                     self.ctx.func.rvalue_vars.discard(stmt.name)
                     self.ctx.func.owned_locals.discard(stmt.name)
                     record_stmt_borrow_binding(self.ctx, stmt.name, var_type, stmt.init)
+                    if existing_type is not None:
+                        self._bar_unscanned_lvalue_reassign(stmt.name, stmt.init)
             else:
                 self.ctx.func.rvalue_vars.add(stmt.name)
                 # Owned only when the init genuinely creates a value (constructor,
@@ -5771,7 +5771,6 @@ class StatementAnalyzer:
         # Scope escape check for variable declarations (new and reassignment)
         if stmt.init and not var_type.is_value_type():
             self.scopes.check_escape(stmt.name, stmt.init, stmt)
-            self._warn_ternary_ref_copy(stmt.init, var_type, stmt)
         if self.ctx.func.current_ns:
             self.ctx.func.current_ns.bind_variable(stmt.name, var_type)
         # Track first var_decl for later type updates on reassignment-driven inference.
@@ -6448,6 +6447,8 @@ class StatementAnalyzer:
                 record_stmt_borrow_binding(
                     self.ctx, stmt.target.name,
                     self.ctx.get_expr_type(stmt.value), stmt.value)
+                self._bar_unscanned_lvalue_reassign(stmt.target.name,
+                                                    stmt.value)
             else:
                 self.ctx.func.rvalue_vars.add(stmt.target.name)
                 # See the var-decl branch: owned only for a genuine value-creating

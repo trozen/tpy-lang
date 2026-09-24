@@ -85,6 +85,7 @@ from .nodes import (
     THIRIf,
     THIRIfExpr,
     THIRIsNone,
+    THIRSlotEmplace,
     THIRValueSelect,
     THIRMembership,
     THIRStrMembership,
@@ -275,6 +276,9 @@ class TempSink:
 
     def has_named_since(self, checkpoint: tuple[int, ...]) -> bool:
         return self._ctx.temps.has_named_since(checkpoint)
+
+    def has_walrus_named_since(self, checkpoint: tuple[int, ...]) -> bool:
+        return self._ctx.temps.has_walrus_named_since(checkpoint)
 
     def flush_since(self, out: TextIO, checkpoint: tuple[int, int],
                     indent: str) -> None:
@@ -1630,16 +1634,6 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             rhs_r = _emit_expr(e.rhs, state)
         if e.rhs_sv:
             rhs_r = f"std::string_view({rhs_r})"
-        if e.ptr_select_cpp is not None:
-            # Rvalue non-value RHS: materialize lazily into the hoisted
-            # optional slot; `*ptr` keeps the whole select an lvalue.
-            slot = state.temps.declare_named_auto(
-                "__logical_slot", f"std::optional<{e.ptr_select_cpp}>")
-            lhs_p = f"&({lhs_r})"
-            rhs_p = f"({_rhs_region.prefix}{slot}.emplace({rhs_r}), &*{slot})"
-            if e.op == "||":
-                return f"(*({truthy} ? {lhs_p} : {rhs_p}))"
-            return f"(*({truthy} ? {rhs_p} : {lhs_p}))"
         lhs_b = f"{e.lhs_cast}({lhs_r})" if e.lhs_cast else lhs_r
         rhs_b = f"{e.rhs_cast}({rhs_r})" if e.rhs_cast else rhs_r
         if _rhs_region.prefix:
@@ -1728,6 +1722,13 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         return _emit_ctor_call(e, state)
     if isinstance(e, THIRVarargPack):
         return _emit_vararg_pack(e, state)
+    if isinstance(e, THIRSlotEmplace):
+        # The slot is a NAMED decl, so it hoists to the statement even inside
+        # a conditional region; only the emplace runs with the operand.
+        value_cpp = _emit_expr(e.value, state)
+        slot = state.temps.declare_named_auto(
+            "__select_slot", f"std::optional<{e.cpp_type}>")
+        return f"{slot}.emplace({value_cpp})"
     if isinstance(e, THIRArgTemp):
         # Register the hoisted decl with the sink and read the real __tmp_N
         # here; args render left-to-right, so temps are created in argument
@@ -2074,7 +2075,7 @@ def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitSta
         # Sink-side guard for the lowering-side mixed reject: an in-head
         # temp next to a pre-loop-flushed walrus pre-decl would be the
         # stale-read hazard _cond_mixed_walrus_temps exists to exclude.
-        assert not state.temps.has_named_since(cond_checkpoint), (
+        assert not state.temps.has_walrus_named_since(cond_checkpoint), (
             "mixed walrus + temps while cond reached the restructured head")
         cond_temps = io.StringIO()
         state.temps.flush_since(cond_temps, cond_checkpoint, indent + INDENT)

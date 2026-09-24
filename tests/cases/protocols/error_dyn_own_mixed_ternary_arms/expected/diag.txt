@@ -1,2 +1,1 @@
-main.py:24: warning: Own[Pet] param 'q' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:25: error: in function 'pick': this construct is not yet supported by C++ code generation (expr.ifexpr)
+main.py:28: error: non-copyable type 'Pet' cannot be returned as return type Own[Pet]. Only the original owner can be moved at its last use.

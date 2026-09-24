@@ -302,8 +302,9 @@ binding (`if (t := obj.opt) is not None:`), a ternary joining a borrow
 arm and a storage arm (`p if c else obj.opt`, Optional and Union), and a
 container-element store (`xs[i] = p`, `xs.append(p)`). A reference-type
 ternary whose arms differ in aliasing -- one variable arm, one fresh
-value arm (`a if c else [9]`) -- copies the variable arm where CPython
-would alias it; this is warned, and `copy()` acknowledges it.
+value arm (`a if c else [9]`) -- stays in borrow form: the fresh arm is
+built into a slot the enclosing block owns, so the result aliases the
+variable arm like CPython (see Conditionals).
 
 A reference-type lvalue used as a **container-literal element** -- a
 `list`/`set`/`dict` literal element or key/value (`xs = [p]`,
@@ -4196,7 +4197,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Conditionals
 - **Working**: `if`, `elif`, `else`
-- **Working**: Ternary `x if cond else y` -- same-type branches (including any reference type: `list[T]`, `dict[K,V]`, `set[T]`, `bytearray`, `Array[T, N]`, records), numeric widening, `T`+`None` to `Optional[T]`, Optional narrowing (`is not None` / truthy). Reference-type aliasing follows arm value-category: a **both-lvalue** ternary (`a if c else b`) binds by reference and aliases the chosen arm like CPython; a **mixed** lvalue/rvalue ternary (`a if c else [9]`) renders as a prvalue that copies the lvalue arm where CPython would alias it -- this is **warned** ("ternary copies a reference type where CPython would alias the variable arm"), and `copy()` acknowledges it. As a method RECEIVER the same mixed pair is refused rather than warned -- the mutation would land on the copy (`BUGS.md#ternary-receiver-mixed-category-copies`). A mixed/both-lvalue ternary passed to an `Own[T]` slot copies the chosen arm into owned storage (the standard "copies into owned storage" warning).
+- **Working**: Ternary `x if cond else y` -- same-type branches (including any reference type: `list[T]`, `dict[K,V]`, `set[T]`, `bytearray`, `Array[T, N]`, records), numeric widening, `T`+`None` to `Optional[T]`, Optional narrowing (`is not None` / truthy). A reference-type ternary with at least one existing-object arm aliases the chosen arm like CPython, as a local binding and as a method receiver: `a if c else b` binds by reference, and in `a if c else make()` / `a if c else [9]` the fresh arm is built -- only when chosen -- into a slot the enclosing block owns, so the `?:` still names `a` when `c` holds. The same ternary passed to an `Own[T]` slot, returned as `Own[T]`, inserted into a container or stored into a field in `__init__` copies the chosen existing arm (the standard "copies C into owned storage" / "copies C into field" warnings) and moves a fresh one straight into the destination. Positions that do not lower a reference ternary yet, including a local binding in a generator or async body: `BUGS.md#reference-ternary-position-gaps`.
 
 ### Loops
 - **Working**: `while`
@@ -8272,7 +8273,13 @@ Send/Sync rules for built-in types:
   before it and referenced after), a `nonlocal` declaration of the name in such a
   sibling, and a read inside a lambda built after it all count as a later use, so
   the capture copies and warns instead. The rule is deliberately conservative: a
-  sibling that merely mentions the local and is never called counts too.
+  sibling that merely mentions the local and is never called counts too. A
+  reference-type local that ALIASES other storage (`x = a`, `x = a if c else
+  []`, a borrow-returning call's result) is never moved -- that would steal its
+  source -- so it copies with the warning "copies local 'x', which aliases
+  storage it does not own"; `x = copy(a)` makes it an owner that moves. (A
+  reassigned local is pointer-form, and its capture is
+  `BUGS.md#escaping-closure-pointer-local-capture`.)
   Escaping closures that
   capture `str` parameters are rejected (string_view would dangle). Returning a
   view of a CAPTURED enclosing name is rejected too -- `def inner() -> StrView:

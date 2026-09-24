@@ -455,11 +455,9 @@ class THIRValueSelect(THIRExpr):
     operand C++ spellings differ); `rhs_sv` wraps a str-literal RHS
     `std::string_view(...)`. Chains nest naturally (an inner select is a
     non-name LHS taking its own temp). A non-value select is a BORROW
-    lvalue aliasing the chosen operand. `ptr_select_cpp` non-None is the
-    rvalue non-value RHS: emit hoists `std::optional<cpp>
-    __logical_slot_N;` and renders `(*(t ? &(lhs) : (slot.emplace(rhs),
-    &*slot)))` so the rvalue materializes lazily (short-circuit
-    preserved). Inline-isinstance LHS facts are gate-rejected."""
+    lvalue aliasing the chosen operand; an rvalue non-value RHS is a
+    `THIRSlotEmplace`, so the select stays an lvalue and the RHS still
+    materializes lazily. Inline-isinstance LHS facts are gate-rejected."""
     lhs: 'THIRExpr'
     rhs: 'THIRExpr'
     op: str
@@ -468,7 +466,19 @@ class THIRValueSelect(THIRExpr):
     lhs_cast: 'str | None' = None
     rhs_cast: 'str | None' = None
     rhs_sv: bool = False
-    ptr_select_cpp: 'str | None' = None
+
+
+@dataclass(frozen=True)
+class THIRSlotEmplace(THIRExpr):
+    """A fresh reference-type operand of a select (a ternary arm, the RHS of
+    a value `and`/`or`) whose other operand is an lvalue: emit hoists
+    `std::optional<cpp_type> __select_slot_N;` before the statement and
+    renders `__select_slot_N.emplace(<value>)`, which returns `T&`. Both
+    operands are then lvalues, so the select stays one and aliases the
+    lvalue operand the way CPython does, while the fresh value is built only
+    when its operand is chosen and lives as long as the enclosing block."""
+    value: THIRExpr = None  # type: ignore[assignment]
+    cpp_type: str = ""
 
 
 @dataclass(frozen=True)

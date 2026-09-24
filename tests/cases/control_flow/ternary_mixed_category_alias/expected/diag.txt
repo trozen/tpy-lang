@@ -1,0 +1,13 @@
+main.py:96: warning: copies C into field; use copy() to make this explicit
+main.py:104: warning: copies C into field; use copy() to make this explicit
+main.py:112: warning: copies C into field; use copy() to make this explicit
+main.py:53: warning: copies C into owned storage; use copy() to make this explicit
+main.py:58: warning: copies C into owned storage; use copy() to make this explicit
+main.py:184: warning: copies C into owned storage; use copy() to make this explicit
+main.py:194: warning: copies C into owned storage; use copy() to make this explicit
+main.py:267: warning: copies C into owned storage; use copy() to make this explicit
+main.py:282: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:362: warning: Escaping closure 'inner' copies local 'w', which aliases storage it does not own; use copy() to make the copy explicit
+main.py:362: warning: Escaping closure 'inner' copies local 'y', which aliases storage it does not own; use copy() to make the copy explicit
+main.py:362: warning: Escaping closure 'inner' copies local 'z', which aliases storage it does not own; use copy() to make the copy explicit
+main.py:373: warning: Escaping closure 'inner' copies local 'x', which aliases storage it does not own; use copy() to make the copy explicit

@@ -1,0 +1,2 @@
+main.py:25: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement
+main.py:25: error: in function 'lp': this construct is not yet supported by C++ code generation (expr.method_call:method.recv.select_slot_lend)

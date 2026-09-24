@@ -920,6 +920,9 @@ class TempState:
     def __init__(self):
         self._queue: TempQueue[tuple[str, str, str | None, bool]] = TempQueue()
         self._pending_named: list[tuple[str, str, str | None, bool]] = []
+        # Names minted by `declare_named_auto` (a select's slot): a
+        # compiler-owned declaration, not a user walrus pre-declaration.
+        self._auto_named: set[str] = set()
         self._counter: int = 0
 
     @contextmanager
@@ -1001,6 +1004,7 @@ class TempState:
         self._counter += 1
         name = f"{prefix}_{self._counter}"
         self._pending_named.append((name, cpp_type, init, False))
+        self._auto_named.add(name)
         return name
 
     def declare_named(self, name: str, cpp_type: str, *,
@@ -1015,6 +1019,13 @@ class TempState:
     def has_named_since(self, checkpoint: tuple[int, ...]) -> bool:
         """True if named pre-declarations were registered after `checkpoint`."""
         return len(self._pending_named) > checkpoint[1]
+
+    def has_walrus_named_since(self, checkpoint: tuple[int, ...]) -> bool:
+        """True if a user walrus pre-declaration was registered after
+        `checkpoint` -- one whose early declaration a loop head would read
+        stale; a `declare_named_auto` slot is re-emplaced where it is used."""
+        return any(entry[0] not in self._auto_named
+                   for entry in self._pending_named[checkpoint[1]:])
 
     def checkpoint(self) -> tuple[int, int]:
         """Snapshot the current pending-temp queue lengths.

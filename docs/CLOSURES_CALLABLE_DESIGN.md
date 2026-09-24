@@ -501,6 +501,14 @@ The capture then copies and warns instead. The answer is deliberately
 conservative: a sibling that merely mentions the local and is never called
 counts too.
 
+A local that ALIASES another object -- its single binding is an lvalue
+(`x = a`, a ternary or and/or select with an existing-object operand, a
+borrow-returning call's result, an element) that was not moved through into
+it -- is never moved, even at its last use: the move would steal the aliased
+object. It is copied and warned ("copies local 'x', which aliases storage it
+does not own"); `copy()` at the binding makes the local an owner, which then
+moves. Value-type locals own their value and are unaffected.
+
 ### Escaping Closure: Stale Value-Capture Warning
 
 An escaping closure must *own* its captures (by value), so it freezes each captured

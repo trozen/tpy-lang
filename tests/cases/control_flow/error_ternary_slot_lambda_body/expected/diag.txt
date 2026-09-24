@@ -1,0 +1,1 @@
+main.py:23: error: in function 'lam': this construct is not yet supported by C++ code generation (expr.lambda:lambda.body:expr.ifexpr)

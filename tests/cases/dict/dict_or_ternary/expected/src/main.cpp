@@ -38,9 +38,9 @@ void test_ternary(::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_ma
 //     x = {"a": int32(1)} or {"b": int32(2)}  # tpyc: type(dict[str, int32])
 //     print(x)
 void test_literal_or() {
-    std::optional<::tpy::ordered_map<std::string, int32_t>> __logical_slot_2;
+    std::optional<::tpy::ordered_map<std::string, int32_t>> __select_slot_2;
     auto&& __tmp_1 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    ::tpy::ordered_map<std::string, int32_t> x = (*((::tpy::__len__(__tmp_1) != 0) ? &(__tmp_1) : (__logical_slot_2.emplace(::tpy::ordered_map<std::string, int32_t>({{"b", 2}})), &*__logical_slot_2)));
+    ::tpy::ordered_map<std::string, int32_t> x = ((::tpy::__len__(__tmp_1) != 0) ? __tmp_1 : __select_slot_2.emplace(::tpy::ordered_map<std::string, int32_t>({{"b", 2}})));
     std::cout << ::tpy::DictPrinter(x) << "\n";
 }
 

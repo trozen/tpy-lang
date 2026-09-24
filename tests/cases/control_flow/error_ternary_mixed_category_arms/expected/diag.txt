@@ -1,2 +1,0 @@
-main.py:16: warning: ternary copies a reference type where CPython would alias the variable arm; use copy() to acknowledge the copy
-main.py:16: error: in function 'f': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.slot_type)

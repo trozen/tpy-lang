@@ -1,6 +1,6 @@
 # A select of container-element arms hands out the SAME element borrow the
 # plain `r = rs[0]` decl does, so a later structural mutation must warn too.
-from tpy import int32
+from tpy import int32, Own
 
 
 class Rec:
@@ -29,9 +29,7 @@ def two_containers(xs: list[Rec], ys: list[Rec], c: bool) -> None:
 
 def optional_arm(rs: list[Rec], c: bool) -> None:
     """A None arm loans nothing, the element arm still does."""
-    # The copy warning is spurious -- the select takes the element's address
-    # (BUGS.md#spurious-alias-warnings-select-and-own-literal).
-    p = rs[0] if c else None       # tpyc: warning(/ternary copies a reference type/)
+    p = rs[0] if c else None       # tpyc: ok
     if p is not None:
         p.n += 100
     rs.append(Rec(5))              # tpyc: warning(/Mutation of 'rs' while borrowed/)
@@ -52,7 +50,25 @@ def value_elements(ns: list[int32], c: bool) -> None:
     print(v)
 
 
+def first(rs: list[Rec]) -> Rec:
+    return rs[0]
+
+
+def make(n: int32) -> Own[Rec]:
+    return Rec(n)
+
+
+def call_arm(rs: list[Rec], c: bool) -> None:
+    """A borrow-returning call arm loans its callee's source, as the direct
+    `r = first(rs)` does, whichever arm the other one is."""
+    r = first(rs) if c else make(5)
+    r.n += 1
+    rs.append(Rec(4))              # tpyc: warning(/Mutation of 'rs' while borrowed/)
+    print(rs[0].n, len(rs))
+
+
 def main() -> None:
+    call_arm([Rec(1)], True)
     rs = [Rec(1), Rec(2), Rec(3)]
     both_element_arms(rs, True)
     two_containers([Rec(1)], [Rec(2)], False)

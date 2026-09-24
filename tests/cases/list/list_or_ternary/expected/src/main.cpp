@@ -32,9 +32,9 @@ void test_ternary(std::vector<int32_t>& a, std::vector<int32_t>& b, bool cond) {
 //     x = [int32(1), int32(2)] or [int32(3), int32(4)]  # tpyc: type(list[int32])
 //     print(x)
 void test_literal_or() {
-    std::optional<std::vector<int32_t>> __logical_slot_2;
+    std::optional<std::vector<int32_t>> __select_slot_2;
     auto&& __tmp_1 = std::vector<int32_t>{1, 2};
-    std::vector<int32_t> x = (*((::tpy::__len__(__tmp_1) != 0) ? &(__tmp_1) : (__logical_slot_2.emplace(std::vector<int32_t>{3, 4}), &*__logical_slot_2)));
+    std::vector<int32_t> x = ((::tpy::__len__(__tmp_1) != 0) ? __tmp_1 : __select_slot_2.emplace(std::vector<int32_t>{3, 4}));
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }
 
@@ -74,9 +74,9 @@ void test_local_vars_or() {
 //     x = [1, 2] or [3, 4]  # tpyc: type(list[int32])
 //     print(x)
 void test_int_literal_elements_or() {
-    std::optional<std::vector<int32_t>> __logical_slot_5;
+    std::optional<std::vector<int32_t>> __select_slot_5;
     auto&& __tmp_4 = std::vector<int32_t>{1, 2};
-    std::vector<int32_t> x = (*((::tpy::__len__(__tmp_4) != 0) ? &(__tmp_4) : (__logical_slot_5.emplace(std::vector<int32_t>{3, 4}), &*__logical_slot_5)));
+    std::vector<int32_t> x = ((::tpy::__len__(__tmp_4) != 0) ? __tmp_4 : __select_slot_5.emplace(std::vector<int32_t>{3, 4}));
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }
 

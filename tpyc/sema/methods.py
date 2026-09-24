@@ -41,7 +41,8 @@ from .calls import (
 )
 from .type_ops import seeded_arg_hint
 from .context import _root_name_of_expr
-from .statements import _is_self_call_deferred, _local_traces_to_self
+from .statements import (_is_self_call_deferred, _local_traces_to_self,
+                         _receiver_leaves)
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -146,6 +147,54 @@ class MethodAnalyzer:
             return False
         overloads = record.get_method_overloads(method_name)
         return bool(overloads) and all(m.is_readonly for m in overloads)
+
+    def _credit_receiver_mutation(self, recv: TpyExpr, obj_type,
+                                  method: str) -> None:
+        """Record that a mutating (non-readonly) call mutates `recv`."""
+        obj_root = _root_name_of_expr(recv)
+        if obj_root is not None:
+            self.ctx.mark_loop_var_mutated(obj_root)
+            is_direct_self_call = (
+                isinstance(recv, TpyName) and recv.name == "self"
+            )
+            if is_direct_self_call:
+                # self.method() -- entirely deferred to call edges
+                pass
+            else:
+                # For self.field.method() and loop_var.method() (where the
+                # loop var iterates over a self field), defer self-mutation
+                # to Phase 2 via call edges (a receiver_idx, recorded
+                # by _record_mutation_call_edges). Phase 2 only sets
+                # self_mutated when the callee actually mutates its self,
+                # enabling readonly inference for methods like __json_encode__
+                # that call non-mutating methods on fields.
+                self_deferred = _is_self_call_deferred(
+                    recv, obj_root, self.ctx.func.loop_var_iterable,
+                    self.ctx.func.borrow_tracker)
+                if not self_deferred:
+                    self.ctx.mark_param_mutated(obj_root)
+                # Structural mutation tracked directly (Phase 2 doesn't
+                # propagate structural self-mutation through call edges).
+                if self._is_invalidating_method(obj_type, method):
+                    self.ctx.mark_param_structurally_mutated(obj_root)
+            storage = self.ctx.func.borrow_tracker.effective_storage(obj_root)
+            self.ctx.mark_all_view_borrowers_mutated(storage)
+            return
+        # Check for chained method calls rooted at self:
+        # self.get_span().sort() -- sort() is non-readonly and
+        # the span is a mutable view of self's storage.
+        # Treat as self-mutation conservatively. A chain rooted
+        # at a local that borrow-traces to self.<field> (e.g.
+        # `frame = self.frame; frame.get().mutating_method()`)
+        # is also a self-mutation since the receiver aliases
+        # self-owned storage.
+        chain = recv
+        while isinstance(chain, TpyMethodCall):
+            chain = chain.obj
+        chain_root = _root_name_of_expr(chain)
+        if chain_root is not None and _local_traces_to_self(
+                self.ctx.func.borrow_tracker, chain_root):
+            self.ctx.mark_param_mutated("self")
 
     def _is_invalidating_method(self, obj_type: TpyType, method_name: str) -> bool:
         """Check if a method invalidates iterators/references on a container.
@@ -948,50 +997,11 @@ class MethodAnalyzer:
                         and not info.is_auto_readonly_mutable_clone
                         and not expr.is_callable_field
                         and not interior_receiver):
-                    obj_root = _root_name_of_expr(expr.obj)
-                    if obj_root is not None:
-                        self.ctx.mark_loop_var_mutated(obj_root)
-                        is_direct_self_call = (
-                            isinstance(expr.obj, TpyName) and expr.obj.name == "self"
-                        )
-                        if is_direct_self_call:
-                            # self.method() -- entirely deferred to call edges
-                            pass
-                        else:
-                            # For self.field.method() and loop_var.method() (where the
-                            # loop var iterates over a self field), defer self-mutation
-                            # to Phase 2 via call edges (a receiver_idx, recorded
-                            # by _record_mutation_call_edges). Phase 2 only sets
-                            # self_mutated when the callee actually mutates its self,
-                            # enabling readonly inference for methods like __json_encode__
-                            # that call non-mutating methods on fields.
-                            self_deferred = _is_self_call_deferred(
-                                expr.obj, obj_root, self.ctx.func.loop_var_iterable,
-                                self.ctx.func.borrow_tracker)
-                            if not self_deferred:
-                                self.ctx.mark_param_mutated(obj_root)
-                            # Structural mutation tracked directly (Phase 2 doesn't
-                            # propagate structural self-mutation through call edges).
-                            if self._is_invalidating_method(obj_type, expr.method):
-                                self.ctx.mark_param_structurally_mutated(obj_root)
-                        storage = self.ctx.func.borrow_tracker.effective_storage(obj_root)
-                        self.ctx.mark_all_view_borrowers_mutated(storage)
-                    else:
-                        # Check for chained method calls rooted at self:
-                        # self.get_span().sort() -- sort() is non-readonly and
-                        # the span is a mutable view of self's storage.
-                        # Treat as self-mutation conservatively. A chain rooted
-                        # at a local that borrow-traces to self.<field> (e.g.
-                        # `frame = self.frame; frame.get().mutating_method()`)
-                        # is also a self-mutation since the receiver aliases
-                        # self-owned storage.
-                        chain = expr.obj
-                        while isinstance(chain, TpyMethodCall):
-                            chain = chain.obj
-                        chain_root = _root_name_of_expr(chain)
-                        if chain_root is not None and _local_traces_to_self(
-                                self.ctx.func.borrow_tracker, chain_root):
-                            self.ctx.mark_param_mutated("self")
+                    # A select receiver is each operand it may pick, and
+                    # each is credited exactly as a single receiver would be.
+                    for leaf in _receiver_leaves(expr.obj):
+                        self._credit_receiver_mutation(leaf, obj_type,
+                                                       expr.method)
                 return result
 
             deref_target = self.expr.get_deref_target_type(

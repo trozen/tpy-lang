@@ -57,7 +57,7 @@ from .overloads import (
     _scalar_widening_cost,
 )
 from .context import _root_name_of_expr
-from .statements import _is_self_call_deferred
+from .statements import _is_self_call_deferred, _receiver_leaves
 from .scope_tracker import lend_roots
 from .compatibility import TupleSink
 from .protocols import dynamic_dispatch_type_conforms
@@ -3402,11 +3402,15 @@ class CallAnalyzer:
         # these.
         receiver_idx: int | None = None
         if isinstance(expr, TpyMethodCall):
-            obj_root = _root_name_of_expr(expr.obj)
-            if expr.super_parent_type is not None or (
-                    obj_root is not None and _is_self_call_deferred(
-                        expr.obj, obj_root, self.ctx.func.loop_var_iterable,
-                        self.ctx.func.borrow_tracker)):
+            # A select receiver is each operand it may pick.
+            self_rooted = False
+            for leaf in _receiver_leaves(expr.obj):
+                obj_root = _root_name_of_expr(leaf)
+                if obj_root is not None and _is_self_call_deferred(
+                        leaf, obj_root, self.ctx.func.loop_var_iterable,
+                        self.ctx.func.borrow_tracker):
+                    self_rooted = True
+            if expr.super_parent_type is not None or self_rooted:
                 receiver_idx = self.ctx.self_receiver_index()
 
         # Nothing to record if no params flow through and no self-call

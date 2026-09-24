@@ -476,6 +476,8 @@ from .context import (
     _ONLY_INDIRECT_READ,
     _ONLY_LITERAL_FOLD,
     _ONLY_PTR_OPT_PASSTHROUGH,
+    _ONLY_SELECT_PRVALUE,
+    _ONLY_SELECT_SLOT,
     _ONLY_RECORD_COPY,
     _ExprUse,
     _LowerCtx,
@@ -4312,7 +4314,11 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
             # friend shim's `[const] T&` return already IS the operand lvalue.
             if _borrow_dunder_source(stmt.init, lc.analyzer):
                 _witness("decl.dunder_borrow_alias")
-            src = _lower_expr(stmt.init, lc, declared)
+            # The alias is declared at this statement, in this block, and
+            # never reseated: a select's fresh-operand slot lives exactly as
+            # long.
+            src = _lower_expr(stmt.init, lc, declared,
+                              use=_ExprUse(forms=_ONLY_SELECT_SLOT))
         elif isinstance(stmt.init, TpyName):
             # A pointer-local source aliases through the deref
             # (`Point& alias = (*p);`) -- the shared pointer-name-source
@@ -5735,6 +5741,16 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
                          body=body, loc=loc, closure_id=closure_id, captures=captures)
 
 
+# The statements whose emitter declares pending named slots (a select's
+# `THIRSlotEmplace`) before the statement's first line, for every
+# expression the statement lowers itself: a `for` head, an `assert`, a
+# `with` item or a `match` guard writes its own lines first, so it is not
+# here, and neither is anything reached without a statement (a member-init
+# list, a lambda body).
+_SLOT_HOIST_STMTS = (TpyExprStmt, TpyVarDecl, TpyAssign, TpyAugAssign,
+                     TpyReturn, TpyRaise, TpyIf, TpyWhile)
+
+
 def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
                 *, in_branch: bool = False,
                 branch_decls_ok: bool = False,
@@ -5752,6 +5768,12 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
         if sl is not None:
             lc.top_level_line = sl.line
     begin_stmt()
+    slot_hoist_ok = lc.slot_hoist_ok
+    # A resumable frame's `return` is spliced into its block by the frame
+    # skeleton, which declares pending slots after that block.
+    lc.slot_hoist_ok = (isinstance(stmt, _SLOT_HOIST_STMTS)
+                        and not (isinstance(stmt, TpyReturn)
+                                 and lc.resumable_leaf_mode))
     try:
         result = _lower_stmt_dispatch(stmt, scope)
     except ThirUnsupported as ex:
@@ -5765,6 +5787,8 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
             raise
         raise ThirUnsupported(stmt_reject_reason(stmt, ex.reason),
                               loc=ex.loc) from None
+    finally:
+        lc.slot_hoist_ok = slot_hoist_ok
     if isinstance(result, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind)):
         name = result.name
     elif isinstance(result, THIRAssign) and isinstance(result.target, THIRName):
@@ -7182,11 +7206,18 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     # sync return arm's result use. allow_temps stays off: the skeleton
     # composes the render into its own line and has no verified flush
     # point -- a temp-hoisting value keeps rejecting.
+    # An owned return direct-initializes the payload, so a ternary takes its
+    # prvalue `?:`. A select's slot is not admitted: inside a nested block the
+    # skeleton declares it after the block that uses it.
     value = _wrap_view_owned_return(
-        _lower_expr(ret.value, lc, declared, field_prechecked=res_str_field,
+        _lower_expr(ret.value, lc, declared,
+                    field_prechecked=res_str_field,
                     use=_ExprUse(result=(_ExprResultUse.BORROW_BIND
                                          if borrow_self_field
-                                         else _ExprResultUse.STORAGE))),
+                                         else _ExprResultUse.STORAGE),
+                                 forms=(_NO_FORMS
+                                        if form is AsyncReturnForm.BORROW
+                                        else _ONLY_SELECT_PRVALUE))),
         lc, getattr(ret, "loc", None))
     if form is AsyncReturnForm.BORROW:
         # Pointer-payload family (bare reference-type returns): the SELF
@@ -11733,12 +11764,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                     # arms' above: this general arm has
                                     # vetted no whole-tuple consumption and
                                     # no pointer binding, so it claims
-                                    # neither.
+                                    # neither. The init is COPIED into the
+                                    # binding's own storage, so the slot of
+                                    # a select of fresh operands outlives its
+                                    # use; a select with an existing-object
+                                    # operand would copy that object where
+                                    # CPython binds it, so it takes no slot.
                                     pos=SinkPos.LOCAL_DECL,
                                     forms=_decl_slot_forms(
                                         vtype, analyzer,
                                         whole_tuple_call=False,
-                                        from_call=False, ptr_local=False)),
+                                        from_call=False, ptr_local=False)
+                                    | (_ONLY_SELECT_SLOT
+                                       if is_rvalue_source(analyzer, src)
+                                       else _NO_FORMS)),
                                 allow_whole_optional=opt_slot,
                                 field_owned_str_ok=str_field_init,
                                 allow_union_divergent=_union_reassign_name))

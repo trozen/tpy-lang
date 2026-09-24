@@ -10,8 +10,8 @@ namespace tpyapp::main {
 //     c.n = 99              # mutate via result -> reaches a (reference semantics)
 //     print(c.n, a.n, len(log))
 void or_truthy_skips_ctor(Box& a, std::vector<::tpy::BigInt>& log) {
-    std::optional<Box> __logical_slot_1;
-    Box& c = (*(true ? &(a) : (__logical_slot_1.emplace(Box(::tpy::BigInt(9), log)), &*__logical_slot_1)));
+    std::optional<Box> __select_slot_1;
+    Box& c = (true ? a : __select_slot_1.emplace(Box(::tpy::BigInt(9), log)));
     c.n = ::tpy::BigInt(99);
     std::cout << c.n << " " << a.n << " " << ::tpy::__len__(log) << "\n";
 }
@@ -21,8 +21,8 @@ void or_truthy_skips_ctor(Box& a, std::vector<::tpy::BigInt>& log) {
 //     c = a and Box(5, log)  # tpyc: type(/Box/)
 //     return c.n
 ::tpy::BigInt and_truthy_returns_ctor(Box& a, std::vector<::tpy::BigInt>& log) {
-    std::optional<Box> __logical_slot_2;
-    Box& c = (*(true ? (__logical_slot_2.emplace(Box(::tpy::BigInt(5), log)), &*__logical_slot_2) : &(a)));
+    std::optional<Box> __select_slot_2;
+    Box& c = (true ? __select_slot_2.emplace(Box(::tpy::BigInt(5), log)) : a);
     return c.n;
 }
 

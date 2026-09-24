@@ -38,9 +38,9 @@ void test_ternary(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b
 //     x = {int32(1), int32(2)} or {int32(3), int32(4)}  # tpyc: type(set[int32])
 //     print(x)
 void test_literal_or() {
-    std::optional<::tpy::ordered_set<int32_t>> __logical_slot_2;
+    std::optional<::tpy::ordered_set<int32_t>> __select_slot_2;
     auto&& __tmp_1 = ::tpy::ordered_set<int32_t>({1, 2});
-    ::tpy::ordered_set<int32_t> x = (*((::tpy::__len__(__tmp_1) != 0) ? &(__tmp_1) : (__logical_slot_2.emplace(::tpy::ordered_set<int32_t>({3, 4})), &*__logical_slot_2)));
+    ::tpy::ordered_set<int32_t> x = ((::tpy::__len__(__tmp_1) != 0) ? __tmp_1 : __select_slot_2.emplace(::tpy::ordered_set<int32_t>({3, 4})));
     std::cout << ::tpy::SetPrinter(x) << "\n";
 }
 

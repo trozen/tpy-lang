@@ -34,9 +34,7 @@ void two_containers(std::vector<Rec>& xs, std::vector<Rec>& ys, bool c) {
 
 // def optional_arm(rs: list[Rec], c: bool) -> None:
 //     """A None arm loans nothing, the element arm still does."""
-//     # The copy warning is spurious -- the select takes the element's address
-//     # (BUGS.md#spurious-alias-warnings-select-and-own-literal).
-//     p = rs[0] if c else None       # tpyc: warning(/ternary copies a reference type/)
+//     p = rs[0] if c else None       # tpyc: ok
 //     if p is not None:
 //         p.n += 100
 //     rs.append(Rec(5))              # tpyc: warning(/Mutation of 'rs' while borrowed/)
@@ -72,7 +70,35 @@ void value_elements(std::vector<int32_t>& ns, bool c) {
     std::cout << v << "\n";
 }
 
+// def first(rs: list[Rec]) -> Rec:
+//     return rs[0]
+Rec& first(std::vector<Rec>& rs) {
+    return ::tpy::__getitem__(rs, 0);
+}
+
+// def make(n: int32) -> Own[Rec]:
+//     return Rec(n)
+Rec make(int32_t n) {
+    return Rec(n);
+}
+
+// def call_arm(rs: list[Rec], c: bool) -> None:
+//     """A borrow-returning call arm loans its callee's source, as the direct
+//     `r = first(rs)` does, whichever arm the other one is."""
+//     r = first(rs) if c else make(5)
+//     r.n += 1
+//     rs.append(Rec(4))              # tpyc: warning(/Mutation of 'rs' while borrowed/)
+//     print(rs[0].n, len(rs))
+void call_arm(std::vector<Rec>& rs, bool c) {
+    std::optional<Rec> __select_slot_1;
+    Rec& r = ((c) ? (::tpyapp::main::first(rs)) : (__select_slot_1.emplace(::tpyapp::main::make(5))));
+    r.n = ::tpy::add_check<int32_t>(r.n, 1);
+    rs.push_back(Rec(4));
+    std::cout << ::tpy::__getitem__(rs, 0).n << " " << ::tpy::__len__(rs) << "\n";
+}
+
 // def main() -> None:
+//     call_arm([Rec(1)], True)
 //     rs = [Rec(1), Rec(2), Rec(3)]
 //     both_element_arms(rs, True)
 //     two_containers([Rec(1)], [Rec(2)], False)
@@ -80,17 +106,19 @@ void value_elements(std::vector<int32_t>& ns, bool c) {
 //     alias_arms([Rec(1)], [Rec(2)], True)
 //     value_elements([1, 2], True)
 void main() {
+    std::vector<Rec> __tmp_2 = {Rec(1)};
+    ::tpyapp::main::call_arm(__tmp_2, true);
     std::vector<Rec> rs = {Rec(1), Rec(2), Rec(3)};
     ::tpyapp::main::both_element_arms(rs, true);
-    std::vector<Rec> __tmp_1 = {Rec(1)};
-    std::vector<Rec> __tmp_2 = {Rec(2)};
-    ::tpyapp::main::two_containers(__tmp_1, __tmp_2, false);
-    ::tpyapp::main::optional_arm(rs, true);
     std::vector<Rec> __tmp_3 = {Rec(1)};
     std::vector<Rec> __tmp_4 = {Rec(2)};
-    ::tpyapp::main::alias_arms(__tmp_3, __tmp_4, true);
-    std::vector<int32_t> __tmp_5 = {1, 2};
-    ::tpyapp::main::value_elements(__tmp_5, true);
+    ::tpyapp::main::two_containers(__tmp_3, __tmp_4, false);
+    ::tpyapp::main::optional_arm(rs, true);
+    std::vector<Rec> __tmp_5 = {Rec(1)};
+    std::vector<Rec> __tmp_6 = {Rec(2)};
+    ::tpyapp::main::alias_arms(__tmp_5, __tmp_6, true);
+    std::vector<int32_t> __tmp_7 = {1, 2};
+    ::tpyapp::main::value_elements(__tmp_7, true);
 }
 
 // main()

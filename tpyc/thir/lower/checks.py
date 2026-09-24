@@ -2061,8 +2061,8 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
             return binding
         # A container / F1-record and/or select or ternary (`x = a or b`,
         # `x = a if c else b`): the classifier's lvalue verdict means the
-        # select is itself an lvalue (an rvalue RHS rides the lazily
-        # emplaced `__logical_slot` pointer-select, still an lvalue), so
+        # select is itself an lvalue (an rvalue operand rides a lazily
+        # emplaced `THIRSlotEmplace`, still an lvalue), so
         # it binds as the single-assignment `T&` alias. Operand shapes
         # gate inside the select / ternary lowering.
         #
@@ -8739,7 +8739,10 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
         kind = _dot_receiver_value_kind(analyzer.get_expr_type(recv), analyzer)
         if kind == "str":
             return _witness("method.recv.select_str")
-        if kind == "record":
+        # A container select renders `.` access exactly like a record one:
+        # both are one object the `?:` names.
+        if kind == "record" or record_like(unwrap_readonly(unwrap_ref_type(
+                unwrap_send_sync(analyzer.get_expr_type(recv)))), analyzer):
             return _witness("method.recv.select_record")
         return False
     # Every other receiver kind (a non-str literal, a container literal, a

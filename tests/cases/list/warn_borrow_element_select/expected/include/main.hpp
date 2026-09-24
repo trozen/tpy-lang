@@ -21,6 +21,12 @@ void optional_arm(std::vector<Rec>& rs, bool c);
 void alias_arms(std::vector<Rec>& xs, std::vector<Rec>& ys, bool c);
 // def value_elements(ns: list[int32], c: bool) -> None:
 void value_elements(std::vector<int32_t>& ns, bool c);
+// def first(rs: list[Rec]) -> Rec:
+Rec& first(std::vector<Rec>& rs);
+// def make(n: int32) -> Own[Rec]:
+Rec make(int32_t n);
+// def call_arm(rs: list[Rec], c: bool) -> None:
+void call_arm(std::vector<Rec>& rs, bool c);
 // def main() -> None:
 void main();
 

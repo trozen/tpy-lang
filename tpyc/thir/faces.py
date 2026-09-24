@@ -2730,6 +2730,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "arg.record_deref_field",       # `base.mul(b.material.color)` -- a record
                                     # field read through a Deref wrapper hop,
                                     # bound bare by a record ref slot
+    "ifexpr.ref_mixed_slot",        # `a if c else make()` -- a record or
+                                    # container ternary whose fresh arm is
+                                    # emplaced into a hoisted slot, so the
+                                    # ?: stays an lvalue aliasing `a`
     "ifexpr.record_prvalue_name_arm",  # `V3(0) if e is None else e` at a ctor
                                     # member-init: a record NAME arm beside a
                                     # prvalue arm, the ?: still a prvalue

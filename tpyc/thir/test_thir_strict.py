@@ -69,16 +69,23 @@ class A:
         self.n = n
 
 
+class W:
+    a: A
+
+    def __init__(self, a: A) -> None:
+        self.a = a
+
+
 class H:
     a: A
 
-    def __init__(self, c: bool, other: A, alt: A) -> None:
-        self.a = other if c else alt
+    def __init__(self, c: bool, w: W, alt: A) -> None:
+        self.a = w.a if c else alt
 
 
 def main() -> None:
-    o = A(2)
-    h = H(True, o, A(3))
+    w = W(A(2))
+    h = H(True, w, A(3))
     print(h.a.n)
 
 
@@ -219,8 +226,8 @@ _STMT_PINS = [
     pytest.param(
         CTOR_SRC,
         "in the constructor of 'H': this construct is not yet supported by "
-        "C++ code generation (expr.ifexpr)",
-        15, "ctor:expr.ifexpr", id="ctor"),
+        "C++ code generation (field.result_type)",
+        22, "ctor:field.result_type", id="ctor"),
     pytest.param(
         TOP_LEVEL_SRC,
         "at module level: this construct is not yet supported by C++ code "

@@ -103,7 +103,7 @@ from .statements import StatementAnalyzer
 from ..prescan import ScanResult, scan_reassigned_vars, liveness_alias_sources, collect_fact_kills
 from ..liveness import analyze_last_uses, collect_finally_return_candidates
 from .alias_rebind import decide_rebind_storage, global_write_facts
-from ..value_category import wants_move
+from ..value_category import is_rvalue_source, wants_move
 from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
 from ..cycle_detection import detect_type_cycles
@@ -2041,7 +2041,17 @@ class SemanticAnalyzer:
                 else:
                     # Local variable: must copy or move (local dies on return).
                     should_move = wants_move(raw_type)
-                    if should_move and cap_name not in names_used_after:
+                    if (should_move and self._capture_aliases_other_storage(
+                            cap_name, raw_type)):
+                        # Moving a local that aliases other storage (`x = a`,
+                        # a select alias, a borrow-call result) would steal
+                        # that storage: the closure owns a copy.
+                        self.ctx.warning(
+                            f"Escaping closure '{name}' copies local"
+                            f" '{cap_name}', which aliases storage it does"
+                            f" not own; use copy() to make the copy explicit",
+                            node)
+                    elif should_move and cap_name not in names_used_after:
                         # Last use -- move into the closure, no warning
                         node.move_captures.add(cap_name)
                     elif should_move:
@@ -2053,6 +2063,25 @@ class SemanticAnalyzer:
                             f" is the last use, or use copy() to make the"
                             f" copy explicit",
                             node)
+
+    def _capture_aliases_other_storage(self, name: str,
+                                       raw_type: TpyType) -> bool:
+        """Whether a captured reference-type local ALIASES another object:
+        its single binding is an lvalue (`x = a`, a select with an
+        existing-object operand, a borrow-returning call, an element) that
+        was not moved through into it. Moving such a local would steal what
+        it aliases. A reassigned local is pointer-form, and what its capture
+        holds is filed as BUGS.md#escaping-closure-pointer-local-capture;
+        other binding kinds keep the owner verdict (BUGS.md entries)."""
+        if raw_type.is_value_type():
+            return False
+        if (name in self.ctx.func.current_reassigned_vars
+                or name in self.ctx.func.move_through_vars):
+            return False
+        decl = self.ctx.func.var_decl_by_name.get(name)
+        if decl is None or decl.init is None:
+            return False
+        return not is_rvalue_source(self.ctx, decl.init)
 
     @staticmethod
     def _names_used_after(body: list[TpyStmt], nested_node: TpyNestedDef) -> set[str]:

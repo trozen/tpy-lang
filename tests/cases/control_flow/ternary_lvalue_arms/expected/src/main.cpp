@@ -15,10 +15,8 @@ int32_t pick_elem(std::vector<Rec>& rs, bool c) {
 }
 
 // def pick_opt_elem(rs: list[Rec], c: bool) -> int32:
-//     # The copy warning is spurious for an element arm -- the select takes the
-//     # element's ADDRESS, and main() observes the mutation on the container
-//     # (BUGS.md#spurious-alias-warnings-select-and-own-literal).
-//     p = rs[0] if c else None    # tpyc: warning(/ternary copies a reference type/)
+//     # The select takes the element's ADDRESS; main() observes the mutation.
+//     p = rs[0] if c else None    # tpyc: ok
 //     if p is not None:
 //         p.n += 100
 //         return p.n
@@ -34,8 +32,8 @@ int32_t pick_opt_elem(std::vector<Rec>& rs, bool c) {
 
 // def pick_optional_element(xs: list[Rec | None], c: bool) -> int32:
 //     # The element is a pointer-repr Optional, so the select yields the `Rec*`
-//     # itself; the same spurious copy warning fires here.
-//     q = xs[0] if c else None    # tpyc: warning(/ternary copies a reference type/)
+//     # itself.
+//     q = xs[0] if c else None    # tpyc: ok
 //     if q is not None:
 //         q.n += 1000
 //         return q.n

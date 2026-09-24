@@ -291,7 +291,8 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     Rvalues: constructor calls, Own[T] returns, literals, binop/unop results,
     field access on rvalue objects (member of temporary).
     Lvalues (borrow-aliases): variable names, field access on lvalues,
-    subscript, function/method returning T&, ternary with two lvalue arms.
+    subscript, function/method returning T&, and a non-value ternary or
+    and/or select with at least one lvalue operand.
     """
     # Names are lvalues (either pointer-locals, params, or globals)
     if isinstance(expr, TpyName):
@@ -329,14 +330,14 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
         if expr.getitem_function_info is not None:
             return not call_returns_cpp_ref(analyzer, expr.getitem_function_info)
         return False
-    # Ternary: lvalue iff both arms are lvalues (C++ ternary with two lvalue
-    # arms is itself an lvalue). Uses OR semantics: rvalue if either arm is
-    # rvalue, since _gen_if_expr emits arms inline with no temp materialization.
+    # A non-value ternary is the and/or rule below: a fresh arm beside an
+    # lvalue arm is emplaced into a hoisted slot, so the result stays an
+    # lvalue unless BOTH arms are fresh.
     if isinstance(expr, TpyIfExpr):
         result_type = analyzer.get_expr_type(expr)
         if result_type and not result_type.is_value_type():
             return (is_rvalue_source(analyzer, expr.then_expr)
-                    or is_rvalue_source(analyzer, expr.else_expr))
+                    and is_rvalue_source(analyzer, expr.else_expr))
     # Logical and/or with operand-return semantics: rvalue temps are
     # materialized into named variables by _gen_logical_value, so the
     # result is only an rvalue when both operands are rvalues.

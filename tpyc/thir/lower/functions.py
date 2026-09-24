@@ -187,7 +187,7 @@ from .context import (
     _LowerCtx,
     _NO_FORMS,
     _ONLY_BTUPLE_SLOT,
-    _ONLY_RECORD_PRVALUE,
+    _ONLY_SELECT_PRVALUE,
     SinkPos,
     ValueOptKind,
 )
@@ -2835,7 +2835,7 @@ def _lower_ctor_mil_init(
             field_cpp=field_cpp,
             value=_lower_expr(stmt.value, lc, declared,
                               use=_ExprUse(
-                                  pos=SinkPos.MIL_INIT, forms=_ONLY_RECORD_PRVALUE)))
+                                  pos=SinkPos.MIL_INIT, forms=_ONLY_SELECT_PRVALUE)))
     if _method_rvalue_record_like(source, analyzer):
         # An Own-returning method-call rvalue constructs the field directly
         # (`shared(Rc<Val>::new_<Val>(Val(0)))`): the MIL slot is a storage
