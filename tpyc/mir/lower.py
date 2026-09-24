@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from contextlib import contextmanager
 from collections.abc import Iterator, Mapping
+from types import MappingProxyType
 
 from ..identity_map import IdentityMap, IdentitySet
 from ..codegen_cpp.forms import LoopBinding, loop_binding_kind
@@ -17,7 +18,7 @@ from ..typesys import (
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch, MIRStorageInit, MIRStatement,
     MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIRNotCovered, MIRReceiverInit, MIRGlobalId,
-    MIRDeref, MIRField, MIRFieldId, MIRPlace, MIRRead, MIRReturn, MIRRvalue,
+    MIRDeref, MIRField, MIRFieldId, MIRPlace, MIRPoint, MIRRead, MIRReturn, MIRRvalue,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRRecordStorageInit, MIRRecordStorageKind,
     MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode,
@@ -32,7 +33,8 @@ from .nodes import (
 from .coverage import MIRUnsupported, plain as _plain, require as _require, scalar_wrapper
 from .definitions import MIRConstructorDefinition, MIRDefinitions, constructor_initialization
 from .call_contract import MIRCallSummary, MIRSummaryResult, MIRSummaryState, summary_problem
-from .validate import MIRDefiniteAssignmentError, MIRPresenceError, statement_reads, successors, validate_function
+from .validate import (MIRDefiniteAssignmentError, MIRPresenceError, MIRRepeatedInitializationError,
+                       statement_reads, successors, validate_function)
 
 
 def _literal(expr: th.THIRExpr) -> bool:
@@ -104,7 +106,6 @@ class _Coverage:
                 _require(arg, self.expr(arg) == typ, "call scalar argument mismatch")
             else:
                 if isinstance(arg, th.THIRArgTemp):
-                    _require(arg, result is None, "borrowed result needs stable arguments")
                     self.argument_temporary(arg, ref)
                     continue
                 _require(arg, isinstance(arg, (th.THIRName, th.THIRSelf))
@@ -135,6 +136,14 @@ class _Coverage:
         _require(arg, not placement.optional or definition.layout.movable and arg.would_bank(),
                  "deferred argument needs movable backing")
         self.argument_temporaries[arg] = reference
+
+    @contextmanager
+    def argument_order(self, expr: th.THIRExpr) -> Iterator[None]:
+        before = len(self.argument_temporaries)
+        yield
+        if len(self.argument_temporaries) != before:
+            _require(expr, self.ordered_temporary_expression(expr),
+                     "named argument crosses unproven evaluation order")
 
     def ordered_temporary_expression(self, expr: th.THIRExpr) -> bool:
         match expr:
@@ -488,6 +497,10 @@ class _Coverage:
         return name
 
     def borrowed_expression(self, expr: th.THIRExpr, result: th.THIRBorrowedRecord) -> None:
+        with self.argument_order(expr):
+            self._borrowed_expression(expr, result)
+
+    def _borrowed_expression(self, expr: th.THIRExpr, result: th.THIRBorrowedRecord) -> None:
         _require(expr, expr.form is (th.Form.VALUE if isinstance(expr, th.THIRCall) else th.Form.BORROW),
                  "unsupported borrowed expression form")
         self.reference(expr, result, expr.result_type)
@@ -500,8 +513,8 @@ class _Coverage:
             case th.THIRIfExpr():
                 _plain(expr, {"cond", "then", "orelse"})
                 _require(expr, self.expr(expr.cond) == BOOL, "condition requires bool")
-                self.borrowed_expression(expr.then, result)
-                self.borrowed_expression(expr.orelse, result)
+                self._borrowed_expression(expr.then, result)
+                self._borrowed_expression(expr.orelse, result)
             case _:
                 source = self.references[self.reference_name(expr)]
                 _require(expr, not source.readonly or result.readonly, "return increases access")
@@ -899,21 +912,18 @@ class _Coverage:
     def full_expression(self, expr: th.THIRExpr, *, discard: bool = False) -> TpyType:
         assert self.active_temporaries is None
         self.active_temporaries = []
-        before = len(self.argument_temporaries)
         try:
-            if discard and isinstance(expr, th.THIRCtorCall):
-                typ = self.temporary(expr).type
-            elif discard and isinstance(expr, th.THIRCall) and isinstance(expr.result_type, VoidType):
-                _require(expr, expr.form is th.Form.VALUE, "unsupported expression form")
-                self.call(expr)
-                typ = expr.result_type
-            else:
-                typ = self.expr(expr)
+            with self.argument_order(expr):
+                if discard and isinstance(expr, th.THIRCtorCall):
+                    typ = self.temporary(expr).type
+                elif discard and isinstance(expr, th.THIRCall) and isinstance(expr.result_type, VoidType):
+                    _require(expr, expr.form is th.Form.VALUE, "unsupported expression form")
+                    self.call(expr)
+                    typ = expr.result_type
+                else:
+                    typ = self.expr(expr)
             if self.active_temporaries:
                 self.full_expressions.add(expr)
-            if len(self.argument_temporaries) != before:
-                _require(expr, self.ordered_temporary_expression(expr),
-                         "named argument crosses unproven evaluation order")
             return typ
         finally:
             self.active_temporaries = None
@@ -1347,6 +1357,8 @@ class _Builder:
         self.temp_regions = {0: self.region}
         self.temp_storage: dict[int, MIRSlotId] = {}
         self.temp_holders: dict[int, MIRSlotId] = {}
+        self.backing_places: IdentityMap[th.THIRArgTemp, MIRPlace] = IdentityMap()
+        self.borrow_operations: IdentityMap[th.THIRStmt, tuple[MIRPoint, ...]] = IdentityMap()
 
     def declare_temporaries(self, stmt: th.THIRStmt) -> None:
         if self.temp_plan is None:
@@ -1359,6 +1371,7 @@ class _Builder:
                                 record_storage=(MIRRecordStorageKind.OPTIONAL if placement.optional
                                                 else MIRRecordStorageKind.DIRECT))
             self.temp_storage[placement.index] = storage
+            self.backing_places[placement.node] = MIRPlace(storage)
             self.temp_holders[placement.index] = self.slot(reference.type, reference=reference)
             if placement.optional:
                 self.current.statements.append(MIRRecordStorageInit(MIRPlace(storage), placement.node.loc))
@@ -1494,6 +1507,11 @@ class _Builder:
         target = MIRPlace(dest) if isinstance(dest, MIRSlotId) else dest
         self.current.statements.append(MIRAssign(target, value, loc, storage_write))
 
+    def borrow_operation(self, stmt: th.THIRStmt) -> None:
+        assert self.current is not None
+        point = MIRPoint(self.current.id, len(self.current.statements))
+        self.borrow_operations[stmt] = (*self.borrow_operations.get(stmt, ()), point)
+
     def payload_write(self, dest: MIRSlotId, mode: MIRPayloadWriteMode) -> MIRPayloadWrite | None:
         if mode is MIRPayloadWriteMode.INITIALIZE and self.region.index != 0:
             mode = MIRPayloadWriteMode.INITIALIZE_REGION
@@ -1538,6 +1556,7 @@ class _Builder:
         self.current = None
 
     def borrowed_expression(self, expr: th.THIRExpr, result: th.THIRBorrowedRecord) -> MIRSlotId:
+        self.initialize_temporaries(expr)
         match expr:
             case th.THIRCall():
                 dest = self.slot(result.type, reference=result)
@@ -1810,6 +1829,7 @@ class _Builder:
                     name = stmt.target.name if isinstance(stmt, th.THIRAssign) else stmt.name
                     if declaration:
                         self.bindings[name] = self.slot(fact.type, MIRSlotKind.LOCAL, name, fact)
+                    self.borrow_operation(stmt)
                     self.write(self.bindings[name], value, loc)
                 case th.THIRVarDecl() if stmt.tuple_storage_alias is not None:
                     self.bindings[stmt.name] = self.bindings[stmt.tuple_storage_alias.source]
@@ -1819,6 +1839,7 @@ class _Builder:
                     source = self.borrowed_expression(stmt.init if declaration else stmt.value, fact)
                     if declaration:
                         self.bindings[stmt.name] = self.slot(fact.type, MIRSlotKind.LOCAL, stmt.name, fact)
+                    self.borrow_operation(stmt)
                     self.write(self.bindings[stmt.name], MIRAlias(source), loc)
                 case th.THIRVarDecl() if stmt.tuple_layout is not None:
                     owning = stmt.tuple_layout.owns_records
@@ -1858,6 +1879,8 @@ class _Builder:
                     result = self.fn.resolved_callee.signature.borrowed_result if self.fn.resolved_callee is not None else None
                     value = (None if stmt.value is None else self.borrowed_expression(stmt.value, result)
                              if result is not None else self.full_expression_value(stmt.value))
+                    if result is not None:
+                        self.borrow_operation(stmt)
                     self.end(MIRReturn(value, loc))
                 case th.THIRIf():
                     if self.temp_plan is not None:
@@ -2163,6 +2186,14 @@ class _Builder:
         return tuple(s for s in self.slots if s.id in retained)
 
 
+@dataclass(frozen=True, eq=False)
+class MIRLoweredStorage:
+    function: MIRFunction
+    # Captured when the builder allocates storage, never reconstructed from IDs.
+    backings: Mapping[th.THIRArgTemp, MIRPlace]
+    operations: Mapping[th.THIRStmt, tuple[MIRPoint, ...]]
+
+
 def lower_function(fn: th.THIRFunction, body: MIRBodyId, *,
                    kind: MIRBodyKind, definitions: MIRDefinitions | None = None,
                    summaries: Mapping[th.THIRFunctionIdentity, MIRSummaryResult] | None = None) -> MIRFunction | MIRNotCovered:
@@ -2170,16 +2201,35 @@ def lower_function(fn: th.THIRFunction, body: MIRBodyId, *,
 
     Structural validation checks their contracts, not another body's semantics.
     """
+    result = lower_function_storage(fn, body, kind=kind, definitions=definitions, summaries=summaries)
+    return result.function if isinstance(result, MIRLoweredStorage) else result
+
+
+def _build_storage(body: MIRBodyId, fn: th.THIRFunction, coverage: _Coverage,
+                   initialization: MIRConstructorDefinition | None = None) -> MIRLoweredStorage:
+    builder = _Builder(body, fn, coverage)
+    try:
+        function = builder.build(initialization)
+    except MIRRepeatedInitializationError as failure:
+        raise MIRUnsupported(failure, str(failure)) from failure
+    except (MIRPresenceError, MIRDefiniteAssignmentError) as failure:
+        raise MIRUnsupported(fn, str(failure)) from failure
+    return MIRLoweredStorage(function, MappingProxyType(builder.backing_places),
+                             MappingProxyType(builder.borrow_operations))
+
+
+def lower_function_storage(fn: th.THIRFunction, body: MIRBodyId, *,
+                           kind: MIRBodyKind, definitions: MIRDefinitions | None = None,
+                           summaries: Mapping[th.THIRFunctionIdentity, MIRSummaryResult] | None = None
+                           ) -> MIRLoweredStorage | MIRNotCovered:
+    """The ordinary lowering pass, retaining its actual backing correspondence."""
     try:
         _require(fn, kind in (MIRBodyKind.FREE_FUNCTION, MIRBodyKind.METHOD), "unsupported body kind")
         _require(fn, (kind is MIRBodyKind.METHOD) == (fn.receiver is not None),
                  "body kind and receiver mismatch")
         coverage = _Coverage(fn, definitions if definitions is not None else MIRDefinitions(), summaries)
         coverage.check()
-        try:
-            return _Builder(body, fn, coverage).build()
-        except (MIRPresenceError, MIRDefiniteAssignmentError) as failure:
-            raise MIRUnsupported(fn, str(failure)) from failure
+        return _build_storage(body, fn, coverage)
     except MIRUnsupported as failure:
         return MIRNotCovered(body, type(failure.node).__name__, failure.reason,
                              getattr(failure.node, "loc", None))
@@ -2189,6 +2239,14 @@ def lower_constructor(ctor: th.THIRConstructor, body: MIRBodyId, *,
                       definitions: MIRDefinitions | None = None,
                       summaries: Mapping[th.THIRFunctionIdentity, MIRSummaryResult] | None = None) -> MIRFunction | MIRNotCovered:
     """Lower complete pure initialization before a supported constructor tail."""
+    result = lower_constructor_storage(ctor, body, definitions=definitions, summaries=summaries)
+    return result.function if isinstance(result, MIRLoweredStorage) else result
+
+
+def lower_constructor_storage(ctor: th.THIRConstructor, body: MIRBodyId, *,
+                              definitions: MIRDefinitions | None = None,
+                              summaries: Mapping[th.THIRFunctionIdentity, MIRSummaryResult] | None = None
+                              ) -> MIRLoweredStorage | MIRNotCovered:
     try:
         initialization = constructor_initialization(ctor)
         fn = th.THIRFunction(
@@ -2197,10 +2255,7 @@ def lower_constructor(ctor: th.THIRConstructor, body: MIRBodyId, *,
         coverage = _Coverage(fn, definitions if definitions is not None else MIRDefinitions(), summaries)
         coverage.check()
         coverage.records[initialization.layout.type] = initialization
-        try:
-            return _Builder(body, fn, coverage).build(initialization)
-        except (MIRPresenceError, MIRDefiniteAssignmentError) as failure:
-            raise MIRUnsupported(ctor, str(failure)) from failure
+        return _build_storage(body, fn, coverage, initialization)
     except MIRUnsupported as failure:
         return MIRNotCovered(body, type(failure.node).__name__, failure.reason,
                              getattr(failure.node, "loc", None))

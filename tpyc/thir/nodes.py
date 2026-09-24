@@ -26,6 +26,7 @@ from ..typesys import NominalType, ResolvedBinop, TpyType
 
 if TYPE_CHECKING:
     from .temp_plan import THIRTempPlan
+    from .storage_facts import THIRStorageFacts
     # The shared binding tags carry no runtime dependency on codegen here.
     from ..codegen_cpp.forms import LocalBinding, LoopBinding
 
@@ -2007,10 +2008,11 @@ class PtrSlotKind(Enum):
 
 # The reseat kinds whose emitter drains pending temps before the write, so
 # a temp-bearing value is legal there (the validator's flushable-position
-# fact). The bare-name kinds (PTR_ADDR, DYN_PROTOCOL_ERASED, GLOBAL_PTR_COPY)
+# fact). The bare-name kinds (DYN_PROTOCOL_ERASED, GLOBAL_PTR_COPY)
 # and the valueless ones stay out; a new kind is classified here, next to
 # its declaration.
 FLUSHING_REBIND_KINDS = frozenset({
+    PtrSlotKind.PTR_ADDR,
     PtrSlotKind.FRAME_STORAGE_CALL, PtrSlotKind.FRAME_RVALUE,
     PtrSlotKind.OPT_FIELD_RVALUE, PtrSlotKind.OPT_STORAGE_CALL,
     PtrSlotKind.DYN_PROTOCOL, PtrSlotKind.GLOBAL_HOIST_RVALUE,
@@ -3653,6 +3655,8 @@ class THIRFunction:
     receiver: THIRBorrowedRecord | None = None
     resolved_callee: THIRResolvedCallee | None = None
     temp_plan: THIRTempPlan | None = None
+    # None means unpublished (a hand-built body), never an empty inventory.
+    storage_facts: THIRStorageFacts | None = None
 
 
 @dataclass(frozen=True)
@@ -3705,6 +3709,7 @@ class THIRConstructor:
     body: tuple[THIRStmt, ...] = ()
     record_layout: THIRRecordLayout | None = None
     temp_plan: THIRTempPlan | None = None
+    storage_facts: THIRStorageFacts | None = None
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,3 @@
+main.py:19: warning: Result borrows from temporary argument 'cell'; the temporary is destroyed at end-of-statement
+main.py:19: warning: Result borrows from temporary argument 'cell'; the temporary is destroyed at end-of-statement
+main.py:19: error: in function 'probe': this construct is not yet supported by C++ code generation (expr.call:call.arg_shape.record_f1)

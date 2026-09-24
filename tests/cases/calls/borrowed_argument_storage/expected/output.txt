@@ -1,0 +1,10 @@
+payload 1
+fixed 1
+external 23
+external 22
+method 31
+constructor 40
+while 2
+while 1
+for 0
+for 1

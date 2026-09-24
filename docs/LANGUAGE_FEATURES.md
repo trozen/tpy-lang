@@ -8912,8 +8912,35 @@ parameter-derived plain-record return summaries. M4.5 preserves emitted result
 access and extracts direct/conditional/alias return roots from validated MIR.
 M4.6 substitutes actual origins into local result holders and forwarded
 summaries, including imported aliases, readonly results and repeated arguments.
-Temporary actuals and richer result forms remain uncovered. Production behavior
-is unchanged.
+Richer result forms remain uncovered. This summary layer does not change
+production behavior.
+
+The [borrowed-argument storage extension](MIR_BORROWED_ARGUMENT_STORAGE_PLAN.md)
+connects verified named hook-free record constructor arguments of an existing
+borrowed-call local declaration (`saved = observe(Cell(v))`) to the returned
+holder in MIR. Result dependencies contain only the actual roots selected by
+the callee summary. A borrowed-call ternary
+whose arms materialize arguments, or a pointer declaration/reseat whose value
+materializes arguments, still rejects as not yet
+supported, pending the [storage-origin production gate](MIR_STORAGE_ORIGIN_DESIGN.md)
+and its coverage/compatibility decision.
+Lowered functions, constructors and module-init bodies publish recorded
+materialized storage and borrowed sinks as internal facts; no diagnostic or
+checker authority uses them in production yet. The internal evidence API connects those facts
+and exact THIR placements to the ordinary MIR builder's backing places,
+checks scope/replacement/payload ends and explicit return escapes, and reports
+Certified, Conflict or Not covered. This does not close existing language
+safety gaps. Select-slot and inline full-expression backing, mutable temporary
+access and unproven evaluation order remain uncovered; callers owning backing
+stay opaque as callees.
+The [borrow-operation proof](MIR_BORROW_OBLIGATION_PLAN.md) also records
+supported plain-record alias bindings, reseats and eligible free-function
+borrowed returns. Their exact MIR writes/returns receive whole-body lifetime
+evidence, including parameter-only aliases that create no backing. An alias
+of ordinary local storage retains that local origin and its lifetime checks.
+Methods and constructor tails share the local-binding path; broader return
+contracts and unmapped or pruned operations remain uncovered. This internal
+extension changes no source acceptance, diagnostic or generated C++.
 
 The [named argument storage extension](MIR_NAMED_ARGUMENT_STORAGE_PLAN.md) adds
 hook-free scalar-field record constructors as readonly borrowed arguments,

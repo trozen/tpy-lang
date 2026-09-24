@@ -170,6 +170,55 @@ destination. Returned holders feed the existing storage and retention analyses;
 forwarding reuses those dependency states. Unsupported origins never certify
 an empty result dependency set.
 
+Covered MIR means a complete representable body, not a lifetime-safety
+certificate. Workspace analysis and `--dump-mir` can report coverage while
+separate storage evidence reports a conflict. Local-backing callers remain
+opaque for summary extraction.
+
+Verified readonly constructor arguments of an existing borrowed-call
+declaration feed the returned-origin substitution through their named holders;
+borrowed-expression MIR lowering shares the scalar path's initialization
+anchors and evaluation-order proof, and local backing keeps caller summaries
+opaque (`MIR_BORROWED_ARGUMENT_STORAGE_PLAN.md`). `PTR_ADDR` pointer
+declarations and reseats share the declaration flush contract in the emitter,
+validator and temporary planner; lowering grants them no temporary arguments.
+The flush contract describes well-formed emission of THIR, independently of
+source admission and the separate lifetime proof.
+
+Every lowered function, constructor and module-init body publishes
+`THIRStorageFacts` (`thir/storage_facts.py`) beside its optional temporary plan
+(`MIR_STORAGE_ORIGIN_DESIGN.md`). Each backing names one materialized storage
+producer by THIR identity: a `THIRArgTemp` linked to its plan placement, a
+`THIRSlotEmplace` select slot, or an inline full-expression constructor with
+its enclosing full expression. Missing argument placement carries an explicit
+uncovered reason; full-expression backing needs no temporary-plan placement.
+`storage_facts is None` means unpublished.
+Supported plain-record local bindings and reseats record obligations even
+when their values are names or field paths. Eligible free-function borrowed
+returns use the selected callable's borrowed-result contract. Previously
+recorded unsupported sinks remain in the inventory. The facts carry no
+admission authority; consumers validate them by recomputation against the
+exact body, plan and selected return contract, like `validate_plan`.
+
+`mir/storage_adapter.py` binds these facts to internal lifetime evidence.
+`MIRStorageRequest` captures the exact THIR function or constructor, plan,
+definitions and summary snapshot. The ordinary MIR builder exposes the
+backing places as it allocates them and maps each borrowed sink to its final
+holder write or return terminator; no second lowering or name-based matching
+is involved. `certify_thir_storage` validates the inventory and composes
+`mir/storage_evidence.py` over those operations and actual roots, retaining
+both THIR and MIR identity. Operation evidence retains the exact demanded
+points and explicit backing roots, resolving dead destinations too. It adds
+reached local storage to the whole-body checks; parameter-only operations
+need neither new backing nor a temporary plan. Storage-only evidence retains
+its separate nonempty-root contract. Scope ends, replacement, payload ends and explicit returned origins
+must all be supported and free of conflicts. Unknown origins or engagement
+withhold certification, as do select-slot and inline full-expression backing.
+Bodies with neither backing nor obligations are distinguished from missing
+facts and unknown-origin obligations; none receives an empty proof. Unmapped
+or pruned obligations stay uncovered. Production emission does not call
+this API. Its gate and compatibility policy remain a separate future decision.
+
 Named scalar-field record arguments additionally share a prepared THIR storage
 plan with C++ emission (`MIR_NAMED_ARGUMENT_STORAGE_PLAN.md`). The shared queue
 retains declaration scopes and ordered eager/lazy initialization anchors;

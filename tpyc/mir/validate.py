@@ -4,6 +4,7 @@ from collections import deque
 from dataclasses import dataclass
 
 from ..identity_map import IdentitySet
+from ..parse import SourceLocation
 from ..thir.nodes import Form
 from ..type_def_registry import is_list, is_array, is_set, is_dict
 from ..typesys import (
@@ -41,6 +42,14 @@ class MIRPresenceError(MIRValidationError):
 
 class MIRDefiniteAssignmentError(MIRValidationError):
     """Structural CFG paths do not establish initialization before a read."""
+
+
+class MIRRepeatedInitializationError(MIRValidationError):
+    """A static place initializes twice within one modeled region activation."""
+
+    def __init__(self, loc: SourceLocation | None) -> None:
+        super().__init__("repeated initialization within region activation")
+        self.loc = loc
 
 
 @dataclass(frozen=True)
@@ -893,15 +902,18 @@ def _validate_structure(fn: MIRFunction) -> None:
     cyclic = _cyclic_blocks(blocks, pred)
     _require(not owning_blocks.intersection(cyclic), "owning operation in cycle")
     _require(not payload_init_blocks.intersection(cyclic), "payload initialization in cycle")
-    for owner, initialization in {(slots[sid].storage_duration, bid)
-                                  for sid, bid in region_initializations.items()}:
+    for sid, initialization in region_initializations.items():
+        owner = slots[sid].storage_duration
         pending = list(successors(blocks[initialization].terminator))
         seen: set[MIRBlockId] = set()
         while pending:
             bid = pending.pop()
             if owner not in regions.chains[blocks[bid].region] or bid in seen:
                 continue
-            _require(bid != initialization, "repeated initialization within region activation")
+            if bid == initialization:
+                loc = next((stmt.loc for stmt in blocks[initialization].statements
+                            if (target := statement_target(stmt)) is not None and target.root == sid), None)
+                raise MIRRepeatedInitializationError(loc)
             seen.add(bid)
             pending.extend(successors(blocks[bid].terminator))
 

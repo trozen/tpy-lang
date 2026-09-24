@@ -3820,6 +3820,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # Address-of an existing lvalue -- the decl itself takes no slot
             # (the decl twin of the PTR_ADDR reseat).
             init_cpp = _emit_expr(stmt.init, state)
+            state.temps.flush(out, indent)
             out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
                       f"&({init_cpp});\n")
         else:  # PtrSlotKind.UNION_ADDR
@@ -3901,9 +3902,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # source renders its own parens).
             out.write(f"{indent}{name} = &{_emit_expr(stmt.value, state)};\n")
         elif stmt.kind is PtrSlotKind.PTR_ADDR:
-            # Lvalue-name reseat: address-of the bare storage read.
-            out.write(f"{indent}{name} = "
-                      f"&({_emit_expr(stmt.value, state)});\n")
+            # The returned lvalue can borrow backing declared before this write.
+            value_cpp = _emit_expr(stmt.value, state)
+            state.temps.flush(out, indent)
+            out.write(f"{indent}{name} = &({value_cpp});\n")
         elif stmt.kind is PtrSlotKind.GLOBAL_HOIST_RVALUE:
             # Write of a HOISTED pointer-slot global: the slot is
             # re-assignable, so it rides the hoist lines as a

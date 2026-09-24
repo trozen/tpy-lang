@@ -1,0 +1,4 @@
+main.py:45: warning: Result borrows from temporary argument 'cell'; the temporary is destroyed at end-of-statement
+main.py:52: warning: Result borrows from temporary argument 'second'; the temporary is destroyed at end-of-statement
+main.py:61: warning: Result borrows from temporary argument 'cell'; the temporary is destroyed at end-of-statement
+main.py:66: warning: Result borrows from temporary argument 'cell'; the temporary is destroyed at end-of-statement

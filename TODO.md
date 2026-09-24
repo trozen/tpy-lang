@@ -1725,8 +1725,31 @@ alongside related feature work; only the big-rock deferrals live here.
   invalidation, escapes and exit-specific cleanup remain open.
   `docs/MIR_BORROWED_RETURN_PLAN.md` records M4.5/M4.6: whole-parameter
   borrowed-record return summaries, caller holders and forwarding are implemented.
-  Projected/aggregate/owned results, temporary actuals,
+  Projected/aggregate/owned results, inline and richer temporary actuals,
   broader callees and escape channels stay in the M2/M4/W5 backlog.
+  `docs/MIR_BORROWED_ARGUMENT_STORAGE_PLAN.md` connects named argument backing
+  of existing borrowed-call declarations to returned aliases in MIR; inline
+  temporaries and unproven evaluation order remain open.
+  `docs/MIR_STORAGE_ORIGIN_DESIGN.md` steps 1-2 are implemented: lowered bodies
+  publish validated `THIRStorageFacts` (argument, select-slot and
+  full-expression backing plus borrowed-sink obligations), and the lazy
+  borrowed-call ternary / temporary-bearing `PTR_ADDR` source admission stays
+  closed. The internal MIR evidence API (Certified/Conflict/Not covered)
+  checks return escapes and complete roots; its adapter binds exact THIR,
+  plan and request identities to the ordinary builder's actual backing places.
+  `docs/MIR_STORAGE_COVERAGE_AUDIT.md` records a targeted baseline: five of
+  117 user bodies with recorded proof requirements certify before the
+  `docs/MIR_BORROW_OBLIGATION_PLAN.md` extension. Supported plain-record
+  bindings, reseats and eligible returns now have exact operation obligations
+  and parameter-origin discharge; broader compatibility measurement is still
+  required before step 3 decides
+  production authority. Select-slot placement is not yet planned, and inline
+  full-expression backing is not connected to this proof; both stay uncovered.
+  Aggregate sinks/returns, broader return contracts and discharge of pruned
+  operations remain open. No production path uses these certificates to
+  accept or reject source.
+  Share the engaged Optional/union payload-selection helper across storage
+  evidence, scope lifetime and payload lifetime analyses to prevent drift.
   Before the M5 authority switch, unify selected return access across emitted
   signatures, caller bindings and MIR certificates. The current certificate
   follows the emitter's declaration readonly flag; the caller mismatch is

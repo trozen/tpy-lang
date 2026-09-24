@@ -5,6 +5,11 @@ call-effect interface. This architectural extension supplies
 another M3 W5 prerequisite; it does not complete escape analysis or change
 production checking, source acceptance, diagnostics or C++ emission.
 
+The subsequent [borrowed-argument storage batch](MIR_BORROWED_ARGUMENT_STORAGE_PLAN.md)
+extends the original stable-actual boundary below with verified named
+constructor backing. Source acceptance and the M4.5/M4.6 summary contract
+itself are unchanged.
+
 ## Contract
 
 For the existing hook-free record with bool/int32 fields:

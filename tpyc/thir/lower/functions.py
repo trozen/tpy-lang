@@ -5,6 +5,7 @@ lowering, and the module iteration helpers the codegen seam calls.
 from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import replace
+from ..storage_facts import collect_storage_facts
 from ..temp_plan import prepare_temporaries
 from .callables import resolved_definition
 from .storage import borrowed_record, native_container, optional_layout, record_layout, tuple_parameter_layout
@@ -1095,7 +1096,10 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         )
         if _rejects_lambda_hoist(fn.body):
             raise ThirUnsupported("nested_def.rebind_slot_hoist")
-        fn = replace(fn, temp_plan=prepare_temporaries(fn.body))
+        plan = prepare_temporaries(fn.body)
+        fn = replace(fn, temp_plan=plan, storage_facts=collect_storage_facts(
+            fn.body, plan, borrowed_result=(fn.resolved_callee.signature.borrowed_result
+                                           if fn.resolved_callee is not None else None)))
         validate_function(fn)
         return fn
     except ThirUnsupported as ex:
@@ -2051,7 +2055,9 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         )
         if _rejects_lambda_hoist(ctor.body):
             raise ThirUnsupported("nested_def.rebind_slot_hoist")
-        ctor = replace(ctor, temp_plan=prepare_temporaries(ctor.body))
+        plan = prepare_temporaries(ctor.body)
+        ctor = replace(ctor, temp_plan=plan, storage_facts=collect_storage_facts(
+            ctor.body, plan, ctor.mil_inits + ctor.base_inits))
         validate_constructor(ctor)
         return ctor
     except ThirUnsupported as ex:
@@ -3246,7 +3252,8 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
             raise ThirUnsupported("body.hoisted_vars")
         fn = THIRFunction(name="__tpy_init", params=(),
                           return_type=VoidType(), body=body,
-                          layout=THIRFunctionLayout())
+                          layout=THIRFunctionLayout(),
+                          storage_facts=collect_storage_facts(body, None))
         slot_node = next((n for n in _iter_thir(fn.body)
                           if _rejects_global_slot(n)), None)
         if slot_node is not None:

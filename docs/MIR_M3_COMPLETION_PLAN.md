@@ -208,6 +208,18 @@ Returned holders participate in existing storage analyses; projected/aggregate
 results and general escape channels remain W5 work. Production authority is
 unchanged.
 
+The [borrowed-argument storage batch](MIR_BORROWED_ARGUMENT_STORAGE_PLAN.md)
+connects verified named constructor backing to returned holders, including
+ordinary loop-body activations. The [storage-origin design](MIR_STORAGE_ORIGIN_DESIGN.md)
+implements steps 1-2: per-body backing facts and borrowed-sink obligations,
+internal lifetime evidence, and an adapter binding the exact THIR/plan/request
+to backing places allocated by the ordinary MIR builder. It checks complete
+origins and explicit returned borrows as well as scope, replacement and payload
+ends. Select-slot and inline full-expression backing, richer actuals and
+general escape channels remain W1/W5/M4 obligations. Coverage measurement and
+the step 3 production-authority decision remain open; this internal API changes
+neither source acceptance nor diagnostics.
+
 Batch work around shared invariants. Specify commit boundaries before coding,
 review the cumulative batch, and run the full forced suite after its final
 implementation changes. Each implementation step should finish as one commit

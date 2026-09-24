@@ -197,14 +197,28 @@ class _Planner:
                     if stmt.cpp_local_representation is LocalBinding.STORAGE_TUPLE_ALIAS:
                         raise _Unplanned()
                     _plain(stmt, {"name", "resolved_type", "init", "cpp_type", "form", "is_const",
-                                  "cpp_local_representation", "owned_storage", "storage_placement", "storage_borrow"})
+                                  "cpp_local_representation", "owned_storage", "storage_placement", "storage_borrow",
+                                  "alias_binding"})
                     if stmt.init is not None:
                         self.expr(stmt.init)
                     self.flush(stmt, scope)
                 case th.THIRAssign():
-                    _plain(stmt, {"target", "value"})
+                    _plain(stmt, {"target", "value", "alias_binding"})
                     self.expr(stmt.target)
                     self.expr(stmt.value)
+                    self.flush(stmt, scope)
+                case th.THIRPtrLocalDecl() | th.THIRPtrLocalRebind():
+                    if stmt.kind is not th.PtrSlotKind.PTR_ADDR:
+                        raise _Unplanned()
+                    if isinstance(stmt, th.THIRPtrLocalDecl):
+                        _plain(stmt, {"name", "resolved_type", "kind", "init", "cpp_type",
+                                      "is_const", "alias_binding", "storage_borrow"})
+                        value = stmt.init
+                    else:
+                        _plain(stmt, {"name", "kind", "value", "alias_binding", "storage_borrow"})
+                        value = stmt.value
+                    if value is not None:
+                        self.expr(value)
                     self.flush(stmt, scope)
                 case th.THIRReturn():
                     _plain(stmt, {"value"})
