@@ -42,6 +42,6 @@ The `[kind]` flag carries the intent: `bad` -- the user thinks the line is wrong
 
 ## Rules
 
-- Scope stays the branch's goal: anything that grows it is filed, however small, unless the user says to include it.
+- Scope follows CLAUDE.md "A branch holds its goal": the user is reviewing, so additions other than fixes to what the branch introduced become followups.
 - Never parse a comment as consent to a neighboring change it did not mention.
 - If several comments point at the same root cause, say so once and treat them as one item.

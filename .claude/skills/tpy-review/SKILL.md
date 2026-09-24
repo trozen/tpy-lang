@@ -197,7 +197,7 @@ Fold the verdicts into the printed Recommendation. Keep the meta-reviewer's one-
 
 Do not ask which subset to act on: go straight to step 10 with every "Handle now" and "File and defer" bullet; "Skip" bullets are dropped.
 
-Set aside only bullets that need the user: a significant design decision, a language-semantics change (new warning, new reject of valid Python, a CPython divergence), or a low-confidence call. Step 10 applies and commits everything else first; the turn then ends with those decisions, one at a time.
+Set aside only bullets that need the user -- those CLAUDE.md "Decide what the user would decide" sets aside. Step 10 applies and commits everything else first; the turn then ends with those decisions, one at a time.
 
 ### 10. Execute
 

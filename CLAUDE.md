@@ -37,11 +37,9 @@ In all cases: never `--amend`, rebase, force-push, or commit changes you didn't 
 
 **Spirit over letter.** These commit rules exist to (a) spare the user the manual-commit chore and (b) keep junk out of `master` -- not to be performed as a ritual. If following them literally would waste time or nag about obviously-legitimate files, optimize for that intent instead.
 
-**Never make design decisions autonomously.** If during implementation you discover the plan needs to change (new concept, behavior split, workaround for an unforeseen constraint), **stop and consult the user** before proceeding. If you encounter a hard problem or are unsure how to proceed, ask first.
-
 **Add tests** when adding new features or making changes that affect generated code. Cover happy path, errors/warnings, edge cases, and regression guards.
 
-**Report pre-existing bugs** discovered during implementation. Do not silently ignore bugs in adjacent code just because your change didn't cause them. Check `BUGS.md` first -- if the issue is already tracked, reference the entry. Otherwise: fix it in the same work unit when it is small and in-scope, or ask fix-now vs file. A `BUGS.md` entry (not `TODO.md`) is for genuinely out-of-scope work -- filing is not a way to defer something you could just fix.
+**Report pre-existing bugs** discovered during implementation. Do not silently ignore bugs in adjacent code just because your change didn't cause them. Check `BUGS.md` first -- if the issue is already tracked, reference the entry. Otherwise fix it or file it per "A branch holds its goal" below. A `BUGS.md` entry (not `TODO.md`) is for genuinely out-of-scope work -- filing is not a way to defer something you could just fix.
 
 **Bug-fix discipline.** The compiler is tightly coupled; narrow patches at the symptom site routinely leave the underlying invariant violation in place and produce new symptoms in adjacent features (e.g. a fix for `Optional` that doesn't consider `Union`, a fix for functions that doesn't consider methods/constructors, a fix for generators that doesn't consider async/context-managers). For any bug-fix work, invoke `/tpy-fix-bug` to walk through the analysis procedure before proposing code changes. The skill starts with an impact assessment (trivial / localized / architectural) and gates the depth of analysis accordingly. The user must see and approve the analysis before any code change beyond trivial fixes. When time pressure pushes you to skip analysis, push back once -- the cost of one extra round is much lower than the cost of a wrong fix that surfaces later as new bugs.
 
@@ -58,6 +56,9 @@ The user reviews three things: whether the generated C++ is right, whether the l
 - **Lead with code.** Analyses, designs, branch summaries and decisions show what works (Python snippets with their behavior) and the generated C++ (before/after) before any compiler internals; the mechanism comes last, in a few bullets that name the core data structures touched and say whether the change goes through an existing generic path or adds a special case (and why).
 - **Decisions stand alone.** A decision the user must make goes in its own message, one at a time: the Python shape, the C++ each option yields, labelled options with consequences, recommendation first -- never buried in a status report.
 - **Verdict first.** "Is it ready / reviewed / merged?" is answered in the first word; notes go underneath.
+- **Instructions start work; questions get answers.** A question or remark gets an answer and a recommendation; code changes only on a go, and answering never pauses approved work. An instruction is carried out as given -- every step, on the named branch -- or you say first why not. New tooling (scripts, wrappers, guard tests) and system changes are proposals, never side effects of other work.
+- **Decide what the user would decide.** Inside approved work, act on your recommendation and name the choice. Set aside -- finish the rest, then present each on its own -- anything that changes which programs compile or what they do, adds, removes or moves a diagnostic, adds a copy or allocation to the generated C++, adds a special case, or changes the approach. Neutral or improving C++ churn is not a decision (see the snapshot policy).
+- **A branch holds its goal.** Include small work that completes it -- a defect it introduced, the planned fix at a sibling position, a few lines in code it already touches -- and name it in the summary. File, or offer as its own branch, what the user would want to review on its own. Once the user is reviewing the branch, additions other than fixes to what it introduced default to followups. If a premise proves false or the branch outgrows its goal, stop and re-plan with the user.
 
 ### Orchestration (default for non-trivial units)
 
@@ -67,7 +68,7 @@ This governs how an agreed unit is executed, not when to start one. A unit start
 - Subagent worktrees: create them yourself (`git worktree add <path> -b <branch> <sha>`, then `uv sync`) and put "verify `git rev-parse HEAD` is <sha>, else stop" in the brief -- `isolation: worktree` roots at the main checkout's HEAD, not at your branch. Integrate their work into ONE working branch.
 - Every brief says: tests through `rpytest` only, never a local `uv run pytest`.
 - Every batch goes through `/tpy-review` with its recommendations applied. At the end: `/tpy-merge-master` if master moved, then `/tpy-ready`. `/prep-merge` only when the user asks.
-- Stop and ask only for decisions where your confidence is not high (per "Working with the user").
+- Set decisions aside per "Decide what the user would decide"; everything else runs to the end.
 
 ### Common commands
 
@@ -134,6 +135,8 @@ Harness-emitted status lines (cache builds, toolchain/ccache status, the active-
 ### Snapshot policy
 
 **Churn in existing tests' expected output is approved with the plan.** The `/tpy-fix-bug` / `/tpy-add-feature` analysis lists which existing snapshots will change (count, kind, one generated-C++ example); approving the plan approves regenerating them. Churn beyond the plan that is neutral or an improvement: continue and list it in the branch summary. A regression or a program-behavior change: stop and ask. Churn is never a reason to choose a narrower fix or to keep two code paths.
+
+**Changing what an existing test pins** -- its source, `# tpyc:` annotations, `output.txt`, `error_`/`panic_` status -- is a decision ("Decide what the user would decide"), taken before the edit.
 
 **When adding new test cases**, run `update_snapshots.py -k {name}` so all expected files (`diag.txt`, generated `.hpp`/`.cpp`, `output.txt`, `.fingerprints`) are generated together.
 

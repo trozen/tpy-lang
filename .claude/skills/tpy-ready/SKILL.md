@@ -24,6 +24,7 @@ Argument: $ARGUMENTS
 Status: !`git status --short`
 Commits vs master: !`git log master..HEAD --oneline 2>/dev/null || echo "(none)"`
 Diff stat vs master: !`git diff master --stat 2>/dev/null || echo "(none)"`
+Master commits not on branch: !`git rev-list --count HEAD..master 2>/dev/null || echo "?"`
 
 ## Steps
 
@@ -92,7 +93,7 @@ A crisp readiness call -- no manufactured issues. The first word is the verdict,
 # /tpy-ready: <READY | NOT READY>
 
 <what now works: 1-3 bullets, each a 1-3 line Python example and the key generated C++ line>
-<diff --stat one-liner>
+<diff --stat one-liner> | master: up to date | N commits behind (not blocking; /tpy-merge-master if wanted)
 
 ## Blockers (fix before merge) -- <N>
 - <item> (file:line if specific)
