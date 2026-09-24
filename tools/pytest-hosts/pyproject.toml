@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pytest-hosts"
+version = "0.1.0"
+description = "Spread one pytest-xdist session over the local machine and remote build hosts"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pytest>=8",
+    "pytest-xdist>=3.5,<4",
+    "execnet>=2",
+]
+
+[project.entry-points.pytest11]
+pytest_hosts = "pytest_hosts.plugin"
+
+[project.scripts]
+pytest-hosts = "pytest_hosts.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pytest_hosts"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p pytester"

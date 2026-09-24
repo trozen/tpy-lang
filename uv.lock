@@ -2,6 +2,12 @@ version = 1
 revision = 3
 requires-python = ">=3.12"
 
+[manifest]
+members = [
+    "pytest-hosts",
+    "tpy-lang",
+]
+
 [[package]]
 name = "colorama"
 version = "0.4.6"
@@ -194,6 +200,23 @@ wheels = [
 ]
 
 [[package]]
+name = "pytest-hosts"
+version = "0.1.0"
+source = { editable = "tools/pytest-hosts" }
+dependencies = [
+    { name = "execnet" },
+    { name = "pytest" },
+    { name = "pytest-xdist" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "execnet", specifier = ">=2" },
+    { name = "pytest", specifier = ">=8" },
+    { name = "pytest-xdist", specifier = ">=3.5,<4" },
+]
+
+[[package]]
 name = "pytest-xdist"
 version = "3.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -219,6 +242,7 @@ bundled = [
 dev = [
     { name = "mypy" },
     { name = "pytest" },
+    { name = "pytest-hosts" },
     { name = "pytest-xdist" },
 ]
 
@@ -230,6 +254,7 @@ provides-extras = ["bundled"]
 dev = [
     { name = "mypy", specifier = ">=1.15" },
     { name = "pytest", specifier = ">=9.0.2" },
+    { name = "pytest-hosts", editable = "tools/pytest-hosts" },
     { name = "pytest-xdist", specifier = ">=3.5" },
 ]
 

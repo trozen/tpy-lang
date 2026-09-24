@@ -76,12 +76,6 @@ TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True, comment_line_nu
 # _CLANG_ONLY_WARN_FLAGS in tpyc/compiler.py for the per-flag rationale.
 CPP_CONFIG = CppCompilerConfig.from_env()
 CPP_CONFIG.warn_flags = strict_warn_flags(CPP_CONFIG.compiler)
-# xdist workers return early from pytest_configure, so --no-ccache can't be
-# applied there. The controller exports this flag and every conftest import
-# (workers included) honors it -- otherwise workers, which do the per-case
-# compiles, would keep using ccache despite the flag.
-if os.environ.get("TPY_TEST_NO_CCACHE") == "1":
-    CPP_CONFIG.ccache = False
 
 # Third-party dependency mode overrides for the exec build (--dep-mode
 # lib=mode), mirroring `tpyc --<lib>=<mode>`. Empty means each lib's
@@ -1296,38 +1290,55 @@ def _exec_flag_conflict(*, no_exec: bool, build_only: bool, force_exec: bool,
     return None
 
 
+def resolve_update_flag(config, *, is_master: bool, env_set: bool) -> bool:
+    """Whether this process updates snapshots. On the controller an
+    UPDATE_EXPECTED env var becomes the typed --update-snapshots flag, so the
+    workers xdist starts from the invocation args (local and remote alike)
+    receive it; every process then answers from the flag it was given, or
+    from the env var a local worker still inherits."""
+    typed = bool(config.getoption("--update-snapshots"))
+    if is_master and env_set and not typed:
+        config.option.update_snapshots = True
+        # invocation_params is a plain attribute of Config, so it can be
+        # replaced with a copy that carries the flag.
+        params = config.invocation_params
+        config.invocation_params = pytest.Config.InvocationParams(
+            args=(*params.args, "--update-snapshots"), plugins=params.plugins, dir=params.dir)
+        typed = True
+    return typed or env_set
+
+
 def pytest_configure(config):
     """Print ccache status; manage session fingerprint file."""
     global UPDATE_EXPECTED  # assigned below; declared here so the guard can read it
 
-    updating = bool(config.getoption("--update-snapshots")) or UPDATE_EXPECTED
+    is_master = os.environ.get("PYTEST_XDIST_WORKER") is None
+    # Switches a worker needs travel as typed command-line args: that is all
+    # xdist hands a worker (its config is rebuilt from invocation_params.args;
+    # option values set here do not ship), and os.environ reaches only the
+    # local popen workers, never one on a remote host. So the env-var form
+    # of --update-snapshots is turned into the typed flag on the controller,
+    # and each process derives its own state from the flag it received.
+    updating = resolve_update_flag(config, is_master=is_master, env_set=UPDATE_EXPECTED)
+    UPDATE_EXPECTED = updating
 
-    # --dep-mode: parsed before the xdist-worker early return -- workers do
-    # the per-case compiles, so they need the same modes as the master.
+    # Parsed before the xdist-worker early return -- workers do the
+    # per-case compiles, so they need the same modes and switches.
     try:
         dep_modes = _parse_dep_modes(config.getoption("--dep-mode"))
     except ValueError as exc:
         pytest.exit(str(exc), returncode=1)
     DEP_MODES.clear()
     DEP_MODES.update(dep_modes)
+    if config.getoption("--no-ccache"):
+        # Every compile path is gated on CPP_CONFIG.ccache, so flipping it
+        # to False is sufficient -- we stop prepending `ccache` entirely
+        # rather than spawning it with CCACHE_DISABLE=1 as a pass-through.
+        CPP_CONFIG.ccache = False
 
-    is_master = os.environ.get("PYTEST_XDIST_WORKER") is None
-    if not is_master:
-        return
-
-    exec_conflict = _exec_flag_conflict(
-        no_exec=config.getoption("--no-exec"),
-        build_only=config.getoption("--build-only"),
-        force_exec=config.getoption("--force-exec"),
-        clean=config.getoption("--clean"),
-        updating=updating,
-    )
-    if exec_conflict:
-        pytest.exit(exec_conflict, returncode=1)
-
-    # Resolve the C++ toolchain first: --cxx rebuilds CPP_CONFIG (which the
-    # ccache status, cache keys, and prewarm below all read) and is propagated
-    # to xdist workers via $CXX -- their conftest import re-derives from it.
+    # Every process resolves --cxx by name against its own toolchains, so a
+    # session is one toolchain everywhere or fails on the host lacking it
+    # (a worker on a remote host cannot use a compiler path resolved here).
     cxx_opt = config.getoption("--cxx")
     if cxx_opt == "list":
         list_compilers()
@@ -1342,32 +1353,31 @@ def pytest_configure(config):
         CPP_CONFIG.compiler = chosen.compiler
         CPP_CONFIG.std = chosen.std
         CPP_CONFIG.extra_flags = chosen.extra_flags
-        CPP_CONFIG.ccache = chosen.ccache
+        CPP_CONFIG.ccache = chosen.ccache and not config.getoption("--no-ccache")
         CPP_CONFIG.warn_flags = chosen.warn_flags
-        os.environ["CXX"] = " ".join(chosen.compiler)
         # The cache-key memoizers read CPP_CONFIG; drop any value computed
         # against the pre-mutation toolchain so the new --cxx re-keys cleanly.
         _stdlib_cache_key.cache_clear()
         _pch_cache_key.cache_clear()
+
+    if not is_master:
+        return
+
+    exec_conflict = _exec_flag_conflict(
+        no_exec=config.getoption("--no-exec"),
+        build_only=config.getoption("--build-only"),
+        force_exec=config.getoption("--force-exec"),
+        clean=config.getoption("--clean"),
+        updating=updating,
+    )
+    if exec_conflict:
+        pytest.exit(exec_conflict, returncode=1)
 
     # After --cxx resolution so the probe sees the final compiler.
     if exec_is_cross() and updating:
         pytest.exit("cannot --update-snapshots with a cross toolchain: the "
                     "binaries cannot run here to produce output.txt",
                     returncode=1)
-
-    if config.getoption("--no-ccache"):
-        # Every compile path is gated on CPP_CONFIG.ccache, so flipping it
-        # to False is sufficient -- we stop prepending `ccache` entirely
-        # rather than spawning it with CCACHE_DISABLE=1 as a pass-through.
-        CPP_CONFIG.ccache = False
-        os.environ["TPY_TEST_NO_CCACHE"] = "1"  # propagate to xdist workers
-
-    if config.getoption("--update-snapshots"):
-        UPDATE_EXPECTED = True
-        # Propagate to xdist workers (subprocesses inherit os.environ, and
-        # their conftest import reads the env var at module load time).
-        os.environ["UPDATE_EXPECTED"] = "1"
 
     if config.getoption("--clean"):
         root = _shared_cache_root()

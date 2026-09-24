@@ -21,3 +21,6 @@ __tpyc__/
 *.gch
 .gitr/
 .ccsbx/
+
+# pytest-hosts per-checkout override (personal experiments)
+.pytest-hosts.toml

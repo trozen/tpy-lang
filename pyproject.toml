@@ -35,6 +35,12 @@ tpy = "tpyc.cli:main_tpy"
 [tool.uv]
 package = true
 
+[tool.uv.workspace]
+members = ["tools/pytest-hosts"]
+
+[tool.uv.sources]
+pytest-hosts = { workspace = true }
+
 [tool.hatch.version]
 source = "regex"
 path = "tpyc/__init__.py"
@@ -91,9 +97,16 @@ norecursedirs = ["tests/cases", "__tpyc__"]
 ignore_missing_imports = true
 warn_unused_configs = true
 
+# Remote test hosts (tools/pytest-hosts). Active only for a developer with
+# a personal hosts file naming this project; otherwise pytest is unchanged.
+[tool.pytest-hosts]
+setup = "uv sync -q"
+setup_when = ["pyproject.toml", "uv.lock", "tools/pytest-hosts/pyproject.toml"]
+
 [dependency-groups]
 dev = [
     "mypy>=1.15",
     "pytest>=9.0.2",
     "pytest-xdist>=3.5",
+    "pytest-hosts",
 ]
