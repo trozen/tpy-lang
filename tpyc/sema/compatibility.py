@@ -46,7 +46,8 @@ from ..modules import get_span_return_type
 from .context import addr_taken_roots, _storage_root, BorrowKind, BorrowTracker, tuple_borrow_escape_roots
 from .numeric_lattice import fixed_int_range_contains, numeric_info
 from ..diagnostics import (
-    SemanticError, NOCOPY_REMEDIATION_HINT)
+    SemanticError, NOCOPY_REMEDIATION_HINT, CONSUMING_FIELD_MOVE_NOTE,
+    CONSUMING_FIELD_COPY_CLAUSE)
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_varargs, is_span_iter, is_list,
     is_str_view_type, is_bytes_view_type, is_borrowing_view_type, int_traits_of,
@@ -1270,16 +1271,18 @@ class TypeCompatibility:
                     deferred = self.ctx.defer_own_copy_verdict(
                         value_type, expected.wrapped, "owned storage", source_expr)
                     if not deferred and self.ctx.is_type_non_copyable(expected.wrapped):
+                        hint = self.nocopy_hint(source_expr)
                         if value_type == expected.wrapped:
                             msg = (f"cannot copy non-copyable type '{expected.wrapped}' "
-                                   f"into owned storage{NOCOPY_REMEDIATION_HINT}")
+                                   f"into owned storage{hint}")
                         else:
                             msg = (f"cannot copy {value_type} into owned storage of type "
-                                   f"'{expected.wrapped}'; target is non-copyable{NOCOPY_REMEDIATION_HINT}")
+                                   f"'{expected.wrapped}'; target is non-copyable{hint}")
                         raise self.ctx.error(msg, source_expr)
                     if not deferred:
                         self.ctx.warning(
-                            f"copies {value_type} into owned storage; use copy() to make this explicit",
+                            f"copies {value_type} into owned storage; "
+                            f"{self.copy_remedy(source_expr)}",
                             source_expr
                         )
                     if isinstance(unwrap_readonly(unwrap_ref_type(
@@ -2312,7 +2315,6 @@ class TypeCompatibility:
     def check_own_lvalue_into_own(
         self, own_type: OwnType, expr: TpyExpr, context: str,
         *, action: str = "return", whole_slot: bool = True,
-        repeated: bool = False,
     ) -> None:
         """Check that a borrowed source feeding an Own[T] slot is movable, an
         explicit copy(), or otherwise safe to consume.
@@ -2335,8 +2337,6 @@ class TypeCompatibility:
             action: "return" or "pass" -- selects the verb in error messages.
             whole_slot: the source fills the WHOLE `Own[T]` slot. False for
                 one element of a returned tuple, whose warning names it.
-            repeated: the same `self` field fills another member of the
-                literal, so even a consuming method cannot move it here.
         """
         if self.is_copy_call(expr):
             self.check_own_consumption(expr)
@@ -2344,12 +2344,11 @@ class TypeCompatibility:
         if not self.arrives_borrowed(expr):
             return
         self._check_own_borrowed_source(
-            own_type, expr, context, action, whole_slot=whole_slot,
-            repeated=repeated)
+            own_type, expr, context, action, whole_slot=whole_slot)
 
     def _check_own_borrowed_source(
         self, own_type: OwnType, expr: TpyExpr, context: str, action: str,
-        *, whole_slot: bool = True, repeated: bool = False,
+        *, whole_slot: bool = True,
     ) -> None:
         """`check_own_lvalue_into_own`'s tail, once the source is known to be
         borrowed: it warns and copies -- unless the source is a value type, a
@@ -2377,11 +2376,8 @@ class TypeCompatibility:
             if (action == "return" and isinstance(unwrapped, OwnType)
                     and (whole_slot or self.is_auto_move_use(expr))):
                 return
-        # Consuming method: self.field is owned and movable out of the struct
-        # -- once; a second member naming it copies, as a scalar twin does.
-        if (self.ctx.in_consuming_method and not repeated
-                and isinstance(expr, TpyFieldAccess)
-                and isinstance(expr.obj, TpyName) and expr.obj.name == "self"):
+        # A consuming method's field read that sema let move out of `self`.
+        if isinstance(inner, TpyFieldAccess) and inner.consuming_move:
             return
         if self.is_auto_move_use(expr):
             self.require_movable(expr, context)
@@ -2407,10 +2403,12 @@ class TypeCompatibility:
                     expr
                 )
             verb = "returned" if action == "return" else "passed"
+            tail = (f": {CONSUMING_FIELD_MOVE_NOTE}"
+                    if self.is_consuming_field_borrow(expr)
+                    else ". Only the original owner can be moved at its last use")
             raise self.ctx.error(
                 f"{reason} cannot be {verb} as "
-                f"{context} Own[{own_type.wrapped}]. "
-                f"Only the original owner can be moved at its last use.",
+                f"{context} Own[{own_type.wrapped}]{tail}.",
                 expr
             )
         # The owning slot copies and says so, exactly as the insert, the
@@ -2433,8 +2431,8 @@ class TypeCompatibility:
         if not self.ctx.defer_own_copy_verdict(
                 value_type, payload, f"owned storage{where}", expr):
             self.ctx.warning(
-                f"copies {value_type} into owned storage{where}; use "
-                f"copy() to make this explicit",
+                f"copies {value_type} into owned storage{where}; "
+                f"{self.copy_remedy(expr)}",
                 expr
             )
 
@@ -3923,7 +3921,6 @@ class TypeCompatibility:
         whether a warning fired."""
         if not isinstance(tuple_type, TupleType):
             return False
-        self_fields = [self._self_field_name(m) for m in literal.elements]
         fired = False
         for i, et in enumerate(tuple_type.element_types):
             if i >= len(literal.elements):
@@ -3931,17 +3928,15 @@ class TypeCompatibility:
             m = literal.elements[i]
             path = f"{elem_path}{i}"
             owned = isinstance(et, OwnType)
-            repeated = (self_fields[i] is not None
-                        and self_fields.count(self_fields[i]) > 1)
             if owned and sink is TupleSink.RETURN:
                 self.check_own_lvalue_into_own(
                     et, m, f"tuple element {path}", action="return",
-                    whole_slot=False, repeated=repeated)
+                    whole_slot=False)
                 continue
             if owned and sink is TupleSink.ARG:
                 self.check_own_lvalue_into_own(
                     et, m, f"argument '{pname}' tuple element {path}",
-                    action="pass", whole_slot=False, repeated=repeated)
+                    action="pass", whole_slot=False)
                 continue
             member_t = unwrap_own(et)
             nested = unwrap_readonly(unwrap_ref_type(member_t))
@@ -3957,15 +3952,6 @@ class TypeCompatibility:
                 m, member_t, dest, path,
                 last_use_moves=sink in _LAST_USE_MOVES_SINKS)
         return fired
-
-    @staticmethod
-    def _self_field_name(m: TpyExpr) -> str | None:
-        """The field a `self.<field>` member reads, or None."""
-        inner = peel_value_wrappers(m)
-        if (isinstance(inner, TpyFieldAccess) and isinstance(inner.obj, TpyName)
-                and inner.obj.name == "self"):
-            return inner.field
-        return None
 
     def _check_nested_tuple_member(self, m: TpyExpr, nested: TupleType,
                                    sink: TupleSink, dest: str, path: str,
@@ -4000,13 +3986,41 @@ class TypeCompatibility:
         if self.ctx.is_type_non_copyable(member_t):
             raise self.ctx.error(
                 f"cannot copy non-copyable type '{member_t}' into {dest} "
-                f"(tuple element {path}){NOCOPY_REMEDIATION_HINT}", m)
+                f"(tuple element {path}){self.nocopy_hint(m)}", m)
         if auto_moved:
             return False
         self.ctx.warning(
             f"copies {member_t} into {dest} (tuple element {path}); "
-            f"use copy() to make this explicit", m)
+            f"{self.copy_remedy(m)}", m)
         return True
+
+    def is_consuming_field_borrow(self, expr: 'TpyExpr | None') -> bool:
+        """A consuming method's `self.<field>` read that borrows because it
+        is not in a `return`: the generic copy remedies (auto-move at last
+        use) never apply to it. A generator or async method never moves a
+        field, and a read already inside a `return` cannot be moved into
+        one, so the `return` remedy is not offered there."""
+        fn = self.ctx.func.current_function
+        inner = peel_value_wrappers(expr) if expr is not None else None
+        return (self.ctx.in_consuming_method
+                and not self.ctx.func.in_return_value
+                and isinstance(fn, TpyFunction)
+                and not fn.is_generator and not fn.is_async
+                and isinstance(inner, TpyFieldAccess)
+                and isinstance(inner.obj, TpyName) and inner.obj.name == "self"
+                and not inner.consuming_move)
+
+    def copy_remedy(self, expr: 'TpyExpr | None') -> str:
+        """The remedy clause of an owning slot's copy warning for `expr`."""
+        clause = (CONSUMING_FIELD_COPY_CLAUSE
+                  if self.is_consuming_field_borrow(expr) else "")
+        return f"use copy() to make this explicit{clause}"
+
+    def nocopy_hint(self, expr: 'TpyExpr | None') -> str:
+        """The parenthesized remedy of a non-copyable copy error for `expr`."""
+        if self.is_consuming_field_borrow(expr):
+            return f" ({CONSUMING_FIELD_MOVE_NOTE})"
+        return NOCOPY_REMEDIATION_HINT
 
     def arrives_borrowed(self, expr: 'TpyExpr | None') -> bool:
         """The source names storage that outlives the expression, so an

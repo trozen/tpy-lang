@@ -2406,11 +2406,14 @@ class ExpressionAnalyzer:
                         result = span_as_const(result)
                     elif not result.is_value_type():
                         result = ReadonlyType(unwrap_readonly(result))
-                # Ownership propagation: in a consuming method (self: Own[Self]),
-                # self.field yields Own[FieldType] since the struct is being consumed.
-                if (self.ctx.in_consuming_method
-                        and not is_readonly_obj
-                        and isinstance(expr.obj, TpyName) and expr.obj.name == "self"
+                # A consuming method (self: Own[Self]) moves a field out only
+                # where its return value may (see consuming_return_fields);
+                # anywhere else the read is an ordinary borrow.
+                expr.consuming_move = (
+                    self.ctx.in_consuming_method
+                    and isinstance(expr.obj, TpyName) and expr.obj.name == "self"
+                    and expr.field in self.ctx.func.consuming_return_fields)
+                if (expr.consuming_move and not is_readonly_obj
                         and not result.is_value_type()):
                     result = OwnType(result)
                 # Apply field path narrowing (e.g. after `if obj.field is not None:`)

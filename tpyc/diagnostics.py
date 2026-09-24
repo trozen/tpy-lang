@@ -55,6 +55,13 @@ NOCOPY_REMEDIATION_HINT = (
     "or let auto-move apply at last use)"
 )
 
+# A consuming method's field read outside a `return` is a borrow, so the
+# generic remedies above (auto-move at last use) do not apply to it.
+CONSUMING_FIELD_MOVE_NOTE = (
+    "a field of a consuming method's `self` moves only in a `return`"
+)
+CONSUMING_FIELD_COPY_CLAUSE = ", or move it in a `return`"
+
 
 def nocopy_container_elem_error(typ: object, kind: str) -> str:
     """Error message for `@nocopy` types used as set elements or dict keys.

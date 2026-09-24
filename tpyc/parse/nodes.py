@@ -463,6 +463,11 @@ class TpyFieldAccess(TpyExpr):
     accessed_field_is_interior: bool = False  # Set by sema: matched field is `unsafe_interior_mutable[...]` (outside the readonly boundary)
     native_field_name: Optional[str] = None  # Set by sema: the matched field's native_field() C++ rename (own-fields-first lookup, so a subclass redeclaration shadows an ancestor's rename)
     enum_member_of: Optional[TpyType] = None  # Set by sema: type-level enum member access (Color.RED); the enum NominalType
+    # Set by sema: a consuming method's `self.<field>` read that MAY move the
+    # field out (it sits in a return nothing of the method runs after); a
+    # position whose lowering has no move row still rejects. Every other
+    # such read borrows.
+    consuming_move: bool = False
 
     @property
     def hidden_call(self) -> 'TpyMethodCall | None':

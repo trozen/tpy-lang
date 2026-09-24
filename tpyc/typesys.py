@@ -2861,6 +2861,19 @@ def is_primitive_type(t: 'TpyType | None') -> bool:
     return is_fixed_int_type(t) or is_float_type(t) or is_bool_type(t) or is_char_type(t)
 
 
+def is_bufferless_scalar(t: 'TpyType | None') -> bool:
+    """A value no view or reference can point into: a number (literal or
+    not), `bool`, `char`, enum or None."""
+    if t is None:
+        return False
+    from .type_def_registry import is_char_type, is_enum_type
+    t = unwrap_qualifiers(t)
+    if isinstance(t, LiteralType):
+        t = t.base_type
+    return (is_numeric_type(t) or is_char_type(t) or is_enum_type(t)
+            or isinstance(t, (NoneType, IntLiteralType, FloatLiteralType)))
+
+
 def is_void_like_type(t: 'TpyType | None') -> bool:
     """True for NoneType or VoidType (Python None and C++ void return)."""
     return isinstance(t, (NoneType, VoidType))

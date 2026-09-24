@@ -28,6 +28,7 @@ from ..typesys import (
     FunctionInfo, ParamInfo, RecordInfo, MutationCallEdge,
     make_ref, unwrap_ref_type, RefType, param_has_mutable_borrow_surface,
     is_integer_type, is_any_int_type, is_numeric_type, is_primitive_type, is_readonly_span,
+    is_bufferless_scalar, unwrap_send_sync, unwrap_optional_own,
     is_float_type, is_any_float_type, is_polymorphic_subclass_fact,
     resolve_int_literals,
     yield_uses_borrow_slot, yield_always_borrows, GenExprType,
@@ -49,6 +50,8 @@ from ..parse import (
     TpyNoneLiteral,
     TpyFieldAccess, TpyFunction, TupleElemCapture,
     TpyMatch, TpyBinOp, TpyIfExpr, TpyAwait,
+    TpyLambda, TpyNamedExpr, TpyGeneratorExpression, TpyDictComprehension,
+    TpySetComprehension,
     is_stable_address_lvalue,
 )
 from ..coercions import CoercionContext
@@ -494,6 +497,48 @@ def _deferred_tuple_spelling(lit: TpyTupleLiteral) -> str:
             parts.append("...")
     inner = ", ".join(parts)
     return f"({inner},)" if len(parts) == 1 else f"({inner})"
+
+
+def _read_field_holds_no_pointer(t: TpyType) -> bool:
+    """A `self` field of this declared type holds nothing that can point at
+    another field: a bufferless scalar or an owned `str` / `bytes`."""
+    t = unwrap_qualifiers(t)
+    return is_bufferless_scalar(t) or is_str_type(t) or is_bytes_type(t)
+
+
+def _moved_field_may_point(t: TpyType) -> bool:
+    """A moved `self` field of this declared type may be (or hold) a pointer
+    at another field: a value type that is not pointer-free (a `Ptr`, a
+    view, a callable, a user value type), a protocol, a type parameter, or
+    an Optional / union / tuple with such a member. A reference type moves
+    whole; what its own fields point at is
+    BUGS.md#self-aimed-ptr-field-borrow-unrecorded."""
+    t = unwrap_qualifiers(t)
+    if isinstance(t, (OptionalType, UnionType, TupleType)):
+        return any(_moved_field_may_point(m) for m in t.inner_types())
+    if _read_field_holds_no_pointer(t):
+        return False
+    return (t.is_value_type() or isinstance(t, TypeParamRef)
+            or is_protocol_type(t) or is_dyn_protocol(t))
+
+
+def _param_is_borrowed(t: TpyType) -> bool:
+    """A parameter of this declared type is a borrow its caller keeps alive,
+    so the method never destroys it: a reference type, `str` / `bytes` (a
+    view), a scalar, or an Optional / union of those -- never an `Own` one.
+    A by-value parameter of any other value type (a tuple, a callable, a user
+    value type, a type parameter, a protocol) counts as owned."""
+    bare = unwrap_readonly(unwrap_send_sync(t))
+    if unwrap_optional_own(bare) is not None:
+        return False
+    bare = unwrap_qualifiers(bare)
+    members = (bare.inner_types() if isinstance(bare, (OptionalType, UnionType))
+               else (bare,))
+    return all(
+        _read_field_holds_no_pointer(m)
+        or not (m.is_value_type() or isinstance(m, TypeParamRef)
+                or is_protocol_type(m) or is_dyn_protocol(m))
+        for m in members)
 
 
 class StatementAnalyzer:
@@ -980,6 +1025,286 @@ class StatementAnalyzer:
         self.compat.check_own_lvalue_into_own(own_type, expr, context,
                                               action="return",
                                               whole_slot=whole_slot)
+
+    def _analyze_return_value(self, stmt: TpyReturn) -> None:
+        """The value half of a `return` statement's analysis."""
+        if stmt.value:
+            fn = self.ctx.func.current_function
+            # A generator's `return` ends iteration and carries no value
+            # (the parser rejects any operand but the canonical None), so
+            # its slot is void, not the declared Iterator type.
+            expected = (unwrap_ref_type(fn.return_type)
+                        if fn is not None and not fn.is_generator
+                        else VOID)
+            ret_type = self.expr.analyze_expr_with_hint(stmt.value, expected)
+            stmt.value_type = ret_type
+            self._mark_finally_deferred_return(stmt, ret_type, expected)
+            stmt.value = self.compat.coerce_expr(stmt.value, ret_type, expected, "return value",
+                                                  coercion_ctx=CoercionContext.RETURN, is_return=True)
+            # Track return-type context for pending list/dict/set deduction
+            self.deduction.mark_container_return_context(stmt.value, expected)
+            # Warn when a method copies a str field on return
+            self._warn_str_field_return_copy(stmt.value, expected)
+            # Borrowed-receiver escape: returning a bound async-METHOD
+            # coroutine lets the handle outlive the receiver's scope;
+            # lifetime is not tracked across the escape.
+            ret_inner = unwrap_readonly(unwrap_own(unwrap_ref_type(ret_type)))
+            if (isinstance(ret_inner, ConcreteCoroType)
+                    and ret_inner.frame_owner is not None):
+                self.ctx.warning(
+                    "returned bound method-coroutine borrows its "
+                    "receiver by reference; the handle must not "
+                    "outlive the receiver (receiver lifetime is not "
+                    "tracked across this escape)",
+                    stmt)
+            # A returned generator or coroutine keeps what its frame
+            # borrows, whatever slot the return fills.
+            ret_call = stmt.value
+            while isinstance(ret_call, TpyCoerce):
+                ret_call = ret_call.expr
+            for src_e in frame_borrowed_operands(ret_call) or ():
+                for src in _borrow_storage_roots(src_e):
+                    self.ctx.mark_param_returned(src)
+            # Check for a borrowed source returned as Own[T] without an
+            # explicit copy(). `readonly` peels first: `readonly[Own[T]]`
+            # is the same owning slot with a const view on top, so the
+            # spelling must not be a way past the check.
+            own_expected = unwrap_readonly(expected)
+            if isinstance(own_expected, OwnType):
+                if self.compat.is_copy_call(stmt.value):
+                    self._warn_unnecessary_return_copy(stmt.value)
+                else:
+                    self._check_own_lvalue_return(own_expected, stmt.value, "return type")
+            # Check Own[T] elements in tuple literals.
+            if isinstance(stmt.value, TpyTupleLiteral):
+                tuple_target = own_tuple_target(expected)
+                if tuple_target is not None:
+                    # The Own-element checks, then the per-element
+                    # capture mode (ref/value/const_ref).
+                    self._annotate_tuple_elem_capture(
+                        stmt.value, tuple_target, sink=TupleSink.RETURN)
+            # A tuple LOCAL returned by name: the literal-element check
+            # above never ran, so consult the construction-time
+            # plain-borrow-into-Own hazard for each Own slot.
+            elif isinstance(stmt.value, TpyName):
+                tuple_target = own_tuple_target(expected)
+                if tuple_target is not None:
+                    self.compat.check_name_borrow_into_own(
+                        stmt.value.name, tuple_target, stmt.value,
+                        return_slot=True)
+            # Returning an ephemeral generator/iterator borrow lets it escape
+            # its iteration step -- reject with the copy-out fix (before the
+            # generic dangling check so the specific message wins).
+            self._reject_ephemeral_escape(stmt.value, "return")
+            # Check for dangling reference (returning local/temporary as reference)
+            self.compat.check_dangling_reference(stmt.value, expected, stmt.loc, ret_type)
+            # Returning a non-value type by reference takes the source's address.
+            # Mark both loop vars and params so they keep T& (not const T&/const T*).
+            if isinstance(stmt.value, TpyName):
+                self.ctx.mark_loop_var_mutated(stmt.value.name)
+                # Escape tracking: returning a nested def marks it as escaping
+                if stmt.value.name in self.ctx.func.nested_def_names:
+                    self.ctx.reject_resumable_nested_def_escape(
+                        stmt.value.name, stmt)
+                    self.ctx.func.nested_def_escapes.add(stmt.value.name)
+            # Returning a borrowing view does not give the caller write
+            # access to the source, so we record borrow provenance but
+            # must not raise self_mutated -- that would suppress auto-const
+            # on the enclosing method and break const callers.
+            if expected is not None:
+                returns_borrowing_view = is_borrowing_view_type(expected)
+                # A tuple is a value type, but its borrow form hands out
+                # mutable element pointers into the source storage -- the
+                # root must stay non-const and the borrow be recorded.
+                expected_bare = unwrap_readonly(expected)
+                returns_borrow_tuple = (
+                    isinstance(expected_bare, TupleType)
+                    and expected_bare.has_pointer_repr_element())
+                if (not expected.is_value_type() or returns_borrowing_view
+                        or returns_borrow_tuple):
+                    # A readonly return hands out a CONST borrow -- of a
+                    # tuple's elements or of the record itself -- so borrow
+                    # provenance is recorded but no write access is granted,
+                    # exactly as for a borrowing view. Marking the source
+                    # mutated here would raise self_mutated on the enclosing
+                    # method and, through the Phase-2 receiver edge, on every
+                    # caller that reads the borrow.
+                    ro_return = isinstance(expected, ReadonlyType)
+                    if returns_borrow_tuple:
+                        ret_roots = tuple_borrow_escape_roots(
+                            stmt.value, expected_bare, ro_return)
+                    else:
+                        ret_roots = [(root, not ro_return)
+                                     for root in addr_taken_roots(stmt.value)]
+                    for ret_root, grants_write in ret_roots:
+                        if not returns_borrowing_view and grants_write:
+                            # through_field: a returned reference grants
+                            # the caller write access, so the climb must
+                            # reach a field-path borrow root (`b = o.f;
+                            # return b` -> o), matching the direct
+                            # `return o.f` form.
+                            self.ctx.mark_param_mutated(
+                                ret_root, through_field=True)
+                        self.ctx.mark_param_returned(ret_root)  # 8b: track which param storage the return borrows
+                    # 8b rule 3: transitive return -- if returning the result of a call
+                    # whose return_borrows_from is known, propagate the borrow contract.
+                    # e.g. `return inner(items)` where inner borrows param 0 -> mark items.
+                    ret_inner = stmt.value.expr if isinstance(stmt.value, TpyCoerce) else stmt.value
+                    ret_operands = call_borrow_operands(ret_inner)
+                    if ret_operands is not None:
+                        fi_ret, ret_obj, ret_args = ret_operands
+                        ret_sources = recorded_return_borrow_sources(fi_ret)
+                        if ret_sources:
+                            for idx in ret_sources:
+                                # One argument position can hold many
+                                # operands (a `*args` pack), and each is
+                                # borrowed by the same contract.
+                                if idx == -1 and ret_obj is not None:
+                                    srcs = _borrow_storage_roots(ret_obj)
+                                elif idx >= 0 and idx < len(ret_args):
+                                    srcs = _borrow_storage_roots(ret_args[idx])
+                                else:
+                                    srcs = []
+                                for src in srcs:
+                                    # Read-only sources (readonly callees, view returns)
+                                    # don't propagate mutation to their borrowed-from arg.
+                                    if not returns_borrowing_view and not fi_ret.is_readonly:
+                                        self.ctx.mark_param_mutated(src)
+                                    self.ctx.mark_param_returned(src)
+
+    def _consuming_return_move_fields(self, stmt: TpyReturn) -> frozenset[str]:
+        """The `self` fields this return of a consuming method moves out of.
+
+        Deliberately coarse -- sema cannot ask whether anything still depends
+        on the field's storage, so a field moves only where nothing can read
+        it after the move. The rule belongs to the consuming method's own
+        body: a nested def may run any number of times, so its returns never
+        move. The return must not sit in a `for` (the iterator's teardown, a
+        generator's `finally`, could read the field), a `try` (a handler, an
+        `else` or a `finally`) or a `with` (an `__exit__`); the method must
+        not be a generator or async (the frame outlives the statement); no
+        local or owned parameter of the method may be able to read the field
+        when destroyed (`_method_teardown_cannot_read_field`); and
+        within the value the field is read once -- operand order inside one
+        expression is not fixed -- with no read of `self` as a whole (a
+        method, a property, `super()`) and no name that could reach the
+        field (`_return_name_cannot_reach_field`). When the value reads more
+        than one field, every one of them must be unable to point at another
+        by its declared type (`_moved_field_may_point`,
+        `_read_field_holds_no_pointer`). Every other read of a field is a
+        borrow, which the owning slots copy and warn about."""
+        fn = self.ctx.func.current_function
+        rec = self.ctx.record_ctx.record
+        if (stmt.value is None or not isinstance(fn, TpyFunction)
+                or not fn.is_consuming or rec is None
+                or fn.is_generator or fn.is_async
+                or any(isinstance(s, (TpyForEach, TpyTry, TpyWith))
+                       for s in self.ctx.func.compound_stack)):
+            return frozenset()
+        info = self.ctx.registry.get_record(rec.name)
+        if info is None or not self._method_teardown_cannot_read_field():
+            return frozenset()
+        field_types = {f.name: f.type
+                       for f in self.ctx.registry.get_all_fields(info)}
+        reads: list[str] = []
+        stack: list[TpyExpr] = [stmt.value]
+        while stack:
+            e = stack.pop()
+            if isinstance(e, (TpyLambda, TpyNamedExpr, TpyGeneratorExpression,
+                              TpyListComprehension, TpySetComprehension,
+                              TpyDictComprehension)):
+                return frozenset()
+            if (isinstance(e, TpyFieldAccess) and isinstance(e.obj, TpyName)
+                    and e.obj.name == "self"):
+                if e.field not in field_types:
+                    return frozenset()
+                reads.append(e.field)
+                continue
+            if isinstance(e, TpyName):
+                if not self._return_name_cannot_reach_field(e.name):
+                    return frozenset()
+                continue
+            stack.extend(e.children())
+        moves = frozenset(f for f in reads if reads.count(f) == 1)
+        # With a second field in the value, one field's storage may be
+        # reachable through the other (`self.pa` aimed at `self.a`), so each
+        # must be proven unable to point anywhere by its type alone.
+        if len(set(reads)) > 1:
+            for f in set(reads):
+                if (_moved_field_may_point(field_types[f]) if f in moves
+                        else not _read_field_holds_no_pointer(field_types[f])):
+                    return frozenset()
+        return moves
+
+    def _method_teardown_cannot_read_field(self) -> bool:
+        """True only when nothing the method may destroy after its return
+        value is built can read a `self` field: every name the body binds
+        ANYWHERE, and every parameter it owns or rebinds, holds a bufferless
+        scalar or an owned `str` / `bytes`. Decided over the whole body, not
+        the scope at the return: codegen hoists a loop or branch local to a
+        function-level slot, and a loop reaches a binding that sits after the
+        return in source order -- so a name whose type is not known at the
+        return is not proven either. A generator whose `finally` reads the
+        field, a `__del__` holding a `Ptr` into `self`, or just a list keeps
+        the field borrowed. A borrowed parameter the body never rebinds is
+        not destroyed by the method."""
+        func = self.ctx.func
+        rebound = func.body_bound_names | func.nested_nonlocal_rebinds
+        for name in rebound | func.current_param_names:
+            if name == "self":
+                continue
+            types: list[TpyType] = []
+            scope = func.current_scope
+            while scope is not None and scope is not self.ctx.global_scope:
+                if name in scope.bindings:
+                    types.append(scope.bindings[name])
+                    break
+                scope = scope.parent
+            pending = func.pending_loop_vars.get(name)
+            if pending is not None:
+                types.append(pending[0])
+            decl_type = self.ctx.local_decl_type(name)
+            if decl_type is not None:
+                types.append(decl_type)
+            if not types:
+                return False
+            if all(_read_field_holds_no_pointer(t) for t in types):
+                continue
+            if (name in func.current_param_names and name not in rebound
+                    and all(_param_is_borrowed(t) for t in types)):
+                continue
+            return False
+        return True
+
+    def _return_name_cannot_reach_field(self, name: str) -> bool:
+        """True only when `name` is PROVEN unable to reach a `self` field: a
+        local or parameter of a bufferless scalar type, or a module-level
+        function or class. Anything else -- a nested def or lambda local
+        (it may capture `self`), a module variable, `self`, an unresolved
+        name -- could read the field after the move."""
+        if name in ("self", "super"):
+            return False
+        if self.compat.is_local_shadow(name):
+            return is_bufferless_scalar(
+                self.ctx.func.current_scope.lookup(name))
+        ns = self.ctx.func.current_ns
+        while ns is not None and ns is not self.ctx.global_ns:
+            if ns.has_local(name):
+                return False
+            ns = ns.parent
+        if self.ctx.global_scope.lookup(name) is not None:
+            return False
+        binding = (self.ctx.global_ns.lookup(name)
+                   if self.ctx.global_ns is not None else None)
+        if binding is not None and binding.kind in (
+                BindingKind.FUNCTION, BindingKind.RECORD, BindingKind.ENUM):
+            return True
+        if binding is not None and binding.kind != BindingKind.IMPORTED_NAME:
+            return False
+        registry = self.ctx.registry
+        return (registry.get_function(name) is not None
+                or registry.get_record(name) is not None
+                or registry.get_enum(name) is not None)
 
     def _mark_finally_deferred_return(self, stmt: TpyReturn, ret_type: TpyType,
                                       expected: TpyType) -> None:
@@ -1844,149 +2169,16 @@ class StatementAnalyzer:
         elif isinstance(stmt, TpyExprStmt):
             self.expr.analyze_expr(stmt.expr)
         elif isinstance(stmt, TpyReturn):
-            if stmt.value:
-                fn = self.ctx.func.current_function
-                # A generator's `return` ends iteration and carries no value
-                # (the parser rejects any operand but the canonical None), so
-                # its slot is void, not the declared Iterator type.
-                expected = (unwrap_ref_type(fn.return_type)
-                            if fn is not None and not fn.is_generator
-                            else VOID)
-                ret_type = self.expr.analyze_expr_with_hint(stmt.value, expected)
-                stmt.value_type = ret_type
-                self._mark_finally_deferred_return(stmt, ret_type, expected)
-                stmt.value = self.compat.coerce_expr(stmt.value, ret_type, expected, "return value",
-                                                      coercion_ctx=CoercionContext.RETURN, is_return=True)
-                # Track return-type context for pending list/dict/set deduction
-                self.deduction.mark_container_return_context(stmt.value, expected)
-                # Warn when a method copies a str field on return
-                self._warn_str_field_return_copy(stmt.value, expected)
-                # Borrowed-receiver escape: returning a bound async-METHOD
-                # coroutine lets the handle outlive the receiver's scope;
-                # lifetime is not tracked across the escape.
-                ret_inner = unwrap_readonly(unwrap_own(unwrap_ref_type(ret_type)))
-                if (isinstance(ret_inner, ConcreteCoroType)
-                        and ret_inner.frame_owner is not None):
-                    self.ctx.warning(
-                        "returned bound method-coroutine borrows its "
-                        "receiver by reference; the handle must not "
-                        "outlive the receiver (receiver lifetime is not "
-                        "tracked across this escape)",
-                        stmt)
-                # A returned generator or coroutine keeps what its frame
-                # borrows, whatever slot the return fills.
-                ret_call = stmt.value
-                while isinstance(ret_call, TpyCoerce):
-                    ret_call = ret_call.expr
-                for src_e in frame_borrowed_operands(ret_call) or ():
-                    for src in _borrow_storage_roots(src_e):
-                        self.ctx.mark_param_returned(src)
-                # Check for a borrowed source returned as Own[T] without an
-                # explicit copy(). `readonly` peels first: `readonly[Own[T]]`
-                # is the same owning slot with a const view on top, so the
-                # spelling must not be a way past the check.
-                own_expected = unwrap_readonly(expected)
-                if isinstance(own_expected, OwnType):
-                    if self.compat.is_copy_call(stmt.value):
-                        self._warn_unnecessary_return_copy(stmt.value)
-                    else:
-                        self._check_own_lvalue_return(own_expected, stmt.value, "return type")
-                # Check Own[T] elements in tuple literals.
-                if isinstance(stmt.value, TpyTupleLiteral):
-                    tuple_target = own_tuple_target(expected)
-                    if tuple_target is not None:
-                        # The Own-element checks, then the per-element
-                        # capture mode (ref/value/const_ref).
-                        self._annotate_tuple_elem_capture(
-                            stmt.value, tuple_target, sink=TupleSink.RETURN)
-                # A tuple LOCAL returned by name: the literal-element check
-                # above never ran, so consult the construction-time
-                # plain-borrow-into-Own hazard for each Own slot.
-                elif isinstance(stmt.value, TpyName):
-                    tuple_target = own_tuple_target(expected)
-                    if tuple_target is not None:
-                        self.compat.check_name_borrow_into_own(
-                            stmt.value.name, tuple_target, stmt.value,
-                            return_slot=True)
-                # Returning an ephemeral generator/iterator borrow lets it escape
-                # its iteration step -- reject with the copy-out fix (before the
-                # generic dangling check so the specific message wins).
-                self._reject_ephemeral_escape(stmt.value, "return")
-                # Check for dangling reference (returning local/temporary as reference)
-                self.compat.check_dangling_reference(stmt.value, expected, stmt.loc, ret_type)
-                # Returning a non-value type by reference takes the source's address.
-                # Mark both loop vars and params so they keep T& (not const T&/const T*).
-                if isinstance(stmt.value, TpyName):
-                    self.ctx.mark_loop_var_mutated(stmt.value.name)
-                    # Escape tracking: returning a nested def marks it as escaping
-                    if stmt.value.name in self.ctx.func.nested_def_names:
-                        self.ctx.reject_resumable_nested_def_escape(
-                            stmt.value.name, stmt)
-                        self.ctx.func.nested_def_escapes.add(stmt.value.name)
-                # Returning a borrowing view does not give the caller write
-                # access to the source, so we record borrow provenance but
-                # must not raise self_mutated -- that would suppress auto-const
-                # on the enclosing method and break const callers.
-                if expected is not None:
-                    returns_borrowing_view = is_borrowing_view_type(expected)
-                    # A tuple is a value type, but its borrow form hands out
-                    # mutable element pointers into the source storage -- the
-                    # root must stay non-const and the borrow be recorded.
-                    expected_bare = unwrap_readonly(expected)
-                    returns_borrow_tuple = (
-                        isinstance(expected_bare, TupleType)
-                        and expected_bare.has_pointer_repr_element())
-                    if (not expected.is_value_type() or returns_borrowing_view
-                            or returns_borrow_tuple):
-                        # A readonly return hands out a CONST borrow -- of a
-                        # tuple's elements or of the record itself -- so borrow
-                        # provenance is recorded but no write access is granted,
-                        # exactly as for a borrowing view. Marking the source
-                        # mutated here would raise self_mutated on the enclosing
-                        # method and, through the Phase-2 receiver edge, on every
-                        # caller that reads the borrow.
-                        ro_return = isinstance(expected, ReadonlyType)
-                        if returns_borrow_tuple:
-                            ret_roots = tuple_borrow_escape_roots(
-                                stmt.value, expected_bare, ro_return)
-                        else:
-                            ret_roots = [(root, not ro_return)
-                                         for root in addr_taken_roots(stmt.value)]
-                        for ret_root, grants_write in ret_roots:
-                            if not returns_borrowing_view and grants_write:
-                                # through_field: a returned reference grants
-                                # the caller write access, so the climb must
-                                # reach a field-path borrow root (`b = o.f;
-                                # return b` -> o), matching the direct
-                                # `return o.f` form.
-                                self.ctx.mark_param_mutated(
-                                    ret_root, through_field=True)
-                            self.ctx.mark_param_returned(ret_root)  # 8b: track which param storage the return borrows
-                        # 8b rule 3: transitive return -- if returning the result of a call
-                        # whose return_borrows_from is known, propagate the borrow contract.
-                        # e.g. `return inner(items)` where inner borrows param 0 -> mark items.
-                        ret_inner = stmt.value.expr if isinstance(stmt.value, TpyCoerce) else stmt.value
-                        ret_operands = call_borrow_operands(ret_inner)
-                        if ret_operands is not None:
-                            fi_ret, ret_obj, ret_args = ret_operands
-                            ret_sources = recorded_return_borrow_sources(fi_ret)
-                            if ret_sources:
-                                for idx in ret_sources:
-                                    # One argument position can hold many
-                                    # operands (a `*args` pack), and each is
-                                    # borrowed by the same contract.
-                                    if idx == -1 and ret_obj is not None:
-                                        srcs = _borrow_storage_roots(ret_obj)
-                                    elif idx >= 0 and idx < len(ret_args):
-                                        srcs = _borrow_storage_roots(ret_args[idx])
-                                    else:
-                                        srcs = []
-                                    for src in srcs:
-                                        # Read-only sources (readonly callees, view returns)
-                                        # don't propagate mutation to their borrowed-from arg.
-                                        if not returns_borrowing_view and not fi_ret.is_readonly:
-                                            self.ctx.mark_param_mutated(src)
-                                        self.ctx.mark_param_returned(src)
+            prev_moves = self.ctx.func.consuming_return_fields
+            prev_in_return = self.ctx.func.in_return_value
+            self.ctx.func.consuming_return_fields = (
+                self._consuming_return_move_fields(stmt))
+            self.ctx.func.in_return_value = True
+            try:
+                self._analyze_return_value(stmt)
+            finally:
+                self.ctx.func.consuming_return_fields = prev_moves
+                self.ctx.func.in_return_value = prev_in_return
             self.init.mark_terminated()
         elif isinstance(stmt, TpyYield):
             self._analyze_yield(stmt)
@@ -3743,6 +3935,8 @@ class StatementAnalyzer:
         self.ctx.finally_return_candidates |= collect_finally_return_candidates(func.body)
         self.ctx.finally_rebound_returns |= collect_finally_rebound_returns(func.body)
         self.ctx.func.current_reassigned_vars = scan.reassigned.copy()
+        self.ctx.func.body_bound_names = frozenset(
+            scan.bound_names() | scan.reassigned)
         self.ctx.func.nested_nonlocal_rebinds = (
             collect_nested_def_nonlocal_rebinds(func.body, include_del=True)
             | self.ctx.func.enclosing_nonlocal_rebinds)
@@ -6468,16 +6662,18 @@ class StatementAnalyzer:
                 deferred = self.ctx.defer_own_copy_verdict(
                     inner, target_type, dest, stmt)
                 if not deferred and self.ctx.is_type_non_copyable(target_type):
+                    hint = self.compat.nocopy_hint(stmt.value)
                     if inner == target_type:
                         msg = (f"cannot copy non-copyable type '{target_type}' into "
-                               f"{dest}{NOCOPY_REMEDIATION_HINT}")
+                               f"{dest}{hint}")
                     else:
                         msg = (f"cannot copy {inner} into {dest} of type '{target_type}'; "
-                               f"target is non-copyable{NOCOPY_REMEDIATION_HINT}")
+                               f"target is non-copyable{hint}")
                     raise self.ctx.error(msg, stmt)
                 if not deferred:
                     self.ctx.warning(
-                        f"copies {inner} into {dest}; use copy() to make this explicit",
+                        f"copies {inner} into {dest}; "
+                        f"{self.compat.copy_remedy(stmt.value)}",
                         stmt)
                 copy_warning_fired = True
             # A tuple is a value type, but storing one whose elements are
@@ -6751,16 +6947,18 @@ class StatementAnalyzer:
                     deferred = self.ctx.defer_own_copy_verdict(
                         value_type, target_type, dest, stmt)
                     if not deferred and self.ctx.is_type_non_copyable(target_type):
+                        hint = self.compat.nocopy_hint(stmt.value)
                         if value_type == target_type:
                             msg = (f"cannot copy non-copyable type '{target_type}' into "
-                                   f"{dest}{NOCOPY_REMEDIATION_HINT}")
+                                   f"{dest}{hint}")
                         else:
                             msg = (f"cannot copy {value_type} into {dest} of type '{target_type}'; "
-                                   f"target is non-copyable{NOCOPY_REMEDIATION_HINT}")
+                                   f"target is non-copyable{hint}")
                         raise self.ctx.error(msg, stmt)
                     if not deferred:
                         self.ctx.warning(
-                            f"copies {value_type} into {dest}; use copy() to make this explicit",
+                            f"copies {value_type} into {dest}; "
+                            f"{self.compat.copy_remedy(stmt.value)}",
                             stmt)
 
         # Scope escape check for assignments to named variables

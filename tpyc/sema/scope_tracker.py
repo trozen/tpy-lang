@@ -253,6 +253,10 @@ class ScopeTracker:
         old_scope = self.ctx.func.current_scope
         old_ns = self.ctx.func.current_ns
         old_assigned = self.ctx.func.definitely_assigned.copy()
+        # Like a nested def, a lambda may run any number of times, so its
+        # body is not the consuming method's own.
+        consuming = self.ctx.in_consuming_method
+        self.ctx.in_consuming_method = False
         self.ctx.func.current_scope = inner_scope
         if self.ctx.func.current_ns:
             inner_ns = Namespace(parent=self.ctx.func.current_ns)
@@ -264,6 +268,7 @@ class ScopeTracker:
             self.ctx.func.definitely_assigned = old_assigned
             self.ctx.func.current_scope = old_scope
             self.ctx.func.current_ns = old_ns
+            self.ctx.in_consuming_method = consuming
 
     @contextmanager
     def nested_def_scope(self, func_node: TpyFunction) -> Iterator[Scope]:
@@ -278,6 +283,10 @@ class ScopeTracker:
         outer_scope = self.ctx.func.current_scope
         outer_ns = self.ctx.func.current_ns
         saved = self.ctx.save_function_state()
+        # A consuming method owns its receiver for ITS body only: a nested
+        # def may run any number of times, so nothing in it moves `self`.
+        consuming = self.ctx.in_consuming_method
+        self.ctx.in_consuming_method = False
         body_root = self.ctx.func.body_root
         inner_scope = Scope(outer_scope)
         inner_ns = Namespace(parent=outer_ns) if outer_ns else None
@@ -295,6 +304,7 @@ class ScopeTracker:
                 yield inner_scope
         finally:
             self.ctx.restore_function_state(saved)
+            self.ctx.in_consuming_method = consuming
 
     @contextmanager
     def loop_var(self, scope: Scope, name: str, var_type: TpyType,

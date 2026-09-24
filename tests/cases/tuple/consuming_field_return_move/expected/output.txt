@@ -1,0 +1,42 @@
+after 11
+last_use 2
+bare_return 100000000000000000000
+loop_return 1
+try_return finally 1
+try_return 1
+try_return_scalar finally 100000000000000000000
+try_return_scalar 100000000000000000000
+with_return 1
+same_field_twice 11
+whole_self_in_return 2
+nonscalar_local_in_return 2
+scalar_local_ok 5
+field_store 2
+escape_copy 21
+nested_def_return 200000000000000000000
+lambda_body 11
+nested_def_in_return 11
+while_return 2
+try_handler_return finally 1
+try_handler_return 1
+try_else_return body
+try_else_return 1
+comprehension_in_return 3
+walrus_in_return 5
+property_in_return 11
+nonscalar_param_in_return 2
+module_var_in_return 2
+scalar_kinds_ok 23
+scalar_field_twice_ok 21
+ptr_field_in_return 11
+local_generator finally 1
+local_generator 1
+local_list_in_scope 3
+scalar_locals_only 26
+sibling_loop_guard del 1
+sibling_loop_guard del 1
+sibling_loop_guard 1
+loop_body_list 5
+self_in_nested_def 22
+super_in_return 11
+async_return 1

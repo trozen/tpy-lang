@@ -13028,11 +13028,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         if not _return_carries_value(stmt, lc):
             _witness("ret.void")
             return THIRReturn(value=None, loc=loc)
-        if (lc.func.is_consuming and isinstance(stmt.value, TpyFieldAccess)
-                and isinstance(stmt.value.obj, TpyName)
-                and stmt.value.obj.name == "self"):
+        if (isinstance(stmt.value, TpyFieldAccess)
+                and stmt.value.consuming_move):
             # A consuming method's `self` is an rvalue ref (`&&`), so returning
-            # one of its fields MOVES (`return std::move(this->_value);`).
+            # one of its fields MOVES (`return std::move(this->_value);`) --
+            # where sema let the field move (`consuming_move`); anywhere else
+            # the return reads it like any method's field.
             # Intercepted BEFORE the return ladder on purpose: the move
             # belongs to the FINAL return expression, so a specialized arm
             # (record / optional / tuple / container) would have to re-apply

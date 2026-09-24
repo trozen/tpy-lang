@@ -1870,6 +1870,50 @@ alongside related feature work; only the big-rock deferrals live here.
     the checker it lands in: these verdicts are hard ERRORS even in the default
     advisory mode, and the conflict rule is invalidation, not exclusivity -- two
     shared loans on one place coexist, matching TPy's permissive aliasing.
+- **[MIR] Consuming-method field moves outside `return`.** In a consuming
+  method (`self: Own[Self]`) a read of `self.<field>` moves the field out only
+  inside a `return` of the method itself (not of a nested def) that is not in
+  a `for`, `try` or `with` body, in a method that is neither a generator nor
+  `async`, when the returned expression reads that field once, does not use
+  `self` whole (method call, property, `super()`), holds no lambda,
+  comprehension or walrus, and every other name in it is a local or parameter
+  of a number, `bool`, `char` or enum type, or a module-level function or
+  class (`StatementAnalyzer._consuming_return_move_fields`, tagged as
+  `TpyFieldAccess.consuming_move`). Every other read is a borrow that copies
+  and warns at an owning slot, or errors for a `@nocopy` field -- so
+  `x = take((self.a, self.b)); return x` copies where moving would be sound.
+  A `return` is also not the last code the method runs: its locals are
+  destroyed after the return value is built, and a destructor can read the
+  moved field (a local generator's `finally`, a `__del__` holding a `Ptr`
+  into `self`). The stopgap therefore blocks the move whenever any name the
+  method binds anywhere, or any parameter it owns or rebinds, is not a
+  number, `bool`, `char`, enum, `str` or `bytes`
+  (`_method_teardown_cannot_read_field`) -- a list local keeps the field
+  borrowed too. MIR's cleanup and exceptional-flow modelling (W3 of
+  `docs/MIR_M3_COMPLETION_PLAN.md`) is what lets those destructors be
+  proven not to observe the moved field.
+  The precise question is whether any live holder still depends on the
+  field's storage after the read: MIR M3's holder/loan propagation plus
+  liveness answers it, and should replace the stopgap. A sema-only attempt
+  (place-keyed liveness plus a type-based "does anything else point into this
+  field" gate) leaked a new shape each round over 15 rounds; it is on the
+  unmerged branch `tuple-own-followups` (tip 8830df3093) for reference. In
+  case that branch is gone: it moved a field at its liveness-proven last read
+  unless an observer could still reach it -- a live borrow-tracker loan or
+  borrow chain placed on the field or on `self` whole, or a live holder whose
+  type could reach the field's storage (a pointer's pointee, a polymorphic
+  class or an open `T` counting as reaching) -- and each round found a holder
+  shape the type test did not see.
+  Acceptance shapes for the MIR version -- a `@nocopy` field moved outside a
+  `return` and never read again must flip from today's error to a quiet move
+  (a copyable one from a warned copy to a move), at every owning position:
+  `r = take((self.a, self.b)); return r` (an `Own` tuple member),
+  `o.t = self.a; return o.t.n` (a field store) and
+  `r = take1(self.a); return r` (an `Own[T]` parameter; that spelling also
+  needs `BUGS.md#consuming-field-last-use-sink-rejects`'s lowering row). The
+  shape that must KEEP its error is `tests/cases/tuple/
+  error_consuming_field_nocopy_outside_return`: the field is read again after
+  the move, and a `@nocopy` value has no copy to fall back on.
 - **Converge the method-RECEIVER model: AST slot convention -> THIR's typed local (post-cutover).** The AST models a method's receiver as a positional CONVENTION, not a parameter: `_parse_method` validates the first arg's name (`self`, or `cls` for a classmethod) and `continue`s it, so it never enters `params`; its annotation rides an out-of-band `self_annotation` channel consumed by `sema.method_expansion`. THIR already models it the way one would design it fresh -- `params_set["self"] = self_type`, `Local("self")` in the place model, and `@readonly` expressed as `const_locals.add("self")` (a property of the LOCAL, not a flag on the method). The mismatch shows up as code: `Base.method(self, ...)` has to build a synthetic `TpyMethodCall` with `obj=self_arg` and self dropped from the args, purely to translate between the two shapes. Converging the AST onto THIR's model would touch every `params` consumer (arity diagnostics, overload resolution, kwargs mapping, defaults, the C++ param-list emit -- where `self` is `this`, not an argument, so the special case MOVES rather than disappearing, `macro_api.MethodInfo`, protocol signature matching), which is why it belongs AFTER the THIR cutover: one boundary to change instead of two. Would also give a polymorphic `cls` (`type[Self]`) a uniform home as a phantom param 0. Surfaced designing `@classmethod` v1.
 
 - **[porting gap] One THIR site still spells "already a pointer?" as bare

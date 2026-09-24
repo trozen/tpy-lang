@@ -1475,6 +1475,14 @@ class FunctionTrackingState:
     in_except_has_binding: bool = False
     # True when analyzing a finally body
     in_finally: bool = False
+    # The `self` fields a consuming method's return value under analysis may
+    # move out of (`StatementAnalyzer._consuming_return_move_fields`); empty
+    # everywhere else, where a field read is a borrow.
+    consuming_return_fields: frozenset[str] = frozenset()
+    # True while a `return` statement's value is analysed: a consuming
+    # method's field read there is already in a return, so "move it in a
+    # `return`" is no remedy for it.
+    in_return_value: bool = False
     # Stack (one frame per finally body being analyzed) of local names a
     # finally-deferred return in the corresponding try borrowed: `del` of
     # such a name inside the finally would free storage the pending return
@@ -1599,6 +1607,10 @@ class FunctionTrackingState:
 
     # --- Prescan / last-use ---
     current_reassigned_vars: set[str] = field(default_factory=set)
+    # Every name the body binds anywhere, narrower-scoped bindings included,
+    # plus every parameter it rebinds: whatever the function may destroy
+    # after a return value is built, whichever block bound it.
+    body_bound_names: frozenset[str] = frozenset()
     # Names a nested def rebinds via `nonlocal`: the reassigned-var scan does
     # not look into nested defs, and the closure may run at any point, so a
     # view borrowing such a name's storage is treated as reseated.

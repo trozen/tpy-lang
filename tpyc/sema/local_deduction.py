@@ -27,7 +27,7 @@ from ..typesys import (
     LiteralType,
     make_array,
     NoneType,
-    is_numeric_type,
+    is_bufferless_scalar,
     is_any_float_type,
     is_any_int_type,
     OptionalType,
@@ -67,8 +67,6 @@ from ..type_def_registry import (
     is_str_type, is_str_view_type, is_bytes_type, is_bytes_view_type,
     is_enum_type,
     is_borrowing_view_type,
-    is_bool_type,
-    is_char_type,
 )
 
 if TYPE_CHECKING:
@@ -107,12 +105,6 @@ def is_enum_name_read(expr: 'TpyExpr', ctx: 'SemanticContext') -> bool:
             and expr.field == "name"
             and is_str_view_type(ctx.get_expr_type(expr))
             and is_enum_type(ctx.get_expr_type(expr.obj)))
-
-
-def _is_bufferless_scalar(t: TpyType) -> bool:
-    """A value no view can point into: a number, bool, char, enum or None."""
-    return (is_numeric_type(t) or is_bool_type(t) or is_char_type(t)
-            or is_enum_type(t) or isinstance(t, NoneType))
 
 
 def walk_view_source_leaves(expr: 'TpyExpr', leaf_fn: 'Callable[[TpyExpr], list]') -> 'list':
@@ -1462,7 +1454,7 @@ class LocalTypeDeduction:
                 for a in operands:
                     at = self.ctx.get_expr_type(a)
                     bare = unwrap_readonly(unwrap_ref_type(at)) if at is not None else None
-                    if bare is not None and _is_bufferless_scalar(bare):
+                    if is_bufferless_scalar(bare):
                         continue
                     lending = True
                     if not of(a):
