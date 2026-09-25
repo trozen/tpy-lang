@@ -1,0 +1,1 @@
+main.py:28: error: @nocopy type 'N' is used after this point and cannot be moved into 'n: Own[N]'. Remove later uses or restructure the code.

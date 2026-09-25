@@ -1,0 +1,12 @@
+main.py:87: warning: copies P into owned storage; use copy() to make this explicit
+main.py:101: warning: copies P into owned storage; use copy() to make this explicit
+main.py:112: warning: copies P into owned storage; use copy() to make this explicit
+main.py:121: warning: copies P into owned storage; use copy() to make this explicit
+main.py:134: warning: copies P into owned storage; use copy() to make this explicit
+main.py:149: warning: copies P into owned storage; use copy() to make this explicit
+main.py:162: warning: copies P into owned storage; use copy() to make this explicit
+main.py:177: warning: copies P into owned storage; use copy() to make this explicit
+main.py:188: warning: copies P into owned storage; use copy() to make this explicit
+main.py:197: warning: copies P into owned storage; use copy() to make this explicit
+main.py:210: warning: copies P into owned storage; use copy() to make this explicit
+main.py:232: warning: copies P into owned storage; use copy() to make this explicit

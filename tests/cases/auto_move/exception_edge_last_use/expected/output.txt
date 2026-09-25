@@ -1,0 +1,26 @@
+handler_raise_finally 1
+handler_raise_finally caught True
+outer_handler_reads 1
+swallowed_raise 1
+swallowed_call 1
+gen_handler_raise_finally yield 0
+gen_handler_raise_finally 1
+gen_handler_raise_finally caught
+async_handler_raise_finally 1
+async_handler_raise_finally caught
+error_return_finally 1
+error_return_finally caught
+loop_handler_finally 0 1
+loop_handler_finally 1 1
+loop_handler_finally caught
+if_with_swallow 1
+plain_with 1
+handler_return_finally 1
+with_target_handler -1
+finally_consumes_return 1
+match_arm_last_use 14
+return_or_consume_finally fin
+return_or_consume_finally 1
+return_or_consume_finally fin
+handler_last_use 1
+try_body_last_use caught
