@@ -1,0 +1,1 @@
+main.py:8: error: Class 'Cursor': @native(borrowing_view=True) requires a value type; declare it with the ValueType marker (class Cursor(ValueType))

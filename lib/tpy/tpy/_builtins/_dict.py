@@ -7,7 +7,7 @@ from .._bootstrap._extern import native, cpp_template, native_preserves_refs, bu
 
 
 @builtin_type("builtins.dict_keys")
-@native("tpy::dict_keys_view")
+@native("tpy::dict_keys_view", borrowing_view=True)
 class dict_keys[K, V](Iterable[K], NativeIterable[K]):
     @native("tpy::__len__", function=True)
     @pure
@@ -26,7 +26,7 @@ class dict_keys[K, V](Iterable[K], NativeIterable[K]):
 
 
 @builtin_type("builtins.dict_values")
-@native("tpy::dict_values_view")
+@native("tpy::dict_values_view", borrowing_view=True)
 class dict_values[K, V](Iterable[V], NativeIterable[V]):
     @native("tpy::__len__", function=True)
     @pure
@@ -45,7 +45,8 @@ class dict_values[K, V](Iterable[V], NativeIterable[V]):
 
 
 @builtin_type("builtins.dict_items")
-@native("tpy::dict_items_view")
+@native("tpy::dict_items_view", borrowing_view=True,
+        _iter_yields_ref_tuple_proxies=True)
 class dict_items[K, V](Iterable[tuple[K, V]], NativeIterable[tuple[K, V]]):
     @native("tpy::__len__", function=True)
     @pure

@@ -26,6 +26,7 @@ from tpy.extern import native, export
 | `@native` class -- import C++ class (fields, stub methods) | **Done** |
 | `@native("factory", function=True)` on `__init__` -- factory-style constructor | **Done** |
 | `@native("MyArena", indirecting=True)` -- attest heap indirection for cycle detection | **Done** |
+| `@native("MyCursor", borrowing_view=True)` -- declare a value type's values borrow handles (lifetime-checked) | **Done** |
 | `native_field("cpp_name")` -- per-field C++ rename on `@native` classes | **Done** |
 | `@native` enum -- import C++ `enum class` | **Done** |
 | `native_member("cpp_name")` -- per-member C++ rename on `@native` enums | **Done** |
@@ -257,6 +258,61 @@ class Arena[T]:  # C++ stores T behind a unique_ptr / arena handle
 With this, `type Tree = Leaf | Arena[Tree]` compiles. Without it, the compiler treats `Arena[T]` as a by-value container and rejects the alias.
 
 Used in the stdlib by `list`/`dict`/`set` (see `lib/tpy/tpy/_builtins/_{list,dict,set}.py`). Don't reach for it on records whose TPy field declarations already expose a `Ptr`-typed (or other indirecting) field -- the structural walk handles those.
+
+### Declaring a borrow handle: `borrowing_view=True`
+
+A native VALUE type whose every value points into storage it does not own --
+a string view, a span, a cursor or iterator over a container -- declares it:
+
+```python
+@native("my::Cursor", borrowing_view=True)
+class Cursor(ValueType):
+    @native("get")
+    def get(self) -> int32: ...
+```
+
+The compiler then lifetime-checks the type's values wherever the stdlib views
+(`StrView`, `BytesView`, `Span`, `SpanIter`, the dict views, which all
+declare the same kwarg) are checked: returning or yielding one that borrows a
+local or a temporary is an error (`Cannot return Cursor referencing a local or
+temporary`), and a native method returning one is taken to borrow its
+receiver. WHAT a value borrows is decided at the producing call (the method's
+receiver, the view constructor's first argument), not by the declaration.
+A USER view's own constructor is not yet recognized as borrowing its
+arguments: `return Cursor(xs)` with `xs` a parameter is rejected as if it
+borrowed a temporary. Return a view from a method (`buf.cursor()`) instead;
+the constructor rule is tracked in TODO.md ("View constructors borrow their
+arguments; a view root is durable by its emitted storage").
+The yield half is not reachable for a user `@native` value type today: a
+generator cannot yield one at all, the frame stops at `res.yield_type`
+(`BUGS.md#resumable-valuetype-yield-rejects`), so only the return check
+applies to it.
+
+The kwarg describes a TYPE whose every value borrows. A handle that borrows
+only for some producing calls must not declare it: `copy_iter()`'s `CopyIter`
+borrows a container passed as an lvalue but moves in and owns an iterator
+passed as an rvalue (`copy_iter(map(f, xs))`), so as a borrowing view it would
+reject or warn about the owning form. That borrow depends on the argument's
+value category and belongs to the producing call -- the callable-level borrow
+annotation in TODO.md ("Callable-level borrow annotation for native stubs").
+
+The obligation is the stub author's: an unannotated native value type is
+treated as OWNING its data, so forgetting the kwarg on a handle type means its
+values are copied and returned with no lifetime check at all. The kwarg is
+rejected on a reference type (a class without the `ValueType` marker, which is
+borrow-checked as a reference already) and on a function-level `@native`.
+
+A TPy record that merely HOLDS a view field declares nothing and is not
+checked (`BUGS.md#record-view-field-return-dangles`).
+
+The fact also decides how a generic handle spells a `readonly[T]` type
+argument: a `borrowing_view` template gets `const T` (a handle over readonly
+elements is the const handle -- `Window[readonly[Node]]` renders
+`my::Window<const Node>`, as the runtime's dict views specialize on it), while
+every other native template keeps `T` (`Bag[readonly[Node]]` renders
+`my::Bag<Node>`): a storage template owns its elements, and C++ containers
+and allocators reject a const element type. The readonly-ness of a storage
+template's element is enforced by sema alone.
 
 ### Narrowing C++ returns: `cpp_return_type=T`
 

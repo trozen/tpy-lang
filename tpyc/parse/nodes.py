@@ -1751,6 +1751,13 @@ class TpyRecord:
     # User TPy records with a Ptr[T] field do NOT set this -- the field walk
     # infers indirection structurally.
     is_indirecting: bool = False
+    # @native(borrowing_view=True): every value of this (value) type is a
+    # borrow handle into storage it does not own, so returns and yields of
+    # it are lifetime-checked.
+    is_borrowing_view: bool = False
+    # @native(iter_yields_ref_tuple_proxies=True): iterating yields tuples of
+    # references by value (see TypeDef.iter_yields_ref_tuple_proxies).
+    iter_yields_ref_tuple_proxies: bool = False
     # Send/Sync trait overrides: True from @unsafe_send/@unsafe_sync,
     # False from @nosend/@nosync, None = structural auto-derive
     send_override: bool | None = None

@@ -64,6 +64,7 @@ from .send_chain import why_not_send, why_not_sync, render_chain
 from ..type_def_registry import (
     is_fixed_int_type, is_fstr_type, int_traits_of,
     attach_dynamic_type_def, TypeCategory, EnumInfo, enum_info_of, type_def_of,
+    get_type_def,
     factory_qnames_in_module, protocol_info_of, return_exception_marker,
     is_str_type, is_borrowing_view_type, is_owned_in_coro_frame,
     is_varargs,
@@ -1952,6 +1953,8 @@ class TypeRegistrar:
             is_native=is_native,
             is_native_c=is_native_c,
             is_indirecting=record.is_indirecting,
+            is_borrowing_view=record.is_borrowing_view,
+            iter_yields_ref_tuple_proxies=record.iter_yields_ref_tuple_proxies,
             is_nocopy=record.is_nocopy,
             send_override=record.send_override,
             sync_override=record.sync_override,
@@ -2402,6 +2405,21 @@ class TypeRegistrar:
                     )
                 record_info.is_value_type = True
                 break
+
+        # A borrow handle is copied like any value; the lifetime checks read
+        # the fact only on value types (a reference type is borrow-checked as
+        # a reference already).
+        if record_info.is_borrowing_view:
+            td = get_type_def(record_info.builtin_type_key
+                              or record_info.qualified_name())
+            if not (record_info.is_value_type
+                    or (td is not None and td.is_value_type)):
+                raise SemanticError(
+                    f"Class '{record.name}': @native(borrowing_view=True) "
+                    f"requires a value type; declare it with the ValueType "
+                    f"marker (class {record.name}(ValueType))",
+                    record.loc
+                )
 
         # ReturnException marker: register exception type as return-only
         if return_exception_marker(record_info) is not None:

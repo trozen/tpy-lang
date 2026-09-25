@@ -992,6 +992,41 @@ class TypeParamRef(TpyType):
         return f"::tpy::val_or_cref_t<{self.name}>"
 
 
+def is_native_template(td: Optional["TypeDef"]) -> bool:
+    """Whether the C++ template behind this TypeDef is hand-written native
+    code (an `@native` stub) rather than a struct TPy emits."""
+    return td is not None and td.record is not None and td.record.is_native
+
+
+def spells_readonly_arg_const(td: Optional["TypeDef"]) -> bool:
+    """Whether this template spells a `readonly[T]` argument `const T`: only a
+    declared borrowing view does. A borrow handle over readonly elements is a
+    const handle (the runtime views specialize on it); a storage template owns
+    its element, and C++ containers and allocators reject a const one."""
+    from tpyc.type_def_registry import declares_borrowing_view
+    return declares_borrowing_view(td)
+
+
+def template_arg_cpp(arg: object, const_readonly: bool,
+                     render: Callable[['TpyType'], str]) -> str:
+    """One C++ template argument; `const_readonly` is
+    `spells_readonly_arg_const` of the template."""
+    if not isinstance(arg, TpyType):
+        return str(arg)
+    if const_readonly and isinstance(arg, ReadonlyType):
+        return f"const {render(arg.wrapped)}"
+    return render(arg)
+
+
+def varargs_elem_cpp(elem: 'TpyType', render: Callable[['TpyType'], str]) -> str:
+    """The element argument of a `*args` pack's `varargs<...>`. The parameter
+    and the call-site pack both spell it here: a const mismatch between the two
+    is a C++ conversion error."""
+    from tpyc.type_def_registry import get_type_def
+    return template_arg_cpp(
+        elem, spells_readonly_arg_const(get_type_def("tpy.varargs")), render)
+
+
 @dataclass(frozen=True)
 class NominalType(TpyType):
     """A named type: user-defined record/protocol, or module-defined generic.
@@ -1069,7 +1104,15 @@ class NominalType(TpyType):
             qualified = view.get(self._module_qname)
             if qualified is not None:
                 return qualified
-        return view.get(self.name, self.name)
+        registered = view.get(self.name)
+        if registered is not None:
+            return registered
+        # native_cpp_names skips factory-backed builtins and is filled only at
+        # codegen, and a dict view is rendered outside codegen too: read its stub.
+        td = self._nominal_td()
+        if is_native_template(td) and td.record.native_name:
+            return td.record.native_name
+        return self.name
 
     def to_cpp_base_name(self) -> str:
         """Return the C++ name without type arguments."""
@@ -1080,8 +1123,8 @@ class NominalType(TpyType):
             # Structural protocol: template parameter placeholder
             return "T"
         # Per-qname cpp formatter (registry overrides the default {name}<{args}>
-        # rendering for builtins whose C++ name diverges from the Python qname,
-        # e.g. dict_keys -> ::tpy::dict_keys_view).
+        # rendering for builtins whose C++ spelling is more than the stub's
+        # `@native` name plus its arguments).
         from tpyc.type_def_registry import type_def_of
         td = type_def_of(self)
         if td is not None and td.cpp_formatter is not None:
@@ -1095,8 +1138,9 @@ class NominalType(TpyType):
         # codegen_cpp/generator.py).
         cpp_name = self._cpp_base_name()
         if self.type_args:
+            const_readonly = spells_readonly_arg_const(td)
             args = ", ".join(
-                t.to_cpp() if isinstance(t, TpyType) else str(t)
+                template_arg_cpp(t, const_readonly, lambda a: a.to_cpp())
                 for t in self.type_args
             )
             return f"{cpp_name}<{args}>"
@@ -4641,8 +4685,8 @@ def make_set(element_type: 'TpyType') -> 'NominalType':
 def make_dict_keys_view(key_type: 'TpyType', value_type: 'TpyType') -> 'NominalType':
     """Factory for `dict.keys()` view type. Produces a plain NominalType
     with qname `builtins.dict_keys`; behavior comes from the TypeDef
-    registry (is_value_type=True, is_send/is_sync=False, cpp_formatter
-    -> ::tpy::dict_keys_view<K, V>)."""
+    registry (is_value_type=True, is_send/is_sync=False) and the stub
+    (`@native("tpy::dict_keys_view")`)."""
     return NominalType(name="dict_keys", type_args=(key_type, value_type),
                        _module_qname="builtins.dict_keys")
 
@@ -5794,6 +5838,8 @@ class RecordInfo:
     is_native: bool = False       # True for @native or @native_c records
     is_native_c: bool = False     # True for @native_c specifically
     is_indirecting: bool = False  # True for @native(indirecting=True) records that own heap storage of T (cycle-breaking)
+    is_borrowing_view: bool = False  # True for @native(borrowing_view=True): values are borrow handles (lifetime-checked)
+    iter_yields_ref_tuple_proxies: bool = False  # True for @native(iter_yields_ref_tuple_proxies=True)
     is_nocopy: bool = False       # True for @nocopy records (copy deleted, move-only)
     match_args: tuple[str, ...] | None = None  # Positional match arg names (set by macro, mirrors __match_args__)
     is_frozen: bool = False       # True for @dataclass(frozen=True) (field mutation rejected)

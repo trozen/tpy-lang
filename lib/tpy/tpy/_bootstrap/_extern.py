@@ -13,9 +13,20 @@ def builtin_type(key: str): ...
 @builtin_decorator("tpy.extern.builtin_function")
 def builtin_function(key: str): ...
 
+# Class-level `borrowing_view=True`: every value of the (value) type is a
+# borrow handle into storage it does not own, even a copy of it, so the
+# compiler lifetime-checks it at returns and yields. An unannotated native
+# value type is treated as owning its data.
+# `_iter_yields_ref_tuple_proxies=True` is an INTERNAL stopgap, not API: it
+# marks dict_items, whose iterator yields a tuple of references BY VALUE, so a
+# generator/async frame's for-loop binds the element instead of taking its
+# address. It goes away once the runtime picks that binding from the
+# iterator's reference type (TODO.md: "Remove `_iter_yields_ref_tuple_proxies`").
 @builtin_decorator("tpy.extern.native")
 def native(name: str = "", function: bool = False, binding: str = "",
-           cpp_return_type: type | None = None, indirecting: bool = False): ...
+           cpp_return_type: type | None = None, indirecting: bool = False,
+           borrowing_view: bool = False,
+           _iter_yields_ref_tuple_proxies: bool = False): ...
 
 @builtin_decorator("tpy.extern.export")
 def export(name: str = "", binding: str = ""): ...

@@ -1,0 +1,1 @@
+main.py:6: error: @native(borrowing_view=...) is only valid on a class: it declares a fact about the values of a type

@@ -33,6 +33,7 @@ from .frontend_ir import lower_module
 from .type_def_registry import (
     get_type_def as _get_type_def,
     attach_dynamic_type_def, TypeCategory, TypeDef as _TypeDef,
+    latch_declared_native_flags,
 )
 from .codegen_cpp import CodeGenerator, CodeGenOptions
 from .codegen_cpp.context import ThirRejectError
@@ -2249,6 +2250,12 @@ class Compiler:
         # stdlib registration loop and shadow the real RecordInfo at
         # conformance-check time.
         for record in ast.all_records():
+            # A builtin stub's declared facts are latched here, before any
+            # module's registration, so a method signature in an earlier
+            # module (bytes.strip -> BytesView) reads them regardless of
+            # module order.
+            if record.builtin_type_key:
+                latch_declared_native_flags(record.builtin_type_key, record)
             if record.builtin_type_key or record.enum_companion_of is not None:
                 continue
             if record.name in compiled.exports.records:

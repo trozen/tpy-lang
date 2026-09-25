@@ -74,9 +74,11 @@ def _literal_value_from_source(
     return None
 
 
-# Borrowing-view return families, each with the display name and the owning
-# types a user switches to. Ordered: a *args pack is also a Span, so the
-# Span arm must be tried first to keep its wording.
+# Wording for the borrowing-view families that have an owning type to switch
+# to: the display name and those owning types. Which types ARE borrowing views
+# is `is_borrowing_view_type`; this table only picks the message. Ordered: a
+# *args pack is also a Span, so the Span arm must be tried first to keep its
+# wording.
 _VIEW_RETURN_FAMILIES = (
     (is_str_view_type, "StrView", "str or String"),
     (is_bytes_view_type, "BytesView", "bytes or bytearray"),
@@ -97,6 +99,8 @@ def _dangling_view_message(return_type: TpyType) -> str | None:
     """Error message for returning a view that borrows from a local, or None
     if return_type is not a borrowing-view type.
     """
+    if not is_borrowing_view_type(return_type):
+        return None
     family = _view_return_family(return_type)
     if family is not None:
         display, owned = family
@@ -105,7 +109,9 @@ def _dangling_view_message(return_type: TpyType) -> str | None:
     if is_span_iter(return_type):
         return ("Cannot return SpanIter referencing a local or temporary; "
                 "the underlying Span would dangle after the function returns")
-    return None
+    display = return_type.name if isinstance(return_type, NominalType) else str(return_type)
+    return (f"Cannot return {display} referencing a local or temporary; "
+            f"the storage it borrows would dangle after the function returns")
 
 
 def _elem_is_borrow_form(elem_type: TpyType) -> bool:
@@ -2863,8 +2869,7 @@ class TypeCompatibility:
         bare = unwrap_readonly(unwrap_ref_type(declared))
         if not bare.is_value_type():
             return 'reference'
-        if (_view_return_family(return_type) is not None
-                and not is_borrowing_view_type(bare)):
+        if is_borrowing_view_type(return_type) and not is_borrowing_view_type(bare):
             return 'view'
         return None
 

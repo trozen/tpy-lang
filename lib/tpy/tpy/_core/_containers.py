@@ -8,7 +8,7 @@ from ._types import int32, Comparable, Deref, Spannable, NativeIterable
 
 
 @builtin_type("tpy.Span")
-@native("std::span")
+@native("std::span", borrowing_view=True)
 class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
     @dispatch
     @cpp_template("{cpp}({0}, static_cast<size_t>({1}))")
@@ -70,7 +70,7 @@ class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
 # (A value-element vararg is contiguous and could expose one, but is rejected
 # under the same uniform rule.) Internal only -- not user-spellable.
 @builtin_type("tpy.varargs")
-@native("::tpy::varargs")
+@native("::tpy::varargs", borrowing_view=True)
 class varargs[T](Iterable[T], NativeIterable[T]):
     @native("tpy::__iter__", function=True)
     @pure
@@ -167,7 +167,7 @@ class Ptr[T](Deref[T]):
 
 
 @builtin_type("tpy.SpanIter")
-@native("::tpy::SpanIter")
+@native("::tpy::SpanIter", borrowing_view=True)
 @nocopy
 class SpanIter[T](NativeIterable[T], Iterable[T], Iterator[T]):
     @cpp_template("{cpp}({0})")

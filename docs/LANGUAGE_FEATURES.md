@@ -746,7 +746,24 @@ def peek(data: StrView) -> StrView:    # string_view in, string_view out
   A view-returning str/bytes method's result borrows its receiver (the
   registration heuristic stamps the receiver-borrow for body-less view-returning
   stubs), so the check sees the receiver lifetime uniformly; an unrecognized
-  view-typed return expression fails closed (treated as dangling).
+  view-typed return expression fails closed (treated as dangling). The check
+  reads the declared return type as written, so a view returned through a
+  `readonly[...]` or `| None` return type is not checked yet
+  (`BUGS.md#view-return-wrapped-slot-unchecked`). The same
+  check covers every native borrowing view -- the dict views and any `@native`
+  type declared `borrowing_view=True` (see `docs/NATIVE_INTEROP.md`) -- at a
+  return and at a generator's yield; a generator cannot yield a user `@native`
+  value type at all today (`res.yield_type`,
+  `BUGS.md#resumable-valuetype-yield-rejects`), so for those only the return
+  check is reachable. For the dict views the rule (enforced at
+  sema) rejects a view rooted in a local or a temporary (`return d.keys()` of
+  a local dict, where CPython keeps the dict alive through the view: a
+  stricter-by-design rule), but returning or yielding a dict view is currently
+  rejected in EVERY position, a parameter's or a global's included: the
+  lowering has no form for it yet (`BUGS.md#dict-view-return-yield-rejected`).
+  A borrowing-view template spells a `readonly[T]` argument `const T`
+  (`d.items()` of a readonly dict is `dict_items_view<K, const V>`); every
+  other native template keeps `T`.
 - An *explicit* `StrView`/`BytesView` annotation is a promise not to copy, so a
   binding whose source dies at end-of-statement is an error (`v: StrView =
   make()` / `make().strip()`): drop the annotation (the local then owns) or

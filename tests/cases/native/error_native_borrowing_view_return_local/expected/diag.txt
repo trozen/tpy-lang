@@ -1,0 +1,1 @@
+main.py:21: error: Cannot return Cursor referencing a local or temporary; the storage it borrows would dangle after the function returns

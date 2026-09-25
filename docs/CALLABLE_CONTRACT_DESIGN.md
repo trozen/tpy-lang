@@ -78,7 +78,7 @@ One rule reads the result form off a spelled return type, and it is the rule a
   as a generic def's `-> U` is.
 
 `readonly[R]` and `Ptr[R]` are BORROW with the permission dimension of rule 2; a
-contract's return goes through the same `make_ref` (`tpyc/typesys.py:2308`) a
+contract's return goes through the same `make_ref` (`tpyc/typesys.py`) a
 def's return does. "Follows the callee" survives only at a type-parameter
 return: no monomorphic spelling follows what it is bound to, and erasure into
 `Callable` does not change the form.
@@ -170,13 +170,13 @@ implemented with the coupled contract in checkpoint 4.
    is a render distinction, not a form. The descriptor and its reader live in
    `tpyc/typesys.py`, not `value_category`, which imports FROM typesys
    (`tpyc/value_category.py:18`) and cannot be imported back: parked there, the
-   enum would force `CallableType._std_function_sig` (`tpyc/typesys.py:4529`,
+   enum would force `CallableType._std_function_sig` (`tpyc/typesys.py`,
    rule 24's render) to decide form a second time.
 4. **Formless payloads are the ones with no storage** (*implemented-now*)
    (scalars, `bool`, `char`, tuples of those): `str`, `bytes` and the views keep
    the def-return convention at their position rather than being reclassified
    here, and a tuple is not formless by value-typedness
-   (`TupleType.is_value_type()` is unconditionally True, `tpyc/typesys.py:3804`)
+   (`TupleType.is_value_type()` is unconditionally True in `tpyc/typesys.py`)
    but takes its form per element.
 
 **(b) Conversion legality, keyed on the source, at every binding.**
@@ -228,8 +228,8 @@ implemented with the coupled contract in checkpoint 4.
 24. **The erased borrow renders PER FORM** (*implemented-now, mandatory in sema*)
     -- `std::function<B&(A)>` for a bare `R`, `std::function<const B&(A)>` for
     `readonly[R]`, `std::function<B*(A)>` for `Ptr[R]` -- replacing the bare
-    `return_type.to_cpp()` of `_std_function_sig` (`tpyc/typesys.py:4529`);
-    `ReadonlyType.to_cpp()` hands back the WRAPPED type (`tpyc/typesys.py:1749`),
+    `return_type.to_cpp()` of `CallableType._std_function_sig` (`tpyc/typesys.py`);
+    `ReadonlyType.to_cpp()` hands back the WRAPPED type (`tpyc/typesys.py`),
     so one flat `B&` spelling renders `Node&` for a `readonly[Node]` contract and
     rejects the very `const Node&` callee it is for. Two payloads fall outside
     those rows. A **`str` / `bytes` / view payload keeps rule 4's def-return
@@ -337,7 +337,10 @@ implemented with the coupled contract in checkpoint 4.
 **(l) Stub provenance.**
 
 37. **`@native_borrow(returns=(...))` states what a bodyless stub's result
-    borrows** (*implemented-now*). The argument is a tuple of PARAMETER NAMES,
+    borrows** (*designed, not implemented*: no `@native_borrow` decorator exists
+    in the code; bodyless native methods get only the signature inference
+    below, and free functions get nothing -- TODO.md, "Callable-level borrow
+    annotation for native stubs"). The argument is a tuple of PARAMETER NAMES,
     with `"self"` admitted for a method receiver:
     `@native_borrow(returns=("a", "b"))` on
     `def max[T, K](a: T, b: T, key: Fn[[T], Own[K]]) -> T: ...` says the result is
@@ -346,25 +349,25 @@ implemented with the coupled contract in checkpoint 4.
     field whether the callee has a body or not. It is READ AT REGISTRATION, beside
     the existing native-method receiver stamp: a bodyless native METHOD whose
     `signature_may_return_borrow` holds already derives `frozenset({-1})` from its
-    signature (`tpyc/sema/registration.py:1568-1581`; the generator stamp at
-    `:1565-1567` is a different inference), and that is true for an open
+    signature (`TypeRegistrar.register_record` in `tpyc/sema/registration.py`;
+    the generator stamp beside it is a different inference), and that is true for an open
     type-param return, i.e. precisely `max`-shaped stubs. Five points settle how
     the two interact and what the annotation may say.
     - **Precedence.** The annotation SUPPRESSES the signature inference for that
       stub. An omitted `"self"` is therefore a positive denial of a receiver
       borrow, not an oversight the inference fills in.
     - **Schema.** `Parser._schema_from_stub._map_type`
-      (`tpyc/parse/parser.py:1369-1392`) maps only `bool`, `str` and `type` today,
+      (`tpyc/parse/parser.py`) maps only `bool`, `str` and `type` today,
       and one unmapped parameter kills the whole schema, so the annotation's cost
       includes a new TUPLE-OF-PARAMETER-NAMES argument kind in `_map_type` and
       `_validate_decorator_args`. `native_preserves_refs`
-      (`lib/tpy/tpy/_bootstrap/_extern.py:31`, qname at `tpyc/qnames.py:157`,
-      parse field at `tpyc/parse/nodes.py:1454`, copied into `FunctionInfo` at
-      `tpyc/sema/registration.py:1534`) is precedent for the plumbing but is a
+      (`lib/tpy/tpy/_bootstrap/_extern.py`, qname `qnames.NATIVE_PRESERVES_REFS`,
+      parse field `TpyFunction.native_preserves_refs`, copied into `FunctionInfo`
+      in `TypeRegistrar.register_record`) is precedent for the plumbing but is a
       ZERO-parameter bare decorator, so it is no precedent for the schema.
     - **Parameter validation.** A named parameter must have borrowable storage.
       The predicate already exists: `generator_borrow_param_indices`
-      (`tpyc/sema/registration.py:3234-3239`) admits an index only for a
+      (`tpyc/sema/registration.py`) admits an index only for a
       non-value, `str`, borrowing-view or varargs parameter and excludes
       `is_owned_in_coro_frame`. `returns=(...)` is validated against it at
       registration, and naming a scalar parameter is an error naming that
@@ -550,11 +553,11 @@ is a stub-author obligation (rule 37).
 
 | Phase | Fact | Where |
 |-------|------|-------|
-| typesys / value_category | the result descriptor (transfer form + permission + contained-borrows) and its reader in `typesys`, so `value_category` and `CallableType._std_function_sig` both consume ONE decider | `tpyc/typesys.py:4529` is the render consumer and `tpyc/value_category.py:18` is why it cannot live the other way round; `call_returns_cpp_ref` (`value_category.py:127`) and `async_return_form` (`:55`) become consumers |
-| sema (stub) | `return_borrows_from` stamped from `@native_borrow(returns=(...))` at registration, suppressing the signature inference | `tpyc/sema/registration.py:1534`, `:1568-1581` |
+| typesys / value_category | the result descriptor (transfer form + permission + contained-borrows) and its reader in `typesys`, so `value_category` and `CallableType._std_function_sig` both consume ONE decider | `CallableType._std_function_sig` (`tpyc/typesys.py`) is the render consumer and `tpyc/value_category.py:18` is why it cannot live the other way round; `call_returns_cpp_ref` (`value_category.py:127`) and `async_return_form` (`:55`) become consumers |
+| sema (stub) | `return_borrows_from` stamped from `@native_borrow(returns=(...))` at registration, suppressing the signature inference | `TypeRegistrar.register_record` (`tpyc/sema/registration.py`) |
 | sema (call site) | the resolved descriptor on a PARSE-NODE field of the call, the `await_result_is_borrow` carrier (`tpyc/parse/nodes.py:731`, stamped at `tpyc/sema/expressions.py:2412`) -- its sema readers run before THIR exists: `returns_borrow` (`tpyc/value_category.py:398`) and the callable arms of `is_rvalue_source` | stamped at `tpyc/sema/calls.py:6009` |
 | THIR | the descriptor COPIED onto `THIRCall` (`tpyc/thir/nodes.py:570`, `@dataclass(frozen=True)` at `:569`, hence hashable -- a frozen dataclass of tuples, never a set or a dict) by BOTH arms: the free-call arm for a bare-name callable value (`tpyc/thir/lower/checks.py:3825-3836`, called at `tpyc/thir/lower/expressions.py:8749`) and the computed-callee arm (`:7684`) | codegen reads ONLY this copy, unlike `gen_async.py`'s direct parse-node read of `await_result_is_borrow` |
-| runtime / codegen | `result_slot_t` / `to_result_slot` (two rows, each with a `const&` `get()`) and `result_neutral`, inside a `frame_slot` in a resumable frame (`runtime/cpp/include/tpy/frame_slot.hpp:68`); the per-form `requires` render and the erased `std::function` spelling | `runtime/cpp/include/tpy/type_traits.hpp:214-220`; `tpyc/codegen_cpp/functions.py:334`, `:357`; `tpyc/typesys.py:4529` |
+| runtime / codegen | `result_slot_t` / `to_result_slot` (two rows, each with a `const&` `get()`) and `result_neutral`, inside a `frame_slot` in a resumable frame (`runtime/cpp/include/tpy/frame_slot.hpp:68`); the per-form `requires` render and the erased `std::function` spelling | `runtime/cpp/include/tpy/type_traits.hpp:214-220`; `tpyc/codegen_cpp/functions.py:334`, `:357`; `CallableType._std_function_sig` (`tpyc/typesys.py`) |
 
 **The slot trait is new, and is not `val_or_ptr_t`,** which keys on
 `is_value_type<T>` (`runtime/cpp/include/tpy/type_traits.hpp:215`) and is
@@ -1092,11 +1095,12 @@ above is satisfied.
    permission and contained-borrow analysis, is designed at checkpoint 3 and
    implemented with the coupled branch after that gate passes.
 6. **`@native_borrow` plumbing WITHOUT annotating a stub.** The decorator stub
-   (`lib/tpy/tpy/_bootstrap/_extern.py:31`), the qname (`tpyc/qnames.py:157`), the
-   parse field (`tpyc/parse/nodes.py:1454`), the decorator branch in BOTH parser
+   (`lib/tpy/tpy/_bootstrap/_extern.py`), the qname (`tpyc/qnames.py`), the
+   parse field (`TpyFunction` in `tpyc/parse/nodes.py`), the decorator branch in BOTH parser
    loops (the free loop has no `native_preserves_refs` branch today), the
    tuple-of-names schema kind, and the `FunctionInfo` stamp at
-   `tpyc/sema/registration.py:1534` / `:3477-3505`. Inert until a stub carries it.
+   `TypeRegistrar.register_record` / `TypeRegistrar.register_function` (the
+   free-function `FunctionInfo`). Inert until a stub carries it.
 
 **The coupled branch.**
 
@@ -1124,8 +1128,8 @@ above is satisfied.
 11. **Codegen / THIR.** The per-form `requires` at `_gen_fn_template_parts`
     (`tpyc/codegen_cpp/functions.py:334`, `ret_cpp` at `:357`; today's render for an
     `Fn[[Node], Node]` contract is `{ __fn(__a0) } -> std::convertible_to<Node>;`
-    with no category check); the erased render at `_std_function_sig`
-    (`tpyc/typesys.py:4529`); the descriptor on `THIRCall` (`tpyc/thir/nodes.py:570`)
+    with no category check); the erased render at `CallableType._std_function_sig`
+    (`tpyc/typesys.py`); the descriptor on `THIRCall` (`tpyc/thir/nodes.py:570`)
     stamped at both lowering arms (`tpyc/thir/lower/expressions.py:7684` and
     `:8749` via `tpyc/thir/lower/checks.py:3825-3836`, where `fi` is non-None because
     `analyze_callable_value_call` sets a synthetic `is_callable_value` FI at

@@ -8,7 +8,7 @@ from .._bootstrap._extern import native, cpp_template, builtin_type
 
 
 @builtin_type("tpy.BytesView")
-@native("::tpy::BytesView")
+@native("::tpy::BytesView", borrowing_view=True)
 class BytesView(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @dispatch
     @cpp_template("::tpy::BytesView()")

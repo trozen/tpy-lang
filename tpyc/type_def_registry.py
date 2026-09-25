@@ -138,8 +138,10 @@ class TypeDef:
     Array -- Send/Sync depend on element types).
 
     `cpp_formatter` overrides NominalType.to_cpp's default `{name}<{args}>`
-    rendering when the C++ type name differs from the Python qname (e.g.
-    dict_keys -> ::tpy::dict_keys_view).
+    rendering without the stub: when the C++ spelling is more than the
+    stub's `@native` name plus its arguments (Array's size), or when the type
+    is rendered before its stub is attached (list, Span). The dict views have
+    none and are spelled from their stubs.
 
     `param_cpp_formatter` overrides the default to_cpp_param_type() computation
     (value types = to_cpp(); non-value = to_cpp() + "&"). Set for primitives
@@ -162,16 +164,17 @@ class TypeDef:
     # std::vector<uint8_t>, but only the immutable value type marshals).
     boundary_marshal: bool = False
     subscript_borrows: bool = False
-    # Value-type wrapper whose instances reference foreign storage (dict
-    # views). Consulted by is_borrowing_view_type alongside the classic
-    # view types (StrView/BytesView/Span/SpanIter) for borrow-fact and
-    # view-lifetime classification.
+    # Value type whose every value is a borrow handle into storage it does
+    # not own (StrView, Span, dict views, ...). Set only from the stub's
+    # `@native(..., borrowing_view=True)`; read through is_borrowing_view_type
+    # by every borrow-fact and view-lifetime consumer.
     is_borrowing_view: bool = False
     # Iterating this type yields PROXY reference tuples (operator* returns
     # std::tuple<const K&, V&> by value, e.g. dict_items): the tuple itself
     # is a prvalue (cannot be address-taken), but its elements reference
     # stable storage. Resumable-frame for-loops must bind the loop element
-    # through tuple_to_pointer instead of `&(*it)`.
+    # through tuple_to_pointer instead of `&(*it)`. Set only from the stub's
+    # `@native(..., iter_yields_ref_tuple_proxies=True)`.
     iter_yields_ref_tuple_proxies: bool = False
     is_send: Optional[Union[bool, Callable[[tuple], bool]]] = None
     is_sync: Optional[Union[bool, Callable[[tuple], bool]]] = None
@@ -289,18 +292,6 @@ def _dynamic_type_defs_view() -> dict[str, TypeDef]:
 def register(td: TypeDef) -> None:
     if td.qname in _type_defs:
         raise ValueError(f"Duplicate TypeDef registration: {td.qname}")
-    if td.is_borrowing_view and not td.is_value_type:
-        # The call-argument rows read "a view slot passes by VALUE, so it is
-        # never a ref param" straight off this pairing (thir/lower's
-        # frame-view backing arm). A reference-typed view would take the ref
-        # arms instead and silently skip them. This guards only the FLAG
-        # bearers -- the three dict views. The rest of the family
-        # (`Span`, `varargs`, `SpanIter`, `StrView`, `BytesView`) is
-        # recognized by category/qname in `is_borrowing_view_type` and never
-        # reaches this check, so it holds the property by construction
-        # (TODO.md, widen the invariant to the whole predicate).
-        raise ValueError(
-            f"borrowing-view TypeDef must be a value type: {td.qname}")
     _type_defs[td.qname] = td
 
 
@@ -354,6 +345,7 @@ def attach_dynamic_type_def(
             is_value_type=(is_value_type if is_value_type is not None else False),
             is_indirecting=record_is_indirecting,
         )
+        _latch_declared_native_flags(td, record)
         compiler.dynamic_type_defs[qname] = td
         compiler.dynamic_created_qnames.add(qname)
     else:
@@ -364,6 +356,7 @@ def attach_dynamic_type_def(
             # consult one uniform flag for builtins and user @native records.
             if record_is_indirecting:
                 td.is_indirecting = True
+            _latch_declared_native_flags(td, record)
         if protocol is not None:
             td.protocol = protocol
         if enum is not None:
@@ -371,6 +364,60 @@ def attach_dynamic_type_def(
         if qname in _type_defs:
             _dynamic_attached_qnames.add(qname)
     return td
+
+
+# Facts a native stub declares through `@native(...)` kwargs; the record
+# attribute and the TypeDef field share each name.
+_DECLARED_NATIVE_FLAGS = ("is_borrowing_view", "iter_yields_ref_tuple_proxies")
+
+
+class _ViewTemplateFormatter:
+    """`cpp_formatter` of a one-argument borrowing view (Span, varargs,
+    SpanIter): names its C++ template and spells a `readonly[T]` argument by
+    the borrowing-view rule (`const T`). The rule is applied without reading
+    the TypeDef because these views are rendered outside a compilation too
+    (unit contexts), before their stub is latched; `latch_declared_native_flags`
+    checks that the stub declares the fact the formatter assumes and the same
+    C++ name."""
+
+    def __init__(self, cpp_name: str) -> None:
+        self.cpp_name = cpp_name
+
+    def __call__(self, args: tuple) -> str:
+        from tpyc.typesys import template_arg_cpp
+        elem = template_arg_cpp(args[0], True, lambda a: a.to_cpp())
+        return f"{self.cpp_name}<{elem}>"
+
+
+def _latch_declared_native_flags(td: TypeDef, record: object) -> None:
+    for flag in _DECLARED_NATIVE_FLAGS:
+        if getattr(record, flag, False):
+            setattr(td, flag, True)
+
+
+def latch_declared_native_flags(qname: str, record: object) -> None:
+    """Latch a builtin stub's declared flags onto its static TypeDef as soon
+    as the stub is parsed; `attach_dynamic_type_def` latches them again at
+    registration, and `clear_dynamic_type_defs` resets both."""
+    td = _type_defs.get(qname)
+    if td is None:
+        return
+    if isinstance(td.cpp_formatter, _ViewTemplateFormatter):
+        if not getattr(record, "is_borrowing_view", False):
+            raise RuntimeError(
+                f"builtin stub for {qname} must declare "
+                f"@native(..., borrowing_view=True): its C++ formatter spells "
+                f"readonly[T] as `const T` by the borrowing-view rule")
+        stub_name = getattr(record, "native_name", None)
+        if stub_name != td.cpp_formatter.cpp_name:
+            raise RuntimeError(
+                f"builtin stub for {qname} declares @native({stub_name!r}) "
+                f"but its C++ formatter spells "
+                f"{td.cpp_formatter.cpp_name!r}")
+    if not any(getattr(record, f, False) for f in _DECLARED_NATIVE_FLAGS):
+        return
+    _latch_declared_native_flags(td, record)
+    _dynamic_attached_qnames.add(qname)
 
 
 def clear_dynamic_type_defs() -> None:
@@ -397,6 +444,8 @@ def clear_dynamic_type_defs() -> None:
             # the static default. Re-attachment via the next compilation's
             # stub will re-set it.
             td.is_indirecting = False
+            for flag in _DECLARED_NATIVE_FLAGS:
+                setattr(td, flag, False)
     _dynamic_attached_qnames.clear()
 
 
@@ -879,12 +928,15 @@ def is_spanlike_view(t: "TpyType") -> bool:
     return is_span(t) or is_varargs(t)
 
 
+def declares_borrowing_view(td: Optional[TypeDef]) -> bool:
+    """The declared borrowing-view fact, read here only: by the lifetime rules
+    through `is_borrowing_view_type` and by the readonly template-argument
+    render through `spells_readonly_arg_const`."""
+    return td is not None and td.is_borrowing_view
+
+
 def is_borrowing_view_type(t: "TpyType") -> bool:
-    td = type_def_of(t)
-    if td is not None and td.is_borrowing_view:
-        return True
-    return (is_str_view_type(t) or is_bytes_view_type(t)
-            or is_spanlike_view(t) or is_span_iter(t))
+    return declares_borrowing_view(type_def_of(t))
 
 
 def iter_yields_ref_tuple_proxies(t: "TpyType") -> bool:
@@ -1184,24 +1236,14 @@ def _populate() -> None:
     ))
 
     # Dict views: value_type=True but is_send/is_sync forced False (they
-    # borrow from the parent dict). cpp_formatter overrides default naming
-    # because the C++ type is ::tpy::dict_*_view<K, V>, not dict_*<K, V>.
-    def _dict_view_cpp(tag: str):
-        def fmt(args: tuple) -> str:
-            k, v = args[0], args[1]
-            return f"::tpy::dict_{tag}_view<{k.to_cpp()}, {v.to_cpp()}>"
-        return fmt
-
+    # borrow from the parent dict). The C++ spelling comes from the stubs'
+    # own `@native("tpy::dict_*_view")`.
     register(TypeDef("builtins.dict_keys",   TC.DICT_VIEW, is_value_type=True,
-                     is_send=False, is_sync=False, is_borrowing_view=True,
-                     cpp_formatter=_dict_view_cpp("keys")))
+                     is_send=False, is_sync=False))
     register(TypeDef("builtins.dict_values", TC.DICT_VIEW, is_value_type=True,
-                     is_send=False, is_sync=False, is_borrowing_view=True,
-                     cpp_formatter=_dict_view_cpp("values")))
+                     is_send=False, is_sync=False))
     register(TypeDef("builtins.dict_items",  TC.DICT_VIEW, is_value_type=True,
-                     is_send=False, is_sync=False, is_borrowing_view=True,
-                     iter_yields_ref_tuple_proxies=True,
-                     cpp_formatter=_dict_view_cpp("items")))
+                     is_send=False, is_sync=False))
     register(TypeDef(
         "builtins.Range", TC.RANGE, is_value_type=True,
         cpp_formatter=lambda args: f"::tpy::Range<{args[0].to_cpp()}>",
@@ -1224,14 +1266,8 @@ def _populate() -> None:
         needs_explicit_element_target=True,
     ))
     # Span[T] / Span[readonly[T]]: value-type view; never Send (borrows);
-    # Sync only for readonly variant whose element is Sync. cpp_formatter
-    # handles the readonly[T] -> const T mapping.
-    def _span_cpp(args: tuple) -> str:
-        from tpyc.typesys import ReadonlyType, unwrap_readonly
-        elem = args[0]
-        if isinstance(elem, ReadonlyType):
-            return f"std::span<const {unwrap_readonly(elem).to_cpp()}>"
-        return f"std::span<{elem.to_cpp()}>"
+    # Sync only for readonly variant whose element is Sync.
+    _span_cpp = _ViewTemplateFormatter("std::span")
 
     def _span_is_sync(args: tuple) -> bool:
         from tpyc.typesys import ReadonlyType, unwrap_readonly
@@ -1270,12 +1306,7 @@ def _populate() -> None:
     # conversion to std::span (the runtime tpy::varargs<T> can't), so passing
     # a vararg to a Span[T] parameter is rejected at sema instead of failing
     # the C++ build. Shares Span's readonly-element handling.
-    def _varargs_cpp(args: tuple) -> str:
-        from tpyc.typesys import ReadonlyType, unwrap_readonly
-        elem = args[0]
-        if isinstance(elem, ReadonlyType):
-            return f"::tpy::varargs<const {unwrap_readonly(elem).to_cpp()}>"
-        return f"::tpy::varargs<{elem.to_cpp()}>"
+    _varargs_cpp = _ViewTemplateFormatter("::tpy::varargs")
 
     register(TypeDef(
         "tpy.varargs", TC.VARARGS,
@@ -1289,17 +1320,16 @@ def _populate() -> None:
     ))
 
     # Iterator adapters. SpanIter forces is_send/is_sync=False (borrows from
-    # the underlying span); CopyIter/OwnIter own their data and inherit the
-    # value-type defaults (is_send/is_sync follow is_value_type=True).
-    # SpanIter cpp_formatter handles `readonly[T]` -> `const T` like SpanType;
+    # the underlying span). OwnIter owns its source; CopyIter copies each
+    # ELEMENT out but holds the source's iterator: over an lvalue container it
+    # borrows that container, while an rvalue iterator is moved in and owned
+    # (runtime copy_iter.hpp). That depends on the argument's value category,
+    # so CopyIter is not declared a borrowing view. Both inherit the
+    # value-type is_send/is_sync defaults
+    # (BUGS.md#copy-iter-send-while-borrowing).
     # CopyIter/OwnIter expand to `auto` (the concrete type is auto-deduced
     # by the C++ compiler, sema only tracks the element type).
-    def _span_iter_cpp(args: tuple) -> str:
-        from tpyc.typesys import ReadonlyType, unwrap_readonly
-        elem = args[0]
-        if isinstance(elem, ReadonlyType):
-            return f"::tpy::SpanIter<const {unwrap_readonly(elem).to_cpp()}>"
-        return f"::tpy::SpanIter<{elem.to_cpp()}>"
+    _span_iter_cpp = _ViewTemplateFormatter("::tpy::SpanIter")
 
     register(TypeDef("tpy.SpanIter", TC.ITERATOR, is_value_type=True,
                      is_send=False, is_sync=False,

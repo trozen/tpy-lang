@@ -1828,7 +1828,7 @@ class FStr:
 
 
 @builtin_type("tpy.StrView")
-@native("std::string_view")
+@native("std::string_view", borrowing_view=True)
 class StrView(NativeIterable[char], Iterable[char], Comparable, Equatable):
     @dispatch
     @cpp_template("std::string_view()")

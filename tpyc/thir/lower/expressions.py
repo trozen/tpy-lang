@@ -148,6 +148,7 @@ from ...codegen_cpp.protocols import (dynamic_adapter_type,
                                       narrow_cast_rhs,
                                       record_inherits_dynamic)
 from ...typesys import (
+    varargs_elem_cpp,
     polymorphic_source_inner,
     polymorphic_source_is_pointer,
 )
@@ -10430,16 +10431,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             if frame_factory:
                 fpr = unwrap_ref_type(unwrap_send_sync(ptype))
                 fslot = unwrap_readonly(fpr)
-                # No view guard here: every type `is_borrowing_view_type`
-                # answers for is a VALUE type, so a view slot passes by value
-                # and neither ref-param test below can hold on one. Only the
-                # three FLAG-bearing dict views have that checked at
-                # registration (`type_def_registry.register`); `Span`,
-                # `varargs`, `SpanIter`, `StrView` and `BytesView` are
-                # recognized by category/qname and hold the property by
-                # construction, unguarded (TODO.md, widen the invariant). A
-                # view that stopped being a value type would need this arm
-                # re-checked against the borrowing-view row further down.
+                # No view guard here: a borrowing view is a VALUE type (sema
+                # registration rejects `@native(borrowing_view=True)` on any
+                # other), so a view slot passes by value and neither
+                # ref-param test below can hold on one.
                 if ((fpr.is_ref_param() or is_readonly_ref_param(fpr))
                         and isinstance(fslot, NominalType)
                         and not fslot.is_protocol
@@ -14110,9 +14105,7 @@ def _lower_vararg_pack(pack: TpyVarargPack, ptype: 'TpyType | None',
             elem_type = ReadonlyType(elem_type)
         elif not slot_is_const and pack_is_const:
             elem_type = elem_type.wrapped
-    elem_cpp = (f"const {lc.render_type(elem_type.wrapped)}"
-                if isinstance(elem_type, ReadonlyType)
-                else lc.render_type(elem_type))
+    elem_cpp = varargs_elem_cpp(elem_type, lc.render_type)
     bare_elem = unwrap_readonly(elem_type)
     is_ref = (not bare_elem.is_value_type()
               and not isinstance(bare_elem, TypeParamRef))

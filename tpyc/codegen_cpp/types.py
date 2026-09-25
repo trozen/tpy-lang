@@ -11,7 +11,8 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType,
     PendingListType, PendingDictType, PendingSetType, PendingViewType, ViewTypeFamily, make_list, make_dict, make_set, TypeParamRef, NominalType,
     UnionType, NoneType, VoidType, TupleType, ReadonlyType, OwnType,
-    ConcreteCoroType, ConcreteFrameType,
+    ConcreteCoroType, ConcreteFrameType, spells_readonly_arg_const,
+    template_arg_cpp, varargs_elem_cpp,
     unwrap_readonly, unwrap_ref_type, is_protocol_type, resolve_int_literals,
     is_integer_type, is_float_type, is_numeric_type, is_void_like_type,
     substitute_type_params_simple,
@@ -361,16 +362,8 @@ class TypeResolver:
         return False
 
     def varargs_elem_cpp(self, elem: TpyType) -> str:
-        """C++ element type for a `*args` parameter's `varargs<...>`.
-
-        `const T` for a readonly slot element (`*xs: readonly[T]` -> readonly
-        vararg with const element access), else `T`. Mirrors the Span cpp
-        formatter's `std::span<const T>` rendering and keeps the param-emit and
-        call-site pack-emit in lockstep (both must produce the same string).
-        """
-        if isinstance(elem, ReadonlyType):
-            return f"const {self.type_to_cpp(elem.wrapped)}"
-        return self.type_to_cpp(elem)
+        """C++ element type for a `*args` parameter's `varargs<...>`."""
+        return varargs_elem_cpp(elem, self.type_to_cpp)
 
     def type_to_cpp(self, typ: TpyType) -> str:
         """Convert a type to its C++ representation, qualifying imported types.
@@ -458,16 +451,16 @@ class TypeResolver:
         # For plain NominalType (not subclasses like ListType/ArrayType) with
         # type_args, recursively resolve args to handle @dynamic protocols.
         # Skip this branch when the TypeDef registry provides a custom
-        # cpp_formatter (e.g. CopyIter/OwnIter -> "auto", dict_keys ->
-        # ::tpy::dict_keys_view<...>) -- fall through to typ.to_cpp() so the
-        # formatter wins.
+        # cpp_formatter (e.g. CopyIter/OwnIter -> "auto") -- fall through to
+        # typ.to_cpp() so the formatter wins.
         if type(typ) is NominalType and typ.type_args:
             from tpyc.type_def_registry import type_def_of
             td = type_def_of(typ)
             if td is None or td.cpp_formatter is None:
                 base = typ.to_cpp_base_name()
+                const_readonly = spells_readonly_arg_const(td)
                 args = ", ".join(
-                    self.type_to_cpp(t) if isinstance(t, TpyType) else str(t)
+                    template_arg_cpp(t, const_readonly, self.type_to_cpp)
                     for t in typ.type_args
                 )
                 return f"{base}<{args}>"

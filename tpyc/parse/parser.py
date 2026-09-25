@@ -1129,6 +1129,8 @@ class Parser:
                         has_init=result.init_method is not None,
                         builtin_type_key=result.builtin_type_key,
                         is_indirecting=result.is_indirecting,
+                        is_borrowing_view=result.is_borrowing_view,
+                        iter_yields_ref_tuple_proxies=result.iter_yields_ref_tuple_proxies,
                         module=self._public_module(),
                     ))
                     # Prefix nested type names with parent chain and register
@@ -1613,6 +1615,8 @@ class Parser:
         builtin_type_key: str | None = None
         virtual_raise = False
         is_indirecting = False
+        is_borrowing_view = False
+        iter_yields_ref_tuple_proxies = False
         send_override: bool | None = None
         sync_override: bool | None = None
         send_override_when: tuple[str, ...] | None = None
@@ -1657,6 +1661,10 @@ class Parser:
                 native_name = pos
                 if kw.get("indirecting"):
                     is_indirecting = True
+                if kw.get("borrowing_view"):
+                    is_borrowing_view = True
+                if kw.get("_iter_yields_ref_tuple_proxies"):
+                    iter_yields_ref_tuple_proxies = True
             elif qname == qnames.NOCOPY:
                 self._validate_decorator_args(qname, arg, dec)
                 is_nocopy = True
@@ -1927,7 +1935,7 @@ class Parser:
         # `clean=False` keeps the raw literal -- that is what CPython puts in
         # `__doc__` (dedenting is `inspect.getdoc`'s job, on both sides).
         docstring = ast.get_docstring(node, clean=False)
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, virtual_raise=virtual_raise, is_indirecting=is_indirecting, send_override=send_override, sync_override=sync_override, send_override_when=send_override_when, sync_override_when=sync_override_when, move_override=move_override, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, exposed_to_host=exposed_to_host, docstring=docstring, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, virtual_raise=virtual_raise, is_indirecting=is_indirecting, is_borrowing_view=is_borrowing_view, iter_yields_ref_tuple_proxies=iter_yields_ref_tuple_proxies, send_override=send_override, sync_override=sync_override, send_override_when=send_override_when, sync_override_when=sync_override_when, move_override=move_override, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, exposed_to_host=exposed_to_host, docstring=docstring, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,
@@ -2372,6 +2380,16 @@ class Parser:
                     f"there is its raw value, not the member)", fn)
         return parsed
 
+    @staticmethod
+    def _reject_type_fact_kwargs(qname: str, kw: dict[str, object],
+                                 dec: ast.expr) -> None:
+        for key in ("borrowing_view", "_iter_yields_ref_tuple_proxies"):
+            if key in kw:
+                raise ParseError(
+                    f"@{bare_name(qname)}({key}=...) is only valid on a "
+                    f"class: it declares a fact about the values of a type",
+                    dec)
+
     _RECORD_LINKAGE_MAP: dict[str, RecordLinkage] = {
         qnames.NATIVE: RecordLinkage.NATIVE,
     }
@@ -2541,6 +2559,7 @@ class Parser:
                         f"@{bare_name(qname)}(binding=...) only supports binding=\"C\"", dec)
                 native_name = pos
                 native_function = kw.get("function", False)
+                self._reject_type_fact_kwargs(qname, kw, dec)
                 cpp_rt = kw.get("cpp_return_type")
                 if isinstance(cpp_rt, _NameArg):
                     native_cpp_return_type = cpp_rt.name
@@ -2978,6 +2997,7 @@ class Parser:
                         f"(schema unavailable -- ensure _bootstrap._extern is imported "
                         f"before modules that use decorator kwargs)", dec)
                 native_name = pos
+                self._reject_type_fact_kwargs(qname, kw, dec)
                 cpp_rt = kw.get("cpp_return_type")
                 if isinstance(cpp_rt, _NameArg):
                     native_cpp_return_type = cpp_rt.name

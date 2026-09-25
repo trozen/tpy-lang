@@ -21,7 +21,10 @@ The KEY, so a false green is visible:
 
 - registry side -- every entry in `tpyc.type_def_registry._type_defs` with
   `is_value_type=True`, rendered through its own `cpp_formatter` at canonical
-  type args, reduced to the head of the C++ type (the text before `<`). The
+  type args -- or, for a type the compiler spells from its stub's `@native`
+  name (the dict views), through the TypeDef's factory and `to_cpp()` once the
+  stubs are registered -- reduced to the head of the C++ type (the text before
+  `<`). The
   `is_send` / `is_sync` fields of the same entries, resolved at those args,
   drive the second pair of assertions.
 - runtime side -- every `struct is_value_type<X> : std::true_type` in those
@@ -56,8 +59,9 @@ import re
 
 import pytest
 
-from tpyc import get_runtime_dir
+from tpyc import get_lib_dir, get_runtime_dir
 from tpyc import typesys as ts
+from tpyc.compiler import Compiler
 from tpyc.type_def_registry import _type_defs, resolve_send_sync
 
 
@@ -78,8 +82,7 @@ MIN_HEADER_FILES = 40
 # the same normalized form as the two scans; the test also asserts the header
 # does NOT specialize them, so a stale exception fails instead of hiding.
 UNDECIDABLE: dict[str, str] = {
-    # `tpy.Ptr` renders T* (through PtrType, so it has no cpp_formatter and
-    # never reaches the registry scan). T* is also the borrow form the runtime
+    # `tpy.Ptr` renders T* (through PtrType's own to_cpp). T* is also the borrow form the runtime
     # itself mints for a NON-value T (val_or_ptr_t<T>, val_or_ref<T>::storage_t,
     # to_val_or_ptr), so the trait cannot separate Ptr[X] from a borrow of X.
     "*": "Ptr[T] renders T*, the runtime's own borrow form for a non-value T",
@@ -112,6 +115,20 @@ def _qualify(head: str) -> str:
     return f"tpy::{head}"
 
 
+def _stub_spelled(td) -> bool:
+    """Rendered from the stub's `@native` name: no formatter, a factory."""
+    return td.cpp_formatter is None and td.type_factory is not None
+
+
+def _attach_stubs() -> None:
+    """A stub-spelled TypeDef names its C++ type only once its stub record is
+    attached, which takes a compilation; compile an empty program when a
+    previous one has not left the records in place."""
+    if any(_stub_spelled(td) and td.record is None
+           for td in _type_defs.values() if td.is_value_type):
+        Compiler.from_source("pass\n", lib_dirs=[get_lib_dir() / "tpy"]).compile()
+
+
 def _canonical_args(td) -> tuple:
     """Canonical type args for a TypeDef: int32 per TYPE parameter (str for a
     two-parameter dict view's key), 10 per INT.
@@ -125,6 +142,8 @@ def _canonical_args(td) -> tuple:
                      for k in kinds)
     if len(kinds) == 2 and all(k is ts.TypeParamKind.TYPE for k in kinds):
         declared = (ts.STR, ts.INT32)
+    if _stub_spelled(td):
+        return declared
     for args in (declared, (ts.INT32,), (ts.STR, ts.INT32)):
         try:
             td.cpp_formatter(args)
@@ -135,16 +154,20 @@ def _canonical_args(td) -> tuple:
 
 
 def _render(td) -> str:
+    if _stub_spelled(td):
+        return td.type_factory(*_canonical_args(td)).to_cpp()
     return td.cpp_formatter(_canonical_args(td))
 
 
 def _registry_heads() -> dict[str, str]:
     """head -> the qname that rendered it, for every value-type TypeDef."""
+    _attach_stubs()
     heads: dict[str, str] = {}
     for qname, td in _type_defs.items():
         if not td.is_value_type or qname in NO_CPP_RENDERING:
             continue
-        if qname in CODEGEN_EMITTED or td.cpp_formatter is None:
+        if qname in CODEGEN_EMITTED or (td.cpp_formatter is None
+                                        and not _stub_spelled(td)):
             continue
         heads.setdefault(_head(_render(td)), qname)
     return heads
@@ -177,11 +200,13 @@ def _registry_false_heads(trait: str) -> dict[str, str]:
     """head -> qname, for every value TypeDef whose is_send / is_sync field
     resolves False at canonical args -- the rows the header must spell out
     because the trait's default follows is_value_type."""
+    _attach_stubs()
     heads: dict[str, str] = {}
     for qname, td in _type_defs.items():
         if not td.is_value_type or qname in NO_CPP_RENDERING:
             continue
-        if qname in CODEGEN_EMITTED or td.cpp_formatter is None:
+        if qname in CODEGEN_EMITTED or (td.cpp_formatter is None
+                                        and not _stub_spelled(td)):
             continue
         field = td.is_send if trait == "is_send" else td.is_sync
         if resolve_send_sync(field, _canonical_args(td)) is not False:

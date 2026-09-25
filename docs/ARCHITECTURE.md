@@ -460,10 +460,13 @@ all behavior (`cpp_formatter`, `is_send`/`is_sync`, `element_of`,
 `boundary_marshal` (crosses the CPython `@export` boundary by copy --
 queried by `is_boundary_marshallable`, replacing a C++-type-string set
 that could not tell `bytes` from `bytearray`),
-`is_borrowing_view` (value-type wrapper referencing foreign storage,
-e.g. dict views), `iter_yields_ref_tuple_proxies` (iteration yields
-proxy reference tuples, e.g. dict_items -- drives the resumable-frame
-borrow-tuple loop binding), `needs_explicit_element_target`,
+`is_borrowing_view` (every value is a borrow handle into storage it
+does not own: `StrView`, `BytesView`, `Span`, `varargs`, `SpanIter`,
+the dict views; not `CopyIter`, which borrows an lvalue container but owns
+an rvalue iterator, a per-call fact), `iter_yields_ref_tuple_proxies` (an
+internal stopgap for dict_items, whose iteration yields proxy reference
+tuples -- drives the resumable-frame borrow-tuple loop binding; set by the
+private stub kwarg `_iter_yields_ref_tuple_proxies` and slated for removal), `needs_explicit_element_target`,
 `param_kinds`, `type_factory`, category payloads `int_traits`,
 `float_traits`, `enum: EnumInfo`, `record: RecordInfo`,
 `protocol: ProtocolInfo`). The `is_indirecting`
@@ -473,8 +476,25 @@ it flows parser -> `TpyRecord` -> `RecordInfo` -> `TypeDef` during
 whether a native wrapper type breaks recursive size cycles; structural
 TPy records (with a `Ptr[T]` field) are recognized separately by
 walking `RecordInfo.fields` under type-param substitution in
-`tpyc/cycle_detection.py` and do not need the flag. Dispatch is
-qname-based:
+`tpyc/cycle_detection.py` and do not need the flag. The two borrow
+facts follow the same path, from `@native(..., borrowing_view=True)` and the
+internal `_iter_yields_ref_tuple_proxies=True` on the stub; a builtin
+stub's declared facts are also latched onto its static TypeDef when the
+stub is PARSED (`Compiler._pre_populate_decl_exports`), so no module's
+registration order can read the unlatched default. The compiler holds no
+list of view types: every borrow/lifetime consumer asks
+`is_borrowing_view_type(t)`, which reads only the flag. The fact has one
+render consumer too: a native template spells a `readonly[T]` argument
+`const T` only when it is a borrowing view (`spells_readonly_arg_const` in
+`tpyc/typesys.py`; a storage template keeps `T`). Both read the flag through
+`declares_borrowing_view`. `Span`, `varargs` and `SpanIter` apply the same
+rule in their `cpp_formatter` without reading it (they render before their
+stub is latched), and `latch_declared_native_flags` rejects a stub for them
+that does not declare the kwarg or names a different C++ template. Outside a
+compilation (no stubs attached, e.g. unit tests) `is_borrowing_view_type`
+answers False for every view while those formatters still spell `const T`,
+which is why they remain until types render only from their stubs.
+Dispatch is qname-based:
 
 ```python
 type_def_of(t).subscript_borrows
@@ -772,9 +792,12 @@ cosmetic. Left as one cohesive module.
   `tests/test_runtime_value_type_parity.py`: `is_value_type` is
   decided twice -- by the registry for the front end and by
   `tpy::is_value_type` in the C++ runtime for every generic body --
-  so the test re-derives both lists (each TypeDef's own
-  `cpp_formatter`, and the specializations found by scanning every
-  header under `runtime/cpp/include/tpy/`) and fails on a value type
+  so the test re-derives both lists (each TypeDef rendered through its
+  own `cpp_formatter` -- or, for the dict views, which are spelled from
+  their stubs' `@native` names, through its factory and `to_cpp()`
+  once an empty compilation has attached the stub records -- and the
+  specializations found by scanning every header under
+  `runtime/cpp/include/tpy/`) and fails on a value type
   the runtime would give a mutable `T&` slot. The same scan holds
   the `is_send` / `is_sync` overrides, which default to
   `is_value_type` and so must spell out a False.
