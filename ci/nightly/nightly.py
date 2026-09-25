@@ -214,6 +214,11 @@ def _run_docker(cfg: dict, src_dir: Path, out_dir: Path, smoke: bool,
     # otherwise hold this fixed name and fail tonight's docker run.
     subprocess.run(["docker", "rm", "-f", container], capture_output=True)
     cmd = ["docker", "run", "--rm", "-i", "--name", container,
+           # Yield the CPU to interactive work on the box: beside the user
+           # sessions in user.slice a low weight loses every contest, while an
+           # idle box still gives the nightly all of it. (Docker's default
+           # system.slice splits 50/50 with user.slice whatever the weight.)
+           "--cgroup-parent", "user.slice", "--cpu-shares", "64",
            "-v", f"{src_dir}:/repo:ro",
            "-v", f"{out_dir}:/out",
            "-v", f"{CACHE_VOLUME}:/cache",

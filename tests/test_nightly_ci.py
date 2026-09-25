@@ -267,6 +267,7 @@ def test_docker_backend_keeps_the_suite_command_out_of_argv(
     assert "pytest" not in " ".join(cmd) and "-i" in cmd
     assert script is not None and "uv run pytest" in script
     assert cmd[-3:] == ["bash", "-c", nightly.STDIN_SCRIPT_SHELL]
+    assert cmd[cmd.index("--cgroup-parent") + 1] == "user.slice"  # low priority
 
 
 def test_ssh_backend_keeps_the_suite_command_out_of_argv(
