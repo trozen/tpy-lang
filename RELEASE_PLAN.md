@@ -4,59 +4,108 @@ The milestone slice of `TODO.md`. Short bullets only -- each item's full
 entry lives in the file it points to (search the quoted phrase there).
 When a release ships, delete its section and promote the next one.
 
-Bugs are not listed here. Every `BUGS.md` entry tagged `IMM` or `HIGH`
-blocks the release, so the must-fix set is whatever those tags currently
-name -- a list here would only drift from them. The one exception is
-stated per release below.
+## Cadence and gate
 
-## 0.6.0 (scope set 2026-09-18)
+A soft trigger, not a deadline: start preparing a release once a cycle
+has about 200-300 commits on `master` or 4-6 weeks have passed,
+whichever comes first. Dates below are aims.
 
-Bug gate: every `IMM` and `HIGH` entry EXCEPT the borrow / provenance
-family, which moves to 0.7.0 (see there). An entry is in that family
-when its defect is one of:
+- **Preparing a release** means triaging its bug gate. The release ships
+  when that list is clear; work on `master` does not pause for it.
+- **Features are targets, not gates.** What has merged when the gate
+  clears ships; the rest moves to the next release.
+- **The bug gate is a fixed list, triaged when preparation starts** --
+  not the `IMM` / `HIGH` tags, which stay a fix priority. It holds:
+  - regressions since the previous release;
+  - compiler crashes on valid code;
+  - silent miscompiles on everyday shapes.
 
-- a loan, view or pointer that outlives its storage, or a mutation that
-  does not invalidate a live borrow (dangling temporaries, loans blind
-  to a write path, frame-held borrows);
-- a silent copy where CPython aliases, or a move at the wrong point;
-- a borrow-form vs storage-form spelling mismatch (const-ness, pointer
-  vs payload slot) at a parameter, tuple element or Optional local.
+  Every other open defect ships as a known limitation in the release
+  notes. A defect filed later joins the gate only if it is one of the
+  three kinds above.
+- **Regression check:** at triage and again just before tagging, re-run
+  the open `BUGS.md` entries' shapes and the example corpus (`examples/`,
+  `../tpy-examples`) against the previous release tag, in a worktree of
+  that tag, and mark each hit `REGRESSION since vX.Y.Z` in its headline.
 
-The tuple requirement below is an explicit exception to that deferral: the
-tuple entries `docs/TUPLE_COMPLETION_PLAN.md` lists under 0.6.0 remain in
-0.6.0, including aliasing, rebinding and provenance, regardless of priority
-tag. A tuple entry that plan places under 0.7.0 or behind MIR does not block
-0.6.0, whatever its tag (scope narrowed 2026-09-21).
+## 0.6.0 (ships when the gate below clears; aim early October 2026)
 
-Features:
+Bug gate, triaged 2026-09-25. Every entry is a regression since v0.5.0
+unless marked otherwise. Batched by likely shared cause; each batch is one
+`/tpy-fix-bug` unit, and the batches are independent of each other.
+
+- **B -- dropped null checks** (both segfault where v0.5.0 kept the
+  `deref_check`; likely one cause):
+  - `optional-list-elem-decl-drops-deref-check`
+  - `unnarrowed-optional-elem-field-read`
+- **C -- declarations and scoping:**
+  - `elif-else-binding-not-predeclared`
+  - `nested-local-shadows-module-global`
+  - `single-body-local-then-loop-var-uninitialized` -- not a regression:
+    v0.5.0 failed the C++ build, master reads garbage
+- **E -- lowering rejects and crashes** (mostly THIR lowering arms):
+  - `ctor-str-concat-field-rejects` -- `self.full = a + "!"` in `__init__`
+  - `thir-validator-escapes-unpack-temp` (crash)
+  - `tuple-ref-element-container-field-read`
+  - `qualcall-union-arg-missing-const-wrap` (the rvalue-argument face)
+  - `thir-int-methodarg-shift-not-folded` (the fix is parked on
+    `thir-fold-wip`)
+- **A -- generators** (frame-local declaration and narrowing):
+  - `gen-finally-local-assign-internal-error` (crash)
+  - `generator-optional-match-arm-not-narrowed`
+  - `generator-arg-view-temp-hoist-dangles` -- not a regression: v0.5.0
+    warned, master is silent
+- **D -- moves past a last use** (liveness and rebind; overlaps the
+  liveness work landing on `master` since 2026-09-25, so start it once that
+  settles):
+  - `comp-element-move-inside-loop`
+  - `finally-rebind-eager-move-alias-read`
+  - `foreach-rebound-name-reiterated`
+  - `nested-list-literal-alias-rebind-clobbers`
+- **Decision first:** `c-abi-allowlist-overshoot` -- the C-ABI allow-list
+  as "C-spellable" or "ABI-compatible"; until decided it ships as a known
+  limitation.
+
+Shipped:
+
+- THIR migration (fallback -> 0, then the AST-codegen deletion).
+  Residual track: TODO: "The post-cutover fix queue: shapes that are now
+  compile errors"
+- Methods on enums (instance, `@staticmethod`, `@classmethod`; covers
+  `Color.from_str`) -- TODO: "Methods on enums"
+- Interop: Optional/None at the `@export` boundary (param + return, and
+  value-form fields) -- `docs/CPYTHON_INTEROP.md` type table
+- Tuples: the U1 silent-divergence work merged so far --
+  `docs/TUPLE_COMPLETION_PLAN.md`
+
+Target (ships if merged when the gate clears):
+
+- `collections.defaultdict` -- TODO: "collections: the rest of the
+  module"
+
+## 0.7.0 (prepared when the trigger above fires after 0.6.0)
+
+Carried from 0.6.0:
 
 - Tuples: no silent divergence and the everyday shapes compile --
-  `docs/TUPLE_COMPLETION_PLAN.md`, units U0-U4 (the element-vs-singleton
-  matrix as an instrument, every silent copy / dangle, the everyday
-  rejects, the small policy flips, the mixed-param diagnostics). Bounded
-  MIR coverage alone does not satisfy this.
-- [SHIPPED] THIR migration (fallback -> 0, then the AST-codegen
-  deletion). Residual track: TODO: "The post-cutover fix queue: shapes
-  that are now compile errors"
+  `docs/TUPLE_COMPLETION_PLAN.md`, the rest of U1 plus U2-U4 (the
+  everyday rejects, the policy flips, the mixed-param diagnostics)
 - Iterating a tuple (`for b in (b1, b2):`), the aliasing spelling for
   reference elements; ranks above nested comprehensions -- TODO:
   "Iterating a tuple"
 - Nested / multi-`for` comprehensions (list/dict/set + genexprs) --
   TODO: "Nested comprehensions"
-- [SHIPPED] Methods on enums (instance, `@staticmethod`, `@classmethod`;
-  covers `Color.from_str`) -- TODO: "Methods on enums"
-- `collections.defaultdict` -- TODO: "collections: the rest of the
-  module"
-- [SHIPPED] Interop: Optional/None at the `@export` boundary (param +
-  return, and value-form fields) -- `docs/CPYTHON_INTEROP.md` type table
+- `collections.defaultdict`, if it misses 0.6.0
 
-## 0.7.0 (queue to triage at 0.7 planning; not commitments)
+Queue (triage at 0.7 planning; not commitments):
 
 - Tuples, the structural half -- `docs/TUPLE_COMPLETION_PLAN.md`, units
   U5-U7: one elementwise form rule in THIR, `str` / `bytes` view elements
   (ABI change), the loud tail. U8 (per-element ownership at a mixed tuple
   param) waits on MIR.
-- Borrow / provenance `HIGH` entries (the family defined under 0.6.0),
+- Borrow / provenance `HIGH` entries (loans that outlive their storage,
+  silent copies where CPython aliases, borrow-form vs storage-form
+  spelling mismatches),
   fixed against the analysis-only MIR rather than patched one by one in
   the AST borrow tracker
 - Interop v1 wrap-up: PEP 517 backend -> abi3 wheel (phase 2.5),

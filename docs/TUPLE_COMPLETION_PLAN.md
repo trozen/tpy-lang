@@ -6,7 +6,7 @@ on `b7fa3e92cb` (U3 D1). Every figure here is valid for that
 tree only -- re-run the matrix before acting on a cell.
 
 The tracked plan for making a tuple element behave as designed. `RELEASE_PLAN.md`
-points here for the 0.6.0 tuple requirement; the entries themselves stay in
+points here for the 0.7.0 tuple requirement; the entries themselves stay in
 `BUGS.md` / `TODO.md`, and this file only orders them, sizes them and records
 which release each unit belongs to.
 
@@ -78,7 +78,7 @@ severity (user decision 2026-09-23). A global divergence is filed against the
 TODO design entry "Module scope is the body of __tpy_init" rather than fixed
 per shape; the mixed tuple global (D2) waits on that entry.
 
-### 0.6.0
+### 0.7.0 (moved from 0.6.0 on 2026-09-25)
 
 - [x] **U0 -- the matrix as an instrument.** DONE 2026-09-21:
   `scripts/thir_migration/review/tuple_element_matrix.py` (163 cells) with its
@@ -312,11 +312,11 @@ per shape; the mixed tuple global (D2) waits on that entry.
     literal (`BUGS.md#nested-tuple-name-own-return`); a global name copies
     unwarned (`BUGS.md#global-tuple-name-own-return-unwarned`).
   - [ ] TODO: "Warn at the mixed-tuple module GLOBAL as a stopgap" -- only
-    worth taking if D2's full fix slips out of 0.6.0.
+    worth taking if D2's full fix slips out of 0.7.0.
   - [ ] The `Optional`-wrapped mixed return ABI (`tuple[Own[A], B] | None`),
     carved out of the design entry's step (b).
 - [ ] **U4 -- the mixed-param diagnostics.** The consume itself is MIR work
-  (U8); what 0.6.0 owes is that the limitation is SAID. Size: under a day.
+  (U8); what 0.7.0 owes is that the limitation is SAID. Size: under a day.
   - [ ] `BUGS.md#consume-own-element-of-mixed-tuple` -- replace the generic
     unlowered-shape message with a located diagnostic naming the remedy (take
     the owned element as its own `Own[T]` parameter), pinned by an `error_`
@@ -327,7 +327,7 @@ per shape; the mixed tuple global (D2) waits on that entry.
     diagnostic naming the limitation and the workaround (take the element
     by value with `copy()`, or alias after the last rebind).
 
-### 0.7.0
+### After 0.7.0
 
 - [ ] **U5 -- one elementwise form question** (design entry step (c)). The
   structural fix: "what form does element `i` take at position P" is decided
@@ -392,4 +392,4 @@ Tick a box with the merge commit when a unit lands, and delete the `BUGS.md`
 entries it closes. A defect found while working a unit becomes a line in that
 unit (and a `BUGS.md` entry), never a silent widening. When the matrix is
 re-run, replace the table and its date rather than appending to it. When U0-U4
-are ticked, the 0.6.0 tuple requirement is met.
+are ticked, the 0.7.0 tuple requirement is met.
