@@ -15,10 +15,13 @@ and no longer constrains moves of the new h (detach-on-reassign).
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import NamedTuple
+
 from .identity_map import IdentitySet
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
-    TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyRaise,
+    TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyContinue, TpyRaise,
     TpyMatch, TpyNestedDef, TpyDelVar, TpyTry, TpyWith, TpyNonlocal,
     TpyName, TpyFieldAccess, TpySubscript, TpyNamedExpr, TpyFunction,
     TpyBoolLiteral, TpyAssert, TpyTupleLiteral,
@@ -27,6 +30,33 @@ from .parse.nodes import stmts_have_any_suspension, written_names
 
 # source_name -> set[alias_name] reverse map
 _Aliases = dict[str, set[str]]
+
+
+class _LoopTargets(NamedTuple):
+    # Live after the loop statement: where a `break` lands, skipping `else`.
+    brk: frozenset[str]
+    # Live at the loop header: where the body's end and a `continue` land.
+    cont: frozenset[str]
+
+
+_Loops = tuple[_LoopTargets, ...]
+
+
+class _Exits(NamedTuple):
+    """Where the statements that leave a block land."""
+    # Enclosing loops, innermost last.
+    loops: _Loops = ()
+    # Live where a `return` or `raise` lands: nothing, or inside a try with
+    # a finally, the finally's live-in (the finally runs first).
+    ret: frozenset[str] = frozenset()
+
+
+@dataclass
+class _Walk:
+    last_uses: IdentitySet
+    source_aliases: _Aliases
+    detached_aliases: set[str]
+    ex: _Exits = _Exits()
 
 
 def analyze_last_uses(
@@ -65,12 +95,9 @@ def analyze_last_uses(
     # later consume still kills the seed, which is sound: the closure reads
     # the rebound variable, not the old object.
     live: set[str] = _collect_nested_def_captures(stmts)
-    last_uses: IdentitySet = IdentitySet()
-    _analyze_stmts_backward(
-        stmts, live, last_uses, source_aliases,
-        detached_aliases, first_reassign_pos,
-    )
-    return last_uses
+    w = _Walk(IdentitySet(), source_aliases, detached_aliases)
+    _analyze_stmts_backward(stmts, live, w, first_reassign_pos)
+    return w.last_uses
 
 
 def _nested_def_captures(stmt: TpyNestedDef) -> set[str]:
@@ -278,7 +305,7 @@ def stmts_terminate(stmts: list[TpyStmt]) -> bool:
         # `while True:` with no break targeting this loop never falls
         # through (it returns/raises from inside or runs forever).
         return (while_head_always_true(last)
-                and not _has_loop_break(last.body))
+                and not _has_loop_jump(last.body, TpyBreak))
     if isinstance(last, TpyAssert):
         # `assert False` lowers to an unconditional raise (TPy asserts are
         # never compiled out), so it terminates like a raise statement.
@@ -309,20 +336,23 @@ def try_terminates_ignoring_finally(stmt: TpyTry) -> bool:
             and all(stmts_terminate(h.body) for h in stmt.handlers))
 
 
-def _has_loop_break(stmts: list[TpyStmt]) -> bool:
-    """Any break in `stmts` that would target the enclosing loop (does not
-    descend into nested loops, whose breaks target themselves)."""
+def _has_loop_jump(stmts: list[TpyStmt],
+                   kind: type[TpyBreak] | type[TpyContinue]) -> bool:
+    """Any jump of `kind` in `stmts` that would target the enclosing loop
+    (does not descend into nested loops, whose jumps target themselves)."""
     for stmt in stmts:
-        if isinstance(stmt, TpyBreak):
+        if isinstance(stmt, kind):
             return True
         if isinstance(stmt, (TpyWhile, TpyForEach)):
-            # Breaks inside a nested loop's body target that loop, but its
-            # else clause runs outside it -- a break there targets ours.
-            if _has_loop_break(stmt.orelse):
+            # Jumps inside a nested loop's body target that loop, but its
+            # else clause runs outside it -- a jump there targets ours.
+            if _has_loop_jump(stmt.orelse, kind):
                 return True
             continue
+        if isinstance(stmt, TpyNestedDef):
+            continue
         for body in stmt.sub_bodies():
-            if _has_loop_break(body):
+            if _has_loop_jump(body, kind):
                 return True
     return False
 
@@ -332,9 +362,7 @@ def _has_loop_break(stmts: list[TpyStmt]) -> bool:
 def _analyze_stmts_backward(
     stmts: list[TpyStmt],
     live: set[str],
-    last_uses: IdentitySet,
-    source_aliases: _Aliases,
-    detached_aliases: set[str],
+    w: _Walk,
     first_reassign_pos: dict[str, int] | None = None,
 ) -> None:
     """Walk statements backward, updating live set and marking last uses."""
@@ -345,32 +373,23 @@ def _analyze_stmts_backward(
         # aliases DO track the source and must constrain moves).
         if (first_reassign_pos and isinstance(stmt, TpyVarDecl)
                 and first_reassign_pos.get(stmt.name) == i):
-            aliases = source_aliases.get(stmt.name)
+            aliases = w.source_aliases.get(stmt.name)
             if aliases:
-                detached_aliases -= aliases
-        _analyze_stmt(stmt, live, last_uses, source_aliases, detached_aliases)
+                w.detached_aliases -= aliases
+        _analyze_stmt(stmt, live, w)
 
 
-def _analyze_stmt(
-    stmt: TpyStmt,
-    live: set[str],
-    last_uses: IdentitySet,
-    source_aliases: _Aliases,
-    detached_aliases: set[str],
-) -> None:
+def _analyze_stmt(stmt: TpyStmt, live: set[str], w: _Walk) -> None:
     """Analyze a single statement for last uses."""
 
     if isinstance(stmt, TpyIf):
-        _analyze_if(stmt, live, last_uses, source_aliases, detached_aliases)
+        _analyze_if(stmt, live, w)
 
     elif isinstance(stmt, TpyMatch):
-        _analyze_match(stmt, live, last_uses, source_aliases, detached_aliases)
+        _analyze_match(stmt, live, w)
 
-    elif isinstance(stmt, TpyWhile):
-        _analyze_while(stmt, live, last_uses, source_aliases, detached_aliases)
-
-    elif isinstance(stmt, TpyForEach):
-        _analyze_for_each(stmt, live, last_uses, source_aliases, detached_aliases)
+    elif isinstance(stmt, (TpyWhile, TpyForEach)):
+        _analyze_loop(stmt, live, w)
 
     elif isinstance(stmt, TpyVarDecl):
         # `live` here is liveness AFTER the statement -- what the alias-rebind
@@ -388,7 +407,7 @@ def _analyze_stmt(
                           and stmt.name in live)
             if hide_alias:
                 live.discard(stmt.name)
-            _process_reads(stmt.init, live, last_uses, source_aliases, detached_aliases)
+            _process_reads(stmt.init, live, w)
             if hide_alias:
                 live.add(stmt.name)
         # Kill: variable is (re)defined here -- unless this statement's own
@@ -397,7 +416,7 @@ def _analyze_stmt(
         _kill_unless_read(stmt.name, [stmt.init] if stmt.init else [], live)
 
     elif isinstance(stmt, TpyTupleUnpack):
-        _process_reads(stmt.value, live, last_uses, source_aliases, detached_aliases)
+        _process_reads(stmt.value, live, w)
         for name in stmt.targets:
             if name is not None:
                 _kill_unless_read(name, [stmt.value], live)
@@ -413,7 +432,7 @@ def _analyze_stmt(
             exprs.append(stmt.target.index)
         elif isinstance(stmt.target, TpyFieldAccess):
             exprs.append(stmt.target.obj)
-        _process_reads_multi(exprs, live, last_uses, source_aliases, detached_aliases)
+        _process_reads_multi(exprs, live, w)
         # Kill: if target is a plain name, it's redefined -- unless the
         # statement reads it too (see _kill_unless_read).
         if isinstance(stmt.target, TpyName):
@@ -432,30 +451,35 @@ def _analyze_stmt(
             exprs.append(stmt.target)
             # Don't kill: the read happens before the write in the same stmt,
             # and the prescan handles aug-assign separately.
-        _process_reads_multi(exprs, live, last_uses, source_aliases, detached_aliases)
+        _process_reads_multi(exprs, live, w)
 
     elif isinstance(stmt, TpyReturn):
-        # Terminating: nothing reached after the return is live. Clear first
-        # so the return-expression reads become the only live-before names --
-        # otherwise an earlier consume of a var read here is misread as
-        # last-use (clearing after would discard those reads).
+        # Terminating: only what the landing keeps live (an enclosing
+        # finally's reads) is live after the return. Set it first so the
+        # return-expression reads become live-before names too -- otherwise
+        # an earlier consume of a var read here is misread as last-use
+        # (clearing after would discard those reads).
         live.clear()
+        live |= w.ex.ret
         if stmt.value:
-            _process_reads(stmt.value, live, last_uses, source_aliases, detached_aliases)
+            _process_reads(stmt.value, live, w)
 
     elif isinstance(stmt, TpyRaise):
-        # Terminating (transfers to a handler / unwinds). Clear normal-flow
-        # live, then process the raised exception's own reads so an earlier
+        # Terminating (transfers to a handler / unwinds), landing as a
+        # return does; then the raised exception's own reads, so an earlier
         # consume of a var read here is not misread as last-use.
         live.clear()
-        _process_reads_multi(
-            list(stmt.exprs()), live, last_uses, source_aliases, detached_aliases)
+        live |= w.ex.ret
+        _process_reads_multi(list(stmt.exprs()), live, w)
+
+    elif isinstance(stmt, (TpyBreak, TpyContinue)):
+        _jump(stmt, live, w.ex.loops)
 
     elif isinstance(stmt, TpyWith):
-        _analyze_with(stmt, live, last_uses, source_aliases, detached_aliases)
+        _analyze_with(stmt, live, w)
 
     elif isinstance(stmt, TpyTry):
-        _analyze_try(stmt, live, last_uses, source_aliases, detached_aliases)
+        _analyze_try(stmt, live, w)
 
     elif isinstance(stmt, TpyDelVar):
         for name in stmt.names:
@@ -474,28 +498,34 @@ def _analyze_stmt(
         # in one pass (a statement is one C++ full-expression for sequencing).
         # Routing through exprs() means a future read-bearing statement is
         # covered automatically rather than silently dropping its reads.
-        _process_reads_multi(
-            list(stmt.exprs()), live, last_uses, source_aliases, detached_aliases)
+        _process_reads_multi(list(stmt.exprs()), live, w)
 
 
-def _analyze_if(
-    stmt: TpyIf,
-    live: set[str],
-    last_uses: IdentitySet,
-    source_aliases: _Aliases,
-    detached_aliases: set[str],
-) -> None:
+def _jump(stmt: TpyBreak | TpyContinue, live: set[str],
+          loops: _Loops) -> None:
+    """Nothing after a jump runs before its target, so the live set there is
+    the target's. The parser rejects a jump outside a loop."""
+    live.clear()
+    if loops:
+        live |= (loops[-1].brk if isinstance(stmt, TpyBreak)
+                 else loops[-1].cont)
+
+
+def _analyze_if(stmt: TpyIf, live: set[str], w: _Walk) -> None:
     """Analyze if/else with branch merging."""
     then_terminates = stmts_terminate(stmt.then_body)
     else_terminates = stmts_terminate(stmt.else_body)
 
     # If a branch terminates, post-if code is unreachable on that path --
-    # start with empty live set instead of inheriting post-if liveness.
-    live_then = set() if then_terminates else live.copy()
-    _analyze_stmts_backward(stmt.then_body, live_then, last_uses, source_aliases, detached_aliases)
+    # start from where a return or raise lands instead of inheriting post-if
+    # liveness (`assert False` has no statement of its own that would
+    # install it). A `break` or `continue` among the terminators installs
+    # its own target.
+    live_then = set(w.ex.ret) if then_terminates else live.copy()
+    _analyze_stmts_backward(stmt.then_body, live_then, w)
 
-    live_else = set() if else_terminates else live.copy()
-    _analyze_stmts_backward(stmt.else_body, live_else, last_uses, source_aliases, detached_aliases)
+    live_else = set(w.ex.ret) if else_terminates else live.copy()
+    _analyze_stmts_backward(stmt.else_body, live_else, w)
 
     # After both branches: union (conservative -- live if used in either path)
     live.clear()
@@ -503,115 +533,113 @@ def _analyze_if(
     live.update(live_else)
 
     # Process condition reads (evaluated before either branch)
-    _process_reads(stmt.condition, live, last_uses, source_aliases, detached_aliases)
+    _process_reads(stmt.condition, live, w)
 
 
-def _analyze_match(
-    stmt: TpyMatch,
-    live: set[str],
-    last_uses: IdentitySet,
-    source_aliases: _Aliases,
-    detached_aliases: set[str],
-) -> None:
+def _analyze_match(stmt: TpyMatch, live: set[str], w: _Walk) -> None:
     """Analyze match/case with per-arm branch merging (same as if/else)."""
     # Case patterns are not read-tracked: value patterns (`case X.Y:`) reference
     # module-level constants, never movable locals, so they carry no last-use.
     merged_live: set[str] = set()
     for case in stmt.cases:
         arm_terminates = stmts_terminate(case.body)
-        arm_live = set() if arm_terminates else live.copy()
-        _analyze_stmts_backward(case.body, arm_live, last_uses, source_aliases, detached_aliases)
+        arm_live = set(w.ex.ret) if arm_terminates else live.copy()
+        _analyze_stmts_backward(case.body, arm_live, w)
         # Guard expression reads
         if case.guard is not None:
-            _process_reads(case.guard, arm_live, last_uses, source_aliases, detached_aliases)
+            _process_reads(case.guard, arm_live, w)
         merged_live.update(arm_live)
 
     live.clear()
     live.update(merged_live)
     # Subject expression reads
-    _process_reads(stmt.subject, live, last_uses, source_aliases, detached_aliases)
+    _process_reads(stmt.subject, live, w)
 
 
-def _analyze_while(
-    stmt: TpyWhile,
-    live: set[str],
-    last_uses: IdentitySet,
-    source_aliases: _Aliases,
-    detached_aliases: set[str],
-) -> None:
-    """Analyze while loop with fixpoint iteration."""
-    # Analyze else block first (runs after loop, before subsequent code)
-    if stmt.orelse:
-        _analyze_stmts_backward(stmt.orelse, live, last_uses, source_aliases, detached_aliases)
-
-    # Fixpoint: variables used in the loop body are live across iterations.
-    # Iterate until the live set stabilizes.
-    post_loop_live = live.copy()
-
-    for _ in range(4):
-        prev_live = live.copy()
-
-        # Walk body backward to compute live set (marking disabled)
-        body_live = live.copy()
-        _compute_live_only(stmt.body, body_live)
-
-        # Condition reads contribute to liveness
-        for node in _collect_reads_expr(stmt.condition):
-            body_live.add(node.name)
-
-        # Loop-back: names live at body start are also live at body end
-        live.clear()
-        live.update(body_live | post_loop_live)
-
-        if live == prev_live:
-            break
-
-    # Final marking pass with stabilized live set
-    _analyze_stmts_backward(stmt.body, live, last_uses, source_aliases, detached_aliases)
-
-    # Process condition reads
-    _process_reads(stmt.condition, live, last_uses, source_aliases, detached_aliases)
+_LOOP_PASSES = 4
 
 
-def _analyze_for_each(
-    stmt: TpyForEach,
-    live: set[str],
-    last_uses: IdentitySet,
-    source_aliases: _Aliases,
-    detached_aliases: set[str],
-) -> None:
-    """Analyze for-each loop with fixpoint iteration."""
-    # Analyze else block first (runs after loop, before subsequent code)
-    if stmt.orelse:
-        _analyze_stmts_backward(stmt.orelse, live, last_uses, source_aliases, detached_aliases)
+def _loop_zero_trip_live(stmt: TpyWhile | TpyForEach,
+                         exit_live: frozenset[str]) -> frozenset[str]:
+    """What a loop that runs zero times keeps live: `exit_live` (the else
+    clause's live-in) -- none of it after `while True:`, whose head is never
+    false."""
+    if isinstance(stmt, TpyWhile) and while_head_always_true(stmt):
+        return frozenset()
+    return exit_live
 
-    post_loop_live = live.copy()
 
-    for _ in range(4):
-        prev_live = live.copy()
+def _loop_header_seed(stmt: TpyWhile | TpyForEach,
+                      exit_live: frozenset[str]) -> frozenset[str]:
+    """The header's live set before the body is counted: the normal exit,
+    and a `while` condition's reads, which every iteration evaluates.
 
-        # Walk body backward to compute live set
-        body_live = live.copy()
-        _compute_live_only(stmt.body, body_live)
+    The exit stays in even for `while True:`: an exception a suppressing
+    `with` swallows leaves the loop at any point, an edge this walk does not
+    model (BUGS.md#suppressing-with-exit-edge-unmodelled)."""
+    if isinstance(stmt, TpyWhile):
+        return exit_live | {n.name for n in _collect_reads_expr(stmt.condition)}
+    return exit_live
 
-        # Loop variable is killed at loop header (reassigned each iteration)
+
+def _loop_header_pass(stmt: TpyWhile | TpyForEach, header: frozenset[str],
+                      after: frozenset[str], ex: _Exits) -> frozenset[str]:
+    """One backward pass over the body with its end and every `continue`
+    landing on `header`: the header live set that implies."""
+    body_live = set(header)
+    _compute_live_only(stmt.body, body_live, _in_loop(ex, after, header))
+    if isinstance(stmt, TpyForEach):
         body_live.discard(stmt.var)
+    return header | body_live
 
-        # Loop-back: names live at body start are also live at body end
-        live.clear()
-        live.update(body_live | post_loop_live)
 
-        if live == prev_live:
-            break
+def _loop_header(stmt: TpyWhile | TpyForEach, exit_live: frozenset[str],
+                 after: frozenset[str], ex: _Exits) -> frozenset[str]:
+    """The stabilized header live set, for both walks.
 
-    # Final marking pass with stabilized live set
-    _analyze_stmts_backward(stmt.body, live, last_uses, source_aliases, detached_aliases)
+    A single pass from the seed is already the fixpoint -- every transfer is
+    a union of gen/kill paths, and a path through the header twice gens
+    nothing the one-iteration paths do not. A mark is only as sound as this
+    set, so a second pass confirms it, and a set that does not settle within
+    the cap widens to every name the body could reach."""
+    header = _loop_header_seed(stmt, exit_live)
+    for _ in range(_LOOP_PASSES):
+        nxt = _loop_header_pass(stmt, header, after, ex)
+        if nxt == header:
+            return header
+        header = nxt
+    return (header | after | _collect_nested_def_captures(stmt.body)
+            | {n.name for n in _all_read_names(stmt.body)})
 
-    # Kill the loop variable (assigned by the loop at each iteration)
-    live.discard(stmt.var)
 
-    # Process iterable reads
-    _process_reads(stmt.iterable, live, last_uses, source_aliases, detached_aliases)
+def _in_loop(ex: _Exits, after: frozenset[str],
+             header: frozenset[str]) -> _Exits:
+    return ex._replace(loops=ex.loops + (_LoopTargets(after, header),))
+
+
+def _loop_head(stmt: TpyWhile | TpyForEach) -> TpyExpr:
+    return stmt.iterable if isinstance(stmt, TpyForEach) else stmt.condition
+
+
+def _analyze_loop(stmt: TpyWhile | TpyForEach, live: set[str],
+                  w: _Walk) -> None:
+    after = frozenset(live)
+    if stmt.orelse:
+        _analyze_stmts_backward(stmt.orelse, live, w)
+    exit_live = frozenset(live)
+    header = _loop_header(stmt, exit_live, after, w.ex)
+    saved = w.ex
+    w.ex = _in_loop(w.ex, after, header)
+    live.clear()
+    live |= header
+    _analyze_stmts_backward(stmt.body, live, w)
+    w.ex = saved
+    # A for loop binds its variable at the header on every iteration, and
+    # the head either enters the body or takes the normal exit straight away.
+    if isinstance(stmt, TpyForEach):
+        live.discard(stmt.var)
+    live |= _loop_zero_trip_live(stmt, exit_live)
+    _process_reads(_loop_head(stmt), live, w)
 
 
 def _all_read_names(stmts: list[TpyStmt]) -> list[TpyName]:
@@ -807,13 +835,7 @@ def _walk_finally_returns(stmts: list[TpyStmt], finally_depth: int,
                                       rebound, kept, suppressed=suppressed)
 
 
-def _analyze_with(
-    stmt: TpyWith,
-    live: set[str],
-    last_uses: IdentitySet,
-    source_aliases: _Aliases,
-    detached_aliases: set[str],
-) -> None:
+def _analyze_with(stmt: TpyWith, live: set[str], w: _Walk) -> None:
     """Analyze a with statement. `__exit__` runs after the body on every path
     and reads the context manager, so the manager's root names are live
     across the whole body -- a consume of the manager inside its own body
@@ -829,35 +851,71 @@ def _analyze_with(
     again, that an exception can leave the try mid-body, and that a rebind
     only kills from its own position.
     """
+    # A jump out of the body leaves the statement too, and so does a return
+    # or an exception through an enclosing finally.
+    after = live | _jump_targets([stmt.body], w.ex.loops) | w.ex.ret
     for item in stmt.items:
         if item.target is not None:
-            item.target_read_after = item.target in live
+            item.target_read_after = item.target in after
     mgr_roots: set[str] = set()
     for item in stmt.items:
         for node in _collect_reads_expr(item.context_expr):
             mgr_roots.add(node.name)
     live |= mgr_roots
-    _analyze_stmts_backward(stmt.body, live, last_uses, source_aliases, detached_aliases)
+    _analyze_stmts_backward(stmt.body, live, w)
     # A body-internal kill (reassignment of the manager var) drops the seed
     # above; retract any marks the body walk still handed to manager reads --
     # __exit__ reads the manager on every path, so none can be a last use.
     if mgr_roots:
         for node in _all_read_names(stmt.body):
             if node.name in mgr_roots:
-                last_uses.discard(node)
+                w.last_uses.discard(node)
     for item in reversed(stmt.items):
         if item.target is not None:
             live.discard(item.target)
-        _process_reads(item.context_expr, live, last_uses, source_aliases, detached_aliases)
+        _process_reads(item.context_expr, live, w)
 
 
-def _analyze_try(
-    stmt: TpyTry,
-    live: set[str],
-    last_uses: IdentitySet,
-    source_aliases: _Aliases,
-    detached_aliases: set[str],
-) -> None:
+def _jump_targets(bodies: list[list[TpyStmt]], loops: _Loops) -> set[str]:
+    """What the `break` / `continue` statements leaving `bodies` for the
+    enclosing loop keep live at their targets."""
+    out: set[str] = set()
+    if not loops:
+        return out
+    if any(_has_loop_jump(b, TpyBreak) for b in bodies):
+        out |= loops[-1].brk
+    if any(_has_loop_jump(b, TpyContinue) for b in bodies):
+        out |= loops[-1].cont
+    return out
+
+
+def _try_exit_bodies(stmt: TpyTry) -> list[list[TpyStmt]]:
+    return [stmt.try_body, stmt.else_body, *(h.body for h in stmt.handlers)]
+
+
+def _finally_seed(stmt: TpyTry, live: set[str], ex: _Exits) -> set[str]:
+    """What is live after the finally: the fall-through, and the landings of
+    the jumps, returns and raises that leave through it."""
+    seed = live | _jump_targets(_try_exit_bodies(stmt), ex.loops)
+    if stmt.finally_body:
+        seed |= ex.ret
+    return seed
+
+
+def _through_finally(stmt: TpyTry, ex: _Exits,
+                     finally_live: set[str]) -> _Exits:
+    """Where a jump, return or raise inside the try, a handler or the else
+    lands: with a finally, it runs the finally first, so it lands on the
+    finally's live-in (which already holds every target)."""
+    if not stmt.finally_body:
+        return ex
+    landing = frozenset(finally_live)
+    loops = ex.loops[:-1] + ((_LoopTargets(landing, landing),)
+                             if ex.loops else ())
+    return _Exits(loops, landing)
+
+
+def _analyze_try(stmt: TpyTry, live: set[str], w: _Walk) -> None:
     """Analyze a try statement.
 
     finally runs last on every path; handlers run on the exception path; else
@@ -875,55 +933,62 @@ def _analyze_try(
     otherwise drop the handler/finally seed and report a name read only on the
     exception path as dead before the try.
     """
-    finally_live = live.copy()
+    # The finally runs before a jump that leaves the try, so what the jump
+    # keeps live is live after the finally too.
+    finally_live = _finally_seed(stmt, live, w.ex)
     if stmt.finally_body:
-        _analyze_stmts_backward(stmt.finally_body, finally_live, last_uses, source_aliases, detached_aliases)
+        _analyze_stmts_backward(stmt.finally_body, finally_live, w)
 
+    saved = w.ex
+    w.ex = _through_finally(stmt, w.ex, finally_live)
     handler_union: set[str] = set()
     for h in stmt.handlers:
         h_live = finally_live.copy()
-        _analyze_stmts_backward(h.body, h_live, last_uses, source_aliases, detached_aliases)
+        _analyze_stmts_backward(h.body, h_live, w)
         if h.binding is not None:
             h_live.discard(h.binding)
         handler_union |= h_live
 
     else_live = finally_live.copy()
     if stmt.else_body:
-        _analyze_stmts_backward(stmt.else_body, else_live, last_uses, source_aliases, detached_aliases)
+        _analyze_stmts_backward(stmt.else_body, else_live, w)
 
     # Try body: normal exit flows to else, exception at any point to a handler.
     live.clear()
     live.update(else_live | handler_union)
-    _analyze_stmts_backward(stmt.try_body, live, last_uses, source_aliases, detached_aliases)
+    _analyze_stmts_backward(stmt.try_body, live, w)
+    w.ex = saved
 
     exception_path_live = handler_union | finally_live
     if exception_path_live:
         for node in _all_read_names(stmt.try_body):
             if node.name in exception_path_live:
-                last_uses.discard(node)
+                w.last_uses.discard(node)
     live |= exception_path_live
 
 
-def _compute_live_only(stmts: list[TpyStmt], live: set[str]) -> None:
+def _compute_live_only(stmts: list[TpyStmt], live: set[str],
+                       ex: _Exits) -> None:
     """Walk statements backward, updating live set WITHOUT marking last uses.
 
     Used during fixpoint iteration to stabilize the live set before
     doing the actual marking pass.
     """
     for stmt in reversed(stmts):
-        _compute_stmt_live_only(stmt, live)
+        _compute_stmt_live_only(stmt, live, ex)
 
 
-def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
+def _compute_stmt_live_only(stmt: TpyStmt, live: set[str],
+                            ex: _Exits) -> None:
     """Update live set for a statement without marking last uses."""
 
     if isinstance(stmt, TpyIf):
         then_terminates = stmts_terminate(stmt.then_body)
         else_terminates = stmts_terminate(stmt.else_body)
-        live_then = set() if then_terminates else live.copy()
-        _compute_live_only(stmt.then_body, live_then)
-        live_else = set() if else_terminates else live.copy()
-        _compute_live_only(stmt.else_body, live_else)
+        live_then = set(ex.ret) if then_terminates else live.copy()
+        _compute_live_only(stmt.then_body, live_then, ex)
+        live_else = set(ex.ret) if else_terminates else live.copy()
+        _compute_live_only(stmt.else_body, live_else, ex)
         live.clear()
         live.update(live_then | live_else)
         for node in _collect_reads_expr(stmt.condition):
@@ -933,8 +998,8 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
         merged: set[str] = set()
         for case in stmt.cases:
             arm_terminates = stmts_terminate(case.body)
-            arm_live = set() if arm_terminates else live.copy()
-            _compute_live_only(case.body, arm_live)
+            arm_live = set(ex.ret) if arm_terminates else live.copy()
+            _compute_live_only(case.body, arm_live, ex)
             if case.guard is not None:
                 for node in _collect_reads_expr(case.guard):
                     arm_live.add(node.name)
@@ -944,25 +1009,18 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
         for node in _collect_reads_expr(stmt.subject):
             live.add(node.name)
 
-    elif isinstance(stmt, TpyWhile):
-        # Approximate: collect all reads in body + condition + orelse
+    elif isinstance(stmt, (TpyWhile, TpyForEach)):
+        after = frozenset(live)
         if stmt.orelse:
-            _compute_live_only(stmt.orelse, live)
-        for node in _collect_reads_expr(stmt.condition):
+            _compute_live_only(stmt.orelse, live, ex)
+        header = _loop_header(stmt, frozenset(live), after, ex)
+        live.clear()
+        live |= header
+        for node in _collect_reads_expr(_loop_head(stmt)):
             live.add(node.name)
-        body_live = live.copy()
-        _compute_live_only(stmt.body, body_live)
-        live.update(body_live)
 
-    elif isinstance(stmt, TpyForEach):
-        if stmt.orelse:
-            _compute_live_only(stmt.orelse, live)
-        for node in _collect_reads_expr(stmt.iterable):
-            live.add(node.name)
-        body_live = live.copy()
-        _compute_live_only(stmt.body, body_live)
-        body_live.discard(stmt.var)
-        live.update(body_live)
+    elif isinstance(stmt, (TpyBreak, TpyContinue)):
+        _jump(stmt, live, ex.loops)
 
     elif isinstance(stmt, TpyVarDecl):
         # No hide_alias here (unlike _analyze_stmt) -- conservative for loop
@@ -1010,15 +1068,17 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
 
     elif isinstance(stmt, TpyReturn):
         # Clear before adding reads: the return terminates this path, so only
-        # the return-expression reads are live-before (clearing after would
-        # discard them).
+        # its landing and the return-expression reads are live-before
+        # (clearing after would discard them).
         live.clear()
+        live |= ex.ret
         if stmt.value:
             for node in _collect_reads_expr(stmt.value):
                 live.add(node.name)
 
     elif isinstance(stmt, TpyRaise):
         live.clear()
+        live |= ex.ret
         for expr in stmt.exprs():
             for node in _collect_reads_expr(expr):
                 live.add(node.name)
@@ -1029,7 +1089,7 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
         for item in stmt.items:
             for node in _collect_reads_expr(item.context_expr):
                 live.add(node.name)
-        _compute_live_only(stmt.body, live)
+        _compute_live_only(stmt.body, live, ex)
         for item in reversed(stmt.items):
             if item.target is not None:
                 live.discard(item.target)
@@ -1039,21 +1099,31 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
     elif isinstance(stmt, TpyTry):
         # Conservative over-approximation: any sub-body's reads may be live
         # entering the try (an exception can transfer mid-body to a handler).
+        # Mirrors _analyze_try: the else and the handlers start from the
+        # finally's live-in separately, since a jump ending either one clears
+        # its own set.
+        live |= _finally_seed(stmt, live, ex)
         if stmt.finally_body:
-            _compute_live_only(stmt.finally_body, live)
+            _compute_live_only(stmt.finally_body, live, ex)
+        finally_live = live.copy()
+        ex = _through_finally(stmt, ex, finally_live)
+        handler_union: set[str] = set()
         for h in stmt.handlers:
-            h_live = live.copy()
-            _compute_live_only(h.body, h_live)
+            h_live = finally_live.copy()
+            _compute_live_only(h.body, h_live, ex)
             if h.binding is not None:
                 h_live.discard(h.binding)
-            live.update(h_live)
+            handler_union |= h_live
+        live.clear()
+        live |= finally_live
         if stmt.else_body:
-            _compute_live_only(stmt.else_body, live)
+            _compute_live_only(stmt.else_body, live, ex)
+        live |= handler_union
         # Restored after the body walk for the same reason as in _analyze_try:
         # a terminator in the try body clears the set, which would drop the
         # handler/finally reads that stay live entering the statement.
-        exception_path_live = live.copy()
-        _compute_live_only(stmt.try_body, live)
+        exception_path_live = handler_union | finally_live
+        _compute_live_only(stmt.try_body, live, ex)
         live |= exception_path_live
 
     elif isinstance(stmt, TpyDelVar):
@@ -1091,24 +1161,13 @@ def _kill_unless_read(name: str, read_exprs: list[TpyExpr],
     live.discard(name)
 
 
-def _process_reads(
-    expr: TpyExpr,
-    live: set[str],
-    last_uses: IdentitySet,
-    source_aliases: _Aliases,
-    detached_aliases: set[str],
-) -> None:
+def _process_reads(expr: TpyExpr, live: set[str], w: _Walk) -> None:
     """Collect name reads in an expression, mark last uses, update live set."""
-    _process_reads_multi([expr], live, last_uses, source_aliases, detached_aliases)
+    _process_reads_multi([expr], live, w)
 
 
-def _process_reads_multi(
-    exprs: list[TpyExpr],
-    live: set[str],
-    last_uses: IdentitySet,
-    source_aliases: _Aliases,
-    detached_aliases: set[str],
-) -> None:
+def _process_reads_multi(exprs: list[TpyExpr], live: set[str],
+                         w: _Walk) -> None:
     """Like _process_reads, but over all of one statement's expressions at
     once. The multi-occurrence suppression below must see every read the
     statement emits into a single C++ full-expression -- splitting value and
@@ -1135,8 +1194,9 @@ def _process_reads_multi(
     for node in reads:
         if (name_counts[node.name] == 1
                 and node.name not in live
-                and not _has_live_alias(node.name, live, source_aliases, detached_aliases)):
-            last_uses.add(node)
+                and not _has_live_alias(node.name, live, w.source_aliases,
+                                        w.detached_aliases)):
+            w.last_uses.add(node)
 
     # Add all read names to live set
     for node in reads:

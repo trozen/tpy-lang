@@ -899,21 +899,29 @@ class BorrowTracker:
         last-use liveness itself (with dead-alias precision); every other
         borrower -- call-result borrows recorded from return_borrows_from,
         ``__for_iter`` iterator borrows -- is invisible to liveness, so
-        moving ``storage`` is unsound while one exists.
+        moving ``storage`` is unsound while one exists. The iterator loan
+        expires with its loop, so a consume after the loop (and the loop's
+        own consuming-iteration decision, taken there) is not gated by it.
+
+        Liveness sees a known alias only as a name, not what borrows through
+        it (`ys = xs; for x in ys:` files the loan on `ys`), so the known
+        aliases' own borrowers are asked too.
         """
-        prefix = storage + "."
-        for key, holders in self.loans.items():
-            if key != storage and not key.startswith(prefix):
+        seen: set[str] = set()
+        todo = [storage]
+        while todo:
+            current = todo.pop()
+            if current in seen:
                 continue
-            for b in holders:
-                # The iterator borrow is redundant here: an in-body consume of
-                # the iterable is kept live by the loop fixpoint in liveness,
-                # and a post-loop consume is safe -- gating on it would also
-                # block the loop's own consuming-iteration activation.
-                if b == ITER_BORROWER:
+            seen.add(current)
+            prefix = current + "."
+            for key, holders in self.loans.items():
+                if key != current and not key.startswith(prefix):
                     continue
-                if b not in known_aliases:
-                    return True
+                for b in holders:
+                    if b not in known_aliases:
+                        return True
+                    todo.append(b)
         return False
 
     def effective_storage(self, name: str) -> str:

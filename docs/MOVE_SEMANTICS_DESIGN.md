@@ -330,11 +330,16 @@ call results borrowing an argument (`return_borrows_from`), generator objects
 storing their iterable by reference -- are handled at the consume site
 instead: `compat.is_auto_move_use` consults the BorrowTracker and demotes the
 move to the copy path (retracting the last-use mark so codegen agrees) when
-such a borrower exists. Invariant shared by the three analyses: every
-BorrowTracker borrower name must be either a prescan-map alias (liveness
-models it), a liveness-invisible borrower (gates the move), or an explicitly
-excluded sentinel like `"__for_iter"` -- a new borrower naming convention
-must pick its bucket consciously or it silently widens/narrows the gate.
+such a borrower exists. The for-loop iterator loan (`"__for_iter"`) is one
+of them: it expires with its loop, so it gates a consume of the iterable
+inside the body on every path out, `break` and `return` included. A
+prescan-map alias is modeled by liveness only as a name, so what borrows
+through it (`ys = xs; for x in ys:`, `v = first(ys)`) gates a consume of
+`xs` too. Invariant shared by the three analyses: every BorrowTracker
+borrower name must be either a prescan-map alias (liveness models it) or a
+liveness-invisible borrower (gates the move) -- a new borrower naming
+convention must pick its bucket consciously or it silently widens/narrows
+the gate.
 
 Forward references: a generator's borrow set is signature-derived and
 stamped on its FunctionInfo at registration, so callers analyzed before its

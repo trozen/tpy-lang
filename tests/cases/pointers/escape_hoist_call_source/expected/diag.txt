@@ -11,6 +11,7 @@ main.py:197: warning: 'holder' will not keep the object it was given -- 'b' is r
 main.py:210: warning: 'v' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
 main.py:227: warning: 'holder' will not keep the object it was given -- 'b' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
 main.py:233: warning: 'holder' will not keep the object it was given -- 'c' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
+main.py:231: warning: 'holder' will not keep the object it was given -- 'c' is rebound here and both names share its storage; bind the new value to a name of its own
 main.py:258: warning: 'holder' will not keep the object it was given -- 'p' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
 main.py:258: warning: 'holder' will not keep the object it was given -- 'q' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value
 main.py:269: warning: 'holder' will not keep the object it was given -- 's' is rebound on each iteration and both names share its storage; 's' cannot be copied
