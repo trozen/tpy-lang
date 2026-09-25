@@ -40,7 +40,7 @@ unknown key is rejected with the list of valid ones.
 `~/.config/pytest-hosts/hosts.toml`:
 
     [local]
-    workers = 8                 # local cap for every project ("auto" allowed)
+    workers = 8                 # local cap for every project ("auto" allowed; 0: none)
 
     [hosts.bigbox]
     ssh = "bigbox"              # an ssh alias; user/key/port come from ~/.ssh/config
@@ -83,6 +83,12 @@ Rules:
   `unreachable` policy says: an explicit request outranks a degrade.
   Combining it with `--hosts-local` or `PYTEST_HOSTS=0` is a usage error
   too, since the two ask for opposite things.
+- A local count of 0 (`[local] workers` or a project's `local`) keeps
+  every test of a distributed run on the hosts. A local-only run with
+  it (`--hosts-local`, `PYTEST_HOSTS=0`, a project with no hosts) runs
+  in the controller process, as `-n 0` would; when every host drops out
+  under `unreachable = "local"`, the run is a usage error rather than
+  a run of nothing.
 - `--dist` defaults to `load` and is left alone when given.
   `--maxprocesses` caps the local share only; per-host counts come from
   the config.

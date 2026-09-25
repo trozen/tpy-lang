@@ -32,7 +32,7 @@ HOSTS_REFERENCE = """\
 # layered on top of this file for one-off experiments.
 
 [local]
-workers = "auto"            # local cap for every project; a number or "auto"
+workers = "auto"            # local cap for every project; a number or "auto"; 0: none
 
 [hosts.bigbox]
 ssh = "bigbox"              # an ssh alias; user/key/port come from ~/.ssh/config
@@ -169,11 +169,14 @@ def load_hosts_file(hosts_path: Path, checkout: Path | None = None) -> HostsFile
     return parse_hosts(raw, source=" + ".join(str(p) for p, _ in layers))
 
 
-def _workers(value: Any, where: str, *, allow_auto: bool) -> Workers:
-    if allow_auto and value == "auto":
+def _workers(value: Any, where: str, *, local: bool) -> Workers:
+    """A host's count is at least 1 (a host with no workers is a host not
+    selected); the local count may be 0, which keeps every test off this
+    machine."""
+    if local and value == "auto":
         return "auto"
-    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
-        expected = 'a positive integer or "auto"' if allow_auto else "a positive integer"
+    if isinstance(value, bool) or not isinstance(value, int) or value < (0 if local else 1):
+        expected = '0, a positive integer or "auto"' if local else "a positive integer"
         raise ConfigError(f"{where}: workers must be {expected}, got {value!r}")
     return value
 
@@ -218,7 +221,7 @@ def _host(name: str, table: Any, where: str) -> HostConfig:
     return HostConfig(
         name=name,
         ssh=ssh,
-        workers=_workers(table["workers"], where, allow_auto=False),
+        workers=_workers(table["workers"], where, local=False),
         slots=slots,
         root=_str(table, "root", where, "~/.pytest-hosts") or "~/.pytest-hosts",
         unreachable=unreachable or "error",
@@ -238,7 +241,7 @@ def parse_hosts(raw: dict[str, Any], source: str = HOSTS_FILE_NAME) -> HostsFile
     if not isinstance(local, dict):
         raise ConfigError(f"{source}: [local] must be a table")
     _known(local, LOCAL_KEYS, f"{source}: [local]")
-    local_workers = _workers(local.get("workers", "auto"), f"{source}: [local]", allow_auto=True)
+    local_workers = _workers(local.get("workers", "auto"), f"{source}: [local]", local=True)
 
     hosts_raw = raw.get("hosts", {})
     if not isinstance(hosts_raw, dict):
@@ -272,9 +275,9 @@ def parse_hosts(raw: dict[str, Any], source: str = HOSTS_FILE_NAME) -> HostsFile
                 raise ConfigError(f"{where}: hosts.{name} must be a table, got {override!r}")
             _known(override, PROJECT_HOST_KEYS, f"{where}: hosts.{name}")
             if "workers" in override:
-                _workers(override["workers"], f"{where}: hosts.{name}", allow_auto=False)
+                _workers(override["workers"], f"{where}: hosts.{name}", local=False)
         if "local" in ptable:
-            _workers(ptable["local"], f"{where}: local", allow_auto=True)
+            _workers(ptable["local"], f"{where}: local", local=True)
     return HostsFile(local_workers=local_workers, hosts=hosts, projects=projects)
 
 

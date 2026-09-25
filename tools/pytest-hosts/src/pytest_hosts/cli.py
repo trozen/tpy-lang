@@ -168,7 +168,8 @@ def overview(start: Path) -> int:
         elif resolved is None:
             print(f"  runs locally: no [projects.{project.name}] entry in the hosts file")
         else:
-            print(f"  local workers: {resolved.local}")
+            print(f"  local workers: {resolved.local}"
+                  + (" (every test runs on the hosts)" if resolved.local == 0 else ""))
             for host in resolved.hosts:
                 extra = f", unreachable -> {host.unreachable}"
                 if host.path_prepend:

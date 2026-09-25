@@ -110,6 +110,22 @@ def test_project_without_hosts_says_so(project):
     result.stdout.fnmatch_lines(["hosts| local only ([[]projects.demo[]] selects no hosts): 1 worker"])
 
 
+def test_local_zero_runs_a_local_only_session_in_process(project):
+    hosts_file(project, """
+        [hosts.x]
+        ssh = "x"
+        workers = 1
+        [projects.demo]
+        local = 0
+        hosts.x = {}
+    """)
+    result = run(project, "--hosts-local")
+    result.assert_outcomes(passed=1)
+    assert not re.search(r"\d+ workers? \[", result.stdout.str())  # no xdist session
+    result.stdout.fnmatch_lines(
+        ["hosts| local only (--hosts-local): no workers (local = 0), running in this process"])
+
+
 def test_both_local_switches_contradict(project):
     hosts_file(project, """
         [hosts.x]
@@ -431,6 +447,25 @@ def test_hosts_only_runs_nothing_locally(remote_project):
     assert workers_line(result, 2)
     assert not [line for line in result.outlines if line.startswith("hosts| local")]
     assert not list(checkout.glob("where-*.txt"))  # no local worker ran
+
+
+@needs_tools
+def test_local_zero_runs_everything_on_the_hosts(remote_project):
+    pytester, checkout, root = remote_project
+    path = pytester.path / ".config" / "pytest-hosts" / "hosts.toml"
+    path.write_text(path.read_text().replace("local = 1", "local = 0"))
+    result = run(pytester)
+    result.assert_outcomes(passed=4)
+    assert workers_line(result, 2)
+    assert not [line for line in result.outlines if line.startswith("hosts| local")]
+    assert not list(checkout.glob("where-*.txt"))  # no local worker ran
+
+    # with the only host dropped under its "local" policy nothing is left to run
+    path.write_text(path.read_text().replace('ssh = "box"', 'ssh = "box"\nunreachable = "local"'))
+    (pytester.path / "bin" / "ssh").write_text("#!/usr/bin/env bash\nexit 255\n")
+    result = run(pytester)
+    assert result.ret == pytest.ExitCode.USAGE_ERROR
+    result.stderr.fnmatch_lines(["*no host is usable and no local workers are configured*"])
 
 
 @needs_tools

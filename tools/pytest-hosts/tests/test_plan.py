@@ -147,6 +147,15 @@ def test_local_only_uses_config_count_and_says_why():
         decide(local_only="--hosts-local", only="big")
 
 
+def test_local_zero_distributes_to_hosts_only():
+    hf = hosts_file(demo={"local": 0, "hosts": {"big": {}}})
+    mode = decide(hosts_file=hf)
+    assert isinstance(mode, plan.Distributed)
+    assert mode.local == 0 and [r.host.name for r in mode.remotes] == ["big"]
+    # a local-only run keeps the 0; the plugin runs it in the controller process
+    assert decide(hosts_file=hf, local_only="--hosts-local") == plan.LocalOnly(0, reason="--hosts-local")
+
+
 def test_only_drops_local_and_other_hosts():
     mode = decide(only="small")
     assert mode.local == 0

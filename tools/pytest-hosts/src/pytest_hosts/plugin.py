@@ -157,8 +157,9 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     if isinstance(mode, LocalOnly):
         # The plugin replaced the addopts -n, so say so: a silent run looks
         # like plain pytest with a different worker count.
+        n = _worker_count(config, mode.workers)
         report(f"hosts| local only ({mode.reason}): "
-               f"{_workers(_worker_count(config, mode.workers))}")
+               + (_workers(n) if n else "no workers (local = 0), running in this process"))
         return
     if not isinstance(mode, Distributed):
         return

@@ -112,6 +112,8 @@ def test_checkout_override_alone_is_a_config(tmp_path):
     ('[hosts.a]\nssh = "a"\nworkers = 1\n[projects.p]\nhosts = ["a"]', "table keyed by host name"),
     ('[hosts.a]\nssh = "a"\nworkers = 1\n[projects.p]\nhosts.a = { slots = 3 }', "unknown key 'slots' (valid: workers)"),
     ('[projects.p]\nlocal = "many"', "positive integer"),
+    ('[projects.p]\nlocal = -1', "positive integer"),
+    ('[hosts.a]\nssh = "a"\nworkers = 1\n[projects.p]\nhosts.a = { workers = 0 }', "positive integer"),
     ('[wat]\nx = 1', "unknown top-level table 'wat' (valid: local, hosts, projects)"),
     ('[hosts.a\n', "hosts.toml:"),
 ])
@@ -124,6 +126,24 @@ def test_rejects(tmp_path, text, message):
 def test_local_workers_default_auto(tmp_path):
     hf = cfg.load_hosts_file(write(tmp_path / "hosts.toml", "[hosts]\n"))
     assert hf.local_workers == "auto"
+
+
+def test_local_workers_may_be_zero(tmp_path):
+    # the local count alone may be 0; a host's stays at least 1 (test_rejects)
+    hf = cfg.load_hosts_file(write(tmp_path / "hosts.toml", """
+        [local]
+        workers = 0
+        [hosts.a]
+        ssh = "a"
+        workers = 1
+        [projects.p]
+        hosts.a = {}
+        [projects.q]
+        local = 0
+    """))
+    assert hf.local_workers == 0
+    assert cfg.project_hosts(hf, "p").local == 0
+    assert cfg.project_hosts(hf, "q").local == 0
 
 
 def test_find_project_walks_up(tmp_path):
