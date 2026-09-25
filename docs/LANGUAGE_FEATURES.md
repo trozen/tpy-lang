@@ -8951,8 +8951,17 @@ checker authority uses them in production yet. The internal evidence API connect
 and exact THIR placements to the ordinary MIR builder's backing places,
 checks scope/replacement/payload ends and explicit return escapes, and reports
 Certified, Conflict or Not covered. This does not close existing language
-safety gaps. Select-slot and inline full-expression backing, mutable temporary
-access and unproven evaluation order remain uncovered; callers owning backing
+safety gaps. Covered hook-free scalar-field constructor temporaries also map
+to their existing full-expression storage roots in this internal proof
+([plan](MIR_FULL_EXPRESSION_EVIDENCE_PLAN.md)). The shared THIR plan also
+records select-slot declaration scopes and conditional initialization,
+preserving existing emission ([select plan](MIR_SELECT_STORAGE_PLAN.md)).
+The bounded mixed plain-record ternary consumer connects hook-free movable
+scalar-field constructors to the same evidence. Safe complete bodies can
+certify; the known branch-local select alias escape is an internal Conflict
+with no coverage gaps. This does not diagnose or fix that accepted source
+defect. Repeated while-head emplacement, record and/or, source wrapper sinks,
+mutable argument-temporary access and unproven evaluation order remain uncovered; callers owning backing
 stay opaque as callees.
 The [borrow-operation proof](MIR_BORROW_OBLIGATION_PLAN.md) also records
 supported plain-record alias bindings, reseats and eligible free-function

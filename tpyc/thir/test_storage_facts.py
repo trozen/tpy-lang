@@ -119,13 +119,29 @@ def test_missing_plan_keeps_backing_and_obligation(functions: dict[str, th.THIRF
     assert obligation.backings == (backing.index,)
 
 
-def test_select_slot_is_an_explicit_uncovered_sibling(functions: dict[str, th.THIRFunction]) -> None:
+def test_select_slot_publishes_placement_without_claiming_mir_coverage(functions: dict[str, th.THIRFunction]) -> None:
     fn = functions["select"]
     backing, = fn.storage_facts.backings
     assert backing.kind is THIRBackingKind.SELECT_SLOT and isinstance(backing.node, th.THIRSlotEmplace)
-    assert backing.placement is None and backing.uncovered == "select slot placement is not planned"
+    placement, = fn.temp_plan.placements
+    assert backing.placement is placement and backing.uncovered is None
+    assert placement.node is placement.initialization is backing.node
+    assert placement.declaration is backing.holder and placement.scope == 0
     obligation, = fn.storage_facts.obligations
     assert isinstance(obligation.value, th.THIRIfExpr) and obligation.backings == (backing.index,)
+
+
+def test_select_facts_reject_stale_or_pruned_placement(functions: dict[str, th.THIRFunction]) -> None:
+    fn = functions["select"]
+    unplanned = collect_storage_facts(fn.body, None)
+    backing, = unplanned.backings
+    assert backing.placement is None and backing.uncovered == "select slot storage has no temporary plan"
+    with pytest.raises(ValueError, match="invalid or stale"):
+        validate_storage_facts(fn.body, None, fn.storage_facts)
+    with pytest.raises(ValueError, match="invalid or stale"):
+        validate_storage_facts(fn.body, fn.temp_plan, unplanned)
+    with pytest.raises(ValueError, match="invalid or stale"):
+        validate_storage_facts(fn.body, fn.temp_plan, replace(fn.storage_facts, backings=()))
 
 
 def test_inline_storage_is_bounded_by_its_full_expression(functions: dict[str, th.THIRFunction]) -> None:

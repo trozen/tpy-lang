@@ -20,6 +20,7 @@ from .nodes import (
 )
 from .region_flow import MIRRegionFlow
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
+from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
 from .testutil import execute
 from .validate import MIRValidationError, validate_function
 
@@ -206,6 +207,12 @@ def test_reference_kept_after_expression_is_reported(definitions: MIRDefinitions
     conflicts = inspect_scope_lifetimes(fn).conflicts
     assert len(conflicts) == 1 and conflicts[0].ended == MIRPlace(owned.id)
     assert conflicts[0].holder == path
+    evidence = certify_storage_origins(fn, frozenset((owned.id,)), definitions)
+    assert evidence.verdict is MIRStorageVerdict.CONFLICT
+    conflict, = evidence.conflicts
+    assert conflict.kind is MIRStorageConflictKind.SCOPE_END
+    assert conflict.origin == MIRPlace(owned.id) and conflict.holder == path
+    assert not evidence.certifies(fn, frozenset((owned.id,)))
 
 
 @pytest.mark.parametrize("change", ["missing", "readonly", "type", "brace", "form"])

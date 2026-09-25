@@ -7,18 +7,23 @@ import pytest
 
 from ..thir import nodes as th
 from ..identity_map import IdentityMap
-from ..thir.storage_facts import collect_storage_facts
+from ..thir.storage_facts import THIRBackingKind, collect_storage_facts
 from ..thir.temp_plan import prepare_temporaries
 from ..typesys import BOOL
 from . import lower as lowering
+from .definitions import MIRDefinitions
 from .dependencies import MIRReferent
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRBodyKind, MIRConstruct, MIRGoto,
-    MIRPlace, MIRReturn, MIRTupleIndex, MIRUnionPayload, MIRValueKind,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRConstruct, MIRGoto,
+    MIRPlace, MIRRecordWriteMode, MIRRegionId, MIRReturn, MIRTupleIndex, MIRUnionPayload, MIRValueKind,
 )
+from .region_flow import MIRRegionFlow
+from .scope_lifetime import analyze_scope_ends
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import MIRBorrowEvidence, MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
 from .test_borrowed_argument_storage import SOURCE, Artifacts, _compile_workspace, _thir
+from .test_expression_temporary_lower import SOURCE as EXPRESSION_SOURCE
+from .testutil import Reference, execute
 from .validate import MIRRepeatedInitializationError, MIRValidationError, validate_function
 
 
@@ -37,6 +42,15 @@ def select(flag: bool, owner: Cell) -> int32:
 
 def inline(value: int32) -> int32:
     return Cell(value).value
+
+def composed(owner: Cell, value: int32) -> bool:
+    named = observe(Cell(value))
+    local = Cell(value)
+    local_alias = local
+    parameter_alias = owner
+    scalar = Cell(named.value).value
+    local.value = 7
+    return scalar == parameter_alias.value and local_alias.value == 7
 
 def stable(owner: Cell) -> int32:
     saved = owner
@@ -134,6 +148,14 @@ def artifacts() -> Artifacts:
     return _compile_workspace(SOURCE + EXTRA)
 
 
+@pytest.fixture(scope="module")
+def expression_artifacts() -> Artifacts:
+    return _compile_workspace(EXPRESSION_SOURCE + '''
+def paired() -> bool:
+    return Cell(1).value < Cell(2).value
+''')
+
+
 def _request(artifacts: Artifacts, fn: th.THIRFunction | th.THIRConstructor) -> MIRStorageRequest:
     kind = (MIRBodyKind.CONSTRUCTOR if isinstance(fn, th.THIRConstructor) else
             MIRBodyKind.METHOD if fn.receiver is not None else MIRBodyKind.FREE_FUNCTION)
@@ -141,7 +163,7 @@ def _request(artifacts: Artifacts, fn: th.THIRFunction | th.THIRConstructor) -> 
     return MIRStorageRequest(fn, MIRBodyId("main", name), kind, artifacts[2], artifacts[1].summaries)
 
 
-@pytest.mark.parametrize("name", ["eager", "method", "Caller", "loop", "ranges"])
+@pytest.mark.parametrize("name", ["eager", "method", "Caller", "loop", "ranges", "select"])
 def test_source_backings_use_actual_builder_places(artifacts: Artifacts, name: str) -> None:
     fn = (next(c for c in artifacts[0].thir_constructors.values() if c.record_name == name)
           if name == "Caller" else _thir(artifacts, name))
@@ -158,14 +180,150 @@ def test_source_backings_use_actual_builder_places(artifacts: Artifacts, name: s
 
 @pytest.mark.parametrize("name,reason", [
     ("printed", "argument storage has no temporary plan"),
-    ("select", "select slot placement is not planned"),
-    ("inline", "full-expression storage is not connected"),
 ])
 def test_unmodeled_storage_remains_an_obligation(artifacts: Artifacts, name: str, reason: str) -> None:
     result = certify_thir_storage(_request(artifacts, _thir(artifacts, name)))
     assert result.requires_proof is True
     assert result.verdict is MIRStorageVerdict.NOT_COVERED
     assert any(reason in gap.reason for gap in result.gaps)
+
+
+@pytest.mark.parametrize("name,count", [
+    ("local", 4), ("lazy", 2), ("lazy_bool", 1), ("repeat", 1), ("branch", 3),
+    ("loop_body", 1), ("method", 2), ("Runner", 1), ("paired", 2),
+])
+def test_full_expression_backings_keep_their_actual_region(
+        expression_artifacts: Artifacts, name: str, count: int) -> None:
+    source = (next(c for c in expression_artifacts[0].thir_constructors.values() if c.record_name == name)
+              if name == "Runner" else _thir(expression_artifacts, name))
+    request = _request(expression_artifacts, source)
+    result = certify_thir_storage(request)
+    assert result.verdict is MIRStorageVerdict.CERTIFIED, (result.gaps, result.evidence)
+    assert result.certifies(request, source, result.function)
+    assert result.requires_proof and len(result.backings) == count
+    assert result.evidence.required == frozenset(p.root for p in result.backings.values())
+    slots = {s.id: s for s in result.function.slots}
+    writes = {s.target: (b, s) for b in result.function.blocks for s in b.statements
+              if isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct)}
+    ends = analyze_scope_ends(result.function)
+    for backing in source.storage_facts.backings:
+        assert backing.kind is THIRBackingKind.FULL_EXPRESSION and backing.placement is None
+        place = result.backings[backing.node]
+        slot = slots[place.root]
+        block, write = writes[place]
+        assert not place.projections and slot.value_kind is MIRValueKind.RECORD_STORAGE
+        assert isinstance(slot.storage_duration, MIRRegionId) and slot.storage_duration.index != 0
+        assert slot.storage_duration == slot.residence == block.region
+        assert write.storage_write.mode is MIRRecordWriteMode.INITIALIZE_REGION
+        assert write.loc == backing.node.loc
+        assert any(event.storage == place for events in ends.ends.values() for event in events)
+        assert replace(backing.node) not in result.backings
+        with pytest.raises(TypeError):
+            result.backings[backing.node] = place
+    if name in ("lazy", "paired"):
+        assert len({slots[p.root].storage_duration for p in result.backings.values()}) == 1
+        events, = ends.ends.values()
+        assert {event.storage for event in events} == set(result.backings.values())
+    if name == "repeat":
+        place, = result.backings.values()
+        assert any(place.root in edge.reset for edge in MIRRegionFlow(result.function).edges.values()
+                   if edge.entered)
+    if name == "Runner":
+        heap = {}
+        execute(result.function, Reference(0), 11, heap=heap)
+        assert next(iter(heap[0].values())) == 11
+
+
+@pytest.mark.parametrize("name,args,expected,constructions", [
+    ("local", (2,), 8, 4), ("lazy", (True,), 3, 1), ("lazy", (False,), 7, 1),
+    ("lazy_bool", (True,), True, 0), ("lazy_bool", (False,), True, 1),
+    ("paired", (), True, 2), ("repeat", (1,), 2, 2), ("repeat", (0,), 0, 1),
+])
+def test_certified_expression_lifetimes_preserve_evaluation(
+        expression_artifacts: Artifacts, name: str, args: tuple, expected: int | bool,
+        constructions: int) -> None:
+    source = _thir(expression_artifacts, name)
+    result = certify_thir_storage(_request(expression_artifacts, source))
+    assert result.verdict is MIRStorageVerdict.CERTIFIED
+    heap = {}
+    assert execute(result.function, *args, heap=heap) == expected
+    assert len(heap) == constructions
+
+
+def test_argument_expression_and_borrow_demands_compose(artifacts: Artifacts) -> None:
+    source = _thir(artifacts, "composed")
+    request = _request(artifacts, source)
+    result = certify_thir_storage(request)
+    assert result.verdict is MIRStorageVerdict.CERTIFIED, (result.gaps, result.evidence)
+    assert result.certifies(request, source, result.function)
+    evidence = result.evidence
+    assert isinstance(evidence, MIRBorrowEvidence)
+    assert {b.kind for b in source.storage_facts.backings} == {
+        THIRBackingKind.ARGUMENT, THIRBackingKind.FULL_EXPRESSION,
+    }
+    assert len(result.backings) == len(evidence.explicit_roots) == 2
+    assert evidence.explicit_roots == frozenset(p.root for p in result.backings.values())
+    holder, = (s.id for s in result.function.slots if s.name == "local")
+    local, = (s.value.source.root for b in result.function.blocks for s in b.statements
+              if isinstance(s, MIRAssign) and s.target == MIRPlace(holder)
+              and isinstance(s.value, MIRBorrow))
+    assert evidence.required == evidence.explicit_roots | {local}
+    assert evidence.operations == frozenset(p for o in source.storage_facts.obligations
+                                           for p in result.operations[o.sink])
+    assert len(evidence.operations) == 3
+    origins = frozenset(origin for group in evidence.origins.values() for origin in group)
+    assert any(origin.external for origin in origins)
+    assert {origin.place.root for origin in origins if not origin.external} == {
+        local, *(result.backings[b.node].root for b in source.storage_facts.backings
+                 if b.kind is THIRBackingKind.ARGUMENT),
+    }
+    assert not evidence.certifies_operations(result.function, evidence.operations,
+                                             evidence.explicit_roots - {next(iter(evidence.explicit_roots))})
+
+
+@pytest.mark.parametrize("mutation", ["missing", "pruned"])
+def test_full_expression_missing_or_pruned_backing_cannot_certify(
+        expression_artifacts: Artifacts, mutation: str, monkeypatch) -> None:
+    source = _thir(expression_artifacts, "paired")
+    if mutation == "pruned":
+        source = _with_body(source, (replace(source.body[0], value=th.THIRLiteral(BOOL, True)), *source.body))
+    request = _request(expression_artifacts, source)
+    if mutation == "missing":
+        lowered = lowering.lower_function_storage(source, request.body, kind=request.kind,
+                                                  definitions=request.definitions, summaries=request.summaries)
+        first, second = source.storage_facts.backings
+        mapping = MappingProxyType(IdentityMap(((first.node, lowered.backings[first.node]),)))
+        monkeypatch.setattr("tpyc.mir.storage_adapter.lower_function_storage",
+                            lambda *args, **kwargs: replace(lowered, backings=mapping))
+    result = certify_thir_storage(request)
+    assert result.requires_proof and result.verdict is MIRStorageVerdict.NOT_COVERED
+    assert not result.certifies(request, source, result.function)
+    assert any("storage has no MIR backing correspondence" in gap.reason for gap in result.gaps)
+    if mutation == "missing":
+        assert result.evidence.verdict is MIRStorageVerdict.CERTIFIED
+        assert second.node not in result.backings
+
+
+def test_pruned_expression_root_does_not_match_a_live_backing(expression_artifacts: Artifacts) -> None:
+    source = _thir(expression_artifacts, "lazy")
+    declaration, final = source.body[1:]
+    assert isinstance(declaration.init, th.THIRIfExpr)
+    declaration = replace(declaration, init=replace(declaration.init, cond=th.THIRLiteral(BOOL, True)))
+    source = _with_body(source, (source.body[0], declaration, final))
+    result = certify_thir_storage(_request(expression_artifacts, source))
+    assert len(result.backings) == 2
+    assert len(result.evidence.required) == 1
+    assert result.evidence.verdict is MIRStorageVerdict.CERTIFIED
+    assert result.verdict is MIRStorageVerdict.NOT_COVERED
+    assert any("storage is absent from the reachable MIR body" in gap.reason for gap in result.gaps)
+
+
+def test_full_expression_needs_verified_record_definitions(artifacts: Artifacts) -> None:
+    source = _thir(artifacts, "inline")
+    request = replace(_request(artifacts, source), definitions=MIRDefinitions())
+    result = certify_thir_storage(request)
+    assert result.verdict is MIRStorageVerdict.NOT_COVERED
+    assert result.function is None and result.evidence is None
 
 
 def test_no_obligation_and_unpublished_facts_are_distinct(artifacts: Artifacts) -> None:
@@ -179,19 +337,21 @@ def test_no_obligation_and_unpublished_facts_are_distinct(artifacts: Artifacts) 
     assert any("have not been published" in g.reason for g in result.gaps)
 
 
-def test_certificate_never_crosses_request_body_or_mir_identity(artifacts: Artifacts) -> None:
-    fn = _thir(artifacts, "eager")
+@pytest.mark.parametrize("name", ["eager", "inline"])
+def test_certificate_never_crosses_request_body_or_mir_identity(artifacts: Artifacts, name: str) -> None:
+    fn = _thir(artifacts, name)
     request = _request(artifacts, fn)
     result = certify_thir_storage(request)
     assert result.verdict is MIRStorageVerdict.CERTIFIED
     assert not result.certifies(_request(artifacts, fn), fn, result.function)
     assert not result.certifies(request, replace(fn), result.function)
     assert not result.certifies(request, fn, replace(result.function))
-    fresh_plan = prepare_temporaries(fn.body)
-    assert fresh_plan is not fn.temp_plan
-    with pytest.raises(ValueError, match="stale storage facts"):
-        certify_thir_storage(_request(artifacts, replace(fn, temp_plan=fresh_plan)))
-    # Equal-looking THIR arguments must not hit the identity-keyed builder map.
+    if fn.temp_plan is not None:
+        fresh_plan = prepare_temporaries(fn.body)
+        assert fresh_plan is not fn.temp_plan
+        with pytest.raises(ValueError, match="stale storage facts"):
+            certify_thir_storage(_request(artifacts, replace(fn, temp_plan=fresh_plan)))
+    # Equal-looking THIR producers must not hit the identity-keyed builder map.
     backing, = fn.storage_facts.backings
     assert replace(backing.node) not in result.backings
 
@@ -261,8 +421,9 @@ def test_nested_tuple_branch_inventory_is_not_lost(artifacts: Artifacts) -> None
     assert result.requires_proof
 
 
-def test_missing_backing_facts_are_an_invariant_error(artifacts: Artifacts) -> None:
-    fn = _thir(artifacts, "eager")
+@pytest.mark.parametrize("name", ["eager", "inline"])
+def test_missing_backing_facts_are_an_invariant_error(artifacts: Artifacts, name: str) -> None:
+    fn = _thir(artifacts, name)
     stale = replace(fn.storage_facts, backings=())
     with pytest.raises(ValueError, match="stale storage facts"):
         certify_thir_storage(_request(artifacts, replace(fn, storage_facts=stale)))

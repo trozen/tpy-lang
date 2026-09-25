@@ -72,8 +72,8 @@ that a borrowed holder stays within the backing's lifetime.
 
 Lowered functions, constructors and module-init bodies publish
 `THIRStorageFacts` independently of whether their `THIRTempPlan` exists.
-Argument backing links to its plan placement or carries
-an uncovered reason; select slots are explicit uncovered siblings; inline
+Argument and select backing link to their plan placements or carry
+an uncovered reason; inline
 full-expression constructors are bounded by their full expression. Borrowed
 local and `PTR_ADDR` sinks record obligations over the backings in their
 value. No holder names, C++ text or source offsets identify storage.
@@ -92,7 +92,12 @@ plan to the ordinary builder's actual storage roots and composes the internal
 lifetime evidence. Its three verdicts are Certified, Conflict and Not covered.
 The request captures the exact THIR function/constructor, definitions and
 summary inputs; a copied body or a different request cannot reuse evidence.
-Select-slot and inline full-expression producers stay explicit coverage gaps.
+Supported inline full-expression constructors now connect through the same
+backing map; see `MIR_FULL_EXPRESSION_EVIDENCE_PLAN.md` for that extension.
+The later `MIR_SELECT_STORAGE_PLAN.md` also connects mixed plain-record ternary
+slots through this plan and backing map, requiring hook-free movable
+constructors and stable scalar operands. Repeated condition emplacement,
+record and/or and source wrapper sinks remain outside that consumer.
 This API changes neither source acceptance nor generated C++.
 Ordinary MIR coverage only establishes a complete representable body; it is
 not a lifetime certificate. Workspace analysis and `--dump-mir` retain that

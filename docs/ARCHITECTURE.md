@@ -188,9 +188,12 @@ source admission and the separate lifetime proof.
 Every lowered function, constructor and module-init body publishes
 `THIRStorageFacts` (`thir/storage_facts.py`) beside its optional temporary plan
 (`MIR_STORAGE_ORIGIN_DESIGN.md`). Each backing names one materialized storage
-producer by THIR identity: a `THIRArgTemp` linked to its plan placement, a
-`THIRSlotEmplace` select slot, or an inline full-expression constructor with
-its enclosing full expression. Missing argument placement carries an explicit
+producer by THIR identity: a `THIRArgTemp` or `THIRSlotEmplace` linked to its
+plan placement, or an inline full-expression constructor with its enclosing
+full expression. The shared plan preserves separate anonymous argument and
+named select declaration channels: while-head select slots remain in the
+parent scope even when argument temporaries occupy a rewritten iteration.
+Select initialization stays at its conditional operand. Missing placement carries an explicit
 uncovered reason; full-expression backing needs no temporary-plan placement.
 `storage_facts is None` means unpublished.
 Supported plain-record local bindings and reseats record obligations even
@@ -213,7 +216,19 @@ reached local storage to the whole-body checks; parameter-only operations
 need neither new backing nor a temporary plan. Storage-only evidence retains
 its separate nonempty-root contract. Scope ends, replacement, payload ends and explicit returned origins
 must all be supported and free of conflicts. Unknown origins or engagement
-withhold certification, as do select-slot and inline full-expression backing.
+withhold certification. Covered inline
+constructor temporaries map to their actual MIR roots and use the existing
+full-expression lifetime; this correspondence needs no named-argument plan.
+Mixed plain-record ternaries use planned optional backing, initialized empty
+at declaration and filled at the exact selected operand with `OPTIONAL_ASSIGN`.
+They share the existing borrowed-expression CFG and lifetime evidence, with
+hook-free movable bool/int32-field constructors and stable scalar operands.
+Readonly holders retain readonly access to mutable backing. This consumer
+allows one emplacement per declaration activation, including fresh loop-body
+activations; repeated while-head emplacement and record and/or remain
+uncovered. The known plain branch-local alias escape is an internal Conflict
+with no gaps. Internal tuple/Optional/union witnesses retain the actual select
+root; source wrapper sinks remain unplanned (`MIR_SELECT_STORAGE_PLAN.md`).
 Bodies with neither backing nor obligations are distinguished from missing
 facts and unknown-origin obligations; none receives an empty proof. Unmapped
 or pruned obligations stay uncovered. Production emission does not call

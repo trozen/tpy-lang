@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from ..thir import nodes as th
+from ..thir.storage_facts import collect_storage_facts
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import _iter_children
 from ..typesys import INT32
@@ -14,6 +15,8 @@ from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, MIRValueKind
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
+from .storage_adapter import MIRStorageRequest, certify_thir_storage
+from .storage_evidence import MIRStorageVerdict
 from .testutil import Reference, execute
 
 
@@ -153,6 +156,11 @@ def test_source_facts_and_verified_constructor_are_required(artifacts: Artifacts
     assert result.reason == {"no_field": "missing field identity",
                              "no_storage": "missing or invalid full-expression storage",
                              "effectful_constructor": "constructor body effects"}[mutation]
+    fn = replace(fn, storage_facts=collect_storage_facts(fn.body, fn.temp_plan))
+    bound = certify_thir_storage(MIRStorageRequest(fn, result.body, MIRBodyKind.FREE_FUNCTION,
+                                                  definitions, {}))
+    assert bound.verdict is MIRStorageVerdict.NOT_COVERED
+    assert any(g.reason == result.reason for g in bound.gaps)
 
 
 @pytest.mark.parametrize("body,reason", [
@@ -180,6 +188,10 @@ def boundary(n: int32) -> int32:
         assert all(s.value_kind is not MIRValueKind.RECORD_STORAGE for s in result.slots)
     else:
         assert isinstance(result, MIRNotCovered) and result.reason == reason
+        bound = certify_thir_storage(MIRStorageRequest(fn, result.body, MIRBodyKind.FREE_FUNCTION,
+                                                      definitions, {}))
+        assert bound.verdict is MIRStorageVerdict.NOT_COVERED
+        assert any(g.reason == reason for g in bound.gaps)
 
 
 @pytest.mark.parametrize("qualified", [False, True])
@@ -242,6 +254,7 @@ def generic() -> int32:
     compiler, modules = _compile(source)
     (hpp, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
     assert hpp and cpp
+    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
     for fn in ctx.thir_functions.values():
         pending = list(fn.body)
         while pending:
@@ -249,6 +262,9 @@ def generic() -> int32:
             if isinstance(node, th.THIRCtorCall):
                 assert node.full_expression_storage is None
             pending.extend(_iter_children(node))
+        bound = certify_thir_storage(MIRStorageRequest(fn, MIRBodyId("broader", fn.name),
+                                                      MIRBodyKind.FREE_FUNCTION, definitions, {}))
+        assert bound.verdict is MIRStorageVerdict.NOT_COVERED
 
 
 @pytest.mark.parametrize("body", ["value = Cell(1).value\n    return value",

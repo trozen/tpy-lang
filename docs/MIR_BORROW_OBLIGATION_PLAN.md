@@ -147,8 +147,15 @@ correspondence or analysis withholds certification conservatively.
 Temporary-plan presence is required for recorded argument backing that needs
 it, not as a blanket prerequisite for parameter-only operations. Ordinary
 local storage retains its existing MIR placement/duration checks. Select-slot
-and full-expression backing remain explicit gaps; removing the blanket plan
-check must not clear those gaps.
+and full-expression backing remained explicit gaps in this increment;
+removing the blanket plan check did not clear them. The later
+`MIR_FULL_EXPRESSION_EVIDENCE_PLAN.md` connects supported full-expression
+constructors through their exact builder roots. `MIR_SELECT_STORAGE_PLAN.md`
+subsequently connects bounded mixed plain-record ternaries through shared
+placement and the same operation evidence. Their plain branch-local alias
+escape is an internal Conflict with no gaps; repeated condition emplacement,
+record and/or and source wrapper sinks remain uncovered. Neither extension
+changes production authority.
 
 Retain exact source, request, facts, plan, definitions, summary snapshot and
 MIR identity checks. A cloned body, missing origin on a feasible path, changed

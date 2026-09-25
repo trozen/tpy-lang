@@ -189,6 +189,7 @@ class TempSink:
         self.scope = 0
         self.statement: THIRStmt | None = None
         self._planned: TempQueue[THIRTempPlacement] = TempQueue()
+        self._named: list[THIRTempPlacement] = []
         self._declared: list[THIRTempPlacement] = []
         self._initialized: set[int] = set()
 
@@ -203,9 +204,14 @@ class TempSink:
     def finish_plan(self) -> None:
         if self.plan is not None:
             assert len(self._declared) == len(self.plan.placements)
-            assert all(a is b for a, b in zip(self._declared, self.plan.placements))
+            # A rewritten while drains arguments before its parent-scope names.
+            for kind in (THIRArgTemp, THIRSlotEmplace):
+                actual = [p for p in self._declared if isinstance(p.node, kind)]
+                expected = [p for p in self.plan.placements if isinstance(p.node, kind)]
+                assert len(actual) == len(expected)
+                assert all(a is b for a, b in zip(actual, expected))
             assert len(self._initialized) == len(self.plan.placements)
-            assert not self._planned.pending and self.checkpoint() == (0, 0)
+            assert not self._planned.pending and not self._named and self.checkpoint() == (0, 0)
             self.plan = None
 
     def enter_scope(self, owner: object, role: str) -> None:
@@ -214,12 +220,20 @@ class TempSink:
             assert index is not None and self.plan.scopes[index].parent == self.scope
             self.scope = index
 
-    def _check_flush(self, start: int = 0) -> None:
+    def _check_flush(self, start: int = 0, *, named: bool = True) -> None:
         if self.plan is None:
             return
-        assert self.checkpoint() == (len(self._planned.pending), 0)
+        assert self.checkpoint() == (len(self._planned.pending), len(self._named))
+        if named:
+            for placement in self._named:
+                assert isinstance(placement.node, THIRSlotEmplace)
+                assert placement.declaration is self.statement and placement.scope == self.scope
+                assert placement.index in self._initialized
+                self._declared.append(placement)
+            self._named.clear()
         for entry in self._planned.drain(start):
             placement = entry.value
+            assert isinstance(placement.node, THIRArgTemp)
             assert placement.declaration is self.statement and placement.scope == self.scope
             if not entry.deferred:
                 assert placement.initialization is self.statement
@@ -241,7 +255,8 @@ class TempSink:
             yield rendered
         if region is not None:
             entries = self._planned.end(region)
-            expected = self.plan.initializations.get(anchor, ())
+            expected = tuple(p for p in self.plan.initializations.get(anchor, ())
+                             if isinstance(p.node, THIRArgTemp))
             assert len(entries) == len(expected)
             for entry, placement in zip(entries, expected):
                 assert entry.value is placement and placement.initialization is anchor
@@ -253,11 +268,23 @@ class TempSink:
             return self.create(expr.cpp_type or "auto", init, brace_init=expr.brace_init,
                                movable=bool(expr.movable))
         placement = plan.placement(expr)
+        assert self.plan is plan and isinstance(placement.node, THIRArgTemp)
         entry = self._planned.register(placement, expr.would_bank())
         assert entry.optional == placement.optional
         return self._ctx.temps.create_typed(expr.cpp_type or "auto", init,
                                             brace_init=expr.brace_init, movable=bool(expr.movable),
                                             planned_optional=placement.optional)
+
+    def select_slot(self, expr: THIRSlotEmplace) -> str:
+        if self.plan is None:
+            return self.declare_named_auto("__select_slot", f"std::optional<{expr.cpp_type}>")
+        placement = self.plan.placement(expr)
+        assert isinstance(placement.node, THIRSlotEmplace) and placement.optional
+        assert placement.initialization is expr
+        assert placement.index not in self._initialized
+        self._initialized.add(placement.index)
+        self._named.append(placement)
+        return self._ctx.temps.declare_named_auto("__select_slot", f"std::optional<{expr.cpp_type}>")
 
     def declare_named(self, name: str, cpp_type: str, *,
                       init: 'str | None' = None) -> None:
@@ -282,7 +309,7 @@ class TempSink:
 
     def flush_since(self, out: TextIO, checkpoint: tuple[int, int],
                     indent: str) -> None:
-        self._check_flush(checkpoint[0])
+        self._check_flush(checkpoint[0], named=False)
         self._ctx.temps.flush_since(out, checkpoint, indent)
 
     def flush(self, out: TextIO, indent: str) -> None:
@@ -1747,8 +1774,7 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # The slot is a NAMED decl, so it hoists to the statement even inside
         # a conditional region; only the emplace runs with the operand.
         value_cpp = _emit_expr(e.value, state)
-        slot = state.temps.declare_named_auto(
-            "__select_slot", f"std::optional<{e.cpp_type}>")
+        slot = state.temps.select_slot(e)
         return f"{slot}.emplace({value_cpp})"
     if isinstance(e, THIRArgTemp):
         # Register the hoisted decl with the sink and read the real __tmp_N
@@ -2100,7 +2126,11 @@ def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitSta
             "mixed walrus + temps while cond reached the restructured head")
         cond_temps = io.StringIO()
         state.temps.flush_since(cond_temps, cond_checkpoint, indent + INDENT)
+        if state.temp_plan is not None:
+            state.temps.scope = parent_scope
         state.temps.flush(out, indent)
+        if state.temp_plan is not None:
+            state.temps.enter_scope(stmt, "iteration")
         out.write(f"{indent}while (true) {{\n")
         out.write(cond_temps.getvalue())
         out.write(f"{indent}{INDENT}if (!({cond})) break;\n")

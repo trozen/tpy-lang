@@ -4,8 +4,8 @@ Typed record aliases and selected borrowed returns retain explicit obligations,
 including stable-looking names. Other borrowed declarations and PTR_ADDR sinks
 retain non-stable values as conservative requirements. The backing inventory
 omits storage producers, so it is not an exhaustive admission record.
-Argument placement stays the temporary plan's decision; missing
-argument placement has an explicit reason. Full-expression backing needs no
+Argument and select placement stay the temporary plan's decision; missing
+placement has an explicit reason. Full-expression backing needs no
 temporary-plan placement. These facts carry no source-admission authority.
 """
 
@@ -39,7 +39,7 @@ class THIRBacking:
     full_expression: th.THIRExpr
     placement: THIRTempPlacement | None
     loc: SourceLocation | None
-    # None for planned arguments or non-nested full-expression backing;
+    # None for planned arguments/selects or non-nested full-expression backing;
     # the latter uses full_expression, not placement. This is not MIR coverage.
     uncovered: str | None
 
@@ -176,7 +176,10 @@ class _Collector:
                              else "argument storage outside the temporary plan")
             case th.THIRSlotEmplace():
                 kind = THIRBackingKind.SELECT_SLOT
-                uncovered = "select slot placement is not planned"
+                placement = self.plan.by_node.get(node) if self.plan is not None else None
+                uncovered = (None if placement is not None
+                             else "select slot storage has no temporary plan" if self.plan is None
+                             else "select slot storage outside the temporary plan")
             case th.THIRCtorCall() if node.full_expression_storage is not None:
                 kind = THIRBackingKind.FULL_EXPRESSION
                 uncovered = None

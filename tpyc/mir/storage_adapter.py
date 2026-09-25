@@ -104,8 +104,9 @@ def certify_thir_storage(request: MIRStorageRequest) -> MIRBoundStorageEvidence:
         for backing in facts.backings:
             if backing.uncovered is not None:
                 gap(backing.uncovered, backing.node)
-            elif backing.kind is not THIRBackingKind.ARGUMENT:
-                gap("full-expression storage is not connected to lifetime evidence", backing.node)
+            elif backing.kind not in (THIRBackingKind.ARGUMENT, THIRBackingKind.FULL_EXPRESSION,
+                                      THIRBackingKind.SELECT_SLOT):
+                gap("materialized storage kind is not connected to lifetime evidence", backing.node)
         if not facts.backings and not facts.obligations:
             gap("body has no materialized storage or borrowed-expression obligations")
 

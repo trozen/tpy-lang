@@ -1,4 +1,4 @@
-"""Semantic declaration and initialization anchors for named argument storage."""
+"""Semantic declaration and initialization anchors for materialized storage."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -37,7 +37,7 @@ class THIRTempScope:
 @dataclass(frozen=True)
 class THIRTempPlacement:
     index: int
-    node: th.THIRArgTemp
+    node: th.THIRArgTemp | th.THIRSlotEmplace
     scope: int
     declaration: th.THIRStmt
     initialization: th.THIRNode
@@ -49,16 +49,19 @@ class THIRTempPlan:
     body: tuple[th.THIRStmt, ...]
     scopes: tuple[THIRTempScope, ...]
     placements: tuple[THIRTempPlacement, ...]
-    by_node: Mapping[th.THIRArgTemp, THIRTempPlacement]
+    by_node: Mapping[th.THIRArgTemp | th.THIRSlotEmplace, THIRTempPlacement]
     declarations: Mapping[th.THIRStmt, tuple[THIRTempPlacement, ...]]
     initializations: Mapping[th.THIRNode, tuple[THIRTempPlacement, ...]]
     scope_ids: Mapping[object, Mapping[str, int]]
 
-    def placement(self, node: th.THIRArgTemp) -> THIRTempPlacement:
+    def placement(self, node: th.THIRArgTemp | th.THIRSlotEmplace) -> THIRTempPlacement:
         entry = self.by_node.get(node)
         if entry is None or entry.node is not node:
-            raise ValueError("foreign argument temporary")
+            raise ValueError("foreign storage temporary")
         return entry
+
+    def declarations_in(self, stmt: th.THIRStmt, scope: int) -> tuple[THIRTempPlacement, ...]:
+        return tuple(entry for entry in self.declarations.get(stmt, ()) if entry.scope == scope)
 
     def scope(self, owner: object, role: str) -> int | None:
         return self.scope_ids.get(owner, {}).get(role)
@@ -77,10 +80,11 @@ class _Planner:
     def __init__(self, body: tuple[th.THIRStmt, ...]) -> None:
         self.body = body
         self.queue: TempQueue[th.THIRArgTemp] = TempQueue()
+        self.named: list[th.THIRSlotEmplace] = []
         self.scopes = [THIRTempScope(0, None, body, "body")]
         self.placements: list[THIRTempPlacement] = []
         self.initializers: IdentityMap[th.THIRArgTemp, th.THIRExpr] = IdentityMap()
-        self.seen: IdentitySet[th.THIRArgTemp] = IdentitySet()
+        self.seen: IdentitySet[th.THIRArgTemp | th.THIRSlotEmplace] = IdentitySet()
 
     def scope(self, owner: object, role: str, parent: int) -> int:
         index = len(self.scopes)
@@ -94,13 +98,17 @@ class _Planner:
             self.initializers[entry.value] = expr
 
     def expr(self, expr: th.THIRExpr) -> None:
+        if isinstance(expr, (th.THIRArgTemp, th.THIRSlotEmplace)):
+            if expr in self.seen:
+                raise _Unplanned()
+            self.seen.add(expr)
         match expr:
             case th.THIRArgTemp():
-                if expr in self.seen:
-                    raise _Unplanned()
-                self.seen.add(expr)
                 self.expr(expr.init)
                 self.queue.register(expr, banks_in_region(expr.cpp_type or "auto", expr.movable))
+            case th.THIRSlotEmplace():
+                self.expr(expr.value)
+                self.named.append(expr)
             case th.THIRName() | th.THIRSelf() | th.THIRLiteral():
                 pass
             case th.THIRFieldAccess():
@@ -136,18 +144,22 @@ class _Planner:
             case _:
                 raise _Unplanned()
 
-    def flush(self, stmt: th.THIRStmt, scope: int) -> None:
+    def flush(self, stmt: th.THIRStmt, scope: int, *, argument_scope: int | None = None) -> None:
+        for node in self.named:
+            self.placements.append(THIRTempPlacement(
+                len(self.placements), node, scope, stmt, node, True))
+        self.named.clear()
         for entry in self.queue.drain():
             node = entry.value
             self.placements.append(THIRTempPlacement(
-                len(self.placements), node, scope, stmt,
+                len(self.placements), node, scope if argument_scope is None else argument_scope, stmt,
                 self.initializers[node] if entry.deferred else stmt, entry.optional))
 
     def head(self, expressions: tuple[th.THIRExpr | None, ...]) -> None:
         for expr in expressions:
             if expr is not None:
                 self.expr(expr)
-        if self.queue.pending:
+        if self.queue.pending or self.named:
             raise _Unplanned()
 
     def stmts(self, body: tuple[th.THIRStmt, ...], scope: int) -> None:
@@ -158,7 +170,7 @@ class _Planner:
                     chain = if_chain(stmt)
                     for index, arm in enumerate(chain):
                         self.expr(arm.condition)
-                        if index and self.queue.pending:
+                        if index and (self.queue.pending or self.named):
                             current = self.scope(arm, "condition", current)
                         self.flush(arm, current)
                         self.stmts(arm.then_body, self.scope(arm, "then", current))
@@ -167,7 +179,7 @@ class _Planner:
                 case th.THIRWhile():
                     self.expr(stmt.condition)
                     repeated = self.scope(stmt, "iteration", scope) if self.queue.pending else None
-                    self.flush(stmt, scope if repeated is None else repeated)
+                    self.flush(stmt, scope, argument_scope=repeated)
                     body_scope = repeated if repeated is not None else self.scope(stmt, "loop", scope)
                     self.stmts(stmt.body, body_scope)
                     if stmt.orelse:

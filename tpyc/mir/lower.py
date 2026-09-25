@@ -71,6 +71,7 @@ class _Coverage:
         self.calls: IdentityMap[th.THIRCall, MIRCallSummary] = IdentityMap()
         self.borrowed_bindings: IdentityMap[th.THIRStmt, th.THIRBorrowedRecord] = IdentityMap()
         self.argument_temporaries: IdentityMap[th.THIRArgTemp, th.THIRBorrowedRecord] = IdentityMap()
+        self.select_temporaries: IdentityMap[th.THIRSlotEmplace, th.THIRBorrowedRecord] = IdentityMap()
 
     def call(self, expr: th.THIRCall) -> None:
         _plain(expr, {"callee", "args", "callee_cpp", "resolved_callee"})
@@ -127,15 +128,30 @@ class _Coverage:
                  and arg.result_type == reference.type and reference.readonly,
                  "named argument needs readonly record constructor")
         self.record_value(arg.init, reference.type)
-        # Narrowed wrapper reads still require a selection proof.
-        for operand in arg.init.args:
-            _require(operand, _literal(operand) or isinstance(operand, th.THIRName)
-                     and operand.global_binding is None and operand.name not in self.optionals
-                     and operand.name not in self.unions, "named constructor needs stable scalar operands")
+        self.stable_constructor_operands(arg.init)
         definition = self.records[reference.type]
         _require(arg, not placement.optional or definition.layout.movable and arg.would_bank(),
                  "deferred argument needs movable backing")
         self.argument_temporaries[arg] = reference
+
+    def select_temporary(self, expr: th.THIRSlotEmplace, reference: th.THIRBorrowedRecord) -> None:
+        _require(expr, self.fn.temp_plan is not None, "select storage needs complete temporary plan")
+        placement = self.fn.temp_plan.placement(expr)
+        _plain(expr, {"value", "cpp_type"})
+        _require(expr, placement.optional and placement.initialization is expr,
+                 "select storage needs conditional emplacement")
+        _require(expr, isinstance(expr.value, th.THIRCtorCall), "select storage needs record constructor")
+        self.record_value(expr.value, reference.type)
+        self.stable_constructor_operands(expr.value)
+        _require(expr, self.records[reference.type].layout.movable, "select storage needs movable backing")
+        self.select_temporaries[expr] = reference
+
+    def stable_constructor_operands(self, expr: th.THIRCtorCall) -> None:
+        # Narrowed wrapper reads still require a selection proof.
+        for operand in expr.args:
+            _require(operand, _literal(operand) or isinstance(operand, th.THIRName)
+                     and operand.global_binding is None and operand.name not in self.optionals
+                     and operand.name not in self.unions, "named constructor needs stable scalar operands")
 
     @contextmanager
     def argument_order(self, expr: th.THIRExpr) -> Iterator[None]:
@@ -158,6 +174,8 @@ class _Coverage:
                 return self.ordered_temporary_expression(expr.operand)
             case th.THIRArgTemp():
                 return expr in self.argument_temporaries
+            case th.THIRSlotEmplace():
+                return expr in self.select_temporaries
             case th.THIRCall():
                 return (expr in self.calls and not self.calls[expr].writes
                         and all(self.ordered_temporary_expression(arg) for arg in expr.args))
@@ -189,6 +207,10 @@ class _Coverage:
         fn = self.fn
         if fn.temp_plan is not None:
             validate_plan(fn.body, fn.temp_plan)
+            for placement in fn.temp_plan.placements:
+                _require(placement.node, not (isinstance(placement.node, th.THIRSlotEmplace)
+                         and isinstance(placement.declaration, th.THIRWhile)),
+                         "repeated condition select emplacement")
         _require(fn, fn.error_return_cpp is None, "error-return body")
         _require(fn, not fn.layout.hoisted_locals, "hoisted declarations")
         result = fn.resolved_callee.signature.borrowed_result if fn.resolved_callee is not None else None
@@ -236,9 +258,9 @@ class _Coverage:
                 _require(fn, p.type in (BOOL, INT32), "unsupported parameter type")
                 self.bindings[p.name] = p.type
         self.declarations(fn.body, 0)
-        if self.argument_temporaries:
-            _require(fn, len(self.argument_temporaries) == len(fn.temp_plan.placements),
-                     "temporary plan contains unsupported argument storage")
+        if self.argument_temporaries or self.select_temporaries:
+            _require(fn, len(self.argument_temporaries) + len(self.select_temporaries) == len(fn.temp_plan.placements),
+                     "temporary plan contains unsupported record storage")
 
     def declarations(self, stmts: tuple[th.THIRStmt, ...], loops: int) -> None:
         for stmt in stmts:
@@ -505,6 +527,8 @@ class _Coverage:
                  "unsupported borrowed expression form")
         self.reference(expr, result, expr.result_type)
         match expr:
+            case th.THIRSlotEmplace():
+                self.select_temporary(expr, result)
             case th.THIRCall():
                 self.call(expr)
                 actual = self.calls[expr].callee.signature.borrowed_result
@@ -1352,19 +1376,21 @@ class _Builder:
         self.globals: dict[MIRGlobalId, MIRSlotId] = {}
         self.full_expressions = coverage.full_expressions
         self.calls = coverage.calls
-        self.argument_temporaries = coverage.argument_temporaries
-        self.temp_plan = fn.temp_plan if self.argument_temporaries else None
+        self.record_temporaries = IdentityMap((*coverage.argument_temporaries.items(),
+                                              *coverage.select_temporaries.items()))
+        self.temp_plan = fn.temp_plan if self.record_temporaries else None
         self.temp_regions = {0: self.region}
+        self.temp_scope = 0
         self.temp_storage: dict[int, MIRSlotId] = {}
         self.temp_holders: dict[int, MIRSlotId] = {}
-        self.backing_places: IdentityMap[th.THIRArgTemp, MIRPlace] = IdentityMap()
+        self.backing_places: IdentityMap[th.THIRExpr, MIRPlace] = IdentityMap()
         self.borrow_operations: IdentityMap[th.THIRStmt, tuple[MIRPoint, ...]] = IdentityMap()
 
     def declare_temporaries(self, stmt: th.THIRStmt) -> None:
         if self.temp_plan is None:
             return
-        for placement in self.temp_plan.declarations.get(stmt, ()):
-            reference = self.argument_temporaries[placement.node]
+        for placement in self.temp_plan.declarations_in(stmt, self.temp_scope):
+            reference = self.record_temporaries[placement.node]
             assert self.temp_regions[placement.scope] == self.region
             storage = self.slot(reference.type, MIRSlotKind.LOCAL, storage=True,
                                 storage_duration=self.region if self.region.index else MIRStorageDuration.BODY,
@@ -1383,7 +1409,8 @@ class _Builder:
         for placement in self.temp_plan.initializations.get(anchor, ()):
             storage = self.temp_storage[placement.index]
             mode = MIRRecordWriteMode.OPTIONAL_ASSIGN if placement.optional else self.initial_mode()
-            self.write(storage, self.record_value(placement.node.init), placement.node.loc, MIRRecordWrite(mode))
+            value = placement.node.init if isinstance(placement.node, th.THIRArgTemp) else placement.node.value
+            self.write(storage, self.record_value(value), placement.node.loc, MIRRecordWrite(mode))
             self.write(self.temp_holders[placement.index], MIRBorrow(MIRPlace(storage)), placement.node.loc)
 
     def block(self) -> _Block:
@@ -1524,6 +1551,7 @@ class _Builder:
         match expr:
             case th.THIRCtorCall():
                 storage = self.slot(expr.result_type, storage=True, storage_duration=self.region)
+                self.backing_places[expr] = MIRPlace(storage)
                 self.write(storage, self.record_value(expr), expr.loc,
                            MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_REGION))
                 return MIRPlace(storage)
@@ -1558,6 +1586,8 @@ class _Builder:
     def borrowed_expression(self, expr: th.THIRExpr, result: th.THIRBorrowedRecord) -> MIRSlotId:
         self.initialize_temporaries(expr)
         match expr:
+            case th.THIRSlotEmplace():
+                return self.temp_holders[self.temp_plan.placement(expr).index]
             case th.THIRCall():
                 dest = self.slot(result.type, reference=result)
                 self.write(dest, self.call(expr), expr.loc)
@@ -2087,6 +2117,7 @@ class _Builder:
     @contextmanager
     def scope(self, owner: th.THIRStmt | None = None, role: str = "") -> Iterator[None]:
         bindings, storage, region = self.bindings.copy(), self.storage.copy(), self.region
+        temp_scope = self.temp_scope
         assert self.current is not None and not self.current.statements
         self.region = MIRRegionId(self.body, len(self.regions))
         self.regions.append(MIRRegion(self.region, region, self.current.id))
@@ -2095,10 +2126,12 @@ class _Builder:
             index = self.temp_plan.scope(owner, role)
             assert index is not None and self.temp_regions[self.temp_plan.scopes[index].parent] == region
             self.temp_regions[index] = self.region
+            self.temp_scope = index
         try:
             yield
         finally:
             self.bindings, self.storage, self.region = bindings, storage, region
+            self.temp_scope = temp_scope
 
     def scoped(self, stmts: tuple[th.THIRStmt, ...], owner: th.THIRStmt | None = None, role: str = "") -> None:
         with self.scope(owner, role):
@@ -2190,7 +2223,7 @@ class _Builder:
 class MIRLoweredStorage:
     function: MIRFunction
     # Captured when the builder allocates storage, never reconstructed from IDs.
-    backings: Mapping[th.THIRArgTemp, MIRPlace]
+    backings: Mapping[th.THIRExpr, MIRPlace]
     operations: Mapping[th.THIRStmt, tuple[MIRPoint, ...]]
 
 

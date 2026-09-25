@@ -1755,14 +1755,20 @@ alongside related feature work; only the big-rock deferrals live here.
   closed. The internal MIR evidence API (Certified/Conflict/Not covered)
   checks return escapes and complete roots; its adapter binds exact THIR,
   plan and request identities to the ordinary builder's actual backing places.
-  `docs/MIR_STORAGE_COVERAGE_AUDIT.md` records a targeted baseline: five of
-  117 user bodies with recorded proof requirements certify before the
-  `docs/MIR_BORROW_OBLIGATION_PLAN.md` extension. Supported plain-record
+  `docs/MIR_STORAGE_COVERAGE_AUDIT.md` retains the original and refreshed
+  targeted measurements. Supported plain-record
   bindings, reseats and eligible returns now have exact operation obligations
   and parameter-origin discharge; broader compatibility measurement is still
   required before step 3 decides
-  production authority. Select-slot placement is not yet planned, and inline
-  full-expression backing is not connected to this proof; both stay uncovered.
+  production authority. `docs/MIR_FULL_EXPRESSION_EVIDENCE_PLAN.md` connects already-modeled
+  constructor temporaries to this proof; richer materialization stays open.
+  `docs/MIR_SELECT_STORAGE_PLAN.md` implements shared placement and bounded
+  plain-record ternary evidence. Complete safe bodies can certify and the
+  known plain branch-local alias escape is an internal Conflict with no gaps.
+  Internal tuple/Optional/union retention witnesses use the actual select root;
+  source wrapper sinks remain unplanned. Repeated while-head emplacement,
+  record and/or consumption and broader producer/holder shapes remain explicit
+  followups; production acceptance and diagnostics are unchanged.
   Aggregate sinks/returns, broader return contracts and discharge of pruned
   operations remain open. No production path uses these certificates to
   accept or reject source.

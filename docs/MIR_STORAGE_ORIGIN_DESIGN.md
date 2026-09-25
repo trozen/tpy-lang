@@ -6,11 +6,15 @@ only after measuring its coverage. This is the shared lifetime contract for
 [borrowed-argument storage](MIR_BORROWED_ARGUMENT_STORAGE_PLAN.md).
 
 The [targeted coverage audit](MIR_STORAGE_COVERAGE_AUDIT.md) records the
-internal API's measured boundaries and recommends completing supported sink
-obligations before production integration. Its sample is not corpus-wide
-compatibility evidence. The [operation-proof extension](MIR_BORROW_OBLIGATION_PLAN.md)
-adds explicit supported plain-record sink obligations and parameter-origin
-discharge; the audit's counts describe the earlier baseline.
+internal API's original and post-operation-proof boundaries. Its sample is
+not corpus-wide compatibility evidence. The
+[operation-proof extension](MIR_BORROW_OBLIGATION_PLAN.md) adds explicit
+supported plain-record sink obligations and parameter-origin discharge.
+The [full-expression correspondence extension](MIR_FULL_EXPRESSION_EVIDENCE_PLAN.md)
+connects already-modeled constructor storage to the evidence adapter. The
+[select-slot extension](MIR_SELECT_STORAGE_PLAN.md) adds shared placement and
+bounded mixed plain-record ternary evidence without production authority. The
+audit preserves the pre-extension measurement alongside its follow-up.
 
 ## Observable contract
 
@@ -292,10 +296,19 @@ decision: source admission cannot expand before its production checker exists.
    - `certify_thir_storage` validates that inventory and binds the evidence
      to this request, exact THIR object and exact MIR function. Reusing equal
      names, counter IDs, copied functions or a new plan cannot reuse a proof.
-   - Named argument storage can certify for covered free functions, methods
-     and constructor tails. Select-slot and inline full-expression backings
-     remain explicit gaps. A missing required argument plan or unpublished
-     facts never clears obligations.
+   - Named argument storage, bounded plain-record ternary slots and
+     already-modeled full-expression constructor storage can certify for
+     covered free functions, methods and constructor tails. Full-expression
+     backing maps directly to its expression-region root without a temporary
+     plan. Select slots require shared placement, hook-free movable
+     bool/int32-field constructors and stable scalar operands, with one
+     emplacement per declaration activation. Repeated while-head emplacement,
+     record and/or and source wrapper sinks remain uncovered. A missing
+     required temporary plan or unpublished facts never clears obligations.
+   - The known plain branch-local select alias escape is an internal Conflict
+     with no gaps. Retained tuple/Optional/union witnesses connect to the same
+     actual select root internally; they do not add aggregate source coverage
+     or fix the production defect.
    - No backing and no obligation is reported separately from unpublished
      facts and from a borrowed-expression obligation with no modeled origin.
      Empty inventory receives no vacuous certificate. Parameter-only

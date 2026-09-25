@@ -215,10 +215,22 @@ implements steps 1-2: per-body backing facts and borrowed-sink obligations,
 internal lifetime evidence, and an adapter binding the exact THIR/plan/request
 to backing places allocated by the ordinary MIR builder. It checks complete
 origins and explicit returned borrows as well as scope, replacement and payload
-ends. Select-slot and inline full-expression backing, richer actuals and
-general escape channels remain W1/W5/M4 obligations. Coverage measurement and
+ends. The [full-expression correspondence extension](MIR_FULL_EXPRESSION_EVIDENCE_PLAN.md)
+connects already-modeled constructor temporaries to the same evidence through
+their exact expression-region roots. The select-slot extension adds the
+bounded plain-record ternary consumer described below; richer actuals and
+general escape channels remain W1/W5/M4 obligations. Broader coverage measurement and
 the step 3 production-authority decision remain open; this internal API changes
 neither source acceptance nor diagnostics.
+
+The implemented [select-slot batch](MIR_SELECT_STORAGE_PLAN.md) shares
+placement with the bounded plain-record ternary consumer. It preserves named
+slot scopes, including parent-scoped while-head backing, and leaves repeated
+condition emplacement and production enforcement outside the first consumer.
+Safe complete bodies can certify; the known plain branch-local alias escape
+is an internal Conflict with no coverage gaps. Internal tuple/Optional/union
+retention witnesses use the actual select root; source wrapper sinks remain
+unplanned. Record and/or consumers and broader producer shapes remain open.
 
 Batch work around shared invariants. Specify commit boundaries before coding,
 review the cumulative batch, and run the full forced suite after its final
