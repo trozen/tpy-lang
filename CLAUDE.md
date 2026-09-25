@@ -18,7 +18,7 @@ It ships two CLIs that share the same argument grammar, differing only in their 
 
 ## Working in this repo
 
-**Always** use `uv run` to invoke Python/tpy (never bare `python` or `tpy`). Use Read/Grep/Glob tools instead of `cat`/`head`/`tail`/`grep`/`rg`/`find`.
+**Always** use `uv run` to invoke Python/tpy (never bare `python` or `tpy`). Where the harness has dedicated read/search tools, prefer them over `cat`/`head`/`tail`/`grep`/`rg`/`find` in the shell.
 
 Example programs live in the separate `tpy-examples` repo (https://github.com/trozen/tpy-examples), not in this tree.
 
@@ -149,7 +149,7 @@ Harness status lines are prefixed `tpy|` (exec tally, cache-invalidation cause, 
 
 ### Test layout
 
-Two kinds: **unit tests** in `tpyc/` (no C++ toolchain needed) and **snippet tests** in `tests/cases/<group>/` with snapshot-based expected output. Cases are named `{name}/` (normal), `error_{name}/` (compilation error), or `panic_{name}/` (runtime panic). Use Glob/`ls tests/cases/` to discover groups.
+Two kinds: **unit tests** in `tpyc/` (no C++ toolchain needed) and **snippet tests** in `tests/cases/<group>/` with snapshot-based expected output. Cases are named `{name}/` (normal), `error_{name}/` (compilation error), or `panic_{name}/` (runtime panic). Use `ls tests/cases/` to discover groups.
 
 Per-case structure:
 

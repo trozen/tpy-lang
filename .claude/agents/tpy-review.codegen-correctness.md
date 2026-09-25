@@ -90,7 +90,7 @@ If you still cannot verify a finding is real after this check, keep it but appen
 
 ## Output format
 
-Be terse. One bullet per finding, a single short sentence. Do NOT include code excerpts or a separate "Fix:" line -- the user will ask if they want details or a suggested fix. Include `file:line` only when the issue is anchored to a specific location the user needs to find; generic findings have no line reference.
+Be terse. One bullet per finding, a single short sentence, plus the probe evidence Process step 3 requires (the quoted emitted line or output, one line) -- no other code excerpts and no separate "Fix:" line -- the user will ask if they want details or a suggested fix. Include `file:line` only when the issue is anchored to a specific location the user needs to find; generic findings have no line reference.
 
 Severity maps to action:
 - **Critical** = must fix before commit (UB, semantic break, hidden costs in hot paths)

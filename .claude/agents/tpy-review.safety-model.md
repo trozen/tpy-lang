@@ -14,7 +14,7 @@ In scope:
 - Changes in `tpyc/typesys.py`, `tpyc/coercions.py`
 - Changes in `tpyc/thir/` and `tpyc/codegen_cpp/` that affect ownership/borrow emission
 - Changes in `runtime/cpp/include/` that affect ownership semantics
-- Generated `tests/cases/*/expected/main.{cpp,hpp}` -- to verify the model is preserved end-to-end
+- Generated `tests/cases/*/expected/{src,include}/main.{cpp,hpp}` -- to verify the model is preserved end-to-end
 
 Out of scope:
 - General C++ UB unrelated to ownership -> codegen-correctness
@@ -25,7 +25,7 @@ Out of scope:
 
 - **Value types** (primitives, `bool`, `char`, `str`, `bytes`, `StrView`, `Span[T]`, tuples, user `ValueType`): value semantics; `str`/`bytes` own buffers but are immutable, so copy-vs-alias is unobservable and the view-vs-owned choice is an optimization.
 - **Reference types** (classes, records, `list`, `dict`, `set`, `Array[T, N]`, `bytearray`): NOT copied at boundaries; stored inline in fields and containers.
-- **Param shape**: classes/records/list/dict/set/bytearray pass by C++ reference (`T&` / `const T&`); `bytes` passes as `std::span<const uint8_t>`; `str` passes as `std::string_view`.
+- **Param shape**: classes/records/list/dict/set/bytearray pass by C++ reference (`T&` / `const T&`); `bytes` passes as `::tpy::BytesView`; `str` passes as `std::string_view`.
 - **`Own[T]`**: ownership transfer (move), NOT heap allocation. Used for returns/params that hand off ownership.
 - **Locals**: `y = x` is a pointer copy (no value duplication) for non-value types.
 - **Fields/containers**: `self.field = x` and `container.append(x)` are value copies.
@@ -99,7 +99,7 @@ If you still cannot verify a finding is real after this check, keep it but appen
 
 ## Output format
 
-Be terse. One bullet per finding, a single short sentence. Do NOT include code excerpts or a separate "Fix:" line -- the user will ask if they want details or a suggested fix. Include `file:line` only when the issue is anchored to a specific location the user needs to find; generic findings have no line reference.
+Be terse. One bullet per finding, a single short sentence, plus the probe evidence the Pitfalls section requires (the quoted emitted line or the two outputs, one line each) -- no other code excerpts and no separate "Fix:" line -- the user will ask if they want details or a suggested fix. Include `file:line` only when the issue is anchored to a specific location the user needs to find; generic findings have no line reference.
 
 Severity maps to action:
 - **Critical** = must fix before commit (broken ownership / borrow / readonly invariant, missing safety diagnostic)

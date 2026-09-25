@@ -132,7 +132,8 @@ Where each piece of the feature lives:
 - **Sema** -- which sub-module (`statements.py` / `expressions.py` /
   `calls.py` / `methods.py` / `protocols.py` / `narrowing.py` /
   `value_range.py` / `flow_facts.py` / `match.py` / ...)? What new
-  facts on AST nodes does sema set? Mutation propagation?
+  facts does sema decide (they reach the emitter on a THIR node, see
+  Lowering / emit)? Mutation propagation?
 - **Type system** (`tpyc/typesys.py`, `tpyc/coercions.py`,
   `tpyc/type_def_registry.py`) -- new TypeDef? new TypeRefNode shape?
   new coercion rule?
@@ -153,12 +154,9 @@ well-formed invariants:
 
 - "After Phase 2, every `OptionalType(P_ref)` carries a `pointer_repr`
   flag if `P` is a reference type."
-- "Every callable AST node has a `is_readonly` attribute set during
-  Phase 1 body analysis; codegen reads it to pick const/non-const
-  emission."
-- "The `@readonly_propagate` clone produces two callable entries with
-  identical bodies but mirrored receiver const-ness; sema and codegen
-  must dispatch on whichever fits the call site."
+- "The `@auto_readonly` clone produces a mutable and a const method
+  entry with identical bodies and mirrored receiver const-ness; every
+  call site dispatches on whichever fits its receiver."
 
 If you can't state the invariant in one sentence, finish Phase 3
 before continuing.
@@ -442,7 +440,7 @@ Sources to watch:
 - **Phase 2 sibling survey:** patterns where the existing
   implementation has gaps the new feature shouldn't paper over.
 - **Phase 3 design sketch:** invariants that *should* already hold but
-  don't (e.g. AST nodes lacking a fact that codegen would need).
+  don't (e.g. a fact the emitter needs that no THIR node carries).
 - **Implementation (if you reach it):** existing tests that change in
   unexpected ways, new diagnostics that fire on existing test cases,
   C++ warnings the change exposes.

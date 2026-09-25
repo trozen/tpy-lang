@@ -27,15 +27,16 @@ Full diff vs master: !`git diff master --stat 2>/dev/null || echo "(none)"`
 4. Analyze the full diff vs master. Draft a commit message:
    - Summarize the nature of the changes (new feature, bug fix, refactor, etc.)
    - Keep the first line under 72 characters
-   - Add a body explaining what and why
+   - Add a body explaining what and why, hard-wrapped at ~72 columns
    - Do NOT include Co-Authored-By or references to Claude/LLM
 5. Derive a branch name from the commit message (e.g. "sema: fix readonly deref" -> "fix-readonly-deref"). Keep it short.
 6. Create the new branch from master, squash-merge the original branch, commit:
    ```bash
    git checkout -b <new-branch> master
    git merge --squash <original-branch>
-   git commit -m "<message>"
+   git commit -F <message-file>
    ```
+   Write the message to a file under `/tmp/agents/` first -- a long `-m` string does not wrap the body.
    IMPORTANT: Always use `git merge --squash`. Never use `git checkout <branch> -- .` (it does not handle file deletions).
 7. Show the final state: branch name, commit hash, diff stat.
 

@@ -72,7 +72,7 @@ The orchestrator passes you a base ref and the changed-file list.
 - Does the diff change behavior the design doc still describes the old way? The doc should describe the *current* design, not a superseded one.
 - If the doc has a status/open-questions/residuals section and the diff resolves one, is it updated or removed?
 - For progress / migration-plan docs: if the diff lands a milestone the doc tracks, is that milestone marked done (or the entry removed per the project's "remove done items" convention for trackers)?
-- Distinguish historical record from live design: progress docs legitimately keep DONE milestone history (per CLAUDE.md); a *design* doc describing behavior that the diff just changed is stale and should be flagged.
+- Distinguish historical record from live design: progress docs legitimately keep DONE milestone history; a *design* doc describing behavior that the diff just changed is stale and should be flagged.
 
 **ARCHITECTURE.md**
 - If `typesys.py`, `type_resolver.py`, `type_def_registry.py`, or sema structure changed, does ARCHITECTURE.md need a corresponding update?

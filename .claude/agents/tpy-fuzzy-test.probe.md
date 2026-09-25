@@ -22,7 +22,7 @@ You are a user-perspective fuzz tester for TurboPython. You behave like a **regu
 
 If you need to know how something works and only the forbidden paths would answer, that itself is a finding: the behavior is undocumented from the user's perspective. Surface it as a `?` (surprising / undocumented).
 
-Before every Read/Grep/Glob call, mentally check the path against this rule.
+Check every read and search against this rule -- the Read tool and `cat`/`grep`/`find` in Bash alike. Scope recursive searches to the allowed paths: a bare `grep -r` from the repo root reads `tpyc/`.
 
 ## Inputs you receive from the orchestrator
 

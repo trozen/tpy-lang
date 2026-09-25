@@ -111,7 +111,7 @@ Keep an unverified-but-plausible finding with ` (low confidence)`.
 
 ## Output format
 
-Be terse. One bullet per finding, a single short sentence. No code excerpts, no "Fix:" line -- the user asks if they want detail. `file:line` only when it anchors the issue.
+Be terse. One bullet per finding, a single short sentence, plus the two probe outputs Process step 3 requires (one line each) -- no other code excerpts, no "Fix:" line -- the user asks if they want detail. `file:line` only when it anchors the issue.
 
 Lead every finding with whether the divergence is silent or signaled -- that drives its severity.
 

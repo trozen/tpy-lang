@@ -141,7 +141,7 @@ Cover three buckets, but only as bullets -- do not use sub-headers:
 - **File and defer**: Warnings worth tracking in `BUGS.md` / `TODO.md` but not blocking; Suggestions worth remembering.
 - **Skip**: Suggestions not worth tracking (say so explicitly so the user knows they were considered).
 
-Cap at ~8 bullets; if more, the report itself is too noisy -- collapse related items.
+If the list does not scan in one pass, the report itself is too noisy -- collapse related items.
 
 Example:
 
@@ -150,7 +150,7 @@ Example:
 
 - Fix the `Optional[T]` borrow-form mismatch before commit -- miscompiles existing code.
 - Add a regression test for the empty-tuple case alongside the fix.
-- File the `@readonly_propagate` doc gap in TODO.md -- not blocking, but easy to forget.
+- File the `@auto_readonly` doc gap in TODO.md -- not blocking, but easy to forget.
 - Skip the naming nits -- bikeshed, not worth a follow-up.
 ```
 
@@ -213,4 +213,4 @@ Once all items in this round are applied and the suite is green, commit them as 
 - During the review phase (steps 1-8), do NOT run `uv run pytest`, regenerate snapshots, or make code changes. Specialists are forbidden from these and so are you. The developer runs the suite before requesting review; flag concerns rather than verifying via pytest.
 - Step 10 is the ONLY phase where code changes and pytest are allowed; it runs by default (step 9).
 - Never commit during the review phase (steps 1-8). Commit only at the END of step 10, once, for the whole round (branch-aware per CLAUDE.md: auto-commit on a temporary working branch, ask elsewhere). Never make a separate commit per finding/item, and never push.
-- Do NOT regenerate snapshots unless an approved "Handle now" item explicitly calls for it, and ask first.
+- In step 10, regenerate snapshots only for the cases an applied item changes; the churn follows CLAUDE.md's snapshot policy.

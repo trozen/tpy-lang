@@ -59,6 +59,6 @@ C++ after:   <the 1-4 lines>
 ## Rules
 
 - Lead with behavior and C++; no history of how the branch got here, no review-round narrative.
-- "Review first" orders by risk to correctness: generated-C++ changes that alter behavior on existing cases, then new cases moving a reference type across a boundary (aliasing vs copy), then runtime headers, then compiler code. Cap it at ~6 entries.
+- "Review first" orders by risk to correctness: generated-C++ changes that alter behavior on existing cases, then new cases moving a reference type across a boundary (aliasing vs copy), then runtime headers, then compiler code. List only entries that carry real risk.
 - Mention any divergence from CPython the branch introduces or keeps, with its warning and escape hatch.
 - Keep it to about one screen; the user asks for depth on any item.
