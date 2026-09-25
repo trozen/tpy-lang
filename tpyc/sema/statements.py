@@ -1732,26 +1732,13 @@ class StatementAnalyzer:
 
     def _is_class_name_receiver(self, expr: TpyExpr) -> bool:
         """True when `expr` is a class-name reference (e.g. `MyClass`), not
-        an instance reference (`self`, `obj`, `f()`, ...). Mirrors the
-        binding-kind discrimination in `_try_class_constant_access`.
-        """
+        an instance reference (`self`, `obj`, `f()`, ...)."""
         if not isinstance(expr, TpyName):
             return False
         ns = self.ctx.func.current_ns
-        if ns is None:
-            return False
-        binding = ns.lookup(expr.name)
-        if binding is None:
-            return False
-        if binding.kind == BindingKind.RECORD:
-            return True
-        if binding.kind == BindingKind.IMPORTED_NAME:
-            import_info = self.ctx.imported_names.get(expr.name)
-            if import_info is None:
-                return False
-            return bool(self.ctx.registry.find_record_by_qname(
-                f"{import_info[0]}.{import_info[1]}"))
-        return False
+        binding = ns.lookup(expr.name) if ns is not None else None
+        return (binding is not None
+                and self.ctx.class_record_of(binding) is not None)
 
     def _check_class_constant_write(self, target: TpyExpr, stmt: TpyStmt) -> None:
         """Reject `=` / `+=` on Final class constants; warn on instance-side

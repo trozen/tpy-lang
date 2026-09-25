@@ -1,0 +1,27 @@
+params 4 3 0 -1 0
+params list [1, 2]
+local record 5 0
+local value 0 0 2.5
+local ctor arg 6
+local enum GREEN
+local generic 4
+local optional u
+ref arg 2 [1, 7]
+ref arg map [2, 2] [[1, 7], [2, 7]]
+map [3, 1, 2]
+sorted [1, 20, 3]
+map list [2, 1]
+map generic [5, 6]
+max key 12
+overload 42 41!
+field {'k': [1, 2]} 0
+method 1
+ctor 1
+imported 1 2
+container [1] []
+return 3 0
+module ['z'] []
+generator [7]
+async 9
+comprehension [1, 2]
+closure 8

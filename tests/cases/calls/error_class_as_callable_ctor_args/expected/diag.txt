@@ -1,0 +1,1 @@
+main.py:19: error: 'Q' used as a 'Callable[[], Q]': 'Q()' expects 1 argument(s), got 0

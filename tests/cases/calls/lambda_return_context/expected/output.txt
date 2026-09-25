@@ -1,0 +1,16 @@
+free [1] 1 1 1
+free int32 0
+free map [[5], []]
+free str he
+free view name ab 3
+free optional 3 u
+free ternary bc ab
+shadow s o None y q i
+method field [2]
+method arg 1 1
+ctor 1
+module ['z']
+generator [0]
+async 1
+comprehension [1, 1]
+closure 1

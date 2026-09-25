@@ -38,6 +38,7 @@ from ..parse import (
     TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFunction, TpyIfExpr, TpyTupleLiteral, TpyLambda, TpyNamedExpr, TpyFString,
+    lambda_of,
     TpyAwait, SourceLocation
 )
 from .literal_utils import literal_value_from_expr
@@ -1796,6 +1797,9 @@ class TypeCompatibility:
         that know the destination is a field / container element so the
         pointer-repr-Optional address-take mark is suppressed.
         """
+        # The slot receives the callable a class-name factory stands for, so
+        # the node the caller stores back is that lambda.
+        expr = lambda_of(expr)
         # A bound coroutine handle (owned-erased Own[Cancellable[T]]) is
         # single-use and consume-only: borrowing it into a bare-protocol
         # slot (protocol-annotated local, borrow param) has no supported

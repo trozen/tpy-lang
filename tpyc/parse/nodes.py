@@ -231,6 +231,9 @@ class TpyName(TpyExpr):
     is_function_ref: bool = False  # Set by sema: name resolves to a function used as a value
     function_ref_info: 'FunctionInfo | None' = None  # Set by sema: resolved function for codegen
     function_ref_type_args: 'tuple[TpyType, ...] | None' = None  # Set by sema: inferred type args for generic function refs
+    # Set by sema: a class name at a Callable/Fn slot stands for this
+    # synthesized `lambda *a: C(*a)`; read it through `lambda_of`.
+    factory_expansion: 'TpyLambda | None' = None
 
 
 @dataclass
@@ -493,6 +496,14 @@ class TpyFieldAccess(TpyExpr):
 
     def children(self) -> list[TpyExpr]:
         return [self.obj]
+
+
+def lambda_of(expr: TpyExpr) -> TpyExpr:
+    """`expr` as the callable value it stands for: the lambda sema
+    synthesized for a class name used at a Callable/Fn slot, else `expr`."""
+    if isinstance(expr, TpyName) and expr.factory_expansion is not None:
+        return expr.factory_expansion
+    return expr
 
 
 def is_property_getter_read(expr: TpyExpr) -> bool:

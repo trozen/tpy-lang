@@ -4234,6 +4234,30 @@ def _own_storage_viewfam_return(t: TpyType | None, analyzer) -> 'TpyType | None'
         return bt
     return None
 
+def _viewfam_return_slots(t: TpyType | None, analyzer
+                          ) -> 'tuple[TpyType | None, TpyType | None]':
+    """(str family, bytes family) of a return slot, each resolved or None;
+    an `Own[str]` / `Own[bytes]` slot counts as its owned inner."""
+    ret_str = _resolved_str_value(t, analyzer)
+    ret_bytes = _resolved_bytes_value(t, analyzer)
+    own_viewfam = _own_storage_viewfam_return(t, analyzer)
+    if own_viewfam is not None:
+        if _resolved_str_value(own_viewfam, analyzer) is not None:
+            ret_str = own_viewfam
+        else:
+            ret_bytes = own_viewfam
+    return ret_str, ret_bytes
+
+def _owned_viewfam_slot(ret_str: 'TpyType | None',
+                        ret_bytes: 'TpyType | None') -> 'TpyType | None':
+    """The owned str/bytes return slot a view source copies into, or None
+    when the slot is a view or of neither family."""
+    if ret_str is not None and is_str_type(ret_str):
+        return ret_str
+    if ret_bytes is not None and is_bytes_type(ret_bytes):
+        return ret_bytes
+    return None
+
 def _call_ret_union_ok(ret: 'TpyType | None', analyzer) -> bool:
     """A union-returning call landing bare in a same-union STORAGE sink:
     a ptr-variant return (`::tpy::Union<monostate, A*, B*>` by value) or

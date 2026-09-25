@@ -1,0 +1,24 @@
+free sorted_lam [3, 2, 1]
+free sorted_cls [3, 2, 1]
+free sorted_own [3, 2, 1]
+free min_lam 3
+free min_cls 3
+free max_lam 1
+free max_cls 1
+free min3_lam 3
+free min3_cls 3
+free max3_own 1
+free max3_cls 1
+free sorted_id [1, 2, 3]
+free min_id 1
+free min_method 3
+free max_helper 3
+method sorted_lam [3, 2, 1]
+method sorted_cls [3, 2, 1]
+method min_cls 3
+gen [3, 2, 1, 3, 2, 1]
+async 323
+comp lam [3, 5]
+comp cls [3, 5]
+module lam [3, 2, 1]
+module cls [3, 2, 1]

@@ -40,7 +40,7 @@ from ..parse import (
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
     TpyBinOp, TpyTupleLiteral, TpyTypeParamConstruct, TpyCoerce, TpyLambda,
-    TpyDictLiteral, TpySetLiteral,
+    TpyDictLiteral, TpySetLiteral, lambda_of,
     TpyVarargPack, TpyStarUnpack, TpyFString, TpyFStringValue,
 )
 from ..modules import extract_type_params
@@ -3944,22 +3944,33 @@ class CallAnalyzer:
 
         return arg_types  # type: ignore[return-value]
 
-    def _flatten_key_kwarg(self, expr: TpyCall, name: str) -> None:
-        """Flatten key= kwarg to positional arg for sorted/min/max."""
+    def _flatten_key_kwarg(self, expr: TpyCall, name: str) -> TpyExpr | None:
+        """Flatten key= kwarg to positional arg for sorted/min/max; the
+        key expression it moved, else None."""
         if not expr.kwargs:
-            return
+            return None
         if name not in ("sorted", "min", "max"):
-            return
+            return None
         bad = [k for k in expr.kwargs if k != "key"]
         if bad:
             raise self.ctx.error(
                 f"'{name}()' does not support keyword argument '{bad[0]}'", expr)
-        if "key" in expr.kwargs:
-            key_arg = expr.kwargs["key"]
-            if isinstance(key_arg, TpyLambda):
-                key_arg.readonly_params = True
-            expr.args.append(key_arg)
-            expr.kwargs = {}
+        if "key" not in expr.kwargs:
+            return None
+        key_arg = expr.kwargs["key"]
+        expr.args.append(key_arg)
+        expr.kwargs = {}
+        return key_arg
+
+    @staticmethod
+    def _mark_key_lambda(key_arg: TpyExpr | None) -> None:
+        """Give the key lambda -- spelled, or the one a class name at the key
+        slot stands for -- const params: min/max call the key on `const T&`.
+        Marked once the call resolved, since a class name's lambda only
+        exists after its (possibly repeated) contextual analysis."""
+        lam = lambda_of(key_arg) if key_arg is not None else None
+        if isinstance(lam, TpyLambda):
+            lam.readonly_params = True
 
     def _supplied_fn_slots(
         self, expr: TpyCall, func: FunctionInfo,
@@ -4302,7 +4313,8 @@ class CallAnalyzer:
         if isinstance(arg, TpyLambda):
             return True
         if isinstance(arg, TpyName):
-            return self._is_function_binding(arg)
+            return (self._is_function_binding(arg)
+                    or self.expr._names_class(arg.name))
         return False
 
     def _resolve_regime_c(
@@ -4627,6 +4639,15 @@ class CallAnalyzer:
                 slot_type: TpyType = (
                     self._lambda_body_dry_run(arg, hint) if needs_body_trial else hint
                 )
+            elif isinstance(arg, TpyName) and self.expr._names_class(arg.name):
+                # A class name stands for `lambda *a: C(*a)`: this
+                # candidate fits when that construction types under its
+                # hint. The winner builds the name's real expansion when
+                # its arguments are analyzed.
+                slot_type = self._lambda_body_dry_run(
+                    self.expr._class_factory_lambda(
+                        arg, len(hint.param_types)),
+                    hint, as_class=arg.name)
             elif isinstance(arg, TpyName) and self._is_function_binding(arg):
                 # Pure dry matcher: returns matched data, raises on ambiguity.
                 if self.ctx.func.current_ns:
@@ -4716,6 +4737,7 @@ class CallAnalyzer:
 
     def _lambda_body_dry_run(
         self, lambda_expr: TpyLambda, hint: 'CallableType',
+        *, as_class: str | None = None,
     ) -> 'CallableType':
         """Tentatively analyze ``lambda_expr`` body under ``hint`` to pin
         an unresolved return TPR; roll back all state on exit.
@@ -4739,7 +4761,8 @@ class CallAnalyzer:
         saved_captures_by_value = lambda_expr.captures_by_value
         try:
             with self.ctx.trial_scope():
-                return self.expr._analyze_lambda_with_fn_hint(lambda_expr, hint)
+                return self.expr._analyze_lambda_with_fn_hint(
+                    lambda_expr, hint, as_class=as_class)
         finally:
             lambda_expr.inferred_param_types = saved_inferred_param_types
             lambda_expr.inferred_return_type = saved_inferred_return_type
@@ -4752,7 +4775,7 @@ class CallAnalyzer:
         Uses two-pass overload resolution: prefer exact type matches over coercion matches.
         For generic overloads (with type_params), uses type inference.
         """
-        self._flatten_key_kwarg(expr, overloads[0].name)
+        key_arg = self._flatten_key_kwarg(expr, overloads[0].name)
         self._reject_kwargs_for_builtin(expr, overloads[0].name)
         protocol_checker = self.protocols.type_conforms_to_protocol
 
@@ -4795,6 +4818,7 @@ class CallAnalyzer:
                     expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
                                                             f"argument '{pname}'",
                                                             coercion_ctx=CoercionContext.ARG)
+            self._mark_key_lambda(key_arg)
             if result.matched_origin is not None:
                 overload, type_subst = result.matched_origin
                 expr.inferred_type_args = tuple(

@@ -10,6 +10,7 @@ from collections.abc import Sequence, Set as AbstractSet
 from dataclasses import field, replace
 from typing import Callable, NamedTuple
 from ...parse.nodes import (
+    lambda_of,
     is_property_getter_read,
     FSTRING_CONV_REPR,
     FSTRING_CONV_STR,
@@ -4966,6 +4967,7 @@ def _native_union_name_arg(a: TpyExpr, ptype: 'TpyType | None',
 
 def _lambda_routable(a: TpyExpr, analyzer, *,
                      self_capturable: bool = False) -> bool:
+    a = lambda_of(a)
     if not isinstance(a, TpyLambda):
         return False
     reason = _lambda_reject_reason(a, analyzer,
@@ -4981,8 +4983,8 @@ def _lambda_reject_reason(a: TpyLambda, analyzer, *,
     enums / str / bytes / F1-record) -- the `(params) -> ret {
     return body; }` form, in its by-reference (Fn template), by-value
     (Callable/std::function), and readonly-param (key-function -- const
-    `_callable_param_cpp` spelling + `to_cpp_return_const` trailing) capture
-    modes. A VOID body routes IFF it is a bare builtin-print call (the
+    `_callable_param_cpp` spelling; only a `RefType` result takes the
+    `to_cpp_return_const` borrow) capture modes. A VOID body routes IFF it is a bare builtin-print call (the
     statement-body closure `{ std::cout << ...; }`); other void bodies
     reject. The single source of truth for both the arg-admission
     gate and the lowering arm (they must agree, else the gate admits a

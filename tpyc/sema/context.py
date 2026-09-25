@@ -32,10 +32,10 @@ from ..typesys import (
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
     unwrap_readonly, unwrap_ref_type, unwrap_qualifiers,
-    FunctionInfo, ParamInfo,
+    FunctionInfo, ParamInfo, RecordInfo,
     is_dyn_protocol, contains_pending_leaf,
 )
-from ..namespace import Namespace
+from ..namespace import BindingKind, NameBinding, Namespace
 from ..type_def_registry import int_traits_of, is_borrowing_view_type
 from ..parse import (
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
@@ -2376,6 +2376,20 @@ class SemanticContext:
             return False
         declared = self.func.current_scope.lookup(name)
         return declared is not None and isinstance(declared, ReadonlyType)
+
+    def class_record_of(self, binding: NameBinding) -> RecordInfo | None:
+        """The record a name binding denotes as a class: its own class
+        binding -- `cls` included -- or an import (a builtin included) that
+        resolves to a record."""
+        if binding.kind == BindingKind.RECORD:
+            # Authoritative: `cls` names its record, and get_record's
+            # short-name key collides for same-named records across modules.
+            return binding.record_info
+        if (binding.kind == BindingKind.IMPORTED_NAME
+                and binding.import_source is not None):
+            module, original = binding.import_source
+            return self.registry.find_record_by_qname(f"{module}.{original}")
+        return None
 
     def _resolve_loc(self, node: TpyExpr | TpyStmt | TpyRecord | None) -> SourceLocation | None:
         """Resolve source location from a node, with fallback to current function/record."""

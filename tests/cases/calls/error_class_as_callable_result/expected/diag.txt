@@ -1,0 +1,1 @@
+main.py:15: error: 'Pt' used as a 'Callable[[], int32]' constructs a 'Pt', which is not compatible with its result type 'int32'

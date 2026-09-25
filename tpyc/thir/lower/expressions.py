@@ -12,6 +12,7 @@ from .storage import borrowed_record, direct_field, full_expression_record, glob
 from .captures import capture_facts
 from ... import qnames
 from ...parse.nodes import (
+    lambda_of,
     is_property_getter_read,
     FSTRING_CONV_NONE,
     FSTRING_CONV_REPR,
@@ -235,6 +236,9 @@ from ...codegen_cpp.forms import (is_plain_nonvalue, is_ptr_variant_union,
                                   reads_storage_form_optional)
 from .predicates import (
     _poly_narrow_info,
+    _owned_viewfam_slot,
+    _viewfam_return_slots,
+    _wrap_view_owned_sink,
     _comp_shadow_pointers,
     _btuple_owning_call_init,
     _empty_instantiation_family,
@@ -5619,6 +5623,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
     rtype = resolve_pending_container(rtype, analyzer) or rtype
     rtype = _resolve_pending_view(rtype, analyzer) or rtype
     loc = getattr(e, "loc", None)
+    if lambda_of(e) is not e:
+        # A class name at a callable slot lowers as the lambda it stands for.
+        return _lower_expr(lambda_of(e), lc, declared, use=use)
     if isinstance(e, TpyName):
         if (e.name in lc.forwarded_map
                 and not e.is_function_ref
@@ -11440,8 +11447,10 @@ def _lower_lambda_impl(e: TpyLambda, lc: '_LowerCtx',
     escaping) picks the `_callable_param_cpp` param spelling and a by-value
     capture list; the default (Fn template) uses `to_cpp_param` and a
     by-reference capture; `readonly_params` (the key-function context)
-    spells each param const via `_callable_param_cpp(readonly[T])` and the
-    trailing return via `to_cpp_return_const`; a pointer-repr tuple return
+    spells each param const via `_callable_param_cpp(readonly[T])` and a
+    borrowed (`RefType`) result as a const borrow -- whether the result is
+    borrowed at all stays the ordinary policy's call, since a const param
+    says nothing about it; a pointer-repr tuple return
     spells the borrow form via `to_cpp_return` (the same-typed bare-call
     body slice -- gate-checked). Not lowered yet: the void-body statement
     render (beyond the builtin-print closure)."""
@@ -11489,58 +11498,67 @@ def _lower_lambda_impl(e: TpyLambda, lc: '_LowerCtx',
     else:
         capture = "[]"
     closure_id, captures = capture_facts(e, lc, declared)
-    if is_void_like_type(ret_type):
-        # The statement-body closure: the body IS a builtin print call
-        # (gate-checked by _lambda_reject_reason). Its args lower TEMP-FREE --
-        # a hoisted temp would flush at the ENCLOSING statement, outside
-        # the closure. Narrowed-alias args reject (the subject_union print
-        # keying is a statement-scope fact).
-        # Late import: statements.py imports this module at top level.
-        from .statements import _lower_print_arg
-        pargs = []
-        for parg in e.body.args:
-            if (isinstance(parg, TpyName)
-                    and (parg.name in lc.narrow.narrowed
-                         or parg.name in lc.narrow.spelled)):
-                raise ThirUnsupported("lambda.print_narrowed_argument")
-            pargs.append(_lower_print_arg(parg, lc, body_declared,
-                                          frozenset(), temps_ok=False))
-        _witness("expr.lambda_void_print")
-        return THIRLambda(
-            result_type=analyzer.get_expr_type(e),
-            capture_cpp=capture,
-            params_cpp=tuple(params_cpp),
-            body=THIRPrintChain(result_type=ret_type, args=tuple(pargs),
-                                loc=loc),
-            ret_cpp=None,
-            closure_id=closure_id, captures=captures,
-            loc=loc,
-        )
-    # A borrow-returning lambda (`-> Point&`, the map key/value-preserving
-    # form): the body's call result binds the reference, so it lowers under
-    # BORROW_BIND -- the same use a borrow-record consumer threads.
-    _lam_ret_u = unwrap_readonly(ret_type)
-    if isinstance(ret_type, RefType):
-        body_use = _ExprUse(result=_ExprResultUse.BORROW_BIND)
-    elif (isinstance(_lam_ret_u, TupleType)
-            and _lam_ret_u.has_pointer_repr_element()):
-        # The borrow-form tuple return: the body's generic call renders
-        # bare under the dedicated flag (gate-validated shape).
-        body_use = _ExprUse(pos=SinkPos.LAMBDA_RETURN)
-    else:
-        body_use = _ExprUse()
-    body = _lower_expr(e.body, lc, body_declared,
-                       use=replace(body_use, slot_target=ret_type))
+    # The whole body lowers in the lambda's param scope; the captures
+    # above name the ENCLOSING bindings, so they stay outside it.
+    with lc.lambda_params(list(zip(e.param_names, e.inferred_param_types))):
+        if is_void_like_type(ret_type):
+            # The statement-body closure: the body IS a builtin print call
+            # (gate-checked by _lambda_reject_reason). Its args lower
+            # TEMP-FREE -- a hoisted temp would flush at the ENCLOSING
+            # statement, outside the closure. Narrowed-alias args reject (the
+            # subject_union print keying is a statement-scope fact).
+            # Late import: statements.py imports this module at top level.
+            from .statements import _lower_print_arg
+            pargs = []
+            for parg in e.body.args:
+                if (isinstance(parg, TpyName)
+                        and (parg.name in lc.narrow.narrowed
+                             or parg.name in lc.narrow.spelled)):
+                    raise ThirUnsupported("lambda.print_narrowed_argument")
+                pargs.append(_lower_print_arg(parg, lc, body_declared,
+                                              frozenset(), temps_ok=False))
+            _witness("expr.lambda_void_print")
+            return THIRLambda(
+                result_type=analyzer.get_expr_type(e),
+                capture_cpp=capture,
+                params_cpp=tuple(params_cpp),
+                body=THIRPrintChain(result_type=ret_type, args=tuple(pargs),
+                                    loc=loc),
+                ret_cpp=None,
+                closure_id=closure_id, captures=captures,
+                loc=loc,
+            )
+        # A borrow-returning lambda (`-> Point&`, the map key/value-preserving
+        # form): the body's call result binds the reference, so it lowers under
+        # BORROW_BIND -- the same use a borrow-record consumer threads.
+        _lam_ret_u = unwrap_readonly(ret_type)
+        if isinstance(ret_type, RefType):
+            body_use = _ExprUse(result=_ExprResultUse.BORROW_BIND)
+        elif (isinstance(_lam_ret_u, TupleType)
+                and _lam_ret_u.has_pointer_repr_element()):
+            # The borrow-form tuple return: the body's generic call renders
+            # bare under the dedicated flag (gate-validated shape).
+            body_use = _ExprUse(pos=SinkPos.LAMBDA_RETURN)
+        else:
+            body_use = _ExprUse()
+        body = _lower_expr(e.body, lc, body_declared,
+                           use=replace(body_use, slot_target=ret_type))
+    # The body is the lambda's return value: a view source at an owned
+    # str/bytes result copies as a def `return` does.
+    body = _wrap_view_owned_sink(
+        body, _owned_viewfam_slot(*_viewfam_return_slots(ret_type, analyzer)),
+        loc)
     _witness("expr.lambda")
     ret_u = unwrap_readonly(ret_type)
-    if e.readonly_params:
-        ret_cpp = ret_type.to_cpp_return_const()
-    elif isinstance(ret_u, TupleType) and ret_u.has_pointer_repr_element():
+    if isinstance(ret_u, TupleType) and ret_u.has_pointer_repr_element():
         # A tuple with borrow elements is produced in borrow form by the
         # body (the to_cpp_return spelling); the storage form would not
         # bind the returned pointers.
         _witness("lambda.btuple_ret")
         ret_cpp = ret_type.to_cpp_return()
+    elif e.readonly_params and isinstance(ret_type, RefType):
+        # A borrow out of a const param can only be a const borrow.
+        ret_cpp = ret_type.to_cpp_return_const()
     else:
         ret_cpp = lc.render_type(ret_type)
     return THIRLambda(

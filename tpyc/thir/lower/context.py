@@ -5,6 +5,7 @@ from collections.abc import Callable, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field, fields
 from enum import Enum, auto
+from typing import NamedTuple
 from ...parse.nodes import (TpyAssign, TpyCoerce, TpyExpr, TpyFieldAccess,
                             TpyFunction, TpyGlobal, TpyIfExpr, TpyName,
                             TpyNamedExpr, TpySubscript, TpyVarDecl)
@@ -55,12 +56,10 @@ from .predicates import (
     _own_wrapper_return,
     _wrapper_borrow_return,
     _own_storage_union_return,
-    _own_storage_viewfam_return,
     _own_type_param_slot,
+    _viewfam_return_slots,
     _record_borrow_return,
     _record_storage_return,
-    _resolved_bytes_value,
-    _resolved_str_value,
     _span_return,
     _value_opt_scalar,
     _value_opt_tuple,
@@ -604,6 +603,45 @@ def narrow_alias_taken(bound_names, frame_field_names, *,
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
 
+class _ParamFacts(NamedTuple):
+    """The param-keyed name sets of `_Prescan`, derived from a signature's
+    `(name, type)` pairs. Field names match the `_Prescan` attributes."""
+    # Param names, for checks that must tell a param from a local (a str
+    # param's aug-assign would need the owned-copy prologue -- see
+    # _str_aug_append_ok).
+    param_names: set[str]
+    # Own[str]/Own[bytes] params: the signature spells the OWNED type by
+    # value, so their name reads are STORAGE -- carved out of the
+    # param-implies-view verdicts (`_str_name_form`/`_bytes_name_form`).
+    owned_viewfam_params: set[str]
+    # `Own[tuple[...]]` params: the signature binds the STORAGE tuple by
+    # value, so an element read is a `T&`/value -- never the borrow
+    # param's deref-flagged `(*std::get<i>(p))` (the alias-decl
+    # predicate keys on this; the expr type strips Own and cannot tell).
+    own_tuple_params: set[str]
+    # Value-repr Optional[cheap scalar] params (`int32 | None`): a
+    # `return <param>` into a value-optional return slot passes the WHOLE
+    # optional bare (deref-on-narrow stripped), so return lowering keys on
+    # this to admit a narrowed param name the generic tail would deref.
+    value_opt_params: set[str]
+
+
+def _param_facts(params, analyzer) -> _ParamFacts:
+    return _ParamFacts(
+        param_names={n for n, _t in params},
+        owned_viewfam_params={
+            n for n, t in params if _own_viewfam_param(t) is not None},
+        own_tuple_params={
+            n for n, t in params
+            if isinstance((_otp := unwrap_readonly(unwrap_send_sync(t))),
+                          OwnType)
+            and isinstance(unwrap_readonly(_otp.wrapped), TupleType)},
+        value_opt_params={
+            n for n, t in params
+            if _value_opt_scalar(t, analyzer) is not None},
+    )
+
+
 class _Prescan:
     """Per-function prescan facts the binding classifier reads -- the same sets
     codegen seeds into ctx (see setup_body_scope), recomputed here from the
@@ -639,31 +677,8 @@ class _Prescan:
         # STUB's signature: the impl body is emitted against the stub's
         # types, so every signature-derived fact here must key on them.
         src_params = func.params if params_override is None else params_override
-        # Param names, for checks that must tell a param from a local (a str
-        # param's aug-assign would need the owned-copy prologue -- see
-        # _str_aug_append_ok).
-        self.param_names = {n for n, _t in src_params}
-        # Own[str]/Own[bytes] params: the signature spells the OWNED type by
-        # value, so their name reads are STORAGE -- carved out of the
-        # param-implies-view verdicts (`_str_name_form`/`_bytes_name_form`).
-        self.owned_viewfam_params = {
-            n for n, t in src_params if _own_viewfam_param(t) is not None}
-        # `Own[tuple[...]]` params: the signature binds the STORAGE tuple by
-        # value, so an element read is a `T&`/value -- never the borrow
-        # param's deref-flagged `(*std::get<i>(p))` (the alias-decl
-        # predicate keys on this; the expr type strips Own and cannot tell).
-        self.own_tuple_params = {
-            n for n, t in src_params
-            if isinstance((_otp := unwrap_readonly(unwrap_send_sync(t))),
-                          OwnType)
-            and isinstance(unwrap_readonly(_otp.wrapped), TupleType)}
-        # Value-repr Optional[cheap scalar] params (`int32 | None`): a
-        # `return <param>` into a value-optional return slot passes the WHOLE
-        # optional bare (deref-on-narrow stripped), so return lowering keys on
-        # this to admit a narrowed param name the generic tail would deref.
-        self.value_opt_params = {
-            n for n, t in src_params
-            if _value_opt_scalar(t, analyzer) is not None}
+        (self.param_names, self.owned_viewfam_params, self.own_tuple_params,
+         self.value_opt_params) = _param_facts(src_params, analyzer)
         # Whether the callable has a `self` receiver (instance method) -- the
         # lowering arms that treat the name `self` specially (the return-self arm,
         # the self-rebind rejects) key on this so a free function's local or
@@ -832,23 +847,8 @@ class _Prescan:
         # -> `std::tuple<Tree&, int32_t>`): literal-of-lvalue-names sources
         # only, gated at the return arm.
         self.ret_wrapper_ref_tuple = _wrapper_ref_tuple_return(rt, analyzer)
-        # S1 str slice: the resolved str-family return type (owned `str` or
-        # `StrView`), so a `return <view-form source>` into an owned `std::string`
-        # return copies via the view->owned THIRFormConvert. None otherwise.
-        # An `Own[str]` slot spells the same owned return; only the unwrap
-        # differs (`_own_storage_viewfam_return`).
-        self.ret_str = _resolved_str_value(rt, analyzer)
-        # S6: the resolved bytes-family return type -- an owned `bytes` return
-        # copies a view-form source via `::tpy::Bytes`; a `BytesView`
-        # return renders a literal in its span form. `Own[bytes]` rides the
-        # same arm via the unwrap.
-        self.ret_bytes = _resolved_bytes_value(rt, analyzer)
-        own_viewfam = _own_storage_viewfam_return(rt, analyzer)
-        if own_viewfam is not None:
-            if _resolved_str_value(own_viewfam, analyzer) is not None:
-                self.ret_str = own_viewfam
-            else:
-                self.ret_bytes = own_viewfam
+        # A view source returned into an owned str/bytes slot must copy.
+        self.ret_str, self.ret_bytes = _viewfam_return_slots(rt, analyzer)
         # S4: a char return slot -- `return "x"` needs a target-typed char
         # literal (`'x'`), a shape the return arm rejects.
         self.ret_char = _eligible_char(rt)
@@ -1889,6 +1889,31 @@ class _LowerCtx:
             yield
         finally:
             self.narrow.live_aliases.discard(name)
+
+    @contextmanager
+    def lambda_params(self, params: 'list[tuple[str, TpyType]]'):
+        """Read a lambda's params as params inside its body: the closure
+        spells them like a def's (a `str` param is a `std::string_view`), so
+        the param-implies-view verdicts apply, and they shadow any enclosing
+        name of the same spelling. The shadowed enclosing params leave
+        `params` outright, so a first-match and a last-match (`dict`) lookup
+        agree. (`bound_names` already holds lambda params: the body scan
+        counts them.)"""
+        prescan = self.prescan
+        names = {n for n, _t in params}
+        saved_params = self.params
+        saved_facts = tuple(getattr(prescan, f) for f in _ParamFacts._fields)
+        self.params = tuple(params) + tuple(
+            p for p in saved_params if p[0] not in names)
+        for f, outer, inner in zip(_ParamFacts._fields, saved_facts,
+                                   _param_facts(params, self.analyzer)):
+            setattr(prescan, f, (outer - names) | inner)
+        try:
+            yield
+        finally:
+            self.params = saved_params
+            for f, outer in zip(_ParamFacts._fields, saved_facts):
+                setattr(prescan, f, outer)
 
 
 def _walrus_pairs(expr):

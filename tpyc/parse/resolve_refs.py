@@ -34,7 +34,7 @@ from .nodes import (
     TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef,
     TpyInferFromDefaultRef, ParseError, ResolutionFailure,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyName,
-    SourceLocation,
+    SourceLocation, TpyLambda,
 )
 from .type_resolver import _FIXED_INT_MAP
 from ..diagnostics import SemanticError
@@ -266,6 +266,10 @@ def _walk_expr_calls(expr, call_scope, resolver):
         _walk_type_args(expr, call_scope, resolver)
     elif isinstance(expr, TpyMethodCall):
         _walk_type_args(expr, call_scope, resolver)
+    elif isinstance(expr, TpyLambda):
+        # children() hides a lambda body from scope-sensitive walks, but the
+        # types written in it resolve in the enclosing scope like any other.
+        _walk_expr_calls(expr.body, call_scope, resolver)
     for child in expr.children():
         _walk_expr_calls(child, call_scope, resolver)
 

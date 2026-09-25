@@ -85,6 +85,7 @@ from .scope_tracker import lend_roots
 from .iter_loans import iterated_storage, register_iteration_loans
 
 if TYPE_CHECKING:
+    from ..parse.nodes import SourceLocation
     from .context import SemanticContext
     from .type_ops import TypeOperations
     from .operators import OperatorResolver
@@ -235,6 +236,15 @@ def _expr_has_error_return_call(expr: TpyExpr) -> bool:
         if _expr_has_error_return_call(child):
             return True
     return False
+
+
+class _LambdaResultMismatch(SemanticError):
+    """A lambda body whose type does not fit the slot's return type; a
+    class-factory lambda rewords it in terms of the class the user wrote."""
+    def __init__(self, message: str, loc: 'SourceLocation | None',
+                 body_type: TpyType) -> None:
+        super().__init__(message, loc)
+        self.body_type = body_type
 
 
 class ExpressionAnalyzer:
@@ -579,6 +589,8 @@ class ExpressionAnalyzer:
         # Named function reference with Fn/Callable hint: resolve as function value.
         if isinstance(expr, TpyName) and is_callable_type(lambda_hint):
             result = self._try_resolve_function_ref(expr, lambda_hint)
+            if result is None:
+                result = self._try_class_factory(expr, lambda_hint)
             if result is not None:
                 self.ctx.set_expr_type(expr, result)
                 return result
@@ -2191,16 +2203,7 @@ class ExpressionAnalyzer:
         (with MRO walk via `_lookup_class_constant_owner`).
         """
         assert isinstance(expr.obj, TpyName)
-        record_info: RecordInfo | None = None
-        if binding.kind == BindingKind.RECORD:
-            # Authoritative: `cls` names its record, and get_record's
-            # short-name key collides for same-named records across modules.
-            record_info = binding.record_info
-        elif binding.kind == BindingKind.IMPORTED_NAME:
-            import_info = self.ctx.imported_names.get(expr.obj.name)
-            if import_info:
-                record_info = self.ctx.registry.find_record_by_qname(
-                    f"{import_info[0]}.{import_info[1]}")
+        record_info = self.ctx.class_record_of(binding)
         if record_info is None:
             return None
         return self._class_constant_access_on_record(expr, record_info)
@@ -4838,8 +4841,24 @@ class ExpressionAnalyzer:
             expr
         )
 
-    def _analyze_lambda_with_fn_hint(self, expr: TpyLambda, fn_type: CallableType) -> CallableType:
-        """Analyze a lambda with a Fn/Callable type hint providing parameter types."""
+    def _analyze_lambda_with_fn_hint(self, expr: TpyLambda, fn_type: CallableType,
+                                     *, as_class: str | None = None) -> CallableType:
+        """Analyze a lambda with a Fn/Callable type hint providing parameter types.
+
+        `as_class` names the class a synthesized factory lambda stands for,
+        so its diagnostics speak of the class name the user wrote.
+        """
+        if as_class is not None:
+            origin = f"'{as_class}' used as a '{fn_type}'"
+            try:
+                return self._analyze_lambda_with_fn_hint(expr, fn_type)
+            except _LambdaResultMismatch as e:
+                raise SemanticError(
+                    f"{origin} constructs a '{e.body_type}', which is not "
+                    f"compatible with its result type "
+                    f"'{fn_type.return_type}'", e.loc) from None
+            except SemanticError as e:
+                raise SemanticError(f"{origin}: {e.message}", e.loc) from None
         type_name = "Fn" if is_fn_type(fn_type) else "Callable"
         if len(expr.param_names) != len(fn_type.param_types):
             raise self.ctx.error(
@@ -4860,7 +4879,15 @@ class ExpressionAnalyzer:
                     self.ctx.func.current_ns.bind_variable(pname, ptype)
                 self.ctx.func.definitely_assigned.add(pname)
 
-            body_type = self.analyze_expr(expr.body)
+            # The body is the lambda's return value, so it takes the return
+            # slot as its hint like a `return` statement does -- unless the
+            # slot is still being inferred from the body.
+            ret_hint = fn_type.return_type
+            if (ret_hint is None or isinstance(ret_hint, VoidType)
+                    or contains_type_param(ret_hint)):
+                body_type = self.analyze_expr(expr.body)
+            else:
+                body_type = self.analyze_expr_with_hint(expr.body, ret_hint)
 
         # Detect captures: names in body that are local variables from the outer scope
         # (not lambda params, not global functions, not builtins)
@@ -4903,15 +4930,72 @@ class ExpressionAnalyzer:
                     body_type, fn_type.return_type,
                     "lambda return", loc=expr.loc)
             except SemanticError:
-                raise self.ctx.error(
+                err = self.ctx.error(
                     f"Lambda body type '{body_type}' is not compatible with "
                     f"expected return type '{fn_type.return_type}'",
-                    expr
-                )
+                    expr)
+                raise _LambdaResultMismatch(err.message, err.loc, body_type)
         self.compat.check_view_return_dangle(expr.body, fn_type.return_type, expr.loc)
+        if not isinstance(fn_type.return_type, VoidType):
+            expr.body = self.compat.coerce_expr(
+                expr.body, body_type, fn_type.return_type, "lambda return",
+                coercion_ctx=CoercionContext.RETURN, is_return=True)
 
         expr.inferred_return_type = fn_type.return_type
         return fn_type
+
+    # --- Class names as callables ---
+
+    def _names_class(self, name: str) -> bool:
+        """Whether `name` is bound to a class a call constructs: a record,
+        an enum, or an imported class with a constructor. A function,
+        module, protocol, variable or type form (`Fn`, `Own`) is not."""
+        ns = self.ctx.func.current_ns
+        binding = ns.lookup(name) if ns else None
+        if binding is None:
+            return False
+        if binding.kind == BindingKind.ENUM:
+            return True
+        record = self.ctx.class_record_of(binding)
+        if binding.kind == BindingKind.RECORD:
+            # `cls` in a classmethod is the class as a value, which needs
+            # `type[T]`; its own diagnostic says so.
+            return not binding.is_sema_alias
+        if binding.kind != BindingKind.IMPORTED_NAME or not binding.import_source:
+            return False
+        if self.ctx.registry.get_function(name):
+            return False
+        if (self.calls._record_for_local_name(name) is not None
+                or self.ctx.registry.get_enum(name) is not None):
+            return True
+        # Found only through its qualified import (a builtin): a class only
+        # when it declares a constructor, which a type form does not.
+        return (record is not None
+                and bool(record.get_method_overloads("__init__")))
+
+    def _try_class_factory(self, expr: TpyName,
+                           hint: CallableType) -> CallableType | None:
+        """A class name at a Callable/Fn slot stands for `lambda *a: C(*a)`
+        at the slot's arity, so the slot's parameter types pick the
+        constructor overload and its return type types the construction.
+        The lambda is kept on the name (`factory_expansion`) and lowered in
+        its place. None when the name is not a class."""
+        if not self._names_class(expr.name):
+            return None
+        lam = self._class_factory_lambda(expr, len(hint.param_types))
+        typ = self._analyze_lambda_with_fn_hint(lam, hint, as_class=expr.name)
+        self.ctx.set_expr_type(lam, typ)
+        expr.factory_expansion = lam
+        return typ
+
+    @staticmethod
+    def _class_factory_lambda(expr: TpyName, arity: int) -> TpyLambda:
+        """`lambda *a: C(*a)` for the class name `expr`, unanalyzed."""
+        pnames = [f"__tpy_fa{i}" for i in range(arity)]
+        call = TpyCall(func=TpyName(expr.name, loc=expr.loc),
+                       args=[TpyName(p, loc=expr.loc) for p in pnames],
+                       loc=expr.loc)
+        return TpyLambda(param_names=pnames, body=call, loc=expr.loc)
 
     def _lookup_capture_type(self, name: str) -> 'TpyType | None':
         """Declared type of a lambda-captured outer local (None when the

@@ -445,6 +445,7 @@ from .predicates import (
     _span_slot,
     _str_field_value_read,
     _wrap_view_owned_sink,
+    _owned_viewfam_slot,
     _owned_copy_sink,
     _str_self_append_rhs,
     _type_family_tag,
@@ -7060,13 +7061,7 @@ def _wrap_view_owned_return(value: 'THIRExpr | None', lc: '_LowerCtx',
     return-value leaf (`_async_return_value_cpp` renders the same wrap at all
     three async scaffolding sites, and `_async_ret_to_borrow` is a no-op for
     str/bytes)."""
-    ret_str = lc.prescan.ret_str
-    ret_bytes = lc.prescan.ret_bytes
-    slot = None
-    if ret_str is not None and is_str_type(ret_str):
-        slot = ret_str
-    elif ret_bytes is not None and is_bytes_type(ret_bytes):
-        slot = ret_bytes
+    slot = _owned_viewfam_slot(lc.prescan.ret_str, lc.prescan.ret_bytes)
     if slot is None and isinstance(value, THIRName):
         # An open-`T` return of a bare-`T` PARAM: the signature spells the
         # param `param_val_or_ref_t<T>` and the return `val_or_ref_t<T>`,
