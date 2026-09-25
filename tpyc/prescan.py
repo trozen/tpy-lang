@@ -144,6 +144,20 @@ def _expr_to_narrowing_key(expr: TpyExpr) -> str | None:
     return None
 
 
+def storage_spelling(expr: TpyExpr) -> str | None:
+    """How a diagnostic names a storage operand back to the user -- a name,
+    a field path, or an accessor read spelled `h.i` and not as its getter
+    call; None for anything else, whose source text the tree does not keep."""
+    key = _expr_to_narrowing_key(expr)
+    if key is not None:
+        return key
+    if is_property_getter_read(expr):
+        obj_key = _expr_to_narrowing_key(expr.obj)
+        if obj_key is not None:
+            return f"{obj_key}.{expr.method}"
+    return None
+
+
 # A deref-view narrowing rides `narrowed_types` under a distinct key: it
 # narrows the polymorphic payload reached through an owning wrapper's
 # reference-returning __deref__ (`if isinstance(rc, Dog): rc.bark()` resolves

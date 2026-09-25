@@ -75,8 +75,8 @@ void main() {
 // # two tuples is the render, the same shape the literal, the name and the call
 // # sources already take at that return. A value tuple copies at every sink, so
 // # neither arm raises the aliasing question a reference-typed ternary does, and
-// # the conditional is a plain value select. A LITERAL arm beside a name arm is
-// # refused by sema, before this row
+// # the conditional is a plain value select. A LITERAL arm beside a name arm pins
+// # to a declared return; without one it is refused by sema
 // # (BUGS.md#literal-elem-tuple-ternary-mismatch), and a generator YIELD of the
 // # same ternary rejects one rung on (res.btuple_yield_source).
 // import asyncio

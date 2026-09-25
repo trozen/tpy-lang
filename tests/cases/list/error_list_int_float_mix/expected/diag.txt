@@ -1,0 +1,1 @@
+main.py:7: error: List literal has mixed types: element 2 is float, but earlier elements are int; CPython keeps each value's own type, so write 1.0 instead of 1, or annotate the target as list[float]

@@ -295,9 +295,9 @@ class MethodAnalyzer:
                 arg_type = pre_analyzed[i]
                 param_type = unwrap_ref_type(overload.params[i].type)
                 if isinstance(param_type, OwnType) and isinstance(param_type.wrapped, TypeParamRef):
-                    infer_fn(expr.obj, arg_type)
+                    infer_fn(expr.obj, arg_type, expr.args[i])
                 elif isinstance(param_type, TypeParamRef):
-                    infer_fn(expr.obj, arg_type)
+                    infer_fn(expr.obj, arg_type, expr.args[i])
 
             # Update obj_type if element type changed
             info = literals_dict.get(literal_id)

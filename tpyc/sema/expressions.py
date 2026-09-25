@@ -7,7 +7,7 @@ Core expression analysis including literals, names, operators, field access, and
 from __future__ import annotations
 from contextlib import ExitStack
 from dataclasses import replace as dc_replace
-from typing import Literal, TYPE_CHECKING
+from typing import Callable, Literal, TYPE_CHECKING
 
 from ..typesys import peel_value_readonly
 from ..typesys import (
@@ -68,8 +68,13 @@ from ..value_category import (is_rvalue_source, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers)
 from .alias_rebind import bind_kind_of
 from .compatibility import TupleSink
-from .narrowing import NarrowingTracker, deref_view_narrowed
+from .narrowing import NarrowingTracker, deref_view_narrowed, truthy_operands
 from .numeric_lattice import widen_numeric_types
+from .type_join import (InferredJoin, JoinOutcome, declared_float_slot,
+                        find_int_float_mix, flipped,
+                        join_inferred_value_types, literal_mix_message,
+                        operand_spelling, python_type_name,
+                        select_mix_message)
 from .list_literals import IterableHelper
 from .local_deduction import collect_pending_source_types, mark_pending_list_mutated
 from .operators import DUNDER_CPP_TEMPLATES, _substitute_type_params
@@ -526,6 +531,22 @@ class ExpressionAnalyzer:
         self.ctx.set_expr_type(expr, typ)
         return typ
 
+    def analyze_condition(self, expr: TpyExpr) -> TpyType:
+        """Analyze a truth-test position: an `if` / `while` / `assert` head,
+        a comprehension filter, a ternary test, a `not` operand, the argument
+        of a constructor that only tests it (`bool(...)`)."""
+        self.mark_truth_test(expr)
+        return self.analyze_expr(expr)
+
+    def mark_truth_test(self, expr: TpyExpr) -> None:
+        """Record that `expr` is only tested for truth. The `and` / `or` /
+        ternary nodes the test distributes over are themselves truth tests,
+        so their operands need no one value type. Must precede the first
+        analysis of `expr`, which caches its type."""
+        selects: list[TpyExpr] = []
+        truthy_operands(expr, selects)
+        self.ctx.truth_test_selects.update(selects)
+
     def analyze_expr_with_hint(self, expr: TpyExpr, type_hint: TpyType | None) -> TpyType:
         """Analyze an expression with an optional type hint for inference.
 
@@ -561,6 +582,13 @@ class ExpressionAnalyzer:
             if result is not None:
                 self.ctx.set_expr_type(expr, result)
                 return result
+
+        # An and/or at a declared slot: its operands are analysed against
+        # the declared type first, as a ternary's arms are.
+        if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
+            typ = self._analyze_binop(expr, declared_slot=type_hint)
+            self.ctx.set_expr_type(expr, typ)
+            return typ
 
         # Ternary expression: propagate hint to both branches
         if isinstance(expr, TpyIfExpr):
@@ -1033,26 +1061,48 @@ class ExpressionAnalyzer:
             es = self._select_type_for_message(e, python_literals=True)
         return ts, es
 
+    def _analyze_select_operand(self, e: TpyExpr,
+                                declared: TpyType) -> TpyType:
+        """Analyze a ternary arm against the declared type of the select's
+        slot, so a literal pins to it before the join sees the arms. A
+        container literal takes the declared type while it is analysed; a
+        tuple literal keeps its literal leaves, so they pin to the declared
+        elements here. A variable keeps its own type: nothing converts it."""
+        t = self.analyze_expr_with_hint(e, declared)
+        slot = unwrap_readonly(unwrap_own(unwrap_ref_type(declared)))
+        if (isinstance(e, TpyTupleLiteral) and isinstance(t, TupleType)
+                and isinstance(slot, TupleType)
+                and self.compat.is_type_compatible(t, slot)):
+            t = self._resolve_literals_with_hint(t, slot)
+            self.ctx.set_expr_type(e, t)
+        return t
+
     def _select_join(self, t: TpyType, e: TpyType,
-                     t_expr: TpyExpr, e_expr: TpyExpr) -> TpyType | None:
+                     t_expr: TpyExpr, e_expr: TpyExpr) -> InferredJoin:
         """The one result type of a select -- `a if c else b`, `a or b`,
-        `a and b` -- over operand types already stripped of Ref/Own, or None
-        when the operands have no common type.
+        `a and b` -- over operand types already stripped of Ref/Own. An
+        inferred join, so an int meeting a float is refused (`type_join`).
 
         A literal or a pending container resolves against the OTHER operand,
         since the two must share one C++ type; readonly on either side stays
         on a reference result, which may alias that side."""
-        if t == e:
-            return t
-        joined = self._select_join_bare(unwrap_readonly(t), unwrap_readonly(e),
-                                        t_expr, e_expr)
-        if (joined is not None and not joined.is_value_type()
-                and (isinstance(t, ReadonlyType) or isinstance(e, ReadonlyType))):
-            return ReadonlyType(joined)
-        return joined
+        def join(t: TpyType, e: TpyType) -> TpyType | InferredJoin | None:
+            if t == e:
+                return t
+            joined = self._select_join_bare(unwrap_readonly(t),
+                                            unwrap_readonly(e), t_expr, e_expr)
+            if isinstance(joined, InferredJoin):
+                return joined
+            if (joined is not None and not joined.is_value_type()
+                    and (isinstance(t, ReadonlyType)
+                         or isinstance(e, ReadonlyType))):
+                return ReadonlyType(joined)
+            return joined
+        return join_inferred_value_types(t, e, join)
 
     def _select_join_bare(self, t: TpyType, e: TpyType,
-                          t_expr: TpyExpr, e_expr: TpyExpr) -> TpyType | None:
+                          t_expr: TpyExpr,
+                          e_expr: TpyExpr) -> TpyType | InferredJoin | None:
         if t == e:
             return t
         if isinstance(t, IntLiteralType) and isinstance(e, IntLiteralType):
@@ -1062,11 +1112,11 @@ class ExpressionAnalyzer:
             ed = self.ctx.default_int_for_literal(e, e_expr)
             return td if td == ed else widen_numeric_types(td, ed)
         if isinstance(t, IntLiteralType):
-            if is_integer_type(e) or is_float_type(e):
+            if is_integer_type(e):
                 return e
             t = self.ctx.default_int_for_literal(t, t_expr)
         if isinstance(e, IntLiteralType):
-            if is_integer_type(t) or is_float_type(t):
+            if is_integer_type(t):
                 return t
             e = self.ctx.default_int_for_literal(e, e_expr)
         if isinstance(t, FloatLiteralType) and isinstance(e, FloatLiteralType):
@@ -1094,33 +1144,49 @@ class ExpressionAnalyzer:
             return t
         return widen_numeric_types(t, e)
 
-    def _join_pending_containers(self, t: TpyType, e: TpyType) -> TpyType | None:
+    def _join_pending_containers(
+            self, t: TpyType, e: TpyType) -> TpyType | InferredJoin | None:
+        """The select join of a pending container operand; an int/float mix
+        between its elements and the other operand's comes back as that
+        verdict, since the join's own pre-check does not descend a pending
+        container beside a concrete one."""
         tn = self._normalize_pending_container(t)
         en = self._normalize_pending_container(e)
         if (isinstance(t, PENDING_CONTAINER_TYPES)
                 and isinstance(e, PENDING_CONTAINER_TYPES)
                 and self._unify_literal_types(t, e) is not None and tn == en):
             return tn
-        if self._pin_select_pending(t, en):
-            return en
-        if self._pin_select_pending(e, tn):
-            return tn
-        return None
+        for pending, target, swapped in ((t, en, False), (e, tn, True)):
+            verdict = self._pin_select_pending(pending, target)
+            if verdict.outcome is JoinOutcome.JOINED:
+                return target
+            if verdict.outcome is JoinOutcome.INT_FLOAT_MIX:
+                return flipped(verdict) if swapped else verdict
+        # A literal already pinned to its own declared type (`[2.5]` at a
+        # `list[float]` slot) meets the other operand as that concrete type.
+        return find_int_float_mix(tn, en)
 
-    def _pin_select_pending(self, pending: TpyType, target: TpyType) -> bool:
+    def _pin_select_pending(self, pending: TpyType,
+                            target: TpyType) -> InferredJoin:
         """Resolve a pending container operand to the other operand's concrete
         container type, when it is that container spelled as a literal."""
         if (not isinstance(pending, PENDING_CONTAINER_TYPES)
                 or isinstance(target, PENDING_CONTAINER_TYPES)
                 or contains_pending_leaf(target)
                 or any(isinstance(a, UnknownElementType)
-                       for a in target.inner_types())):
-            return False
-        if not self._pending_matches_hint(pending, target):
-            return False
+                       for a in target.inner_types())
+                or not self._pending_matches_hint(pending, target)):
+            return InferredJoin(JoinOutcome.INCOMPATIBLE)
+        deduction = self.calls.deduction
         if not self.compat.is_type_compatible(pending, target):
-            return False
-        return self.calls.deduction.pin_pending_container(pending, target)
+            # A float element beside an integer container is not assignable
+            # at all, but it is the same int/float mix the pin names the
+            # other way round.
+            verdict = deduction.pin_pending_container(pending, target,
+                                                      commit=False)
+            return (verdict if verdict.outcome is JoinOutcome.INT_FLOAT_MIX
+                    else InferredJoin(JoinOutcome.INCOMPATIBLE))
+        return deduction.pin_pending_container(pending, target)
 
     def _commit_select(self, expr: TpyExpr, result: TpyType,
                        operands: tuple[tuple[str, TpyType], ...],
@@ -1146,10 +1212,13 @@ class ExpressionAnalyzer:
                     context, coercion_ctx=CoercionContext.INIT))
 
     def _logical_op_result_type(self, expr: TpyBinOp, left: TpyType,
-                                right: TpyType) -> TpyType:
+                                right: TpyType,
+                                declared_slot: TpyType | None = None) -> TpyType:
         """Result type of `a and b` / `a or b`: the operand it yields, joined
         like a ternary's arms. Falls back to bool (the C++ &&/|| value) when
-        the operands have no common type or either is a bool."""
+        the operands have no common type or either is a bool, which a truth
+        test takes operand by operand; an int/float pair is refused unless
+        the node is a truth test or a declared float slot converts it."""
         if is_bool_type(left) or is_bool_type(right):
             return BOOL
         lt = unwrap_own(unwrap_ref_type(left))
@@ -1159,10 +1228,18 @@ class ExpressionAnalyzer:
                for x in (lt, rt)):
             # A nullable operand's select typing is not designed yet.
             return lt if lt == rt else BOOL
-        if self._int_float_mix(lt, rt):
-            # `3 or 2.5` is the int 3: a float result would print `3.0`.
-            return BOOL
-        result = self._select_join(lt, rt, expr.left, expr.right)
+        verdict = self._select_join(lt, rt, expr.left, expr.right)
+        result = verdict.joined
+        if verdict.outcome is JoinOutcome.INT_FLOAT_MIX:
+            slot_float = declared_float_slot(declared_slot)
+            if slot_float is not None and not verdict.nested:
+                result = slot_float
+            elif expr not in self.ctx.truth_test_selects:
+                op = "and" if expr.op == "&&" else "or"
+                raise self.ctx.error(select_mix_message(
+                    verdict, f"`{op}`", lambda ls, rs: f"{ls} {op} {rs}",
+                    expr.left, expr.right, self._mix_operand_types(lt, rt),
+                    expr is self.ctx.name_initializer), expr)
         if result is None:
             return BOOL
         # The operands are not coerced, but a literal must still fit the
@@ -1175,19 +1252,15 @@ class ExpressionAnalyzer:
         self._commit_select(expr, result, (), "logical operand")
         return result
 
-    @staticmethod
-    def _int_float_mix(a: TpyType, b: TpyType) -> bool:
-        def is_int(t: TpyType) -> bool:
-            return isinstance(t, IntLiteralType) or is_any_int_type(t)
-
-        def is_float(t: TpyType) -> bool:
-            return isinstance(t, FloatLiteralType) or is_any_float_type(t)
-        a, b = unwrap_readonly(a), unwrap_readonly(b)
-        return (is_int(a) and is_float(b)) or (is_float(a) and is_int(b))
-
-    def _analyze_binop(self, expr: TpyBinOp) -> TpyType:
-        """Analyze a binary operation."""
-        left_type = self.analyze_expr(expr.left)
+    def _analyze_binop(self, expr: TpyBinOp,
+                       declared_slot: TpyType | None = None) -> TpyType:
+        """Analyze a binary operation. `declared_slot` is the declared type
+        an and/or's value goes to; each operand is analysed against it."""
+        def operand(e: TpyExpr) -> TpyType:
+            if declared_slot is None:
+                return self.analyze_expr(e)
+            return self.analyze_expr_with_hint(e, declared_slot)
+        left_type = operand(expr.left)
         if expr.op in ("&&", "||"):
             type_true, type_false = self.narrowing.condition_type_facts(expr.left)
             saved_types = dict(self.ctx.func.narrowed_types)
@@ -1199,7 +1272,7 @@ class ExpressionAnalyzer:
                 self.ctx.func.narrowed_types.update(type_false)
             self.ctx.cond_operand_depth += 1
             try:
-                right_type = self.analyze_expr(expr.right)
+                right_type = operand(expr.right)
             finally:
                 self.ctx.cond_operand_depth -= 1
                 self.ctx.func.narrowed_types = saved_types
@@ -1605,7 +1678,8 @@ class ExpressionAnalyzer:
 
         # Logical operators: Python semantics returns an operand, not bool.
         if expr.op in ("&&", "||"):
-            return self._logical_op_result_type(expr, left_type, right_type)
+            return self._logical_op_result_type(expr, left_type, right_type,
+                                                declared_slot)
 
         # IntEnum arithmetic: coerce to underlying type, delegate to standard binop
         if expr.op in ("+", "-", "*", "//", "%"):
@@ -1831,7 +1905,8 @@ class ExpressionAnalyzer:
 
     def _analyze_unaryop(self, expr: TpyUnaryOp) -> TpyType:
         """Analyze a unary operation."""
-        operand_type = self.analyze_expr(expr.operand)
+        operand_type = (self.analyze_condition(expr.operand) if expr.op == "!"
+                        else self.analyze_expr(expr.operand))
         effective_type = unwrap_ref_type(operand_type)
         if isinstance(effective_type, OwnType):
             effective_type = effective_type.wrapped
@@ -2692,10 +2767,17 @@ class ExpressionAnalyzer:
                 # Literal-aware unification (int/float literals, tuples, nested
                 # pending containers); the demotion hook inside converges jagged
                 # pending lists -- bare or wrapped in a tuple -- to one C++ type.
-                unified = self._unify_literal_types(first_type, elem_type)
-                if unified is not None:
-                    first_type = unified
+                verdict = join_inferred_value_types(
+                    first_type, elem_type, self._unify_literal_types)
+                if verdict.outcome is JoinOutcome.JOINED:
+                    first_type = verdict.joined
                     continue
+                if verdict.outcome is JoinOutcome.INT_FLOAT_MIX:
+                    raise self.ctx.error(literal_mix_message(
+                        verdict, "List literal has mixed types", "element",
+                        i, elem_type, first_type, expr.elements[:i],
+                        self._name_target_annotation(
+                            expr, lambda f: f"list[{f}]")), expr)
                 # Nested lists with IntLiteralType elements are compatible
                 if (is_list(first_type) and is_list(elem_type) and
                     isinstance(first_type.element_type, IntLiteralType) and
@@ -3243,7 +3325,7 @@ class ExpressionAnalyzer:
         self, expr: TpyIfExpr, type_hint: TpyType | None = None,
     ) -> TpyType:
         """Analyze a ternary conditional: then_expr if condition else else_expr."""
-        self.analyze_expr(expr.condition)
+        self.analyze_condition(expr.condition)
         self.narrowing.warn_truthy_value_optionals(expr.condition)
 
         then_facts, else_facts = self.narrowing.condition_type_facts(
@@ -3259,16 +3341,16 @@ class ExpressionAnalyzer:
         self.ctx.cond_operand_depth += 1
         try:
             if type_hint is not None:
-                then_type = self.analyze_expr_with_hint(expr.then_expr,
-                                                        type_hint)
+                then_type = self._analyze_select_operand(expr.then_expr,
+                                                         type_hint)
             else:
                 then_type = self.analyze_expr(expr.then_expr)
 
             self.ctx.func.narrowed_types = dict(saved_narrowed)
             self.ctx.func.narrowed_types.update(else_facts)
             if type_hint is not None:
-                else_type = self.analyze_expr_with_hint(expr.else_expr,
-                                                        type_hint)
+                else_type = self._analyze_select_operand(expr.else_expr,
+                                                         type_hint)
             else:
                 else_type = self.analyze_expr(expr.else_expr)
         finally:
@@ -3281,8 +3363,27 @@ class ExpressionAnalyzer:
         then_type = unwrap_own(unwrap_ref_type(then_type))
         else_type = unwrap_own(unwrap_ref_type(else_type))
 
-        common = self._select_join(then_type, else_type,
-                                   expr.then_expr, expr.else_expr)
+        verdict = self._select_join(then_type, else_type,
+                                    expr.then_expr, expr.else_expr)
+        common = verdict.joined
+        # A truth test takes each arm on its own, so arms with no one value
+        # type (an int and a float, or a truth-tested and/or beside a float)
+        # leave the ternary a bool.
+        truth_test = expr in self.ctx.truth_test_selects
+        if verdict.outcome is JoinOutcome.INT_FLOAT_MIX:
+            slot_float = declared_float_slot(type_hint)
+            if slot_float is not None and not verdict.nested:
+                common = slot_float
+            elif truth_test:
+                self.ctx.truth_tested_arms.add(expr)
+                return BOOL
+            else:
+                raise self.ctx.error(select_mix_message(
+                    verdict, "conditional expression",
+                    self._ternary_rewrite(expr), expr.then_expr,
+                    expr.else_expr,
+                    self._mix_operand_types(then_type, else_type),
+                    expr is self.ctx.name_initializer), expr)
         if common is None:
             t = self._select_default_type(then_type, expr.then_expr)
             e = self._select_default_type(else_type, expr.else_expr)
@@ -3290,6 +3391,9 @@ class ExpressionAnalyzer:
                 common = make_union(t, NoneType())
             elif isinstance(t, NoneType):
                 common = make_union(e, NoneType())
+            elif truth_test:
+                self.ctx.truth_tested_arms.add(expr)
+                return BOOL
             else:
                 ts, es = self._select_types_for_message(then_type, else_type)
                 raise self.ctx.error(
@@ -3299,6 +3403,28 @@ class ExpressionAnalyzer:
                             (("then_expr", then_type), ("else_expr", else_type)),
                             "ternary branch")
         return common
+
+    def _mix_operand_types(self, a: TpyType,
+                           b: TpyType) -> tuple[TpyType, TpyType]:
+        """Select operand types as a mix diagnostic spells them: a pending
+        container literal as the container it is."""
+        return (self._normalize_pending_container(a),
+                self._normalize_pending_container(b))
+
+    def _name_target_annotation(
+            self, expr: TpyExpr, annotation: Callable[[str], str],
+    ) -> Callable[[str], str] | None:
+        """`annotation` when `expr` is the whole value of an unannotated
+        first binding, the one position a declared type can be offered for."""
+        return annotation if expr is self.ctx.name_initializer else None
+
+    @staticmethod
+    def _ternary_rewrite(
+            expr: TpyIfExpr) -> Callable[[str, str], str] | None:
+        cond = operand_spelling(expr.condition)
+        if cond is None:
+            return None
+        return lambda then_s, else_s: f"{then_s} if {cond} else {else_s}"
 
     def _resolve_literals_with_hint(self, t: TpyType, hint: TpyType | None) -> TpyType:
         """Resolve IntLiteralType / FloatLiteralType and pending container types
@@ -3422,13 +3548,19 @@ class ExpressionAnalyzer:
         else:
             key_type = key_types[0]
             for i, kt in enumerate(key_types[1:], 2):
-                unified = self._unify_literal_types(key_type, kt)
-                if unified is None:
+                verdict = join_inferred_value_types(
+                    key_type, kt, self._unify_literal_types)
+                if verdict.outcome is JoinOutcome.INT_FLOAT_MIX:
+                    raise self.ctx.error(literal_mix_message(
+                        verdict, "Dict has mixed key types", "key", i, kt,
+                        key_type, expr.keys[:i], self._name_target_annotation(
+                            expr, lambda f: f"dict[{f}, ...]")), expr)
+                if verdict.joined is None:
                     raise self.ctx.error(
                         f"Dict has mixed key types: key {i} is {self._user_type_name(kt)}, "
                         f"but earlier keys are {self._user_type_name(key_type)}", expr,
                     )
-                key_type = unified
+                key_type = verdict.joined
 
         # Unify value types
         if (is_union_or_optional_type(expected_value)
@@ -3465,10 +3597,19 @@ class ExpressionAnalyzer:
                 # Literal-aware unification; the demotion hook converges jagged
                 # pending-list values -- bare or wrapped in a tuple/dict -- to one
                 # C++ type (see the array-literal peer-unify).
-                unified = self._unify_literal_types(value_type, vt)
-                if unified is not None:
-                    value_type = unified
+                verdict = join_inferred_value_types(
+                    value_type, vt, self._unify_literal_types)
+                if verdict.outcome is JoinOutcome.JOINED:
+                    value_type = verdict.joined
                     continue
+                if verdict.outcome is JoinOutcome.INT_FLOAT_MIX:
+                    raise self.ctx.error(literal_mix_message(
+                        verdict, "Dict has mixed value types", "value", i,
+                        vt, value_type, expr.values[:i],
+                        self._name_target_annotation(
+                            expr, lambda f:
+                            f"dict[{python_type_name(key_type)}, {f}]")),
+                        expr)
                 raise self.ctx.error(
                     f"Dict has mixed value types: value {i} is {self._user_type_name(vt)}, "
                     f"but earlier values are {self._user_type_name(value_type)}", expr,
@@ -3543,13 +3684,20 @@ class ExpressionAnalyzer:
         else:
             elem_type = elem_types[0]
             for i, et in enumerate(elem_types[1:], 2):
-                unified = self._unify_literal_types(elem_type, et)
-                if unified is None:
+                verdict = join_inferred_value_types(
+                    elem_type, et, self._unify_literal_types)
+                if verdict.outcome is JoinOutcome.INT_FLOAT_MIX:
+                    raise self.ctx.error(literal_mix_message(
+                        verdict, "Set has mixed element types", "element", i,
+                        et, elem_type, expr.elements[:i],
+                        self._name_target_annotation(
+                            expr, lambda f: f"set[{f}]")), expr)
+                if verdict.joined is None:
                     raise self.ctx.error(
                         f"Set has mixed element types: element {i} is {self._user_type_name(et)}, "
                         f"but earlier elements are {self._user_type_name(elem_type)}", expr,
                     )
-                elem_type = unified
+                elem_type = verdict.joined
 
         if expr.loc is not None and not isinstance(expected_elem, AnyType):
             for elem, et in zip(expr.elements, elem_types):
@@ -4181,7 +4329,7 @@ class ExpressionAnalyzer:
         hint: TpyType | tuple[TpyType | None, TpyType | None] | None,
     ) -> TpyType | tuple[TpyType, TpyType]:
         for cond in gen.conditions:
-            self.analyze_expr(cond)
+            self.analyze_condition(cond)
         if isinstance(expr, TpyDictComprehension):
             key_hint, value_hint = hint
             key_type = (self.analyze_expr_with_hint(expr.key_expr, key_hint)

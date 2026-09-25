@@ -163,6 +163,10 @@ class TypeDef:
     # strings -- which can't tell `bytes` from `bytearray` (both stringify to
     # std::vector<uint8_t>, but only the immutable value type marshals).
     boundary_marshal: bool = False
+    # Constructing this type only tests its argument for truth (`bool(x)`),
+    # so the argument is analysed as a condition: an `and` / `or` / ternary
+    # there needs no one value type.
+    ctor_arg_truth_test: bool = False
     subscript_borrows: bool = False
     # Value type whose every value is a borrow handle into storage it does
     # not own (StrView, Span, dict views, ...). Set only from the stub's
@@ -1098,6 +1102,7 @@ def _populate() -> None:
     # Bool and char.
     register(TypeDef(
         "builtins.bool", TC.BOOL, is_value_type=True, boundary_marshal=True,
+        ctor_arg_truth_test=True,
         cpp_formatter=lambda args: "bool",
         param_cpp_formatter=lambda args: "bool",
     ))

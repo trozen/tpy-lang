@@ -4980,7 +4980,7 @@ class PendingSetType(TpyType):
 
 # Builtin containers whose concrete type can still wrap a pending leaf in a type
 # arg (a non-empty `dict`/`list`/`set` literal is concrete but its element/value
-# may stay pending). `unify_literal_types` recurses these; nothing else.
+# may stay pending). `literal_peer_children` descends these; nothing else.
 _PENDING_WRAPPER_QNAMES = frozenset({"builtins.list", "builtins.dict", "builtins.set"})
 
 
@@ -4995,27 +4995,44 @@ def contains_pending_leaf(typ: 'TpyType') -> bool:
     return any(contains_pending_leaf(t) for t in typ.inner_types())
 
 
-def pending_containers_match(
+def literal_peer_children(
     a: 'TpyType', b: 'TpyType',
-    elem_compatible: 'Callable[[TpyType, TpyType], bool]',
-) -> bool:
-    """Whether two PENDING dict/set containers are the same kind with
-    pairwise-compatible key/value/element types, without forcing the deferred
-    resolution. The element rule is the caller's, so the peer-unify and
-    assignability paths share one container skeleton rather than each rejecting
-    structurally-equal pendings.
+) -> 'tuple[tuple[TpyType, TpyType], ...] | None':
+    """The child type pairs a literal peer-unify of `a` and `b` descends into,
+    or None when the pair is not one it descends: two tuples of one arity, two
+    pending containers of one kind, or two same builtin containers of which one
+    still wraps a pending leaf.
 
-    Pending LISTS are handled directly in `unify_literal_types` instead: a list
-    pair is size-agnostic (jagged peers share `list[T]`), and the Array-vs-list
-    decision is left to the demotion hook -- a concern this pure predicate has no
-    business encoding.
-    """
+    Pending lists pair whatever their sizes: jagged peers share `list[T]`, and
+    the Array-vs-list decision is left to `unify_literal_types`' demotion hook.
+    A concrete builtin container is descended only while it wraps a pending
+    leaf (a non-empty dict literal `{1: [2, 3]}` is a concrete
+    dict[int32, PendingList...]), so fully concrete generics keep their exact
+    equal-or-nothing verdict; user records are never descended, so a
+    same-named one that carried a pending leaf is not treated as unifiable.
+
+    Shared by `unify_literal_types` and the inferred-join verdict
+    (`sema/type_join.py`), so the leaves one reaches are the leaves the other
+    judges."""
+    if isinstance(a, TupleType) and isinstance(b, TupleType):
+        if len(a.element_types) != len(b.element_types):
+            return None
+        return tuple(zip(a.element_types, b.element_types))
+    if isinstance(a, PendingListType) and isinstance(b, PendingListType):
+        return ((a.element_type, b.element_type),)
     if isinstance(a, PendingDictType) and isinstance(b, PendingDictType):
-        return (elem_compatible(a.key_type, b.key_type)
-                and elem_compatible(a.value_type, b.value_type))
+        return ((a.key_type, b.key_type), (a.value_type, b.value_type))
     if isinstance(a, PendingSetType) and isinstance(b, PendingSetType):
-        return elem_compatible(a.element_type, b.element_type)
-    return False
+        return ((a.element_type, b.element_type),)
+    if (isinstance(a, NominalType) and isinstance(b, NominalType)
+            and a.qualified_name() in _PENDING_WRAPPER_QNAMES
+            and a.qualified_name() == b.qualified_name()
+            and (contains_pending_leaf(a) or contains_pending_leaf(b))):
+        ia, ib = a.inner_types(), b.inner_types()
+        if len(ia) != len(ib):
+            return None
+        return tuple(zip(ia, ib))
+    return None
 
 
 def unify_literal_types(
@@ -5023,9 +5040,11 @@ def unify_literal_types(
     on_pending_pair: 'Callable[[TpyType, TpyType], None] | None' = None,
 ) -> 'TpyType | None':
     """Unify two literal/pending element types -- the single source of truth for
-    "are these two element types peer-compatible". IntLiteralType / FloatLiteralType
-    count as compatible with each other and with their concrete equivalents;
-    TupleType and pending containers recurse. Returns the unified type or None.
+    "are these two element types peer-compatible". An IntLiteralType is
+    compatible with another and with a concrete integer, a FloatLiteralType
+    likewise with floats (an int never unifies with a float: see
+    `sema/type_join.py`); the pairs `literal_peer_children` names recurse.
+    Returns the unified type or None.
 
     Used by both the peer-unification path (list/dict/set literal element merge)
     and the assignability path (`check_type_compatible`'s expected-Pending branch,
@@ -5052,50 +5071,21 @@ def unify_literal_types(
         return b
     if isinstance(b, FloatLiteralType) and is_float_type(a):
         return a
-    if isinstance(a, TupleType) and isinstance(b, TupleType):
-        if len(a.element_types) != len(b.element_types):
+    pairs = literal_peer_children(a, b)
+    if pairs is None:
+        return None
+    unified: list[TpyType] = []
+    for ea, eb in pairs:
+        u = unify_literal_types(ea, eb, on_pending_pair)
+        if u is None:
             return None
-        unified: list[TpyType] = []
-        for ea, eb in zip(a.element_types, b.element_types):
-            u = unify_literal_types(ea, eb, on_pending_pair)
-            if u is None:
-                return None
-            unified.append(u)
+        unified.append(u)
+    if isinstance(a, TupleType):
         return TupleType(tuple(unified))
-    # Pending lists are size-agnostic: element-compatible peers always unify,
-    # since jagged ones share `list[T]`. The hook converges them on this pass
-    # (same size -> link/Array, different size -> demote to vector); size is not
-    # a compatibility gate here.
-    if isinstance(a, PendingListType) and isinstance(b, PendingListType):
-        if unify_literal_types(a.element_type, b.element_type, on_pending_pair) is None:
-            return None
-        if on_pending_pair is not None:
-            on_pending_pair(a, b)
-        return a
-    if pending_containers_match(
-            a, b, lambda x, y: unify_literal_types(x, y, on_pending_pair) is not None):
-        if on_pending_pair is not None:
-            on_pending_pair(a, b)
-        return a
-    # A concrete builtin container can still wrap a pending leaf (a non-empty
-    # dict literal `{1: [2, 3]}` is a concrete dict[int32, PendingList...]).
-    # Recurse its type args so a pending list nested under it is reached and
-    # converged on the same pass. Gated on an actual pending leaf, so fully
-    # concrete generics keep their exact a==b / None behaviour above; and
-    # restricted to builtin containers so a same-named user record/protocol that
-    # somehow carried a pending leaf can't be silently treated as unifiable.
-    if (isinstance(a, NominalType) and isinstance(b, NominalType)
-            and a.qualified_name() in _PENDING_WRAPPER_QNAMES
-            and a.qualified_name() == b.qualified_name()
-            and (contains_pending_leaf(a) or contains_pending_leaf(b))):
-        ia, ib = a.inner_types(), b.inner_types()
-        if len(ia) != len(ib):
-            return None
-        for ea, eb in zip(ia, ib):
-            if unify_literal_types(ea, eb, on_pending_pair) is None:
-                return None
-        return a
-    return None
+    if on_pending_pair is not None and isinstance(
+            a, (PendingListType, PendingDictType, PendingSetType)):
+        on_pending_pair(a, b)
+    return a
 
 
 @dataclass

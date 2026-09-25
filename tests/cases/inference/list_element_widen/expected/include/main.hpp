@@ -13,8 +13,6 @@ inline constexpr std::string_view __name__ = "__main__";
 void test_int32_to_int64_append();
 // def test_literal_to_int64_append() -> None:
 void test_literal_to_int64_append();
-// def test_literal_to_float_append() -> None:
-void test_literal_to_float_append();
 // def test_int32_to_int64_insert() -> None:
 void test_int32_to_int64_insert();
 // def test_same_type_no_widen() -> None:

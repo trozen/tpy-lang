@@ -20,6 +20,98 @@ int_literal_pair: 10000000000 10000000000 10000000000
 float_literal_elem: 2 0
 float_or: 2.5
 float_or: 1.5
+declared_list_or: 1 0.5
+declared_list_and: 0
+declared_dict_or: 1 0.5
+declared_set_or: 1
+declared_tuple_ternary: 0.5 x
+declared_list_or: 1 0.5
+declared_list_and: 0
+declared_dict_or: 1 0.5
+declared_set_or: 1
+declared_tuple_ternary: 1.25 y
+tuple_literal_arm: (3, 'c') (4, 'd')
+int_float_converted: 3.0
+int_float_declared: 1.5
+int_float_or_declared: 1.5
+int_float_or_condition
+int_widen_ternary: 3
+float_ternary: 1.5
+int_float_declared_list: 1.5
+int_widen_usage: 3 5000000000
+int_float_return: 1.5 1.5
+int_float_arg_ternary: 1.5
+int_float_arg_or: 1.5
+int_float_and_declared: 1.25
+int_float_nested_declared: 1.5
+int_float_nested_ternary_declared: 1.5
+int_literal_float_declared: 1.5
+int_float_optional_slot: 1.5 1.5
+int_float_converted: 2.5
+int_float_declared: 1.25
+int_float_or_declared: 1.25
+int_float_or_condition
+int_widen_ternary: 5000000000
+float_ternary: 2.5
+int_float_declared_list: 0.0
+int_widen_usage: 0 5000000000
+int_float_return: 1.25 1.25
+int_float_arg_ternary: 1.25
+int_float_arg_or: 1.25
+int_float_and_declared: 0.0
+int_float_nested_declared: 1.25
+int_float_nested_ternary_declared: 1.25
+int_literal_float_declared: 1.25
+int_float_optional_slot: 1.25 1.25
+int_float_while: 2
+int_float_not: False
+int_float_filter: 3
+int_float_assert
+int_float_bool: True True
+int_float_ternary_test: 1
+int_float_walrus_leaf: 3
+int_float_genexpr: 3
+int_float_guard: one any
+int_float_ternary_arms
+int_float_ternary_arms_bool: True
+int_float_while: 2
+int_float_not: False
+int_float_filter: 3
+int_float_assert
+int_float_bool: True False
+int_float_ternary_test: 1
+int_float_walrus_leaf: 0
+int_float_genexpr: 3
+int_float_guard: one any
+int_float_ternary_arms
+int_float_ternary_arms_bool: True
+int_float_while: 0
+int_float_not: True
+int_float_filter: 0
+int_float_bool: False False
+int_float_ternary_test: 2
+int_float_genexpr: 0
+int_float_guard: none none
+int_float_ternary_arms_bool: False
+int_float_while: 2
+int_float_not: False
+int_float_filter: 3
+int_float_assert
+int_float_bool: True False
+int_float_ternary_test: 1
+int_float_walrus_leaf: 3
+int_float_genexpr: 3
+int_float_guard: one any
+int_float_ternary_arms_bool: False
+mixed_arms_record_list
+mixed_arms_bool: False
+mixed_arms_int_str
+mixed_arms_record_list
+mixed_arms_bool: True
+mixed_arms_bool: False
+mixed_arms_int_str
+mixed_arms_record_list
+mixed_arms_bool: True
 not_or: False
 not_or_after: 2
 readonly_join: 1

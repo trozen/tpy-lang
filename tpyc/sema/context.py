@@ -2073,6 +2073,13 @@ class SemanticContext:
     # --- Type cache ---
     expr_types: IdentityMap = field(default_factory=IdentityMap)
     var_types: IdentityMap = field(default_factory=IdentityMap)
+    # The and/or and ternary nodes whose value is only tested for truth (a
+    # condition, a `not` operand, the argument of `bool(...)`), so each
+    # operand is tested on its own instead of the node needing one value type.
+    truth_test_selects: IdentitySet = field(default_factory=IdentitySet)
+    # The truth-tested ternaries whose arms share no value type: each arm is
+    # tested on its own and the ternary is a bool.
+    truth_tested_arms: IdentitySet = field(default_factory=IdentitySet)
 
     # --- Literal tracking (counters + registries persist across functions) ---
     literal_counter: int = 0
@@ -2324,6 +2331,10 @@ class SemanticContext:
 
     # --- Expression type hint ---
     expr_type_hint: TpyType | None = None
+    # The whole value of the unannotated first binding `name = ...` being
+    # analysed: a diagnostic on exactly this node can offer annotating the
+    # name, which an already-declared name or any other value cannot take.
+    name_initializer: 'TpyExpr | None' = None
 
     # --- Branch-declared variable tracking ---
     if_branch_decls: IdentityMap = field(default_factory=IdentityMap)

@@ -32,16 +32,6 @@ void test_literal_to_int64_append() {
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
-// def test_literal_to_float_append() -> None:
-//     xs = [1, 2, 3]  # tpyc: type(list[float])
-//     xs.append(3.14)
-//     print(xs[3])
-void test_literal_to_float_append() {
-    std::vector<double> xs = {1, 2, 3};
-    xs.push_back(3.14);
-    std::cout << ::tpy::print_float(::tpy::__getitem__(xs, 3)) << "\n";
-}
-
 // def test_int32_to_int64_insert() -> None:
 //     xs = [int32(1), int32(2)]  # tpyc: type(list[int64])
 //     xs.insert(0, int64(99))
@@ -78,7 +68,6 @@ void test_multiple_widens() {
 
 // test_int32_to_int64_append()
 // test_literal_to_int64_append()
-// test_literal_to_float_append()
 // test_int32_to_int64_insert()
 // test_same_type_no_widen()
 // test_multiple_widens()
@@ -89,7 +78,6 @@ void __tpy_init() {
 
     ::tpyapp::main::test_int32_to_int64_append();
     ::tpyapp::main::test_literal_to_int64_append();
-    ::tpyapp::main::test_literal_to_float_append();
     ::tpyapp::main::test_int32_to_int64_insert();
     ::tpyapp::main::test_same_type_no_widen();
     ::tpyapp::main::test_multiple_widens();

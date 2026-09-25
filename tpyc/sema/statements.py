@@ -700,7 +700,7 @@ class StatementAnalyzer:
         through the head -- so both ask it here.
         """
         assigned_before = frozenset(self.ctx.func.definitely_assigned)
-        self.expr.analyze_expr(condition)
+        self.expr.analyze_condition(condition)
         if_true, if_false = condition_walrus_assigned(condition)
         # The head's own verdict is what every path out of it is granted, so
         # a target only ONE path evaluates must not be left assigned here by
@@ -2597,7 +2597,7 @@ class StatementAnalyzer:
                 self._assigned_here())
             self.init.mark_terminated()
         elif isinstance(stmt, TpyAssert):
-            self.expr.analyze_expr(stmt.condition)
+            self.expr.analyze_condition(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             if stmt.message is not None:
                 msg_type = self.expr.analyze_expr(stmt.message)
@@ -5167,6 +5167,16 @@ class StatementAnalyzer:
         if is_scan_rvalue(value):
             self.ctx.func.borrow_reassigned_vars.add(name)
 
+    def _analyze_fresh_binding(self, value: TpyExpr) -> TpyType:
+        """Analyze the whole value of an unannotated first binding of a
+        name, the one binding a diagnostic can suggest annotating."""
+        saved = self.ctx.name_initializer
+        self.ctx.name_initializer = value
+        try:
+            return self.expr.analyze_expr(value)
+        finally:
+            self.ctx.name_initializer = saved
+
     def _analyze_var_decl(self, stmt: TpyVarDecl) -> None:
         """Analyze a variable declaration."""
         # In nested defs, assigning to an outer variable requires nonlocal
@@ -5525,7 +5535,10 @@ class StatementAnalyzer:
             else:
                 # Use annotation as hint, or existing type for reassignments
                 type_hint = stmt.type if stmt.type else existing_type
-                init_type = self.expr.analyze_expr_with_hint(stmt.init, type_hint)
+                init_type = (
+                    self._analyze_fresh_binding(stmt.init)
+                    if type_hint is None and not is_global_declared
+                    else self.expr.analyze_expr_with_hint(stmt.init, type_hint))
 
             # Unannotated top-level ALL_CAPS: now that the init type is known,
             # the Final-suggestion can name it (the annotated case warned above).
@@ -6900,7 +6913,8 @@ class StatementAnalyzer:
             if isinstance(obj_type_for_dict, PendingDictType):
                 index_type = self.ctx.get_expr_type(stmt.target.index)
                 self.deduction.infer_dict_key_value_types(
-                    stmt.target.obj, index_type, value_type)
+                    stmt.target.obj, index_type, value_type,
+                    stmt.target.index, stmt.value)
                 # Update obj_type and target_type if types were inferred
                 dict_info = self.ctx.dict_literals.get(obj_type_for_dict.literal_id)
                 if dict_info and not isinstance(dict_info.key_type, UnknownElementType):

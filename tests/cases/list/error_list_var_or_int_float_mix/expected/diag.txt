@@ -1,0 +1,1 @@
+main.py:8: error: this `or` mixes int32 and float elements, and CPython keeps whichever value it picks; declare xs as list[float]

@@ -4,10 +4,12 @@
 namespace tpyapp::main {
 
 
-// # Empty list int-to-float widening: append(int) then append(float) widens to list[float]
+// # An empty list learns list[float] from its uses once the int element is
+// # converted (control_flow/error_usage_int_float_mix refuses the raw int).
 // def test() -> None:
 //     xs = []  # tpyc: type(list[float])
-//     xs.append(1)
+//     # The explicit float() is what lets the float element join.
+//     xs.append(float(1))
 //     xs.append(2.0)
 //     print(xs)
 void test() {

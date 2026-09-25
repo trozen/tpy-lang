@@ -180,7 +180,8 @@ void nested_select() {
 // def int_widen_or() -> None:
 //     a: int32 = 0
 //     b: int64 = 5000000000
-//     # Integer operands widen to the wider one (an int/float mix stays bool).
+//     # Integer operands widen to the wider one (an int/float mix is refused:
+//     # control_flow/error_select_int_float_mix, operators/error_logical_int_float_mix).
 //     x = a or b  # tpyc: ok type(int64)
 //     print("int_widen_or:", x)
 //     u: uint8 = 0
@@ -236,6 +237,355 @@ void float_or(double f) {
     std::cout << "float_or:" << " " << ::tpy::print_float(x) << "\n";
 }
 
+// def int_float_select(a: int32, big: int64, f: float, c: bool) -> None:
+//     # An explicit float() gives an int/float ternary its one type.
+//     x = float(a) if c else 2.5  # tpyc: ok type(float)
+//     print("int_float_converted:", x)
+//     # A declared float target converts the picked int arm (CPython keeps the
+//     # int 3, so the section prints a value both agree on).
+//     y: float = a if c else 2.5  # tpyc: ok
+//     print("int_float_declared:", y / 2)
+//     # The same declared float target converts the picked int `or` operand.
+//     v: float = a or 2.5  # tpyc: ok
+//     print("int_float_or_declared:", v / 2)
+//     # As a condition an int/float `or` only tests each operand.
+//     if a or 2.5:  # tpyc: ok
+//         print("int_float_or_condition")
+//     # Integer arms still widen, and float arms still join.
+//     w = a if c else big  # tpyc: ok type(int64)
+//     print("int_widen_ternary:", w)
+//     g = f if c else 2.5  # tpyc: ok type(float)
+//     print("float_ternary:", g)
+//     # An annotated empty list converts an int element; an unannotated one
+//     # still widens across integer elements.
+//     fs: list[float] = []
+//     fs.append(a)  # tpyc: ok
+//     print("int_float_declared_list:", fs[0] / 2)
+//     ws = []  # tpyc: type(list[int64])
+//     ws.append(a)
+//     ws.append(big)
+//     print("int_widen_usage:", ws[0], ws[1])
+void int_float_select(int32_t a, int64_t big, double f, bool c) {
+    double x = ((c) ? (static_cast<double>(a)) : (2.5));
+    std::cout << "int_float_converted:" << " " << ::tpy::print_float(x) << "\n";
+    double y = ((c) ? (static_cast<double>(a)) : (2.5));
+    std::cout << "int_float_declared:" << " " << ::tpy::print_float((::tpy::truediv(y, 2))) << "\n";
+    double v = (a ? double(a) : 2.5);
+    std::cout << "int_float_or_declared:" << " " << ::tpy::print_float((::tpy::truediv(v, 2))) << "\n";
+    if ((a || 2.5)) {
+        std::cout << "int_float_or_condition" << "\n";
+    }
+    int64_t w = ((c) ? (static_cast<int64_t>(a)) : (big));
+    std::cout << "int_widen_ternary:" << " " << w << "\n";
+    double g = ((c) ? (f) : (2.5));
+    std::cout << "float_ternary:" << " " << ::tpy::print_float(g) << "\n";
+    std::vector<double> fs = std::vector<double>{};
+    fs.push_back(static_cast<double>(a));
+    std::cout << "int_float_declared_list:" << " " << ::tpy::print_float((::tpy::truediv(::tpy::__getitem__(fs, 0), 2))) << "\n";
+    std::vector<int64_t> ws = std::vector<int64_t>{};
+    ws.push_back(a);
+    ws.push_back(big);
+    std::cout << "int_widen_usage:" << " " << ::tpy::__getitem__(ws, 0) << " " << ::tpy::__getitem__(ws, 1) << "\n";
+}
+
+// def half_ternary(a: int32, c: bool) -> float:
+//     # The declared float return converts the picked int arm.
+//     return a if c else 2.5  # tpyc: ok
+double half_ternary(int32_t a, bool c) {
+    return ((c) ? (static_cast<double>(a)) : (2.5));
+}
+
+// def half_or(a: int32) -> float:
+//     # The declared float return converts the picked int `or` operand.
+//     return a or 2.5  # tpyc: ok
+double half_or(int32_t a) {
+    return (a ? double(a) : 2.5);
+}
+
+// def declared_containers(c: bool) -> None:
+//     # A declared slot pins each literal operand before the join, so an int
+//     # element converts like it does in a lone literal.
+//     y: list[float] = [1] or [2.5]  # tpyc: ok
+//     print("declared_list_or:", len(y), y[0] / 2)
+//     e: list[float] = [] and [2.5]  # tpyc: ok
+//     print("declared_list_and:", len(e))
+//     d: dict[str, float] = {"a": 1} or {"b": 2.5}  # tpyc: ok
+//     print("declared_dict_or:", len(d), d["a"] / 2)
+//     s: set[float] = {1} or {2.5}  # tpyc: ok
+//     print("declared_set_or:", len(s))
+//     t: tuple[float, str] = (1, "x") if c else (2.5, "y")  # tpyc: ok
+//     print("declared_tuple_ternary:", t[0] / 2, t[1])
+void declared_containers(bool c) {
+    auto&& __tmp_19 = std::vector<double>{1};
+    std::vector<double> y = ((::tpy::__len__(__tmp_19) != 0) ? std::move(__tmp_19) : std::vector<double>{2.5});
+    std::cout << "declared_list_or:" << " " << ::tpy::__len__(y) << " " << ::tpy::print_float((::tpy::truediv(::tpy::__getitem__(y, 0), 2))) << "\n";
+    auto&& __tmp_20 = std::vector<double>{};
+    std::vector<double> e = ((::tpy::__len__(__tmp_20) != 0) ? std::vector<double>{2.5} : std::move(__tmp_20));
+    std::cout << "declared_list_and:" << " " << ::tpy::__len__(e) << "\n";
+    auto&& __tmp_21 = ::tpy::ordered_map<std::string, double>({{"a", 1}});
+    ::tpy::ordered_map<std::string, double> d = ((::tpy::__len__(__tmp_21) != 0) ? std::move(__tmp_21) : ::tpy::ordered_map<std::string, double>({{"b", 2.5}}));
+    std::cout << "declared_dict_or:" << " " << ::tpy::__len__(d) << " " << ::tpy::print_float((::tpy::truediv(::tpy::__getitem__(d, "a"), 2))) << "\n";
+    auto&& __tmp_22 = ::tpy::ordered_set<double>({1});
+    ::tpy::ordered_set<double> s = ((::tpy::__len__(__tmp_22) != 0) ? std::move(__tmp_22) : ::tpy::ordered_set<double>({2.5}));
+    std::cout << "declared_set_or:" << " " << ::tpy::__len__(s) << "\n";
+    std::tuple<double, std::string> t = ((c) ? (std::tuple<double, std::string>{1, "x"}) : (std::tuple<double, std::string>{2.5, "y"}));
+    std::cout << "declared_tuple_ternary:" << " " << ::tpy::print_float((::tpy::truediv(std::get<0>(t), 2))) << " " << std::get<1>(t) << "\n";
+}
+
+// def tuple_literal_arm(f: bool) -> tuple[int32, str]:
+//     t = (3, "c")
+//     # A literal tuple arm pins to the declared return tuple beside a name arm.
+//     return t if f else (4, "d")  # tpyc: ok
+std::tuple<int32_t, std::string> tuple_literal_arm(bool f) {
+    std::tuple<int32_t, std::string> t = std::tuple<int32_t, std::string>{3, "c"};
+    return ((f) ? (t) : (std::tuple<int32_t, std::string>{4, "d"}));
+}
+
+// def int_float_optional_slot(a: int32, c: bool) -> None:
+//     # A declared `float | None` slot converts the picked int like `float`.
+//     o: float | None = a or 2.5  # tpyc: ok
+//     p: float | None = a if c else 2.5  # tpyc: ok
+//     if o is not None and p is not None:
+//         print("int_float_optional_slot:", o / 2, p / 2)
+void int_float_optional_slot(int32_t a, bool c) {
+    std::optional<double> o = (a ? double(a) : 2.5);
+    std::optional<double> p = ((c) ? (static_cast<double>(a)) : (2.5));
+    if (((o.has_value()) && (p.has_value()))) {
+        std::cout << "int_float_optional_slot:" << " " << ::tpy::print_float((::tpy::truediv((*o), 2))) << " " << ::tpy::print_float((::tpy::truediv((*p), 2))) << "\n";
+    }
+}
+
+// def show_float(tag: str, f: float) -> None:
+//     print(tag, f / 2)
+void show_float(std::string_view tag, double f) {
+    std::cout << tag << " " << ::tpy::print_float((::tpy::truediv(f, 2))) << "\n";
+}
+
+// def int_float_slots(a: int32, c: bool) -> None:
+//     print("int_float_return:", half_ternary(a, c) / 2, half_or(a) / 2)
+//     # A float parameter converts the picked int operand.
+//     show_float("int_float_arg_ternary:", a if c else 2.5)  # tpyc: ok
+//     show_float("int_float_arg_or:", a or 2.5)  # tpyc: ok
+//     # `and` picks its int operand when that one is falsy.
+//     v: float = a and 2.5  # tpyc: ok
+//     print("int_float_and_declared:", v / 2)
+//     # The declared slot reaches a nested select too.
+//     w: float = a or (a or 2.5)  # tpyc: ok
+//     print("int_float_nested_declared:", w / 2)
+//     # ... a nested ternary as well.
+//     w2: float = a or (a if c else 2.5)  # tpyc: ok
+//     print("int_float_nested_ternary_declared:", w2 / 2)
+//     # An int literal arm converts like a typed int one.
+//     z: float = 3 if c else 2.5  # tpyc: ok
+//     print("int_literal_float_declared:", z / 2)
+void int_float_slots(int32_t a, bool c) {
+    std::cout << "int_float_return:" << " " << ::tpy::print_float((::tpy::truediv(::tpyapp::main::half_ternary(a, c), 2))) << " " << ::tpy::print_float((::tpy::truediv(::tpyapp::main::half_or(a), 2))) << "\n";
+    ::tpyapp::main::show_float("int_float_arg_ternary:", ((c) ? (static_cast<double>(a)) : (2.5)));
+    ::tpyapp::main::show_float("int_float_arg_or:", (a ? double(a) : 2.5));
+    double v = (a ? 2.5 : double(a));
+    std::cout << "int_float_and_declared:" << " " << ::tpy::print_float((::tpy::truediv(v, 2))) << "\n";
+    double w = (a ? double(a) : (a ? double(a) : 2.5));
+    std::cout << "int_float_nested_declared:" << " " << ::tpy::print_float((::tpy::truediv(w, 2))) << "\n";
+    double w2 = (a ? double(a) : ((c) ? (static_cast<double>(a)) : (2.5)));
+    std::cout << "int_float_nested_ternary_declared:" << " " << ::tpy::print_float((::tpy::truediv(w2, 2))) << "\n";
+    double z = ((c) ? (static_cast<double>(3)) : (2.5));
+    std::cout << "int_literal_float_declared:" << " " << ::tpy::print_float((::tpy::truediv(z, 2))) << "\n";
+}
+
+// def int_float_guard(a: int32, g: float, k: int32) -> str:
+//     match k:
+//         # A guard is a truth test; each guarded arm returns.
+//         case 1 if a or g:  # tpyc: ok
+//             return "one"
+//         case _ if a or g:  # tpyc: ok
+//             return "any"
+//         case _:
+//             return "none"
+std::string int_float_guard(int32_t a, double g, int32_t k) {
+    auto& __match_subject_1 = k;
+    switch (__match_subject_1) {
+    case 1: {
+        if ((a || g)) {
+            return "one";
+        }
+        goto __match_default_2;
+        break;
+    }
+    default: __match_default_2: {
+        if ((a || g)) {
+            return "any";
+        } else {
+            return "none";
+        }
+        break;
+    }
+    }
+    ::std::unreachable();
+}
+
+namespace {
+
+// print("int_float_genexpr:", sum(1 for x in [1, 2, 3] if a or g))  # tpyc: ok
+template <::tpystd::typing::Iterable<int32_t> T___src, typename F_a, typename F_g>
+struct __genexpr_int_float_conditions_1_frame : public ::tpy::next_iter_mixin<__genexpr_int_float_conditions_1_frame<T___src, F_a, F_g>, int32_t> {
+    ::tpy::frame_state __state;
+    T___src __src;
+    F_a a;
+    F_g g;
+    int32_t x;
+    using __for_src_0_t = decltype((__src));
+    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
+    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __genexpr_int_float_conditions_1_frame(T___src&& __src_, F_a&& a_, F_g&& g_)
+        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)), a(std::forward<F_a>(a_)), g(std::forward<F_g>(g_)) {}
+
+    template <typename F_make>
+    __genexpr_int_float_conditions_1_frame(std::in_place_t, F_make&& make_, F_a&& a_, F_g&& g_)
+        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()), a(std::forward<F_a>(a_)), g(std::forward<F_g>(g_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __genexpr_int_float_conditions_1_frame& __iter__() { return *this; }
+
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_int_float_conditions_1_frame<T___src, F_a, F_g>&) {
+        return os << "<generator __genexpr_int_float_conditions_1>";
+    }
+};
+
+// # A generator-expression filter.
+// print("int_float_genexpr:", sum(1 for x in [1, 2, 3] if a or g))  # tpyc: ok  # -> S_RESUME_0
+template <::tpystd::typing::Iterable<int32_t> T___src, typename F_a, typename F_g>
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_int_float_conditions_1_frame<T___src, F_a, F_g>::__next__() {
+    if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
+    if (__state != S_JOIN_0) {
+        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
+        __state = S_DONE;  // until the seed completes
+        ::tpy::resumable_iter_init(__for_itr_0, __src);
+        __state = S_JOIN_0;
+    }
+    for (;;) {
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, __src));
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = ::tpy::unwrap_ref(*(*__for_r_0));
+        if ((a || g)) {
+            return 1;
+        }
+    }
+    __builtin_unreachable();
+}
+
+// print("int_float_genexpr:", sum(1 for x in [1, 2, 3] if a or g))  # tpyc: ok
+template <::tpystd::typing::Iterable<int32_t> T___src, typename F_a, typename F_g>
+__genexpr_int_float_conditions_1_frame<T___src, F_a, F_g> __genexpr_int_float_conditions_1(T___src&& __src, F_a&& a, F_g&& g) {
+    return __genexpr_int_float_conditions_1_frame<T___src, F_a, F_g>(std::forward<T___src>(__src), std::forward<F_a>(a), std::forward<F_g>(g));
+}
+template <typename F_make, typename F_a, typename F_g>
+__genexpr_int_float_conditions_1_frame<std::invoke_result_t<F_make>, F_a, F_g> __genexpr_int_float_conditions_1(std::in_place_t, F_make&& make, F_a&& a, F_g&& g) {
+    return __genexpr_int_float_conditions_1_frame<std::invoke_result_t<F_make>, F_a, F_g>(std::in_place, std::forward<F_make>(make), std::forward<F_a>(a), std::forward<F_g>(g));
+}
+
+}  // namespace
+
+// def int_float_conditions(a: int32, g: float, c: bool) -> None:
+//     # Each truth test takes its int and float operands one by one.
+//     n = 0
+//     while a or g:  # tpyc: ok
+//         n += 1
+//         if n == 2:
+//             break
+//     print("int_float_while:", n)
+//     print("int_float_not:", not (a or g))  # tpyc: ok
+//     ys = [x for x in [1, 2, 3] if a or g]  # tpyc: ok
+//     print("int_float_filter:", len(ys))
+//     if a or g:  # tpyc: ok
+//         assert a or g  # tpyc: ok
+//         print("int_float_assert")
+//     print("int_float_bool:", bool(a or g), bool(a and g))  # tpyc: ok
+//     # A ternary's test.
+//     print("int_float_ternary_test:", 1 if a or g else 2)  # tpyc: ok
+//     # A walrus leaf binds its own operand, not the `or`.
+//     if (m := a) or g:  # tpyc: ok
+//         print("int_float_walrus_leaf:", m)
+//     # A generator-expression filter.
+//     print("int_float_genexpr:", sum(1 for x in [1, 2, 3] if a or g))  # tpyc: ok
+//     print("int_float_guard:", int_float_guard(a, g, 1),
+//           int_float_guard(a, g, 2))
+//     # A truth test reaches a ternary's arms, each tested on its own.
+//     if (a or g) if c else g:  # tpyc: ok
+//         print("int_float_ternary_arms")
+//     print("int_float_ternary_arms_bool:", bool(a if c else g))  # tpyc: ok
+void int_float_conditions(int32_t a, double g, bool c) {
+    int32_t n = 0;
+    while ((a || g)) {
+        n = ::tpy::add_check<int32_t>(n, 1);
+        if ((n == 2)) {
+            break;
+        }
+    }
+    std::cout << "int_float_while:" << " " << n << "\n";
+    std::cout << "int_float_not:" << " " << ::tpy::print_bool((!((a || g)))) << "\n";
+    std::vector<int32_t> ys = ({
+        std::vector<int32_t> __result;
+        auto __obj_0 = {1, 2, 3};
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            int32_t x = *__beg_0;
+            if ((a || g)) {
+                __result.push_back(x);
+            }
+        }
+        std::move(__result);
+    });
+    std::cout << "int_float_filter:" << " " << ::tpy::__len__(ys) << "\n";
+    if ((a || g)) {
+        if (!((a || g))) ::tpy::raise_assertion_error();
+        std::cout << "int_float_assert" << "\n";
+    }
+    std::cout << "int_float_bool:" << " " << ::tpy::print_bool((a || g)) << " " << ::tpy::print_bool((a && g)) << "\n";
+    std::cout << "int_float_ternary_test:" << " " << (((a || g)) ? (1) : (2)) << "\n";
+    int32_t m;
+    if (((m = a) || g)) {
+        std::cout << "int_float_walrus_leaf:" << " " << m << "\n";
+    }
+    std::cout << "int_float_genexpr:" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_int_float_conditions_1(std::in_place, [&]() { return std::array<int32_t, 3>{1, 2, 3}; }, a, g)) << "\n";
+    std::cout << "int_float_guard:" << " " << ::tpyapp::main::int_float_guard(a, g, 1) << " " << ::tpyapp::main::int_float_guard(a, g, 2) << "\n";
+    if (((c) ? ((a || g)) : (static_cast<bool>(g)))) {
+        std::cout << "int_float_ternary_arms" << "\n";
+    }
+    std::cout << "int_float_ternary_arms_bool:" << " " << ::tpy::print_bool(((c) ? (static_cast<bool>(a)) : (static_cast<bool>(g)))) << "\n";
+}
+
+// def mixed_truth_arms(n: int32, c: bool, r: C, xs: list[int32],
+//                      s: str) -> None:
+//     # A truth test takes arms of unrelated types, each on its own.
+//     if n if c else s:  # tpyc: ok
+//         print("mixed_arms_int_str")
+//     if r if c else xs:  # tpyc: ok
+//         print("mixed_arms_record_list")
+//     print("mixed_arms_bool:", bool(xs if c else s))  # tpyc: ok
+void mixed_truth_arms(int32_t n, bool c, const C& r, const std::vector<int32_t>& xs, std::string_view s) {
+    if (((c) ? (static_cast<bool>(n)) : ((!s.empty())))) {
+        std::cout << "mixed_arms_int_str" << "\n";
+    }
+    if (((c) ? ((static_cast<void>(r), true)) : ((::tpy::__len__(xs) != 0)))) {
+        std::cout << "mixed_arms_record_list" << "\n";
+    }
+    std::cout << "mixed_arms_bool:" << " " << ::tpy::print_bool(((c) ? ((::tpy::__len__(xs) != 0)) : ((!s.empty())))) << "\n";
+}
+
 // def not_or(a: C) -> None:
 //     # `not` over an and/or of records without __bool__: always truthy.
 //     print("not_or:", not (a or make_c()))  # tpyc: ok
@@ -275,13 +625,26 @@ void readonly_join(bool c, const C& ro, C& plain) {
 //         float_literal_elem(c)
 //     float_or(0.0)
 //     float_or(1.5)
+//     for c in [True, False]:
+//         declared_containers(c)
+//     print("tuple_literal_arm:", tuple_literal_arm(True), tuple_literal_arm(False))
+//     for a, c in [(3, True), (0, False)]:
+//         int_float_select(a, 5000000000, 1.5, c)
+//         int_float_slots(a, c)
+//         int_float_optional_slot(a, c)
+//     for a, g, c in [(3, 1.5, True), (0, 1.5, False), (0, 0.0, True),
+//                     (3, 0.0, False)]:
+//         int_float_conditions(a, g, c)
+//     for c in [True, False]:
+//         mixed_truth_arms(0, c, C(1), [], "")
+//         mixed_truth_arms(2, c, C(1), [1], "s")
 //     not_or(C(1))
 //     for c in [True, False]:
 //         readonly_join(c, C(1), C(2))
 void main() {
-    C __tmp_19 = C(1);
-    F __tmp_20 = F(0);
-    ::tpyapp::main::record_or(__tmp_19, __tmp_20);
+    C __tmp_23 = C(1);
+    F __tmp_24 = F(0);
+    ::tpyapp::main::record_or(__tmp_23, __tmp_24);
     ::tpyapp::main::list_or();
     ::tpyapp::main::int64_literal_arm(true);
     ::tpyapp::main::empty_literal_arm(false);
@@ -299,15 +662,58 @@ void main() {
     }
     ::tpyapp::main::float_or(0.0);
     ::tpyapp::main::float_or(1.5);
-    C __tmp_21 = C(1);
-    ::tpyapp::main::not_or(__tmp_21);
     auto __obj_1 = {true, false};
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         bool c = *__beg_1;
-        C __tmp_22 = C(2);
-        ::tpyapp::main::readonly_join(c, C(1), __tmp_22);
+        ::tpyapp::main::declared_containers(c);
+    }
+    std::cout << "tuple_literal_arm:" << " " << ::tpy::TuplePrinter(::tpyapp::main::tuple_literal_arm(true)) << " " << ::tpy::TuplePrinter(::tpyapp::main::tuple_literal_arm(false)) << "\n";
+    auto __obj_2 = {std::tuple<int32_t, bool>{3, true}, std::tuple<int32_t, bool>{0, false}};
+    auto __beg_2 = __obj_2.begin();
+    auto __end_2 = __obj_2.end();
+    for (; __beg_2 != __end_2; ++__beg_2) {
+        auto&& __for_tup_0 = *__beg_2;
+        const auto& __tup_1 = __for_tup_0;
+        int32_t a = std::get<0>(__tup_1);
+        bool c = std::get<1>(__tup_1);
+        ::tpyapp::main::int_float_select(a, static_cast<int64_t>(5000000000), 1.5, c);
+        ::tpyapp::main::int_float_slots(a, c);
+        ::tpyapp::main::int_float_optional_slot(a, c);
+    }
+    auto __obj_3 = {std::tuple<int32_t, double, bool>{3, 1.5, true}, std::tuple<int32_t, double, bool>{0, 1.5, false}, std::tuple<int32_t, double, bool>{0, 0.0, true}, std::tuple<int32_t, double, bool>{3, 0.0, false}};
+    auto __beg_3 = __obj_3.begin();
+    auto __end_3 = __obj_3.end();
+    for (; __beg_3 != __end_3; ++__beg_3) {
+        auto&& __for_tup_1 = *__beg_3;
+        const auto& __tup_2 = __for_tup_1;
+        int32_t a = std::get<0>(__tup_2);
+        double g = std::get<1>(__tup_2);
+        bool c = std::get<2>(__tup_2);
+        ::tpyapp::main::int_float_conditions(a, g, c);
+    }
+    auto __obj_4 = {true, false};
+    auto __beg_4 = __obj_4.begin();
+    auto __end_4 = __obj_4.end();
+    for (; __beg_4 != __end_4; ++__beg_4) {
+        bool c = *__beg_4;
+        C __tmp_25 = C(1);
+        std::vector<int32_t> __tmp_26 = std::vector<int32_t>{};
+        ::tpyapp::main::mixed_truth_arms(0, c, __tmp_25, __tmp_26, "");
+        C __tmp_27 = C(1);
+        std::vector<int32_t> __tmp_28 = {1};
+        ::tpyapp::main::mixed_truth_arms(2, c, __tmp_27, __tmp_28, "s");
+    }
+    C __tmp_29 = C(1);
+    ::tpyapp::main::not_or(__tmp_29);
+    auto __obj_5 = {true, false};
+    auto __beg_5 = __obj_5.begin();
+    auto __end_5 = __obj_5.end();
+    for (; __beg_5 != __end_5; ++__beg_5) {
+        bool c = *__beg_5;
+        C __tmp_30 = C(2);
+        ::tpyapp::main::readonly_join(c, C(1), __tmp_30);
     }
 }
 

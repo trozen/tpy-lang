@@ -38,6 +38,29 @@ void int_literal_pair(bool c);
 void float_literal_elem(bool c);
 // def float_or(f: float) -> None:
 void float_or(double f);
+// def int_float_select(a: int32, big: int64, f: float, c: bool) -> None:
+void int_float_select(int32_t a, int64_t big, double f, bool c);
+// def half_ternary(a: int32, c: bool) -> float:
+double half_ternary(int32_t a, bool c);
+// def half_or(a: int32) -> float:
+double half_or(int32_t a);
+// def declared_containers(c: bool) -> None:
+void declared_containers(bool c);
+// def tuple_literal_arm(f: bool) -> tuple[int32, str]:
+std::tuple<int32_t, std::string> tuple_literal_arm(bool f);
+// def int_float_optional_slot(a: int32, c: bool) -> None:
+void int_float_optional_slot(int32_t a, bool c);
+// def show_float(tag: str, f: float) -> None:
+void show_float(std::string_view tag, double f);
+// def int_float_slots(a: int32, c: bool) -> None:
+void int_float_slots(int32_t a, bool c);
+// def int_float_guard(a: int32, g: float, k: int32) -> str:
+std::string int_float_guard(int32_t a, double g, int32_t k);
+// def int_float_conditions(a: int32, g: float, c: bool) -> None:
+void int_float_conditions(int32_t a, double g, bool c);
+// def mixed_truth_arms(n: int32, c: bool, r: C, xs: list[int32],
+//                      s: str) -> None:
+void mixed_truth_arms(int32_t n, bool c, const C& r, const std::vector<int32_t>& xs, std::string_view s);
 // def not_or(a: C) -> None:
 void not_or(C& a);
 // def readonly_join(c: bool, ro: readonly[C], plain: C) -> None:

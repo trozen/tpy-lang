@@ -1,1 +1,1 @@
-main.py:6: error: Incompatible types in ternary expression: 'list[float]' and 'list[int32]'
+main.py:6: error: this conditional expression mixes int and float elements, and CPython keeps whichever value it picks; write 7.0 instead of 7, or annotate the target as list[float]

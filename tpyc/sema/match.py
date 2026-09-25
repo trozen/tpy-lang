@@ -441,7 +441,7 @@ class MatchAnalyzer:
                             self.ctx, node.name, stmt.subject)
             # Analyze guard expression (pattern bindings are in scope)
             if case.guard is not None:
-                self.expr.analyze_expr(case.guard)
+                self.expr.analyze_condition(case.guard)
 
             for s in case.body:
                 self.stmts.analyze_stmt(s)

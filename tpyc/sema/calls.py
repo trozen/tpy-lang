@@ -80,7 +80,7 @@ from tpyc import modules as builtin_modules
 from ..modules import _resolve_concrete_type_name
 from .. import qnames
 from ..type_def_registry import (
-    is_array, is_span, is_varargs, is_list, is_borrowing_view_type,
+    get_type_def, is_array, is_span, is_varargs, is_list, is_borrowing_view_type,
     is_fixed_int_type, is_bool_type, is_char_type, is_fstr_type,
     is_str_type, is_big_int_type,
     int_traits_of,
@@ -3637,7 +3637,12 @@ class CallAnalyzer:
         and str(container).
         """
         self._reject_kwargs_for_builtin(expr, expr.func_name)
-        arg_types = [unwrap_own(unwrap_ref_type(self.expr.analyze_expr(arg))) for arg in expr.args]
+        td = get_type_def(record.builtin_type_key)
+        if td is not None and td.ctor_arg_truth_test:
+            for arg in expr.args:
+                self.expr.mark_truth_test(arg)
+        arg_types = [unwrap_own(unwrap_ref_type(self.expr.analyze_expr(arg)))
+                     for arg in expr.args]
 
         # Resolve the concrete type (e.g. FLOAT32 singleton). __init__ returns None
         # in Python, so we look up the actual type via the type factory.

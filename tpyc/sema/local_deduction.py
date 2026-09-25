@@ -58,6 +58,9 @@ from .context import (PENDING_CONTAINER_TYPES, MODULE_INIT_CONTEXT,
                       contains_pending_leaf)
 from ..namespace import BindingKind
 from ..diagnostics import SemanticError
+from .type_join import (InferredJoin, JoinOutcome, descend,
+                        join_inferred_value_types, python_type_name,
+                        usage_mix_message)
 from .numeric_lattice import (
     fixed_int_range_contains, merge_literal_seed_target,
     numeric_info, widen_numeric_types,
@@ -479,7 +482,8 @@ class LocalTypeDeduction:
     # List literal deduction (moved from ListLiteralTracker)
     # ------------------------------------------------------------------
 
-    def infer_empty_list_element_type(self, obj_expr: TpyExpr, value_type: TpyType) -> None:
+    def infer_empty_list_element_type(self, obj_expr: TpyExpr, value_type: TpyType,
+                                      value: TpyExpr | None = None) -> None:
         """Infer element type for an empty list literal from usage (e.g. .append(v)).
 
         If the list's element type is still UNKNOWN_ELEMENT, set it from value_type.
@@ -495,7 +499,7 @@ class LocalTypeDeduction:
         info = self.ctx.list_literals.get(literal_id)
         if info is None:
             return
-        self.update_list_element_type(info, value_type)
+        self.update_list_element_type(info, value_type, obj_expr, value)
         # Propagate up the entire alias chain (zs = ys = xs; zs.append(v))
         visited: set[int] = {info.literal_id}
         current = info
@@ -506,16 +510,18 @@ class LocalTypeDeduction:
             source = self.ctx.list_literals.get(current.source_literal_id)
             if source is None:
                 break
-            self.update_list_element_type(source, value_type)
+            self.update_list_element_type(source, value_type, obj_expr, value)
             current = source
 
     @staticmethod
     def _widen_inferred_type(current: TpyType, new_type: TpyType) -> Optional[TpyType]:
         """Widen an inferred container element type with a new observation.
 
-        Returns the updated type, or None if unchanged (same type, or
-        incompatible types that normal type checking will catch).
+        Returns the joined type -- `current` itself when the observation adds
+        nothing -- or None when the two are incompatible, which normal type
+        checking reports at the use.
         """
+        original = current
         # Resolve float literals to float64 before comparisons
         if isinstance(current, FloatLiteralType):
             current = FLOAT
@@ -527,19 +533,56 @@ class LocalTypeDeduction:
         if widened is not None:
             return widened
         if current == new_type:
-            return None
+            return original
         if isinstance(current, IntLiteralType) and not isinstance(new_type, IntLiteralType):
             if numeric_info(new_type) is not None:
                 return new_type
         if isinstance(new_type, IntLiteralType) and not isinstance(current, IntLiteralType):
-            return None  # keep existing concrete type
-        return None  # incompatible -- let normal type checking catch it
+            # The literal takes the existing concrete numeric type.
+            if numeric_info(current) is not None:
+                return original
+        return None
 
-    def update_list_element_type(self, info: ListLiteralInfo, value_type: TpyType) -> None:
-        """Update element type for a ListLiteralInfo, widening if needed."""
-        result = self._widen_inferred_type(info.element_type, value_type)
+    @staticmethod
+    def _initializer_spelling(expr: TpyExpr | None, empty: str,
+                              nonempty: str) -> str:
+        """How an annotation hint spells a container's initializer: `empty`
+        for an empty literal or a no-argument constructor call."""
+        if isinstance(expr, TpyCall):
+            return empty if not expr.args else nonempty
+        items = getattr(expr, "keys", getattr(expr, "elements", None))
+        return empty if items == [] else nonempty
+
+    def update_list_element_type(self, info: ListLiteralInfo, value_type: TpyType,
+                                 site: TpyExpr | None = None,
+                                 value: TpyExpr | None = None) -> None:
+        """Update element type for a ListLiteralInfo from a use, widening if
+        needed; `site` is the use the diagnostic points at, `value` the node
+        it adds."""
+        name = info.variable_name or "xs"
+        init = self._initializer_spelling(info.expr, "[]", "[...]")
+        result = self._join_observed_type(
+            info.element_type, value_type, site or info.expr,
+            f"list '{name}'" if info.variable_name else "this list",
+            lambda f: f"{name}: list[{f}] = {init}", value)
         if result is not None:
             info.element_type = result
+
+    def _join_observed_type(self, current: TpyType, new_type: TpyType,
+                            site: TpyExpr, container: str,
+                            annotation: Callable[[str], str],
+                            value: TpyExpr | None = None) -> Optional[TpyType]:
+        """Join a use's type into the type an unannotated container learned
+        from its earlier uses -- an inferred join, so an int meeting a float
+        is refused. Returns the joined type, or None when the use is
+        incompatible (normal type checking reports it at the use)."""
+        verdict = join_inferred_value_types(current, new_type,
+                                            self._widen_inferred_type)
+        if verdict.outcome is JoinOutcome.INT_FLOAT_MIX:
+            raise self.ctx.error(usage_mix_message(
+                verdict, container,
+                annotation(python_type_name(verdict.float_side)), value), site)
+        return verdict.joined
 
     def mark_container_param_context(self, arg_expr: TpyExpr, arg_type: TpyType, param_type: TpyType) -> None:
         """Track parameter context for list/dict/set literal inference.
@@ -590,74 +633,91 @@ class LocalTypeDeduction:
                     if result is not None:
                         info.element_type = result
 
-    def pin_pending_container(self, pending: TpyType, target: TpyType) -> bool:
+    def pin_pending_container(self, pending: TpyType, target: TpyType,
+                              commit: bool = True) -> InferredJoin:
         """Resolve a pending container toward the concrete container `target`
         it must share one C++ type with (the other operand of a select).
 
-        Returns False when an element type the container already committed
-        to disagrees with `target`'s -- the two cannot share a type then.
-        A literal element takes `target`'s element type only inside its own
-        numeric family and only when its value fits: `[5]` beside a
-        `list[float]` is a list of ints under CPython, and `[300]` has no
-        `list[uint8]` spelling."""
-        def literal_pins(lit: TpyType, want: TpyType) -> bool:
-            if isinstance(lit, IntLiteralType):
-                family_ok = is_any_int_type(want)
-            elif isinstance(lit, FloatLiteralType):
-                family_ok = is_any_float_type(want)
-            else:
-                return lit == want
-            return family_ok and self.compat.is_type_compatible(lit, want)
+        Not JOINED when an element type the container already committed to
+        disagrees with `target`'s -- the two cannot share a type then. A
+        literal element is an inferred join with `target`'s element type: an
+        int meeting a float is refused (`[5]` beside a `list[float]` is a
+        list of ints under CPython), and a value must fit (`[300]` has no
+        `list[uint8]` spelling). `commit=False` asks for the verdict alone,
+        leaving the container unpinned."""
+        joined = InferredJoin(JoinOutcome.JOINED, target)
+        incompatible = InferredJoin(JoinOutcome.INCOMPATIBLE)
+
+        def literal_join(lit: TpyType, want: TpyType) -> TpyType | None:
+            numeric = is_any_int_type(want) or is_any_float_type(want)
+            return (want if numeric and self.compat.is_type_compatible(lit, want)
+                    else None)
 
         def pin(current: TpyType, want: TpyType,
-                leaves: list[TpyType] | None = None) -> TpyType | None:
+                leaves: list[TpyType] | None = None) -> InferredJoin:
             if isinstance(current, UnknownElementType):
-                return want
-            if isinstance(current, (IntLiteralType, FloatLiteralType)):
-                # The recorded element type keeps one literal's value only,
-                # so each element's own literal is range-checked.
-                if all(literal_pins(t, want) for t in (leaves or [current])):
-                    return want
-                return None
-            return current if current == want else None
+                return InferredJoin(JoinOutcome.JOINED, want)
+            if not isinstance(current, (IntLiteralType, FloatLiteralType)):
+                return (InferredJoin(JoinOutcome.JOINED, current)
+                        if current == want else incompatible)
+            # The recorded element type keeps one literal's value only, so
+            # each element's own literal is joined.
+            for leaf in leaves or [current]:
+                verdict = join_inferred_value_types(leaf, want, literal_join)
+                if verdict.outcome is JoinOutcome.INT_FLOAT_MIX:
+                    return verdict
+                if verdict.outcome is not JoinOutcome.JOINED:
+                    return incompatible
+            return InferredJoin(JoinOutcome.JOINED, want)
+
+        def below(verdict: InferredJoin, index: int) -> InferredJoin:
+            # A mix under the container's `index`-th type argument.
+            return (descend(verdict, index)
+                    if verdict.outcome is JoinOutcome.INT_FLOAT_MIX
+                    else verdict)
 
         if isinstance(pending, PendingListType):
             info = self.ctx.list_literals.get(pending.literal_id)
             if info is None or not is_list(target):
                 # An Array target already pinned the elements while it
                 # matched the literal's size (`pending_list_matches_array`).
-                return True
+                return joined
             elem = target.type_args[0]
             if info.coerced_element_type is not None:
-                return info.coerced_element_type == elem
+                return joined if info.coerced_element_type == elem else incompatible
             leaves = None
             if isinstance(info.expr, (TpyArrayLiteral, TpyListRepeat)):
                 leaves = [unwrap_own(self.ctx.get_expr_type(x) or info.element_type)
                           for x in info.expr.elements]
-            if pin(info.element_type, elem, leaves) is None:
-                return False
-            info.coerced_element_type = elem
-            return True
+            verdict = pin(info.element_type, elem, leaves)
+            if verdict.outcome is JoinOutcome.JOINED:
+                if commit:
+                    info.coerced_element_type = elem
+                return joined
+            return below(verdict, 0)
         if isinstance(pending, PendingDictType) and is_dict(target):
             info = self.ctx.dict_literals.get(pending.literal_id)
             if info is None:
-                return True
+                return joined
             key = pin(info.key_type, target.type_args[0])
             value = pin(info.value_type, target.type_args[1])
-            if key is None or value is None:
-                return False
-            info.key_type, info.value_type = key, value
-            return True
+            for index, verdict in enumerate((key, value)):
+                if verdict.outcome is not JoinOutcome.JOINED:
+                    return below(verdict, index)
+            if commit:
+                info.key_type, info.value_type = key.joined, value.joined
+            return joined
         if isinstance(pending, PendingSetType) and is_set(target):
             info = self.ctx.set_literals.get(pending.literal_id)
             if info is None:
-                return True
-            elem = pin(info.element_type, target.type_args[0])
-            if elem is None:
-                return False
-            info.element_type = elem
-            return True
-        return False
+                return joined
+            verdict = pin(info.element_type, target.type_args[0])
+            if verdict.outcome is not JoinOutcome.JOINED:
+                return below(verdict, 0)
+            if commit:
+                info.element_type = verdict.joined
+            return joined
+        return incompatible
 
     def mark_list_different_size(self, literal_id: int) -> None:
         """Mark a pending list literal as needing list (different-size reassignment)."""
@@ -972,7 +1032,10 @@ class LocalTypeDeduction:
     # Dict literal deduction
     # ------------------------------------------------------------------
 
-    def infer_dict_key_value_types(self, obj_expr: TpyExpr, key_type: TpyType, value_type: TpyType) -> None:
+    def infer_dict_key_value_types(self, obj_expr: TpyExpr, key_type: TpyType,
+                                   value_type: TpyType,
+                                   key: TpyExpr | None = None,
+                                   value: TpyExpr | None = None) -> None:
         """Infer key/value types for an empty dict literal from subscript assignment (d[k] = v)."""
         if not isinstance(obj_expr, TpyName):
             return
@@ -983,13 +1046,30 @@ class LocalTypeDeduction:
         info = self.ctx.dict_literals.get(literal_id)
         if info is None:
             return
-        self._update_dict_type_param(info, "key", key_type)
-        self._update_dict_type_param(info, "value", value_type)
+        self._update_dict_type_param(info, "key", key_type, obj_expr, key)
+        self._update_dict_type_param(info, "value", value_type, obj_expr,
+                                     value)
 
-    def _update_dict_type_param(self, info: DictLiteralInfo, which: str, new_type: TpyType) -> None:
-        """Update key or value type for a DictLiteralInfo, widening if needed."""
+    def _update_dict_type_param(self, info: DictLiteralInfo, which: str,
+                                new_type: TpyType, site: TpyExpr,
+                                value: TpyExpr | None = None) -> None:
+        """Update key or value type for a DictLiteralInfo from a use,
+        widening if needed."""
         current = info.key_type if which == "key" else info.value_type
-        result = self._widen_inferred_type(current, new_type)
+        name = info.variable_name or "d"
+        init = self._initializer_spelling(info.expr, "{}", "{...}")
+
+        def annotation(f: str) -> str:
+            other = info.value_type if which == "key" else info.key_type
+            o = ("..." if isinstance(other, UnknownElementType)
+                 else python_type_name(other))
+            k, v = (f, o) if which == "key" else (o, f)
+            return f"{name}: dict[{k}, {v}] = {init}"
+        result = self._join_observed_type(
+            current, new_type, site,
+            (f"dict '{name}'" if info.variable_name else "this dict")
+            + (" keys" if which == "key" else ""),
+            annotation, value)
         if result is not None:
             if which == "key":
                 info.key_type = result
@@ -1060,7 +1140,8 @@ class LocalTypeDeduction:
     # Set literal deduction
     # ------------------------------------------------------------------
 
-    def infer_set_element_type(self, obj_expr: TpyExpr, value_type: TpyType) -> None:
+    def infer_set_element_type(self, obj_expr: TpyExpr, value_type: TpyType,
+                               value: TpyExpr | None = None) -> None:
         """Infer element type for an empty set from .add() usage."""
         if not isinstance(obj_expr, TpyName):
             return
@@ -1071,7 +1152,12 @@ class LocalTypeDeduction:
         info = self.ctx.set_literals.get(literal_id)
         if info is None:
             return
-        result = self._widen_inferred_type(info.element_type, value_type)
+        name = info.variable_name or "s"
+        init = self._initializer_spelling(info.expr, "set()", "{...}")
+        result = self._join_observed_type(
+            info.element_type, value_type, obj_expr,
+            f"set '{name}'" if info.variable_name else "this set",
+            lambda f: f"{name}: set[{f}] = {init}", value)
         if result is not None:
             info.element_type = result
 

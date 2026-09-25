@@ -2936,7 +2936,7 @@ def _native_cond_scalar(t: TpyType | None, analyzer) -> bool:
     # carries __bool__, but still renders bare here.
     return (is_bool_type(u) or is_fixed_int_type(u) or is_big_int_type(u)
             or is_float_type(u) or is_char_type(u)
-            or isinstance(u, IntLiteralType))
+            or isinstance(u, (IntLiteralType, FloatLiteralType)))
 
 def _truthiness_mode(t: TpyType | None, analyzer) -> TruthinessMode | None:
     """The non-identity truthiness arms.

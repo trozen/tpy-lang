@@ -1,0 +1,1 @@
+main.py:7: error: Dict has mixed value types: value 2 is float, but earlier values are int; CPython keeps each value's own type, so write 1.0 instead of 1, or annotate the target as dict[str, float]

@@ -20,8 +20,7 @@ from ..parse import (
     TpySubscript, TpyNoneLiteral, TpyCall, TpyMethodCall,
     TpyIntLiteral, TpyCoerce, TpyNamedExpr, TpyBoolLiteral, TpyChainedCompare,
     TpyForEach, TpyArrayLiteral, TpyTupleLiteral, TpySetLiteral,
-    TpyDictLiteral, TpyStrLiteral, TpyBytesLiteral,
-    is_property_getter_read,
+    TpyDictLiteral, TpyStrLiteral, TpyBytesLiteral, TpyIfExpr,
 )
 from ..value_category import peel_coerce
 from .literal_utils import (
@@ -30,7 +29,7 @@ from .literal_utils import (
 from .value_range import ValueRange
 from ..prescan import (
     match_is_none, _expr_to_narrowing_key, deref_view_key,
-    parse_deref_view_key, alias_group,
+    parse_deref_view_key, alias_group, storage_spelling,
 )
 from ..namespace import BindingKind
 from ..diagnostics import OPTIONAL_VALUE_TRUTHINESS_WARNING
@@ -56,6 +55,31 @@ def nonempty_container_literal(expr: TpyExpr) -> bool | None:
     if isinstance(expr, (TpyStrLiteral, TpyBytesLiteral)):
         return bool(expr.value)
     return None
+
+
+def truthy_operands(expr: TpyExpr,
+                    selects: list[TpyExpr] | None = None) -> list[TpyExpr]:
+    """The leaf expressions a truthiness context actually tests.
+
+    `not x`, the `and` / `or` operands and a ternary's two arms distribute
+    the test to their own operands (the ternary's own test is a condition
+    apart); everything else IS the operand, whatever its node kind. The
+    distributing `and` / `or` / ternary nodes -- each one a truth test
+    itself, whose value is never used -- are appended to `selects` when
+    given.
+    """
+    if isinstance(expr, TpyUnaryOp) and expr.op == "!":
+        return truthy_operands(expr.operand, selects)
+    if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
+        halves = (expr.left, expr.right)
+    elif isinstance(expr, TpyIfExpr):
+        halves = (expr.then_expr, expr.else_expr)
+    else:
+        return [expr]
+    if selects is not None:
+        selects.append(expr)
+    return truthy_operands(halves[0], selects) + truthy_operands(halves[1],
+                                                                 selects)
 
 
 class NarrowingTracker:
@@ -888,19 +912,6 @@ class NarrowingTracker:
 
     # -- Truthiness warnings -------------------------------------------
 
-    def _truthy_operands(self, expr: TpyExpr) -> list[TpyExpr]:
-        """The leaf expressions a truthiness context actually tests.
-
-        `not x` and the `and` / `or` arms distribute the test to their own
-        operands; everything else IS the operand, whatever its node kind.
-        """
-        if isinstance(expr, TpyUnaryOp) and expr.op == "!":
-            return self._truthy_operands(expr.operand)
-        if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
-            return (self._truthy_operands(expr.left)
-                    + self._truthy_operands(expr.right))
-        return [expr]
-
     def _truthy_operand_type(self, operand: TpyExpr) -> TpyType | None:
         """The type a truthiness operand is tested at.
 
@@ -915,29 +926,16 @@ class NarrowingTracker:
                     else self.declared_type_for_name(key))
         return self.ctx.expr_types.get(operand)
 
-    @staticmethod
-    def _truthy_operand_spelling(operand: TpyExpr) -> str | None:
-        """How to name a warned operand back to the user -- the source
-        spelling, so an accessor read is `h.i` and not its getter call."""
-        key = _expr_to_narrowing_key(operand)
-        if key is not None:
-            return key
-        if is_property_getter_read(operand):
-            obj_key = _expr_to_narrowing_key(operand.obj)
-            if obj_key is not None:
-                return f"{obj_key}.{operand.method}"
-        return None
-
     def condition_truthy_value_optional_names(self, condition: TpyExpr) -> set[str]:
         """Get value-optionals used via truthiness in a condition."""
         result: set[str] = set()
-        for operand in self._truthy_operands(condition):
+        for operand in truthy_operands(condition):
             declared = self._truthy_operand_type(operand)
             inner = unwrap_readonly(declared) if declared else None
             if not (isinstance(inner, OptionalType)
                     and inner.inner.is_value_type()):
                 continue
-            name = self._truthy_operand_spelling(operand)
+            name = storage_spelling(operand)
             if name is not None:
                 result.add(name)
         return result

@@ -4030,6 +4030,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         rt = _declared_type(e.right, declared, analyzer)
         if (lt is None or not is_bool_type(lt)
                 or rt is None or not is_bool_type(rt)):
+            if e in analyzer.ctx.truth_test_selects:
+                # A truth test reached as a value (`bool(a or f)`): each
+                # operand is tested on its own, as in a condition.
+                return _lower_truthy(e, lc, declared)
             # A bool RESULT over non-bool operands needs the direct C++
             # `&&`/`||` with truthiness reasoning this lowering lacks.
             reject()
@@ -17001,6 +17005,34 @@ def _strip_slot_leaf_deref(lowered: 'THIRExpr', lc: '_LowerCtx') -> 'THIRExpr':
     return lowered
 
 
+def _lower_truth_tested_ternary(e: TpyIfExpr, lc: '_LowerCtx',
+                                declared: dict[str, TpyType],
+                                temps_ok: bool) -> THIRIfExpr:
+    """A truth-tested ternary whose arms share no value type (sema's
+    `truth_tested_arms`): `((cond) ? (then) : (else))` over each arm's own
+    truth test, every arm a C++ bool so the ternary is one whatever its
+    position."""
+    if _ifexpr_isin_narrow_info(e.condition, lc, declared) is not None:
+        note_detail("ifexpr.truth_arms_isinstance")
+        raise ThirUnsupported("expr.ifexpr")
+
+    def arm(x: TpyExpr) -> THIRExpr:
+        # Only an arm whose truth test is its own value render (a scalar)
+        # is not already a bool.
+        t = _lower_truthy(x, lc, declared)
+        if is_bool_type(t.result_type):
+            return t
+        return THIRCoerce(result_type=BOOL, expr=t,
+                          coercion_name="truthy_to_bool",
+                          wrap="static_cast<bool>({0})", form=t.form,
+                          loc=getattr(x, "loc", None))
+    cond = _lower_truthy(e.condition, lc, declared, temps_ok=temps_ok)
+    _witness("ifexpr.truth_arms")
+    return THIRIfExpr(result_type=BOOL, cond=cond, then=arm(e.then_expr),
+                      orelse=arm(e.else_expr), form=Form.VALUE,
+                      loc=getattr(e, "loc", None))
+
+
 def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                   declared: dict[str, TpyType], *,
                   unary_operand: bool = False,
@@ -17027,6 +17059,8 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                                 use=_ExprUse(result=_ExprResultUse.TRUTHY)),
             deref=False, loc=getattr(e, "loc", None))
     et = lc.analyzer.get_expr_type(e)
+    if e in lc.analyzer.ctx.truth_tested_arms:
+        return _lower_truth_tested_ternary(e, lc, declared, temps_ok)
     if isinstance(e, TpyBinOp) and e.op in _LOGICAL_OPS:
         return THIRBinOp(
             result_type=BOOL,
@@ -17933,6 +17967,9 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
     the C++ ternary deduces std::string -- a str literal is const char* in
     ternary context and converts natively, so it stays bare."""
     analyzer = lc.analyzer
+    if e in analyzer.ctx.truth_tested_arms:
+        # A truth test reached as a value (`bool(a if c else f)`).
+        return _lower_truthy(e, lc, declared)
     for _arm in (e.then_expr, e.else_expr):
         if property_access_returns_cpp_ref(lc.analyzer, _arm):
             # A `@property` arm whose read renders as a C++ lvalue

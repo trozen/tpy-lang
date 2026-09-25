@@ -2249,6 +2249,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "ifexpr.bytes",                 # view-result bytes ternary (BORROW span)
     "ifexpr.tuple",                 # tuple result: arms' form propagates
     "ifexpr.cond_pos",              # bool ternary as an if/while condition
+    "ifexpr.truth_arms",            # truth-tested ternary whose arms share
+                                    # no value type: each arm tested alone
     "ifexpr.optptr_call_arm",       # borrow-returning ptr-Optional call arm
                                     # passes its `T*` result bare
     "ifexpr.ptr_opt",               # ptr-Optional result: per-arm `T*`

@@ -1,0 +1,1 @@
+main.py:9: error: Incompatible types in ternary expression: 'tuple[int32, str]' and 'tuple[int64, str]'
