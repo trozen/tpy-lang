@@ -1,0 +1,34 @@
+free: setcbreak returns old: True
+free: set_blocking no-op: True
+free: cbreak read: b'a'
+free: blocking: False
+free: cbreak empty: BlockingIOError
+free: raw read: b'\x03'
+free: restored: True
+free: restored differs: False
+free: canonical waits for newline
+free: blocking again: True
+free: canonical read: b'cd\n'
+free: alias mutated original: True
+free: applied: True
+free: not a tty: termios.error True
+method: raw differs: True
+method: restored: True
+finally: read: b'x'
+finally: restored: True
+with: read: b'y'
+with: cbreak: True
+with: restored: True
+repr: repr equals str: True
+repr: ends with ]]: True
+repr: cooked cc all bytes: True
+repr: raw cc bytes: True ints: 2
+seterr: bad action: EINVAL True
+seterr: closed fd: EBADF True
+seterr: closed get_blocking: OSError
+seterr: closed set_blocking: OSError
+icrnl: cbreak: b'\n'
+icrnl: raw: b'\r'
+negfd: tcgetattr: ValueError file descriptor cannot be a negative integer (-1)
+negfd: tcsetattr: ValueError file descriptor cannot be a negative integer (-5)
+negfd: setraw: ValueError file descriptor cannot be a negative integer (-2)

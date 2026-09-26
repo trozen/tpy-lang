@@ -320,6 +320,7 @@ from .predicates import (
     _opt_view_identity_coerce_arg,
     _own_viewfam_param,
     _resolved_bytes_value,
+    _declares_str_or_repr,
     _resolved_scalar,
     _resolved_str_value,
     _resolved_viewfam_value,
@@ -6129,10 +6130,18 @@ def _native_value_call_arg(a: TpyExpr, ptype: 'TpyType | None',
     if pt is None or isinstance(pt, (OwnType, OptionalType, UnionType)):
         return False
     rt = analyzer.get_expr_type(a)
+    rtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+           if rt is not None else None)
     return (_resolved_scalar(rt, analyzer)
             or _eligible_char(rt)
             or _resolved_str_value(rt, analyzer) is not None
-            or _resolved_bytes_value(rt, analyzer) is not None)
+            or _resolved_bytes_value(rt, analyzer) is not None
+            # A builtin value-type record result (`repr(range(3))`): a
+            # prvalue with no borrow/storage duality, bound bare like the
+            # str / bytes values above. User records take the record row.
+            or (isinstance(rtu, NominalType) and not rtu.is_user_record
+                and not rtu.is_protocol and rtu.is_value_type()
+                and bool(_witness("call.native_value_record_arg"))))
 
 
 def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -15970,11 +15979,15 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
             row = None
         elif (isinstance(t, NominalType) and t.is_user_record) \
                 or isinstance(unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(t))), TypeParamRef):
-            # A user record / bound type param renders via __str__ (its ADL
+                    unwrap_send_sync(t))), TypeParamRef) \
+                or _declares_str_or_repr(t, analyzer):
+            # A user record / bound type param / stub type declaring
+            # __str__ or __repr__ (bytes, range) renders via __str__ (its ADL
             # override binds the per-record definition); a !r conversion
             # overrides it with repr_of below, the conversion row.
-            # The type-param half unwraps readonly/Send shells -- a const
+            # The user-record half is not subsumed by the declares test: a
+            # subclass inheriting __str__ declares none itself. The
+            # type-param half unwraps readonly/Send shells -- a const
             # method's `self.value: T` read arrives readonly-wrapped.
             _witness("fstr.user_arg")
             row = "::tpy::__str__({0})"

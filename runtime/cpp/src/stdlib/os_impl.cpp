@@ -459,6 +459,48 @@ std::tuple<int64_t, int64_t> pipe_fd() {
     return {fds[0], fds[1]};
 }
 
+bool get_blocking_fd(int64_t fd) {
+    int flags = ::fcntl(static_cast<int>(fd), F_GETFL);
+    if (flags < 0) raise_errno();
+    return (flags & O_NONBLOCK) == 0;
+}
+
+void set_blocking_fd(int64_t fd, bool blocking) {
+    const int f = static_cast<int>(fd);
+    int flags = ::fcntl(f, F_GETFL);
+    if (flags < 0) raise_errno();
+    int updated = blocking ? (flags & ~O_NONBLOCK) : (flags | O_NONBLOCK);
+    if (updated != flags && ::fcntl(f, F_SETFL, updated) < 0) raise_errno();
+}
+
+// posix_openpt + grantpt/unlockpt/ptsname_r rather than openpty(3), which lives
+// in libutil on Linux and would need an extra link flag. Both fds are
+// close-on-exec, matching CPython's non-inheritable openpty fds.
+std::tuple<int64_t, int64_t> openpty_fd() {
+    int master = ::posix_openpt(O_RDWR | O_NOCTTY);
+    if (master < 0) raise_errno();
+    auto fail = [master]() {
+        int saved = errno;
+        ::close(master);
+        errno = saved;
+        raise_errno();
+    };
+    // posix_openpt takes no O_CLOEXEC on macOS, so the master gets it here.
+    if (::fcntl(master, F_SETFD, FD_CLOEXEC) != 0) fail();
+    if (::grantpt(master) != 0 || ::unlockpt(master) != 0) fail();
+    // ptsname's static buffer races with any other thread opening a pty.
+    // glibc and musl return the error number; macOS returns -1 with errno set.
+    char name[128];
+    int r = ::ptsname_r(master, name, sizeof(name));
+    if (r != 0) {
+        if (r > 0) errno = r;
+        fail();
+    }
+    int slave = ::open(name, O_RDWR | O_NOCTTY | O_CLOEXEC);
+    if (slave < 0) fail();
+    return {master, slave};
+}
+
 int64_t dup_fd(int64_t fd) {
     int r = ::dup(static_cast<int>(fd));
     if (r < 0) raise_errno();
@@ -623,5 +665,7 @@ std::int32_t tpy_const_eisdir = EISDIR;
 std::int32_t tpy_const_enotdir = ENOTDIR;
 std::int32_t tpy_const_ebadf = EBADF;
 std::int32_t tpy_const_etimedout = ETIMEDOUT;
+std::int32_t tpy_const_einval = EINVAL;
+std::int32_t tpy_const_enotty = ENOTTY;
 
 }  // extern "C"

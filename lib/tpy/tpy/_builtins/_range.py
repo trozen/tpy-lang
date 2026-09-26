@@ -18,6 +18,11 @@ class Range[T](NativeIterable[T], Iterable[T]):
     @pure
     def __iter__(self) -> Iterator[T]: ...
 
+    @native("tpy::__repr__", function=True)
+    @readonly
+    @pure
+    def __repr__(self) -> str: ...
+
 
 @dispatch
 @cpp_template("::tpy::Range<{T}>({0})")

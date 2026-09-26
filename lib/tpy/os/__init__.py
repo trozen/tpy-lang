@@ -22,6 +22,8 @@ from ._native import (
     setenv as _setenv, unsetenv as _unsetenv,
     open_fd as _open_fd, close_fd as _close_fd, read_fd as _read_fd,
     write_fd as _write_fd, lseek_fd as _lseek_fd, pipe_fd as _pipe_fd,
+    get_blocking_fd as _get_blocking_fd, set_blocking_fd as _set_blocking_fd,
+    openpty_fd as _openpty_fd,
     dup_fd as _dup_fd, dup2_fd as _dup2_fd, fstat_fd as _fstat_fd,
     getpid, getppid, getuid, geteuid, getgid, getegid, getlogin, umask,
     strerror, isatty, cpu_count_raw as _cpu_count_raw,
@@ -338,6 +340,18 @@ def lseek(fd: int64, pos: int64, how: int64) -> int64:
 
 def pipe() -> tuple[int64, int64]:
     return _pipe_fd()
+
+
+def get_blocking(fd: int64) -> bool:
+    return _get_blocking_fd(fd)
+
+
+def set_blocking(fd: int64, blocking: bool) -> None:
+    _set_blocking_fd(fd, blocking)
+
+
+def openpty() -> tuple[int64, int64]:
+    return _openpty_fd()
 
 
 def dup(fd: int64) -> int64:

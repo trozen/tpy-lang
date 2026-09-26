@@ -469,6 +469,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.qualcall.container_discard",  # discarded marker-call container result
     "method.consuming_move",        # consuming method: std::move(name) receiver wrap
     "call.native_record_arg",       # F1-record call rvalue bare into a native slot
+    "call.native_value_record_arg", # builtin value-record call rvalue (range) bare
     "call.value_record_arg",        # record rvalue bare into a by-value record slot
     "call.value_opt_record_arg",    # ValueType-record ctor rvalue inline
                                     # at a value-opt record slot
@@ -2368,7 +2369,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # placeholder (lowering, routed args only)
     "fstr.container_arg",           # tuple/list/dict/set arg -> to_str helper
     "fstr.container_call_arg",      # container-returning CALL under that wrap
-    "fstr.user_arg",                # user record / bound type param -> __str__
+    "fstr.user_arg",                # user record / bound type param /
+                                    # stub declaring __str__/__repr__ -> __str__
     "fstr.union_arg",               # union arg -> runtime __str__ visitor
     # Sync `with` faces (lowering, per item / per statement).
     "with.manager_borrowed",        # lvalue manager: `auto& __ctx_N = ...`

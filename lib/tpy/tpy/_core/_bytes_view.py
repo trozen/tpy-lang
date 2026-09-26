@@ -62,6 +62,11 @@ class BytesView(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @pure
     def __hash__(self) -> uint64: ...
 
+    @native("tpy::__repr__", function=True)
+    @readonly
+    @pure
+    def __repr__(self) -> str: ...
+
     @native("tpy::bytes_decode", function=True)
     @readonly
     @pure

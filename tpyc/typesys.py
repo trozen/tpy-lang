@@ -5968,6 +5968,14 @@ class RecordInfo:
         """Get all overloads for a method."""
         return self.methods.get(name, [])
 
+    def declares_str_or_repr(self) -> bool:
+        """Whether the record itself declares `__str__` or `__repr__` (an
+        inherited one is not in `methods`). Sema's Stringable rule and every
+        lowering sink rendering through `::tpy::__str__` must agree on this
+        fact, so both read it here."""
+        return bool(self.get_method_overloads("__str__")
+                    or self.get_method_overloads("__repr__"))
+
     def is_generic(self) -> bool:
         """Return True if this is a generic record with type parameters."""
         return bool(self.type_params)

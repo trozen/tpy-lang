@@ -116,6 +116,12 @@ int64_t write(int64_t fd, ::tpy::BytesView data);
 int64_t lseek(int64_t fd, int64_t pos, int64_t how);
 // def pipe() -> tuple[int64, int64]:
 std::tuple<int64_t, int64_t> pipe();
+// def get_blocking(fd: int64) -> bool:
+bool get_blocking(int64_t fd);
+// def set_blocking(fd: int64, blocking: bool) -> None:
+void set_blocking(int64_t fd, bool blocking);
+// def openpty() -> tuple[int64, int64]:
+std::tuple<int64_t, int64_t> openpty();
 // def dup(fd: int64) -> int64:
 int64_t dup(int64_t fd);
 // def dup2(fd: int64, fd2: int64) -> int64:

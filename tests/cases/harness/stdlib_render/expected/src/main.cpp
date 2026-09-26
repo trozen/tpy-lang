@@ -44,6 +44,7 @@ int32_t _pin_cycle_copy() {
 // import _bindings.posix_epoll
 // import _bindings.posix_signal
 // import _bindings.posix_socket
+// import _bindings.posix_termios
 // import _bindings.tz_intern
 // import _datetime_cal
 // import _datetime_fmt
@@ -77,6 +78,7 @@ int32_t _pin_cycle_copy() {
 // import socket
 // import ssl
 // import sys
+// import termios
 // import time
 // import tplib
 // import tplib.arc
@@ -120,6 +122,7 @@ int32_t _pin_cycle_copy() {
 // import tpy.thread
 // import tpy.unsafe
 // import tpy.version
+// import tty
 //
 // import urllib
 // import urllib.parse
@@ -162,6 +165,7 @@ void __tpy_init() {
     ::tpystd::socket::__tpy_init();
     ::tpystd::ssl::__tpy_init();
     ::tpystd::sys::__tpy_init();
+    ::tpystd::termios::__tpy_init();
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::arc::__tpy_init();
     ::tpystd::tplib::array_list::__tpy_init();
@@ -181,6 +185,7 @@ void __tpy_init() {
     ::tpystd::tpy::sync::__tpy_init();
     ::tpystd::tpy::thread::__tpy_init();
     ::tpystd::tpy::version::__tpy_init();
+    ::tpystd::tty::__tpy_init();
     ::tpystd::urllib::__tpy_init();
     ::tpystd::urllib::parse::__tpy_init();
     ::tpystd::urllib::request::__tpy_init();

@@ -42,11 +42,12 @@ inline BytesView bytes_literal(const char* data, size_t n) {
 
 namespace detail {
 
-inline void write_byte_repr(std::ostream& os, uint8_t b) {
+inline void write_byte_repr(std::ostream& os, uint8_t b, char quote,
+                            bool escape_single) {
     if (b == '\\') {
         os << "\\\\";
-    } else if (b == '\'') {
-        os << "\\'";
+    } else if (b == static_cast<uint8_t>(quote) || (escape_single && b == '\'')) {
+        os << '\\' << static_cast<char>(b);
     } else if (b == '\t') {
         os << "\\t";
     } else if (b == '\n') {
@@ -83,12 +84,24 @@ struct ByteArrayPrinter {
 };
 
 namespace detail {
-inline void write_bytes_repr(std::ostream& os, BytesView data) {
-    os << "b'";
+// CPython's quote choice: single quotes unless the data holds a single quote
+// and no double quote. bytearray picks the same quote but always escapes a
+// single quote (`bytearray(b"it\'s")`), since CPython builds its repr from a
+// separate routine that never relaxes that escape.
+inline void write_bytes_repr(std::ostream& os, BytesView data,
+                             bool escape_single = false) {
+    bool has_single = false;
+    bool has_double = false;
     for (uint8_t b : data) {
-        write_byte_repr(os, b);
+        has_single = has_single || b == '\'';
+        has_double = has_double || b == '"';
     }
-    os << '\'';
+    const char quote = (has_single && !has_double) ? '"' : '\'';
+    os << 'b' << quote;
+    for (uint8_t b : data) {
+        write_byte_repr(os, b, quote, escape_single);
+    }
+    os << quote;
 }
 }  // namespace detail
 
@@ -99,7 +112,7 @@ inline std::ostream& operator<<(std::ostream& os, const BytesPrinter& bp) {
 
 inline std::ostream& operator<<(std::ostream& os, const ByteArrayPrinter& bp) {
     os << "bytearray(";
-    detail::write_bytes_repr(os, bp.value);
+    detail::write_bytes_repr(os, bp.value, /*escape_single=*/true);
     os << ')';
     return os;
 }

@@ -10,6 +10,7 @@ import _bindings.pcre2
 import _bindings.posix_epoll
 import _bindings.posix_signal
 import _bindings.posix_socket
+import _bindings.posix_termios
 import _bindings.tz_intern
 import _datetime_cal
 import _datetime_fmt
@@ -43,6 +44,7 @@ import signal
 import socket
 import ssl
 import sys
+import termios
 import time
 import tplib
 import tplib.arc
@@ -86,6 +88,7 @@ import tpy.sync
 import tpy.thread
 import tpy.unsafe
 import tpy.version
+import tty
 import typing
 import urllib
 import urllib.parse

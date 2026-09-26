@@ -16,6 +16,7 @@
 #include <tpy/stdlib/epoll_h.hpp>
 #include <tpy/stdlib/signal_h.hpp>
 #include <tpy/stdlib/socket_h.hpp>
+#include <tpy/stdlib/termios_h.hpp>
 #include <tpy/stdlib/tz_intern.hpp>
 #include "tpystd/_datetime_cal/_datetime_cal.hpp"
 #include "tpystd/_datetime_fmt/_datetime_fmt.hpp"
@@ -48,6 +49,7 @@
 #include "tpystd/socket.hpp"
 #include "tpystd/ssl.hpp"
 #include "tpystd/sys.hpp"
+#include "tpystd/termios.hpp"
 #include <tpy/system.hpp>
 #include <tpy/stdlib/time.hpp>
 #include "tpystd/tplib.hpp"
@@ -61,6 +63,7 @@
 #include "tpystd/tplib/json/writer.hpp"
 #include "tpystd/tplib/rc.hpp"
 #include "tpystd/tplib/requests.hpp"
+#include "tpystd/tty.hpp"
 #include "tpystd/urllib.hpp"
 #include "tpystd/urllib/parse.hpp"
 #include "tpystd/urllib/request.hpp"
