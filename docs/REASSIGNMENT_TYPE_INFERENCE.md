@@ -16,7 +16,7 @@ Status: In Progress
 | Late annotation retro-validation for top-level globals | Done |
 | Numeric lattice helper scaffolding for future numeric families | Done |
 | Augmented assignment policy (`x=0; x += int32(5)` does not anchor; emits warning) | Done |
-| Numeric widening across reassignments (int32->int64, FixedInt->float, FixedInt->BigInt, unsigned->wider signed) | Done |
+| Numeric widening across reassignments (int32->int64, FixedInt->BigInt, unsigned->wider signed); an int binding meeting a float one is refused | Done |
 | Full lattice extension for remaining numeric families (`float32`) | TODO |
 
 This document defines how TurboPython should infer variable types across multiple
@@ -90,9 +90,9 @@ Rules:
    - `x = 0; x = int32(666)` -> `int32` (if literals fit range)
 3. Concrete integer + concrete integer uses widening, never narrowing.
    - `int32 + int -> int`
-4. Any mix with `float` widens to `float`.
-   - `int32 + float -> float`
-   - `int + float -> float`
+4. Any mix of an integer and a `float` binding is refused (a number has one type,
+   and CPython keeps each binding's own): `x = 1; x = 2.5` is an error naming the
+   `1.0` spelling, `x: float = 1` converts. Floats widen among themselves.
 5. `None` may lift numeric result to optional.
    - `x = None; x = 123` -> `int | None`
 6. Augmented assignment is not an anchoring operation.
@@ -194,7 +194,7 @@ To avoid rewriting inference later, implement numeric merging via metadata:
 Then merge by:
 1. Same-kind widening for concrete numeric types.
 2. Literal fit checks for anchoring.
-3. Float dominance over integer families.
+3. An integer family meeting a float is refused (no dominance).
 4. No narrowing between concrete non-literal types.
 
 ## Implementation Outline
@@ -245,7 +245,7 @@ New errors should include:
 Add snippet tests covering:
 1. `None -> T` and `None -> int literal`
 2. literal anchoring to `int32`
-3. int/float widening
+3. int/float rebind refused
 4. bool/numeric mismatch
 5. late-annotation valid and invalid retro-check cases
 6. optional annotation compatibility

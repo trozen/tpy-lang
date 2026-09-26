@@ -59,7 +59,9 @@ from .context import (PENDING_CONTAINER_TYPES, MODULE_INIT_CONTEXT,
 from ..namespace import BindingKind
 from ..diagnostics import SemanticError
 from .type_join import (InferredJoin, JoinOutcome, descend,
-                        join_inferred_value_types, python_type_name,
+                        find_int_float_mix, flipped, join_inferred_value_types,
+                        literal_leaf_mix,
+                        python_type_name, rebind_mix_message,
                         usage_mix_message)
 from .numeric_lattice import (
     fixed_int_range_contains, merge_literal_seed_target,
@@ -294,6 +296,8 @@ class LocalTypeDeduction:
         existing_type: TpyType,
         init_type: TpyType,
         init_expr: TpyExpr | None = None,
+        aug_op: str | None = None,
+        site: TpyStmt | None = None,
     ) -> TpyType:
         """Resolve target type for a reassignment write.
 
@@ -304,7 +308,7 @@ class LocalTypeDeduction:
         shape codegen emits; no-op for any other type.
         """
         resolved = self._resolve_reassignment_target_type_raw(
-            name, existing_type, init_type, init_expr)
+            name, existing_type, init_type, init_expr, aug_op, site)
         return collapse_tuple_own_elements(resolved)
 
     def _resolve_reassignment_target_type_raw(
@@ -313,14 +317,20 @@ class LocalTypeDeduction:
         existing_type: TpyType,
         init_type: TpyType,
         init_expr: TpyExpr | None = None,
+        aug_op: str | None = None,
+        site: TpyStmt | None = None,
     ) -> TpyType:
         """Resolve target type for an unannotated reassignment write."""
-        if name in self.ctx.func.authoritative_types:
-            return self.ctx.func.authoritative_types[name]
+        declared = self.declared_slot_type(name, existing_type)
+        if declared is not None:
+            return declared
 
         # Resolve float literals to float64 before any widening logic
         if isinstance(init_type, FloatLiteralType):
             init_type = FLOAT
+
+        self.refuse_int_float_rebind(name, existing_type, init_type,
+                                     init_expr, aug_op, site)
 
         # None-seeded inference: None + T => Optional[T]
         if isinstance(existing_type, NoneType):
@@ -337,7 +347,7 @@ class LocalTypeDeduction:
             return existing_type
 
         # Literal-seeded default (ctx.default_int_type) may be refined by
-        # explicit later writes (e.g., BigInt/int64/Float anchors).
+        # explicit later writes (e.g., BigInt/int64 anchors).
         if name in self.ctx.func.literal_default_vars:
             merged = merge_literal_seed_target(existing_type, init_type, self.ctx.func.literal_values.get(name, []))
             if merged is not None:
@@ -365,6 +375,90 @@ class LocalTypeDeduction:
             return widened
 
         return existing_type
+
+    def declared_slot_type(self, name: str,
+                           existing_type: TpyType) -> TpyType | None:
+        """The type a declaration gives `name`'s one slot -- its annotation,
+        its parameter's, or the declaration a `nonlocal` / `global` write
+        reaches in the scope that owns the name -- or None when the slot's
+        type is inferred from its bindings. A declared slot converts what is
+        bound to it; widening it instead would store a wider value into the
+        narrower C++ declaration."""
+        func = self.ctx.func
+        if name in func.authoritative_types:
+            return func.authoritative_types[name]
+        if name in func.current_nonlocal_names:
+            return (existing_type if name in func.enclosing_declared_names
+                    else None)
+        if name in func.global_declarations:
+            return (existing_type if name in self.ctx.preregistered_globals
+                    else None)
+        if name in func.current_param_names:
+            return existing_type
+        return None
+
+    def refuse_int_float_rebind(
+        self, name: str, existing_type: TpyType, init_type: TpyType,
+        init_expr: TpyExpr | None, aug_op: str | None = None,
+        site: TpyStmt | None = None,
+    ) -> None:
+        """Refuse a binding that makes an inferred local's integer bindings
+        meet float ones. The local has one C++ type, so widening it to float
+        would print an int binding as `3.0` (and an int storage would
+        truncate a float), where CPython keeps each value's own type."""
+        if self.declared_slot_type(name, existing_type) is not None:
+            return
+        current = unwrap_own(unwrap_ref_type(unwrap_readonly(existing_type)))
+        if isinstance(current, OptionalType):
+            current = unwrap_readonly(current.inner)
+        new = unwrap_own(unwrap_ref_type(unwrap_readonly(init_type)))
+        mix = self._rebind_mix(current, new, init_expr)
+        if mix is None:
+            return
+        func = self.ctx.func
+        earlier = []
+        for t, e in func.write_history.get(name, []):
+            m = self._rebind_mix(
+                unwrap_own(unwrap_ref_type(unwrap_readonly(t))), new, init_expr)
+            if e is not None and m is not None and m.int_first == mix.int_first:
+                earlier.append(e)
+        line = next((e.loc.line for e in earlier if e.loc is not None), None)
+        # A loop variable, a `nonlocal` or a `global` name is not bound by an
+        # annotatable statement here.
+        bound_elsewhere = (name in func.current_nonlocal_names
+                           or name in func.global_declarations)
+        annotatable = not (name in func.loop_vars or bound_elsewhere)
+        raise self.ctx.error(
+            rebind_mix_message(mix, name, init_expr, earlier, line, aug_op,
+                               annotatable, bound_elsewhere),
+            init_expr if init_expr is not None else site)
+
+    def _rebind_mix(self, current: TpyType, new: TpyType,
+                    new_expr: TpyExpr | None = None) -> InferredJoin | None:
+        """The int/float mix between a local's type so far and a new binding,
+        asked in that order. A pending container on one side is joined with
+        the concrete container on the other element by element."""
+        mix = find_int_float_mix(current, new)
+        if mix is not None:
+            return mix
+        # The value was analyzed with the local's type as its hint, which
+        # records a literal's int elements at the local's float type
+        # (BUGS.md#inferred-hint-converts-int-elements); its leaves keep
+        # their own.
+        if new_expr is not None and not isinstance(current, PENDING_CONTAINER_TYPES):
+            leaf_mix = literal_leaf_mix(new_expr, current, self.ctx.get_expr_type)
+            if leaf_mix is not None:
+                return flipped(leaf_mix)
+        pending = PENDING_CONTAINER_TYPES
+        if isinstance(new, pending) and not isinstance(current, pending):
+            verdict = self.pin_pending_container(new, current, commit=False)
+            return (flipped(verdict)
+                    if verdict.outcome is JoinOutcome.INT_FLOAT_MIX else None)
+        if isinstance(current, pending) and not isinstance(new, pending):
+            verdict = self.pin_pending_container(current, new, commit=False)
+            return (verdict if verdict.outcome is JoinOutcome.INT_FLOAT_MIX
+                    else None)
+        return None
 
     def literal_retro_candidate(
         self, name: str, actual: TpyType, expected: TpyType,

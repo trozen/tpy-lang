@@ -1,0 +1,1 @@
+main.py:6: error: 'ys' is bound to float elements at line 5 and to int elements here, and CPython keeps each value's own type; write 1.0 instead of 1

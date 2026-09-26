@@ -5,7 +5,7 @@
 | Phase | Scope | Status |
 |-------|-------|--------|
 | 1 | Unify infrastructure: replace ListLiteralTracker, StrVarTracker, and deduction parts of ReassignmentInference with single LocalTypeDeduction class. Preserve existing behavior. | Done |
-| 2a | Numeric widening across assignments (int->float, int32->int64, unsigned->wider signed). | Done |
+| 2a | Numeric widening across assignments (int32->int64, unsigned->wider signed; an int meeting a float is refused). | Done |
 | 2b | Different-size list reassignment, return-type-driven deduction, alias propagation for lists. | Done |
 | 2c | Cross-variable list reassignment (`a = [1,2,3]; b = [4,5]; a = b` -- both should become list). | Done |
 | 3 | Narrowing integration: deduced `Optional[T]` variables work with `if x is not None` narrowing. | Done |
@@ -128,7 +128,8 @@ Apply these rules in order:
 FixedInt, BigInt, Float):
 - Compute the widest type using the numeric lattice.
 - Int literals adapt to the widest concrete type.
-- If any write is Float and others are integer types -> Float.
+- A Float write beside integer writes -> error (a local has one numeric
+  type; CPython keeps each binding's own).
 - Mixed signed/unsigned of same width -> error (force annotation).
 - Bool mixed with numeric -> error (force annotation).
 
@@ -246,9 +247,7 @@ three separate passes.
 
 | Scenario | Deduced |
 |----------|---------|
-| `x = 0; x = 3.14` | float |
 | `x = get_int32(); x = get_int64()` | int64 |
-| `x = 3.14; x = 42` | float |
 | `x = [1,2,3]; x = [4,5]` (different sizes) | list[int32] |
 | `x = [1,2]; x.append(big_int64)` | list[int64] |
 | `x = [1,2,3]; return x` (return type `list[T]`) | list[T] |
@@ -264,6 +263,7 @@ three separate passes.
 | `x = get_int32(); x = get_uint32()` | mixed sign, same width |
 | `x = User(); x = None` | T then None requires annotation |
 | `x = 42; x = "hello"` | incompatible types |
+| `x = 0; x = 3.14`, `x = 3.14; x = 42` | a local has one numeric type; CPython keeps each binding's own |
 | `x = User(); x = Config()` | unrelated classes |
 | `x = None` (never concrete) | cannot deduce Optional[???] |
 

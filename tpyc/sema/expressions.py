@@ -29,7 +29,7 @@ from ..typesys import (
     unwrap_own, coro_struct_owner, is_readonly_span, collapse_tuple_own_elements, global_binds_by_reference, owned_tuple_storage_type,
     ConcreteCoroType, make_concrete_gen, is_dyn_protocol,
     RecursiveAliasInstanceType, recursive_union_alternatives)
-from ..parse.nodes import GENEXPR_FUNC_PREFIX
+from ..parse.nodes import GENEXPR_FUNC_PREFIX, op_spelling
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
@@ -1335,7 +1335,7 @@ class ExpressionAnalyzer:
                         expr,
                     )
                 raise self.ctx.error(
-                    f"Cannot compare {left_type} and {right_type} with '{expr.op}'",
+                    f"Cannot compare {left_type} and {right_type} with '{op_spelling(expr.op)}'",
                     expr,
                 )
 
@@ -1464,7 +1464,7 @@ class ExpressionAnalyzer:
             if not left_is_int_enum and not right_is_int_enum:
                 enum_name = left_effective.name if is_enum_type(left_effective) else right_effective.name
                 raise self.ctx.error(
-                    f"Operator '{expr.op}' not supported for enum type '{enum_name}'",
+                    f"Operator '{op_spelling(expr.op)}' not supported for enum type '{enum_name}'",
                     expr,
                 )
 
@@ -1516,14 +1516,14 @@ class ExpressionAnalyzer:
                                 f"Cannot order tuples on element {i} "
                                 f"('{opt_t}'): ordering is undefined for an "
                                 f"optional element (None does not support "
-                                f"'{expr.op}')",
+                                f"'{op_spelling(expr.op)}')",
                                 expr,
                             )
                         self._validate_comparison(expr, lt, rt)
                 return BOOL
             else:
                 raise self.ctx.error(
-                    f"Operator '{expr.op}' is not supported for tuple types",
+                    f"Operator '{op_spelling(expr.op)}' is not supported for tuple types",
                     expr,
                 )
 
@@ -1686,7 +1686,7 @@ class ExpressionAnalyzer:
                                 f"conform to 'Equatable' (no '__eq__' method)",
                                 expr)
                 return BOOL
-            raise self.ctx.error(f"Cannot use '{expr.op}' with non-iterable type {right_type}", expr)
+            raise self.ctx.error(f"Cannot use '{op_spelling(expr.op)}' with non-iterable type {right_type}", expr)
 
         # Logical operators: Python semantics returns an operand, not bool.
         if expr.op in ("&&", "||"):
@@ -1818,7 +1818,7 @@ class ExpressionAnalyzer:
                             return ret_type
 
         raise SemanticError(
-            f"Invalid operand types for '{expr.op}': {left_type} and {right_type}",
+            f"Invalid operand types for '{op_spelling(expr.op)}': {left_type} and {right_type}",
             expr.loc,
         )
 
@@ -1984,7 +1984,7 @@ class ExpressionAnalyzer:
             expr.resolved_unaryop = result
             return result.method.return_type
 
-        raise self.ctx.error(f"Invalid operand type for unary '{expr.op}': {operand_type}", expr)
+        raise self.ctx.error(f"Invalid operand type for unary '{op_spelling(expr.op)}': {operand_type}", expr)
 
     def _is_user_record_type(self, typ: TpyType) -> bool:
         """Check if a type is a user-defined record (not a builtin container)."""
@@ -2034,7 +2034,7 @@ class ExpressionAnalyzer:
                     msg = (f"Comparison '!=' on '{check_type}': "
                            f"no '__ne__' or '__eq__' method defined")
                 else:
-                    msg = (f"Comparison '{expr.op}' on '{check_type}': "
+                    msg = (f"Comparison '{op_spelling(expr.op)}' on '{check_type}': "
                            f"no '{dunder}' method defined")
                 self.ctx.emit_error(msg, expr)
 

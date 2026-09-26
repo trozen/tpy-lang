@@ -67,7 +67,7 @@ from ..liveness import (analyze_last_uses, collect_finally_return_candidates,
                         collect_nested_def_nonlocal_rebinds,
                         stmts_terminate, tuple_literal_leaves,
                         while_head_always_true)
-from ..parse.nodes import SourceLocation, VarLinkage
+from ..parse.nodes import SourceLocation, VarLinkage, op_spelling
 from .context import (addr_taken_roots, call_borrow_operands,
                       canonical_storage_key,
                       expr_yields_non_null_ptr, LoopClauseEdges,
@@ -4118,10 +4118,13 @@ class StatementAnalyzer:
 
         self_is_receiver = self.ctx.receiver_self_in_scope()
         enclosing_nonlocal = set(self.ctx.func.nested_nonlocal_rebinds)
+        enclosing_declared = (set(self.ctx.func.authoritative_types)
+                              | self.ctx.func.current_param_names)
 
         # Analyze body in isolated scope
         with self.scopes.nested_def_scope(func) as inner_scope:
             self.ctx.func.enclosing_nonlocal_rebinds = enclosing_nonlocal
+            self.ctx.func.enclosing_declared_names = enclosing_declared
             self.ctx.func.outer_scope_locals = outer_locals
             self.ctx.func.outer_self_is_receiver = self_is_receiver
             self.ctx.func.nested_def_pending = outer_pending
@@ -5520,7 +5523,11 @@ class StatementAnalyzer:
                         f"{func_name} requires matching type annotation, got {stmt.type}", stmt
                     )
             else:
-                # Use annotation as hint, or existing type for reassignments
+                # The existing type hints a reassignment even for an inferred
+                # local: it narrows float literals, types lambda parameters
+                # and infers a generic call's T. It also converts the value's
+                # int elements into the local's floats
+                # (BUGS.md#inferred-hint-converts-int-elements).
                 type_hint = stmt.type if stmt.type else existing_type
                 init_type = (
                     self._analyze_fresh_binding(stmt.init)
@@ -6244,6 +6251,8 @@ class StatementAnalyzer:
                 existing = None
             if existing is not None:
                 self._check_nonvalue_rebinding(name, stmt)
+                self.deduction.refuse_int_float_rebind(
+                    name, existing, elem_type, elem_expr, site=stmt)
                 self.compat.check_type_compatible(
                     elem_type, existing, "tuple unpacking", source_expr=stmt)
                 self.narrowing.update_after_write(name, existing, elem_type, elem_expr)
@@ -7228,10 +7237,11 @@ class StatementAnalyzer:
         """
         if result_type == target_type:
             return
+        op = op_spelling(op)
         if isinstance(target, TpyName):
             name = target.name
             effective_type = self.deduction.resolve_reassignment_target_type(
-                name, target_type, result_type,
+                name, target_type, result_type, aug_op=op, site=stmt,
             )
             # check_type_compatible errors when effective_type refused widening
             # (e.g. annotated variable, or mixed-sign fixed-int pair).
@@ -7352,7 +7362,7 @@ class StatementAnalyzer:
                     storage, element_index_key(stmt.target.index))
                 if hit is not None:
                     self.ctx.warning(element_loan_mutation_warning(
-                        f"{storage}[...]", f"'{stmt.op}='", hit), stmt)
+                        f"{storage}[...]", f"'{op_spelling(stmt.op)}='", hit), stmt)
                 self.ctx.mark_all_view_borrowers_mutated(storage)
         elif isinstance(stmt.target, TpyFieldAccess):
             storage = self._resolve_obj_storage(stmt.target.obj)
@@ -7382,7 +7392,7 @@ class StatementAnalyzer:
             storage = bt.effective_storage(stmt.target.name)
             if bt.has_element_borrow(storage):
                 self.ctx.warning(loan_mutation_warning(
-                    storage, f"'{stmt.op}='",
+                    storage, f"'{op_spelling(stmt.op)}='",
                     iterating=bt.has_iter_borrow(storage)), stmt)
             self.ctx.mark_all_view_borrowers_mutated(storage)
             # Aug-assign reallocates the buffer just as a rebind does, so it
@@ -7445,14 +7455,14 @@ class StatementAnalyzer:
                 if result.method.params:
                     _, param_type = result.method.params[0]
                     self.compat.check_type_compatible(
-                        value_type, param_type, f"'{stmt.op}=' operand", source_expr=stmt.value,
+                        value_type, param_type, f"'{op_spelling(stmt.op)}=' operand", source_expr=stmt.value,
                     )
                 return
             # Method exists but arg type mismatches -- produce a specific type error.
             expected_param = operators.get_aug_inplace_param_type(target_type, stmt.op)
             if expected_param is not None:
                 self.compat.check_type_compatible(
-                    value_type, expected_param, f"'{stmt.op}=' operand",
+                    value_type, expected_param, f"'{op_spelling(stmt.op)}=' operand",
                     loc=stmt.loc, source_expr=stmt.value,
                 )
             if result := operators.resolve_binop(target_type, stmt.op, value_type, loc_node=stmt):
@@ -7466,7 +7476,7 @@ class StatementAnalyzer:
                     hatch = (f"Define '{imethod}'" if imethod
                              else "Define the in-place dunder")
                     raise self.ctx.error(
-                        f"'{stmt.op}=' falls back to '{result.method.name}', "
+                        f"'{op_spelling(stmt.op)}=' falls back to '{result.method.name}', "
                         f"which returns a borrow; the in-place update would "
                         f"copy where CPython rebinds the name to the returned "
                         f"object. {hatch} for in-place semantics, "
@@ -7482,7 +7492,7 @@ class StatementAnalyzer:
                     self._decline_deferred_return(stmt.target.name, stmt)
                 return
             raise self.ctx.error(
-                f"Operator '{stmt.op}=' is not supported for {target_type}",
+                f"Operator '{op_spelling(stmt.op)}=' is not supported for {target_type}",
                 stmt,
             )
         check_value_type = value_type.wrapped if isinstance(value_type, OwnType) else value_type
@@ -7512,6 +7522,6 @@ class StatementAnalyzer:
                 self._apply_aug_assign_writeback(stmt.target, target_type, result.method.return_type, stmt.op, stmt)
         elif is_numeric_target:
             raise self.ctx.error(
-                f"Operator '{stmt.op}=' is not supported between {target_type} and {value_type}",
+                f"Operator '{op_spelling(stmt.op)}=' is not supported between {target_type} and {value_type}",
                 stmt,
             )

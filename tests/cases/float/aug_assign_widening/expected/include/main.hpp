@@ -9,14 +9,14 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-// def bigint_widen() -> float:
-double bigint_widen();
-// def int32_literal_widen() -> float:
-double int32_literal_widen();
-// def chain_widen() -> float:
-double chain_widen();
-// def use_after_widen() -> float:
-double use_after_widen();
+// def float_seed() -> float:
+double float_seed();
+// def float_seed_add() -> float:
+double float_seed_add();
+// def chain() -> float:
+double chain();
+// def float_of_int_seed(n: int) -> float:
+double float_of_int_seed(const ::tpy::BigInt& n);
 // def float32_stays() -> float32:
 float float32_stays();
 

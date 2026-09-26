@@ -3,84 +3,292 @@
 
 namespace tpyapp::main {
 
+double G{};
 
 // def test_int_widen() -> None:
 //     a = int32(1)  # tpyc: type(int64)
 //     a = int64(2)  # tpyc: type(int64)
-//     print(a)
+//     print("int_widen", a)
 void test_int_widen() {
     int64_t a = 1;
     a = 2;
-    std::cout << a << "\n";
+    std::cout << "int_widen" << " " << a << "\n";
 }
 
-// def test_float_absorbs_int() -> None:
-//     b = int32(1)  # tpyc: type(float)
-//     b = 1.5  # tpyc: type(float)
-//     print(b)
-void test_float_absorbs_int() {
-    double b = 1;
-    b = 1.5;
-    std::cout << ::tpy::print_float(b) << "\n";
+// def test_float_widen() -> None:
+//     b = float32(1.5)  # tpyc: type(float)
+//     b = 2.5  # tpyc: type(float)
+//     print("float_widen", b)
+void test_float_widen() {
+    double b = 1.5f;
+    b = 2.5;
+    std::cout << "float_widen" << " " << ::tpy::print_float(b) << "\n";
 }
 
 // def test_float_stays_float() -> None:
 //     c = 1.5  # tpyc: type(float)
-//     c = int32(1)  # tpyc: type(float)
-//     print(c)
+//     c = float32(1.0)  # tpyc: type(float)
+//     print("float_stays", c)
 void test_float_stays_float() {
     double c = 1.5;
-    c = static_cast<double>(1);
-    std::cout << ::tpy::print_float(c) << "\n";
+    c = static_cast<double>(1.0f);
+    std::cout << "float_stays" << " " << ::tpy::print_float(c) << "\n";
 }
 
 // def test_bigint_absorbs_fixedint() -> None:
 //     d = int32(1)  # tpyc: type(int)
 //     d = int(2)  # tpyc: type(int)
-//     print(d)
+//     print("bigint", d)
 void test_bigint_absorbs_fixedint() {
     ::tpy::BigInt d = 1;
     d = ::tpy::BigInt(2);
-    std::cout << d << "\n";
+    std::cout << "bigint" << " " << d << "\n";
 }
 
 // def test_unsigned_to_wider_signed() -> None:
 //     e = uint8(1)  # tpyc: type(int32)
 //     e = int32(2)  # tpyc: type(int32)
-//     print(e)
+//     print("unsigned", e)
 void test_unsigned_to_wider_signed() {
     int32_t e = 1;
     e = 2;
-    std::cout << e << "\n";
+    std::cout << "unsigned" << " " << e << "\n";
 }
 
 // def test_uint32_to_int64() -> None:
 //     g = uint32(1)  # tpyc: type(int64)
 //     g = int64(2)  # tpyc: type(int64)
-//     print(g)
+//     print("uint32", g)
 void test_uint32_to_int64() {
     int64_t g = 1;
     g = 2;
-    std::cout << g << "\n";
+    std::cout << "uint32" << " " << g << "\n";
 }
 
+// def test_branch_int_widen(c: bool) -> None:
+//     # int32 and int64 bindings in two arms still join to the wider integer
+//     h = int32(1)  # tpyc: type(int64)
+//     if c:
+//         h = int64(7)  # tpyc: ok
+//     print("branch_int", h)
+void test_branch_int_widen(bool c) {
+    int64_t h = 1;
+    if (c) {
+        h = 7;
+    }
+    std::cout << "branch_int" << " " << h << "\n";
+}
+
+// def test_declared_float_local(c: bool) -> None:
+//     # a declared float slot converts an int value (the numeric tower); the
+//     # converted int is never printed, since TPy shows 0.0 where CPython shows 0
+//     x: float = 0
+//     if c:
+//         x = 2.5  # tpyc: ok
+//     print("declared_local", x)
+void test_declared_float_local(bool c) {
+    double x = static_cast<double>(0);
+    if (c) {
+        x = 2.5;
+    }
+    std::cout << "declared_local" << " " << ::tpy::print_float(x) << "\n";
+}
+
+// def test_declared_float_param(t: float) -> None:
+//     # a float parameter is a declared slot too: the int converts
+//     t = 0  # tpyc: ok
+//     print("declared_param", t + 0.5)
+void test_declared_float_param(double t) {
+    t = static_cast<double>(0);
+    std::cout << "declared_param" << " " << ::tpy::print_float(((t) + (0.5))) << "\n";
+}
+
+// def test_declared_float_nonlocal(t: float) -> None:
+//     # a closure's nonlocal write reaches the enclosing function's declared float
+//     def reset() -> None:
+//         nonlocal t
+//         t = 0  # tpyc: ok
+//     reset()
+//     print("declared_nonlocal", t + 0.5)
+void test_declared_float_nonlocal(double t) {
+    auto reset = [&t]() {
+        t = static_cast<double>(0);
+    };
+    reset();
+    std::cout << "declared_nonlocal" << " " << ::tpy::print_float(((t) + (0.5))) << "\n";
+}
+
+// def test_declared_float_nonlocal_local() -> None:
+//     # the enclosing function's annotated local is a declared slot too
+//     t: float = 1.5
+//     def reset() -> None:
+//         nonlocal t
+//         t = 0  # tpyc: ok
+//     reset()
+//     print("declared_nonlocal_local", t + 0.5)
+void test_declared_float_nonlocal_local() {
+    double t = 1.5;
+    auto reset = [&t]() {
+        t = static_cast<double>(0);
+    };
+    reset();
+    std::cout << "declared_nonlocal_local" << " " << ::tpy::print_float(((t) + (0.5))) << "\n";
+}
+
+// def pair() -> tuple[int32, int32]:
+//     return (3, 4)
+std::tuple<int32_t, int32_t> pair() {
+    return std::tuple<int32_t, int32_t>{3, 4};
+}
+
+// def test_declared_float_unpack() -> None:
+//     # a tuple unpack into a declared float converts the int element
+//     x: float = 2.5
+//     x, y = pair()  # tpyc: ok
+//     print("declared_unpack", x + 0.5, y)
+void test_declared_float_unpack() {
+    double x = 2.5;
+    auto __tup_1 = ::tpyapp::main::pair();
+    x = std::get<0>(__tup_1);
+    int32_t y = std::get<1>(__tup_1);
+    std::cout << "declared_unpack" << " " << ::tpy::print_float(((x) + (0.5))) << " " << y << "\n";
+}
+
+// def test_declared_float_global() -> None:
+//     # a `global` write reaches the module's declared float
+//     global G
+//     G = 0  # tpyc: ok
+//     print("declared_global", G + 0.5)
+void test_declared_float_global() {
+    G = static_cast<double>(0);
+    std::cout << "declared_global" << " " << ::tpy::print_float(((G) + (0.5))) << "\n";
+}
+
+// # The local's own type still hints its reassignment's value, for what the
+// # hint does besides numbers.
+// def test_hint_float32_literal() -> None:
+//     # a float literal narrows to the float32 elements of the local it rebinds
+//     e = {"a": float32(0.25)}
+//     e = {"k": 0.5}  # tpyc: ok
+//     print("hint_float32", e)
+void test_hint_float32_literal() {
+    ::tpy::ordered_map<std::string, float> __slot_1 = ::tpy::ordered_map<std::string, float>({{"a", 0.25f}});
+    ::tpy::ordered_map<std::string, float>* e = &__slot_1;
+    (*e) = ::tpy::ordered_map<std::string, float>({{"k", 0.5f}});
+    std::cout << "hint_float32" << " " << ::tpy::DictPrinter((*e)) << "\n";
+}
+
+// def test_hint_lambda() -> None:
+//     # a lambda rebound over a callable local takes its parameter types
+//     h: Callable[[float], float] = lambda x: x
+//     k = h
+//     k = lambda x: x + 1.0  # tpyc: ok
+//     print("hint_lambda", k(1.0))
+void test_hint_lambda() {
+    std::function<double(double)> h = [](double x) -> double { return x; };
+    std::function<double(double)> k = h;
+    k = [](double x) -> double { return ((x) + (1.0)); };
+    std::cout << "hint_lambda" << " " << ::tpy::print_float(k(1.0)) << "\n";
+}
+
+// def test_hint_generic_call(xs: list[float]) -> None:
+//     # a generic call infers its T from the local it rebinds
+//     ys = xs
+//     ys = empty_list(3)  # tpyc: ok
+//     ys.append(2.5)
+//     print("hint_generic", ys, xs)
+void test_hint_generic_call(std::vector<double>& xs) {
+    std::optional<std::vector<double>> __slot_1;
+    std::vector<double>* ys = &(xs);
+    ys = &*(__slot_1 = ::tpyapp::main::empty_list<double>(::tpy::BigInt(3)));
+    ys->push_back(2.5);
+    std::cout << "hint_generic" << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(xs) << "\n";
+}
+
+// def make_groups() -> Own[dict[str, list[float]]]:
+//     return {"a": [1.5]}
+::tpy::ordered_map<std::string, std::vector<double>> make_groups() {
+    return ::tpy::ordered_map<std::string, std::vector<double>>({{"a", {1.5}}});
+}
+
+// def test_hint_nested_empty() -> None:
+//     # a nested [] takes its element type from the local it rebinds
+//     d = make_groups()
+//     d = {"b": []}  # tpyc: ok
+//     d["b"].append(2.5)
+//     print("hint_nested_empty", d)
+void test_hint_nested_empty() {
+    ::tpy::ordered_map<std::string, std::vector<double>> __slot_1 = ::tpyapp::main::make_groups();
+    ::tpy::ordered_map<std::string, std::vector<double>>* d = &__slot_1;
+    (*d) = ::tpy::ordered_map<std::string, std::vector<double>>({{"b", {}}});
+    ::tpy::__getitem__((*d), "b").push_back(2.5);
+    std::cout << "hint_nested_empty" << " " << ::tpy::DictPrinter((*d)) << "\n";
+}
+
+// def test_float_seed(c: bool) -> None:
+//     # 0.0 is the spelling that makes CPython and TPy agree on the type
+//     total = 0.0
+//     for i in range(3):
+//         total += 0.5  # tpyc: ok
+//     if c:
+//         total = 9.5  # tpyc: ok
+//     print("float_seed", total)
+void test_float_seed(bool c) {
+    double total = 0.0;
+    for (int32_t i = 0; i < 3; ++i) {
+        total = (total) + (0.5);
+    }
+    if (c) {
+        total = 9.5;
+    }
+    std::cout << "float_seed" << " " << ::tpy::print_float(total) << "\n";
+}
+
+// G: float = 1.5
+//
 // test_int_widen()
-// test_float_absorbs_int()
+// test_float_widen()
 // test_float_stays_float()
 // test_bigint_absorbs_fixedint()
 // test_unsigned_to_wider_signed()
 // test_uint32_to_int64()
+// test_branch_int_widen(True)
+// test_declared_float_local(True)
+// test_declared_float_param(1.5)
+// test_declared_float_nonlocal(2.5)
+// test_declared_float_nonlocal_local()
+// test_declared_float_unpack()
+// test_declared_float_global()
+// test_hint_float32_literal()
+// test_hint_lambda()
+// test_hint_generic_call([1.5])
+// test_hint_nested_empty()
+// test_float_seed(False)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
+    G = 1.5;
     ::tpyapp::main::test_int_widen();
-    ::tpyapp::main::test_float_absorbs_int();
+    ::tpyapp::main::test_float_widen();
     ::tpyapp::main::test_float_stays_float();
     ::tpyapp::main::test_bigint_absorbs_fixedint();
     ::tpyapp::main::test_unsigned_to_wider_signed();
     ::tpyapp::main::test_uint32_to_int64();
+    ::tpyapp::main::test_branch_int_widen(true);
+    ::tpyapp::main::test_declared_float_local(true);
+    ::tpyapp::main::test_declared_float_param(1.5);
+    ::tpyapp::main::test_declared_float_nonlocal(2.5);
+    ::tpyapp::main::test_declared_float_nonlocal_local();
+    ::tpyapp::main::test_declared_float_unpack();
+    ::tpyapp::main::test_declared_float_global();
+    ::tpyapp::main::test_hint_float32_literal();
+    ::tpyapp::main::test_hint_lambda();
+    std::vector<double> __tmp_1 = {1.5};
+    ::tpyapp::main::test_hint_generic_call(__tmp_1);
+    ::tpyapp::main::test_hint_nested_empty();
+    ::tpyapp::main::test_float_seed(false);
 }
 
 } // namespace tpyapp::main

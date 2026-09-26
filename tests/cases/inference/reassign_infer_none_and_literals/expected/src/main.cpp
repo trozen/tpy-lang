@@ -33,7 +33,7 @@ bool get_flag() {
 // z = int32(666)
 // print(z)
 //
-// f = 0
+// f = 0.0
 // f = 1.5
 // print(f)
 //
@@ -55,7 +55,7 @@ void __tpy_init() {
     z = 0;
     z = 666;
     std::cout << z << "\n";
-    f = 0;
+    f = 0.0;
     f = 1.5;
     std::cout << ::tpy::print_float(f) << "\n";
     flag = std::nullopt;

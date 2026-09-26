@@ -1,0 +1,1 @@
+main.py:6: error: 'total' is bound to int at line 4 and '+=' makes it float here, and CPython keeps each value's own type; write 0.0 instead of 0, or annotate total: float

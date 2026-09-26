@@ -1,6 +1,18 @@
-2
-1.5
-1.0
-2
-2
-2
+int_widen 2
+float_widen 2.5
+float_stays 1.0
+bigint 2
+unsigned 2
+uint32 2
+branch_int 7
+declared_local 2.5
+declared_param 0.5
+declared_nonlocal 0.5
+declared_nonlocal_local 0.5
+declared_unpack 3.5 4
+declared_global 0.5
+hint_float32 {'k': 0.5}
+hint_lambda 2.0
+hint_generic [2.5] [1.5]
+hint_nested_empty {'b': [2.5]}
+float_seed 1.5

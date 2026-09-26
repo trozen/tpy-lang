@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType,
-    BIGINT, FLOAT, FLOAT32,
+    BIGINT,
     is_float_type,
 )
 from ..type_def_registry import (
@@ -80,11 +80,8 @@ def merge_literal_seed_target(
         return existing_type
     if is_big_int_type(init_type):
         return BIGINT
-    if is_float32_type(init_type):
-        return FLOAT32
-    if is_float64_type(init_type):
-        return FLOAT
-    # bool is intentionally separate and should not merge with numeric literals.
+    # A float never refines an int seed: the caller refuses the int/float
+    # rebind first. bool is separate and never merges with numeric literals.
     return None
 
 
@@ -92,7 +89,9 @@ def widen_numeric_types(a: TpyType, b: TpyType) -> TpyType | None:
     """Return the widened type for two concrete numeric types, or None.
 
     Used by reassignment inference when a variable is assigned a different
-    numeric type (e.g. int32 then int64 -> int64, int32 then float -> float).
+    numeric type (e.g. int32 then int64 -> int64), and by the inferred joins,
+    which all refuse an int meeting a float before they ask
+    (`tpyc/sema/type_join.py`).
 
     Returns None when widening is not applicable (non-numeric, bool mixed
     with numeric, same-width mixed sign).

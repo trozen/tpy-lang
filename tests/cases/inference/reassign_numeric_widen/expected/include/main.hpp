@@ -7,12 +7,13 @@
 
 namespace tpyapp::main {
 
+extern double G;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def test_int_widen() -> None:
 void test_int_widen();
-// def test_float_absorbs_int() -> None:
-void test_float_absorbs_int();
+// def test_float_widen() -> None:
+void test_float_widen();
 // def test_float_stays_float() -> None:
 void test_float_stays_float();
 // def test_bigint_absorbs_fixedint() -> None:
@@ -21,6 +22,46 @@ void test_bigint_absorbs_fixedint();
 void test_unsigned_to_wider_signed();
 // def test_uint32_to_int64() -> None:
 void test_uint32_to_int64();
+// def test_branch_int_widen(c: bool) -> None:
+void test_branch_int_widen(bool c);
+// def test_declared_float_local(c: bool) -> None:
+void test_declared_float_local(bool c);
+// def test_declared_float_param(t: float) -> None:
+void test_declared_float_param(double t);
+// def test_declared_float_nonlocal(t: float) -> None:
+void test_declared_float_nonlocal(double t);
+// def test_declared_float_nonlocal_local() -> None:
+void test_declared_float_nonlocal_local();
+// def pair() -> tuple[int32, int32]:
+std::tuple<int32_t, int32_t> pair();
+// def test_declared_float_unpack() -> None:
+void test_declared_float_unpack();
+// def test_declared_float_global() -> None:
+void test_declared_float_global();
+// def test_hint_float32_literal() -> None:
+void test_hint_float32_literal();
+// def test_hint_lambda() -> None:
+void test_hint_lambda();
+// def empty_list[T](n: int) -> Own[list[T]]:
+template<typename T>
+std::vector<T> empty_list(const ::tpy::BigInt& n);
+// def test_hint_generic_call(xs: list[float]) -> None:
+void test_hint_generic_call(std::vector<double>& xs);
+// def make_groups() -> Own[dict[str, list[float]]]:
+::tpy::ordered_map<std::string, std::vector<double>> make_groups();
+// def test_hint_nested_empty() -> None:
+void test_hint_nested_empty();
+// def test_float_seed(c: bool) -> None:
+void test_float_seed(bool c);
+
+// def empty_list[T](n: int) -> Own[list[T]]:
+//     out: list[T] = []
+//     return out
+template<typename T>
+std::vector<T> empty_list(const ::tpy::BigInt& n) {
+    std::vector<T> out = std::vector<T>{};
+    return out;
+}
 
 void __tpy_init();
 } // namespace tpyapp::main

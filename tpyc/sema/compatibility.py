@@ -1916,6 +1916,8 @@ class TypeCompatibility:
         # compatibility -- coerce_expr can't model pending-list-vs-pending-list,
         # so the element check lives here.
         if isinstance(inner_existing, PendingListType):
+            self.deduction.refuse_int_float_rebind(
+                name, inner_existing, inner_value, value_expr, site=err_node)
             if isinstance(inner_value, PendingListType):
                 self._demote_or_link_pending_lists(inner_existing, inner_value)
             err = self._reassign_list_element_compat(

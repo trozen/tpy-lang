@@ -1733,6 +1733,10 @@ class FunctionTrackingState:
     genexpr_source_loans: tuple[tuple[str, LoanInfo], ...] = ()
     outer_scope_locals: set[str] = field(default_factory=set)
     current_nonlocal_names: set[str] = field(default_factory=set)
+    # The names the enclosing function DECLARES (an annotation or a
+    # parameter): a `nonlocal` write into one converts into its type instead
+    # of joining inferred bindings.
+    enclosing_declared_names: set[str] = field(default_factory=set)
     # Union of nonlocal targets across all nested defs analyzed so far in
     # this function: any later call may invoke such a closure and rebind
     # these names, so check-elision facts for them die at every call site.

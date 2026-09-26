@@ -28,7 +28,7 @@ z = 0
 z = int32(666)
 print(z)
 
-f = 0
+f = 0.0
 f = 1.5
 print(f)
 

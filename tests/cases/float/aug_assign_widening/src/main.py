@@ -1,38 +1,38 @@
-# int/BigInt variable widens to float when used with aug-assign and a float operand;
-# float32 variable stays float32 when multiplied by a bare float literal (adapts to context)
+# Aug-assign on an unannotated float local keeps it float; a float32 local stays
+# float32 when multiplied by a bare float literal (the literal adapts to context).
+# An int local whose aug-assign makes it float is refused (inference/error_aug_assign_int_float).
 
 from tpy import float32
 
-def bigint_widen() -> float:
-    x = 14         # tpyc: type(float)   -- widens to float because x *= 1.3 follows
+def float_seed() -> float:
+    x = 14.0       # tpyc: type(float)
     x *= 1.3
     return x
 
-def int32_literal_widen() -> float:
-    y = 10         # tpyc: type(float)   -- widens to float because y += 0.5 follows
+def float_seed_add() -> float:
+    y = 10.0       # tpyc: type(float)
     y += 0.5
     return y
 
-def chain_widen() -> float:
-    z = 5          # tpyc: type(float)   -- widens to float because z += 0.5 follows
+def chain() -> float:
+    z = 5.0        # tpyc: type(float)
     z += 0.5
     z *= 2.0
     return z
 
-def use_after_widen() -> float:
-    # Subsequent use of x must see the widened float type, not the original int
-    x = 14
+def float_of_int_seed(n: int) -> float:
+    # float(n) spells the int seed as the float CPython would compute
+    x = float(n)   # tpyc: type(float)
     x *= 1.3
-    return x + 1.0   # should be 19.2, not 19.0
+    return x + 1.0   # 19.2, not 19.0
 
 def float32_stays() -> float32:
-    # float32 variable stays float32 when multiplied by a float literal (2.0 adapts to context)
     x = float32(1.5)   # tpyc: type(float32) -- stays float32 because 2.0 is a literal that adapts
     x *= 2.0
     return x
 
-print(bigint_widen())
-print(int32_literal_widen())
-print(chain_widen())
-print(use_after_widen())
+print(float_seed())
+print(float_seed_add())
+print(chain())
+print(float_of_int_seed(14))
 print(float32_stays())

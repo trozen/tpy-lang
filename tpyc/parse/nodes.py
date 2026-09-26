@@ -236,6 +236,16 @@ class TpyName(TpyExpr):
     factory_expansion: 'TpyLambda | None' = None
 
 
+_OP_SPELLINGS = {"div": "/", "!": "not", "&&": "and", "||": "or"}
+
+
+def op_spelling(op: str) -> str:
+    """How a diagnostic spells an operator: the parser keys true division as
+    `div` to keep it apart from `//`, and `not` / `and` / `or` by their C++
+    spellings."""
+    return _OP_SPELLINGS.get(op, op)
+
+
 @dataclass
 class TpyBinOp(TpyExpr):
     """Binary operation."""

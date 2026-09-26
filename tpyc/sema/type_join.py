@@ -2,14 +2,15 @@
 
 An inferred join -- a ternary's arms, the operands of a value-position
 `and` / `or`, the peers of a list / dict / set literal, the elements an
-unannotated container learns from its uses -- has no declared
-type to convert into, so both operands must settle on one type they already
-share. An integer meeting a float has none: CPython keeps whichever value is
-picked (`a if c else 2.5` is the int 3, `[1, 2.5]` keeps its int), so one
-float type for both would silently print `3.0`; and a number has exactly
-one type, so the join never becomes an `int32 | float` union either. A
-DECLARED float slot is not a join: the annotation converts each value
-(the numeric-tower rule), so a caller with such a slot does not ask here.
+unannotated container learns from its uses, the bindings of one unannotated
+local across statements -- has no declared type to convert into, so both
+operands must settle on one type they already share. An integer meeting a
+float has none: CPython keeps whichever value is picked (`a if c else 2.5`
+is the int 3, `[1, 2.5]` keeps its int), so one float type for both would
+silently print `3.0`; and a number has exactly one type, so the join never
+becomes an `int32 | float` union either. A DECLARED float slot is not a
+join: the annotation converts each value (the numeric-tower rule), so a
+caller with such a slot does not ask here.
 """
 
 from __future__ import annotations
@@ -19,12 +20,14 @@ from enum import Enum, auto
 from typing import Callable, Sequence
 
 from ..parse.nodes import (TpyArrayLiteral, TpyDictLiteral, TpyExpr,
-                           TpyFloatLiteral, TpyIntLiteral, TpyNamedExpr,
-                           TpySetLiteral, TpyTupleLiteral, TpyUnaryOp)
-from ..typesys import (BIGINT, NominalType, OptionalType, TpyType,
+                           TpyFloatLiteral, TpyIntLiteral, TpyListRepeat,
+                           TpyNamedExpr, TpySetLiteral, TpyTupleLiteral,
+                           TpyUnaryOp)
+from ..typesys import (BIGINT, NominalType, OptionalType, TpyType, TupleType,
                        is_any_float_type, is_any_int_type, is_float_type,
                        literal_peer_children, resolve_int_literals,
                        unwrap_readonly)
+from ..type_def_registry import is_array, is_dict, is_list, is_set
 from ..value_category import peel_coerce
 from ..prescan import storage_spelling
 
@@ -130,6 +133,44 @@ def _same_generic_mix(a: TpyType, b: TpyType) -> InferredJoin | None:
     return found
 
 
+def literal_leaf_mix(expr: TpyExpr, target: TpyType,
+                     leaf_type: Callable[[TpyExpr], TpyType | None],
+                     ) -> InferredJoin | None:
+    """The int/float mix between the leaves of a container literal, each at
+    its own type (`leaf_type`), and the concrete container `target`'s
+    element types at the same positions -- the leaf first. A literal
+    analyzed under a hint records its elements at the hint's type; its
+    leaves keep their own."""
+    e = peel_coerce(expr)
+    t = unwrap_readonly(target)
+    # The picked value of an `Optional` slot is the inner type's.
+    if isinstance(t, OptionalType):
+        t = unwrap_readonly(t.inner)
+    children = _literal_children(e)
+    if children is None:
+        leaf = leaf_type(e)
+        return (_find_int_float_mix(unwrap_readonly(leaf), t, nested=False)
+                if leaf is not None else None)
+    if isinstance(e, TpyTupleLiteral):
+        if not (isinstance(t, TupleType)
+                and len(t.element_types) == len(e.elements)):
+            return None
+        targets = t.element_types
+    elif isinstance(t, NominalType) and (
+            (isinstance(e, TpyDictLiteral) and is_dict(t))
+            or (isinstance(e, TpySetLiteral) and is_set(t))
+            or (isinstance(e, (TpyArrayLiteral, TpyListRepeat))
+                and (is_list(t) or is_array(t)))):
+        targets = t.type_args
+    else:
+        return None
+    for k, child in children:
+        mix = literal_leaf_mix(child, targets[k], leaf_type)
+        if mix is not None:
+            return descend(mix, k)
+    return None
+
+
 def declared_float_slot(slot: TpyType | None) -> TpyType | None:
     """The float type a declared slot converts an int/float pair into, so
     no inferred join is left to refuse: a float slot, or the float of a
@@ -183,18 +224,26 @@ def int_literal_spellings(mix: InferredJoin,
     return spellings or None
 
 
+def _literal_children(e: TpyExpr) -> list[tuple[int, TpyExpr]] | None:
+    """The children of a container literal, each with its child index in the
+    order `literal_peer_children` uses (a dict's keys 0, values 1); None for
+    anything that is not a container literal."""
+    if isinstance(e, (TpyArrayLiteral, TpySetLiteral, TpyListRepeat)):
+        return [(0, x) for x in e.elements]
+    if isinstance(e, TpyDictLiteral):
+        return [(0, k) for k in e.keys] + [(1, v) for v in e.values]
+    if isinstance(e, TpyTupleLiteral):
+        return list(enumerate(e.elements))
+    return None
+
+
 def _path_leaves(e: TpyExpr, path: tuple[int, ...]) -> list[TpyExpr] | None:
     e = peel_coerce(e)
     if not path:
         return [e]
     k, rest = path[0], path[1:]
-    if isinstance(e, (TpyArrayLiteral, TpySetLiteral)) and k == 0:
-        children = e.elements
-    elif isinstance(e, TpyDictLiteral) and k in (0, 1):
-        children = e.keys if k == 0 else e.values
-    elif isinstance(e, TpyTupleLiteral) and k < len(e.elements):
-        children = [e.elements[k]]
-    else:
+    children = [c for i, c in _literal_children(e) or [] if i == k]
+    if not children:
         return None
     out: list[TpyExpr] = []
     for child in children:
@@ -329,3 +378,50 @@ def usage_mix_message(mix: InferredJoin, container: str,
     if mix.nested or annotation is None:
         return head
     return f"{head}, or annotate the container, e.g. {annotation}"
+
+
+def rebind_mix_message(mix: InferredJoin, name: str, new_value: TpyExpr | None,
+                       earlier: Sequence[TpyExpr], earlier_line: int | None,
+                       aug_op: str | None, annotatable: bool,
+                       bound_elsewhere: bool = False) -> str:
+    """The diagnostic for a local whose bindings mix an integer and a float
+    across statements. `mix` was asked with the local's type so far first
+    and the new binding's second; `new_value` is the node the new binding
+    stores (None for an augmented assignment, whose result is no source
+    node); `earlier` are the earlier bindings' nodes on the other side of
+    the mix, the first of them written at `earlier_line`; `annotatable` says
+    an annotation of the name here would declare it -- a loop variable or a
+    `nonlocal` / `global` name is bound by something else; `bound_elsewhere`
+    says it is a `nonlocal` / `global` name, whose owning binding an
+    annotation converts."""
+    int_nodes = (list(earlier) if mix.int_first
+                 else [new_value] if new_value is not None else [])
+    literals = int_literal_spellings(mix, int_nodes) if int_nodes else None
+    i = "int" if literals else python_type_name(mix.int_side)
+    f = python_type_name(mix.float_side)
+    was, now = (i, f) if mix.int_first else (f, i)
+    what = " elements" if mix.nested else ""
+    here = (f"'{aug_op}=' makes it {now} here" if aug_op is not None
+            else f"to {now}{what} here")
+    if earlier_line is not None:
+        head = f"'{name}' is bound to {was}{what} at line {earlier_line} and {here}"
+    else:
+        head = (f"'{name}' has type {was} and {here}" if aug_op is not None
+                else f"'{name}' has type {was}{what} and is bound {here}")
+    head += ", and CPython keeps each value's own type; "
+    if not annotatable:
+        fix = f"bind the {now} value to a new name"
+        if bound_elsewhere:
+            fix += f", or declare '{name}' as {f} where it is first bound"
+        return head + fix
+    if literals:
+        fix = _literal_fix(literals)
+    elif (not mix.nested and not mix.int_first and new_value is not None
+            and (s := operand_spelling(new_value)) is not None):
+        fix = f"convert to one type: {name} = {f}({s})"
+    else:
+        fix = f"convert to one type: {f}(...) on the {i} value"
+    # A nested mix would need the whole tuple type spelled in the annotation.
+    if mix.nested:
+        return head + fix
+    return f"{head}{fix}, or annotate {name}: {f}"

@@ -1,0 +1,1 @@
+main.py:6: error: 'xs' is bound to int elements at line 5 and to float elements here, and CPython keeps each value's own type; write 1.0 and 2.0 instead of 1 and 2

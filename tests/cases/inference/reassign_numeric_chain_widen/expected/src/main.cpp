@@ -11,8 +11,8 @@ double f{};
 // x = int(20)  # tpyc: type(int)
 // print(x)
 //
-// f = 0  # tpyc: type(float)
-// f = int32(3)  # tpyc: type(float)
+// f = 0.0  # tpyc: type(float)
+// f = float32(3.0)  # tpyc: type(float)
 // f = 1.5  # tpyc: type(float)
 // print(f)
 void __tpy_init() {
@@ -24,8 +24,8 @@ void __tpy_init() {
     x = 10;
     x = ::tpy::BigInt(20);
     std::cout << x << "\n";
-    f = 0;
-    f = 3;
+    f = 0.0;
+    f = static_cast<double>(3.0f);
     f = 1.5;
     std::cout << ::tpy::print_float(f) << "\n";
 }

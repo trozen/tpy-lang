@@ -4,51 +4,50 @@
 namespace tpyapp::main {
 
 
-// def bigint_widen() -> float:
-//     x = 14         # tpyc: type(float)   -- widens to float because x *= 1.3 follows
+// def float_seed() -> float:
+//     x = 14.0       # tpyc: type(float)
 //     x *= 1.3
 //     return x
-double bigint_widen() {
-    double x = 14;
-    x = static_cast<double>(x) * (1.3);
-    return static_cast<double>(x);
+double float_seed() {
+    double x = 14.0;
+    x = (x) * (1.3);
+    return x;
 }
 
-// def int32_literal_widen() -> float:
-//     y = 10         # tpyc: type(float)   -- widens to float because y += 0.5 follows
+// def float_seed_add() -> float:
+//     y = 10.0       # tpyc: type(float)
 //     y += 0.5
 //     return y
-double int32_literal_widen() {
-    double y = 10;
-    y = static_cast<double>(y) + (0.5);
-    return static_cast<double>(y);
+double float_seed_add() {
+    double y = 10.0;
+    y = (y) + (0.5);
+    return y;
 }
 
-// def chain_widen() -> float:
-//     z = 5          # tpyc: type(float)   -- widens to float because z += 0.5 follows
+// def chain() -> float:
+//     z = 5.0        # tpyc: type(float)
 //     z += 0.5
 //     z *= 2.0
 //     return z
-double chain_widen() {
-    double z = 5;
-    z = static_cast<double>(z) + (0.5);
-    z = static_cast<double>(z) * (2.0);
-    return static_cast<double>(z);
+double chain() {
+    double z = 5.0;
+    z = (z) + (0.5);
+    z = (z) * (2.0);
+    return z;
 }
 
-// def use_after_widen() -> float:
-//     # Subsequent use of x must see the widened float type, not the original int
-//     x = 14
+// def float_of_int_seed(n: int) -> float:
+//     # float(n) spells the int seed as the float CPython would compute
+//     x = float(n)   # tpyc: type(float)
 //     x *= 1.3
-//     return x + 1.0   # should be 19.2, not 19.0
-double use_after_widen() {
-    double x = 14;
-    x = static_cast<double>(x) * (1.3);
-    return (static_cast<double>(x) + (1.0));
+//     return x + 1.0   # 19.2, not 19.0
+double float_of_int_seed(const ::tpy::BigInt& n) {
+    double x = static_cast<double>(n);
+    x = (x) * (1.3);
+    return ((x) + (1.0));
 }
 
 // def float32_stays() -> float32:
-//     # float32 variable stays float32 when multiplied by a float literal (2.0 adapts to context)
 //     x = float32(1.5)   # tpyc: type(float32) -- stays float32 because 2.0 is a literal that adapts
 //     x *= 2.0
 //     return x
@@ -58,20 +57,20 @@ float float32_stays() {
     return x;
 }
 
-// print(bigint_widen())
-// print(int32_literal_widen())
-// print(chain_widen())
-// print(use_after_widen())
+// print(float_seed())
+// print(float_seed_add())
+// print(chain())
+// print(float_of_int_seed(14))
 // print(float32_stays())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    std::cout << ::tpy::print_float(::tpyapp::main::bigint_widen()) << "\n";
-    std::cout << ::tpy::print_float(::tpyapp::main::int32_literal_widen()) << "\n";
-    std::cout << ::tpy::print_float(::tpyapp::main::chain_widen()) << "\n";
-    std::cout << ::tpy::print_float(::tpyapp::main::use_after_widen()) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::float_seed()) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::float_seed_add()) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::chain()) << "\n";
+    std::cout << ::tpy::print_float(::tpyapp::main::float_of_int_seed(::tpy::BigInt(14))) << "\n";
     std::cout << ::tpy::print_float(static_cast<double>(::tpyapp::main::float32_stays())) << "\n";
 }
 
