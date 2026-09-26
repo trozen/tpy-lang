@@ -43,7 +43,7 @@ ordered_map<K, V> dict_from_pairs(R&& range) {
     return result;
 }
 
-// dict(iterator) -- construct from user-defined iterator of tuples
+// dict(iterator) -- drain an iterator of pairs (see `dict_construct`)
 template<typename K, typename V, typename Iter>
 ordered_map<K, V> dict_collect_pairs(Iter&& iter) {
     ordered_map<K, V> result;
@@ -57,13 +57,14 @@ ordered_map<K, V> dict_collect_pairs(Iter&& iter) {
 }
 
 // dict_construct -- unified dict construction from any iterable of pairs.
-// Uses begin/end for std::ranges::input_range, __next__() otherwise.
+// Uses begin/end for std::ranges::input_range, else drains the iterator
+// `__iter__()` returns.
 template<typename K, typename V, typename Arg>
 ordered_map<K, V> dict_construct(Arg&& arg) {
     if constexpr (std::ranges::input_range<std::remove_cvref_t<Arg>>) {
         return dict_from_pairs<K, V>(std::forward<Arg>(arg));
     } else {
-        return dict_collect_pairs<K, V>(std::forward<Arg>(arg));
+        return dict_collect_pairs<K, V>(::tpy::iter_of(arg));
     }
 }
 

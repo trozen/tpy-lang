@@ -1,0 +1,21 @@
+free len: 1
+free alias: [1, 2]
+free for: 1
+free for: 2
+free if: a nonempty
+free in: True False 2
+free setindex: 5
+free setitem: [7, 8] [9] []
+free set: 2 True
+rows: [1, 10] [2, 20] 2
+box: [1, 2] 2
+arraylist setitem: [5]
+arraylist: [30, 4] 2
+record reassign: 11 22
+method: 3 [1, 5, 6]
+generic method: 2 [4, 4]
+generator: 6
+generator: 7
+closure: 2
+readonly: 4
+readonly records: 7

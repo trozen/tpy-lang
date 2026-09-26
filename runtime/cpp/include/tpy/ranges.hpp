@@ -173,11 +173,11 @@ std::array<T, N> array_from_index(F&& f) {
 }
 
 /**
- * collect<Container> - Collect elements from an iterator into a container.
+ * collect<Container> - Drain an ITERATOR into a container.
  *
- * Calls __next__() repeatedly until exhaustion, pushing elements
- * into the container. Used for list(iterator) where iterator is a
- * user-defined iterator (not NativeIterable).
+ * Calls __next__() repeatedly until exhaustion, moving each owned element in.
+ * `construct` hands it the iterator `::tpy::iter_of` makes of an iterable that
+ * has no begin()/end().
  */
 template<typename Container, typename Iter>
 Container collect(Iter&& iter) {
@@ -194,8 +194,8 @@ Container collect(Iter&& iter) {
  * construct<Container> - Unified container construction from any iterable.
  *
  * Dispatches at compile time: uses begin/end iteration for types that
- * satisfy std::ranges::input_range, falls back to __next__() protocol
- * for user-defined iterators.
+ * satisfy std::ranges::input_range, and drains the iterator `__iter__()`
+ * returns for anything else (a generator, a user iterable or iterator).
  *
  * Usage: tpy::construct<std::vector<int>>(some_iterable)
  */
@@ -204,13 +204,14 @@ Container construct(Arg&& arg) {
     if constexpr (std::ranges::input_range<std::remove_cvref_t<Arg>>) {
         return from_range<Container>(std::forward<Arg>(arg));
     } else {
-        return collect<Container>(std::forward<Arg>(arg));
+        return collect<Container>(::tpy::iter_of(arg));
     }
 }
 
 /**
  * extend - Append elements from an iterable to an existing container.
- * Dual-dispatch on input_range vs __next__() protocol, matching `construct`.
+ * Dual-dispatch on input_range vs the __iter__()/__next__() protocol,
+ * matching `construct`.
  * Uses the container's iterator-pair insert for ranges (memcpy for
  * trivially-copyable payloads).
  */
@@ -219,8 +220,9 @@ void extend(Container& c, Arg&& arg) {
     if constexpr (std::ranges::input_range<std::remove_cvref_t<Arg>>) {
         c.insert(c.end(), std::ranges::begin(arg), std::ranges::end(arg));
     } else {
+        auto&& __iter = ::tpy::iter_of(arg);
         for (;;) {
-            auto __r = arg.__next__();
+            auto __r = __iter.__next__();
             if (!__r.has_value()) break;
             c.push_back(unwrap_ref_move(*__r));
         }

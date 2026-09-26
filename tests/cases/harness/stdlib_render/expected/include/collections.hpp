@@ -66,7 +66,7 @@ struct Counter {
     // def __contains__(self, key: T) -> bool:
     //     return key in self._data
     bool __contains__(::tpy::readonly_form_t<T> key) const {
-        return ::tpy::seq_contains(this->_data, key);
+        return (this->_data.contains(key));
     }
 
     // def total(self) -> int:

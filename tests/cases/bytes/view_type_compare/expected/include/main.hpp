@@ -154,7 +154,7 @@ inline bool Entry::has_tag(::tpy::BytesView tag) const {
 // def __contains__(self, tag: bytes) -> bool:
 //     return tag in self.tags or tag == self.name  # tpyc: ok
 inline bool Entry::__contains__(::tpy::BytesView tag) const {
-    return (::tpy::seq_contains(this->tags, tag) || (tag == this->name));
+    return ((this->tags.contains(tag)) || (tag == this->name));
 }
 
 // # user __contains__ whose slot OWNS the argument: a literal needle keeps

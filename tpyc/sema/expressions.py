@@ -80,10 +80,13 @@ from .list_literals import IterableHelper
 from .local_deduction import collect_pending_source_types, mark_pending_list_mutated
 from .operators import DUNDER_CPP_TEMPLATES, _substitute_type_params
 from .bound_check import raise_if_class_param_bound_violated
-from .overloads import resolve_overload
+from .overloads import OverloadAmbiguityError, resolve_overload
 from .type_ops import frame_yield_may_borrow
 from .scope_tracker import lend_roots
-from .iter_loans import iterated_storage, register_iteration_loans
+from .receiver_calls import (call_mutates_receiver, check_implicit_readonly_receiver,
+                             credit_implicit_receiver_call)
+from .iter_loans import (_record_iter_receiver_mutation, iterated_storage,
+                         register_iteration_loans)
 
 if TYPE_CHECKING:
     from ..parse.nodes import SourceLocation
@@ -219,6 +222,27 @@ def _find_dict_member(ut: TpyType) -> NominalType | None:
 # this the per-element pack expansion in tpy::array_from_index (and the stack
 # footprint) outweigh the heap save, so resolution falls back to list.
 _COMP_ARRAY_MAX_SIZE = 1024
+
+
+def _readonly_result(ret: TpyType) -> TpyType:
+    """A reference result read off a readonly receiver: `readonly[T]` under
+    the caller's `Ref`, the shape a builtin container element takes -- a
+    `__getitem__` declared to return a reference carries its own `Ref`,
+    which would otherwise end up INSIDE the readonly."""
+    return ReadonlyType(unwrap_readonly(unwrap_ref_type(ret)))
+
+
+def _is_slice_getitem(fi: 'FunctionInfo') -> bool:
+    return (len(fi.params) == 1
+            and (is_basic_slice_type(fi.params[0].type)
+                 or is_slice_type(fi.params[0].type)))
+
+
+def _protocol_getitem_is_readonly(protocol: NominalType) -> bool:
+    info = protocol_info_of(protocol)
+    if info is None:
+        return True
+    return all(m.is_readonly for m in info.methods if m.name == "__getitem__")
 
 
 def _expr_has_error_return_call(expr: TpyExpr) -> bool:
@@ -1566,7 +1590,11 @@ class ExpressionAnalyzer:
 
         # Membership operators (in, not in) return Bool
         if expr.op in ("in", "not in"):
-            right_type = unwrap_ref_type(right_type)
+            # A readonly haystack dispatches to the same `__contains__` as a
+            # mutable one (the method-call receiver rule), which then must be
+            # readonly itself.
+            right_type = unwrap_send_sync(unwrap_ref_type(right_type))
+            right_type = unwrap_readonly(right_type)
             if isinstance(right_type, OwnType):
                 right_type = right_type.wrapped
             # TypedDict: "key" in td -> compile-time field presence check
@@ -1625,6 +1653,10 @@ class ExpressionAnalyzer:
                             self.protocols.type_conforms_to_protocol,
                             self.ctx.error, expr,
                         )
+                        # `x in h` is an `h.__contains__(x)` call on h.
+                        credit_implicit_receiver_call(
+                            self.ctx, expr.right, right_type, original_method,
+                            "__contains__", expr)
                         expr.resolved_contains = original_method
                         return BOOL
                     # No __contains__ overload matched. Defer to
@@ -1677,8 +1709,10 @@ class ExpressionAnalyzer:
                             expr.loc
                         )
                 else:
-                    # Non-string collections use std::find which requires ==
-                    elem_type = right_type.get_element_type()
+                    # Non-string collections compare each ITERATED element
+                    # (a dict's key, not its value) with ==.
+                    elem_type = helper.get_iterable_element_type_or_none(
+                        right_type)
                     if elem_type is not None:
                         equatable = NominalType("Equatable", is_protocol=True)
                         if not self.protocols.type_conforms_to_protocol(elem_type, equatable):
@@ -1686,6 +1720,15 @@ class ExpressionAnalyzer:
                                 f"'in' requires element type '{elem_type}' to "
                                 f"conform to 'Equatable' (no '__eq__' method)",
                                 expr)
+                    # With no `__contains__`, `x in h` iterates h: an
+                    # implicit `h.__iter__()` call, as a `for` over it is.
+                    # A readonly haystack is not rejected here (the readonly
+                    # rule for an implicit `__iter__` is an open decision).
+                    iter_recv = unwrap_readonly(right_type)
+                    if (isinstance(iter_recv, NominalType)
+                            and iter_recv.is_user_record):
+                        _record_iter_receiver_mutation(
+                            self.ctx, expr.right, iter_recv)
                 return BOOL
             raise self.ctx.error(f"Cannot use '{op_spelling(expr.op)}' with non-iterable type {right_type}", expr)
 
@@ -3005,21 +3048,21 @@ class ExpressionAnalyzer:
         self.ctx.mark_own_param_consumed(operand.name)
 
     def _mark_await_operand_mutated(self, operand) -> None:
-        """Mark the durable root of an awaited operand mutated.
-
-        Called when the awaitable's `__poll__` is non-readonly. Mirrors the
-        non-readonly method-call receiver marking in `MethodAnalyzer`: the
-        await is, for mutation purposes, an `operand.__poll__(waker)` call.
-        A rvalue operand (fresh coro from `await f()`) has no durable root
-        and is left alone.
+        """`await x` is, for mutation purposes, an `x.__poll__(waker)` call
+        on a non-readonly `__poll__`. An rvalue operand (fresh coro from
+        `await f()`) has no durable root to credit, but a readonly one still
+        rejects. With no `__poll__` FunctionInfo (a coroutine handle) the
+        mark is eager.
         """
-        obj_root = _root_name_of_expr(operand)
-        if obj_root is None:
+        if _root_name_of_expr(operand) is None:
+            check_implicit_readonly_receiver(self.ctx, operand, None,
+                                             "__poll__", operand)
             return
-        self.ctx.mark_loop_var_mutated(obj_root)
-        self.ctx.mark_param_mutated(obj_root)
-        storage = self.ctx.func.borrow_tracker.effective_storage(obj_root)
-        self.ctx.mark_all_view_borrowers_mutated(storage)
+        operand_type = self.ctx.get_expr_type(operand)
+        bare = (unwrap_readonly(unwrap_own(unwrap_ref_type(operand_type)))
+                if operand_type is not None else None)
+        credit_implicit_receiver_call(self.ctx, operand, bare, None, "__poll__",
+                                      operand)
 
     def _unwrap_awaitable_return(self, ret_type: 'TpyType') -> 'TpyType':
         """Strip `Awaitable[T]` / `Cancellable[T]` wrapping from an async
@@ -4248,6 +4291,12 @@ class ExpressionAnalyzer:
         """Analyze the iterable and extract its element type (shared by all comprehensions)."""
         iterable_type = self.analyze_expr(gen.iterable)
         inner = unwrap_readonly(iterable_type)
+        # The implicit `__iter__()` call, as the for statement records it;
+        # before the comp scope, where a target named like the source's root
+        # would shadow the enclosing binding.
+        _record_iter_receiver_mutation(
+            self.ctx, gen.iterable,
+            unwrap_readonly(unwrap_own(unwrap_ref_type(iterable_type))))
         if isinstance(inner, TypeParamRef):
             bound = self.type_ops.get_type_param_bound(inner.name)
             if bound is not None and is_protocol_type(bound):
@@ -4542,6 +4591,7 @@ class ExpressionAnalyzer:
             if result is not None:
                 ret, fi = result
                 expr.slice_function_info = fi
+                self._credit_slice_getitem_call(expr, actual_type, fi)
                 return ret
             raise self.ctx.error(f"Slicing is not supported for {inner_obj_type}", expr)
 
@@ -4558,9 +4608,9 @@ class ExpressionAnalyzer:
                 if kr is not None:
                     key_t, ret_t = kr
                     if self.compat.is_type_compatible(unwrap_readonly(index_type), unwrap_readonly(key_t)):
-                        self._tag_record_getitem(expr, bare_obj, ret_t)
+                        self._tag_record_getitem(expr, bare_obj, ret_t, index_type)
                         if ro_obj and not ret_t.is_value_type():
-                            ret_t = ReadonlyType(unwrap_readonly(ret_t))
+                            ret_t = _readonly_result(ret_t)
                         return make_ref(ret_t)
 
         if not is_any_int_type(index_type):
@@ -4599,6 +4649,11 @@ class ExpressionAnalyzer:
             ret = self.narrowing._get_protocol_getitem_type(actual_type)
             if ret is None:
                 raise self.ctx.error(f"Protocol {actual_type.name} does not support indexing", expr)
+            # A protocol method has no FunctionInfo: the credit is eager.
+            if (not expr.is_write_target
+                    and not _protocol_getitem_is_readonly(actual_type)):
+                credit_implicit_receiver_call(
+                    self.ctx, expr.obj, actual_type, None, "__getitem__", expr)
             if is_readonly_obj and not ret.is_value_type():
                 ret = ReadonlyType(unwrap_readonly(ret))
             return make_ref(ret)
@@ -4608,15 +4663,15 @@ class ExpressionAnalyzer:
             ret = self.narrowing._get_record_getitem_type(actual_type)
             if ret is None:
                 raise self.ctx.error(f"Cannot index type {actual_type}: no __getitem__ method", expr)
-            self._tag_record_getitem(expr, actual_type, ret)
+            self._tag_record_getitem(expr, actual_type, ret, index_type)
             if is_readonly_obj and not ret.is_value_type():
-                ret = ReadonlyType(unwrap_readonly(ret))
+                ret = _readonly_result(ret)
             return make_ref(ret)
 
         raise self.ctx.error(f"Cannot index type {obj_type}", expr)
 
     def _tag_record_getitem(self, expr: TpySubscript, record_type: NominalType,
-                            ret_type: TpyType) -> None:
+                            ret_type: TpyType, index_type: TpyType) -> None:
         """Record the resolved user-record __getitem__ on the subscript node
         (substitution-composed, like a method call's resolved callee), so the
         borrow/storage and value-category classifiers can treat the read as a
@@ -4629,7 +4684,11 @@ class ExpressionAnalyzer:
         element read. A reference-returning accessor consumes identically, so
         it stays untagged and its reads keep the container spelling (the
         re-resolved signature below is unsubstituted, so a generic's `-> T`
-        cannot answer the question anyway)."""
+        cannot answer the question anyway).
+
+        Every record subscript is also an `obj.__getitem__(k)` call on its
+        receiver, credited here whatever the return shape."""
+        self._credit_record_getitem_call(expr, record_type, index_type)
         actual_ret = unwrap_readonly(ret_type)
         if return_type_is_cpp_ref(actual_ret):
             return
@@ -4658,6 +4717,84 @@ class ExpressionAnalyzer:
         expr.getitem_function_info = self.protocols.lookup_record_method(
             record, "__getitem__")
 
+    def _credit_record_getitem_call(self, expr: TpySubscript,
+                                    record_type: NominalType,
+                                    index_type: TpyType) -> None:
+        """Credit the single-key `__getitem__` a record subscript calls as a
+        method call on the receiver (a slice overload is the slice path's).
+
+        The overload is the one `resolve_overload` picks for `index_type`,
+        as the `__contains__` arm resolves its own; when that fails or is
+        ambiguous, any mutating overload counts. The subscript's TYPE still
+        comes from the first overload (BUGS.md#record-getitem-overload-first-wins).
+        """
+        if expr.is_write_target:
+            return
+        record = self.ctx.registry.get_record_for_type(record_type)
+        if record is None:
+            return
+        overloads, inherited_subst = self.protocols.lookup_record_method_overloads(
+            record, "__getitem__")
+        keyed = [fi for fi in overloads
+                 if not _is_slice_getitem(fi) and len(fi.params) == 1]
+        callee = self._resolve_getitem_overload(
+            keyed, record_type, inherited_subst, unwrap_readonly(index_type))
+        if callee is None:
+            callee = next((fi for fi in keyed if call_mutates_receiver(fi)), None)
+        if callee is not None:
+            credit_implicit_receiver_call(
+                self.ctx, expr.obj, record_type, callee, "__getitem__", expr)
+
+    def _resolve_getitem_overload(
+            self, keyed: list['FunctionInfo'], record_type: NominalType,
+            inherited_subst: dict[str, TpyType | int],
+            index_type: TpyType) -> 'FunctionInfo | None':
+        """The single-key `__getitem__` overload `index_type` selects, or None.
+
+        Substituted as an explicit call's receiver is (the inherited
+        substitution composed with the instance's); a method-level type param
+        stays unbound and matches structurally."""
+        if len(keyed) < 2:
+            return keyed[0] if keyed else None
+        instance_subst = self.type_ops.build_type_substitution(record_type)
+        composed = {
+            k: (_substitute_type_params(v, {n: t for n, t in instance_subst.items()
+                                            if isinstance(t, TpyType)})
+                if isinstance(v, TpyType) else v)
+            for k, v in inherited_subst.items()}
+        subst = {k: v for k, v in {**instance_subst, **composed}.items()
+                 if isinstance(v, TpyType)}
+        subst_keyed = [
+            dc_replace(m, params=[dc_replace(p, type=_substitute_type_params(p.type, subst))
+                                  for p in m.params])
+            for m in keyed] if subst else keyed
+        # An int literal takes the first overload whose key it fits, as the
+        # `__contains__` arm does.
+        arg = index_type
+        if isinstance(arg, IntLiteralType):
+            for m in subst_keyed:
+                tr = int_traits_of(m.params[0].type)
+                if tr is not None and tr.min_value <= arg.value <= tr.max_value:
+                    arg = m.params[0].type
+                    break
+            else:
+                arg = self.ctx.default_int_for_literal(arg)
+        try:
+            matched = resolve_overload(subst_keyed, [arg])
+        except OverloadAmbiguityError:
+            return None
+        return next((keyed[i] for i, m in enumerate(subst_keyed) if m is matched),
+                    None)
+
+    def _credit_slice_getitem_call(self, expr: TpySubscript, actual_type: TpyType,
+                                   fi: 'FunctionInfo') -> None:
+        """A user record's slice `__getitem__` is a call on the receiver too;
+        a builtin's is the container's own, answered by its element rules."""
+        if (not expr.is_write_target and isinstance(actual_type, NominalType)
+                and actual_type.is_user_record):
+            credit_implicit_receiver_call(
+                self.ctx, expr.obj, actual_type, fi, "__getitem__", expr)
+
     def _analyze_slice(self, expr: TpySubscript, obj_type: TpyType) -> TpyType:
         """Analyze slice expression: obj[start:stop] or obj[start:stop:step].
 
@@ -4685,6 +4822,7 @@ class ExpressionAnalyzer:
         if result is not None:
             ret, fi = result
             expr.slice_function_info = fi
+            self._credit_slice_getitem_call(expr, actual_type, fi)
             return ret
 
         raise self.ctx.error(f"Slicing is not supported for {obj_type}", expr)

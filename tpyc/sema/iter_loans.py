@@ -32,8 +32,12 @@ from ..value_category import (
 )
 from .context import (
     BorrowKind, ITER_BORROWER, LoanInfo, _borrow_storage_roots, call_lend_sources,
-    _storage_root, call_borrow_operands, element_index_key,
+    _root_name_of_expr, _storage_root, call_borrow_operands, element_index_key,
     iter_borrow_storage,
+)
+from .receiver_calls import (
+    call_mutates_receiver, check_implicit_readonly_receiver,
+    check_receiver_call_loans, credit_implicit_receiver_call,
 )
 from .own_copy import contains_reference_type
 from .scope_tracker import lend_roots
@@ -386,6 +390,54 @@ def _provenance_storage(ctx: SemanticContext,
         borrowed.append(_BorrowedOperand(src.idx, src.expr, srcs, src.slot))
         loans.extend((key, LoanInfo(BorrowKind.ITER)) for key in srcs)
     return IteratedStorage(loans, held_whole, fi_iter, borrowed)
+
+
+def iter_receiver_callee(ctx: 'SemanticContext',
+                         iterable_type: 'TpyType') -> FunctionInfo | None:
+    """The user `__iter__` a `for` over `iterable_type` calls (MRO walk:
+    an inherited one mutates the receiver too), or None."""
+    record_info = ctx.registry.get_record_for_type(iterable_type)
+    if record_info is None:
+        return None
+    return next((fi for fi in ctx.registry.get_method_overloads_with_parents(
+                     record_info, "__iter__") if not fi.is_consuming), None)
+
+
+def check_iter_receiver_loans(ctx: 'SemanticContext', iterable_expr: TpyExpr,
+                              iterable_type: 'TpyType') -> None:
+    """The loan half of `_record_iter_receiver_mutation`, for a caller that
+    files the iteration's own loan in between: a mutating `__iter__` runs
+    before that loan exists, so it must not be reported as a mutation of the
+    storage being iterated."""
+    iter_fi = iter_receiver_callee(ctx, iterable_type)
+    if iter_fi is not None and call_mutates_receiver(iter_fi):
+        check_receiver_call_loans(ctx, iterable_expr, iterable_type,
+                                  "__iter__", iterable_expr, callee=iter_fi)
+
+
+def _record_iter_receiver_mutation(
+    ctx: 'SemanticContext', iterable_expr: TpyExpr, iterable_type: 'TpyType',
+    *, check_loans: bool = True,
+) -> None:
+    """Record that iterating `iterable_expr` calls its `__iter__`.
+
+    `for v in obj:` is an implicit `obj.__iter__()` call: a mutating one
+    needs a non-const receiver and may invalidate loans into it.
+    `check_loans=False` when the caller asked the loan question before
+    filing the iteration's own loan.
+    """
+    iter_fi = iter_receiver_callee(ctx, iterable_type)
+    if iter_fi is None:
+        return
+    # An rvalue iterable (a call result) has no durable root to credit, but
+    # a readonly one still rejects a mutating `__iter__`.
+    if _root_name_of_expr(iterable_expr) is None:
+        check_implicit_readonly_receiver(ctx, iterable_expr, iter_fi,
+                                         "__iter__", iterable_expr)
+        return
+    credit_implicit_receiver_call(ctx, iterable_expr, iterable_type, iter_fi,
+                                  "__iter__", iterable_expr,
+                                  check_loans=check_loans)
 
 
 def register_iteration_loans(

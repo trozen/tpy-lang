@@ -1,0 +1,34 @@
+getitem: 1
+getitem: 0 41
+rebind: 2
+rebind: 0 41
+setitem: 1
+setitem: 41 5
+in: 1
+in: True 41
+with: 1
+with: 3
+for: 1
+for: 3
+exit: 1
+exit: 1
+exit: 2
+aug: 1
+aug: 41 1
+in iter: 1
+in iter: True 2
+caller with: 1
+caller with: 1
+caller with: 2
+caller setitem: 1
+caller setitem: 41 3
+inherited: 1
+inherited: 0 41
+inherited: 1
+inherited: 1
+inherited: 2
+comprehension: 1
+comprehension: [0, 0] 42
+generator: 1
+generator: 0
+generator: 41

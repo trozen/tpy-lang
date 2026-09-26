@@ -348,8 +348,9 @@ def _expr(e: THIRExpr) -> str:
         return f"tuple_value_to_borrow<{e.dst_cpp}>({e.src_cpp}{{{elems}}})"
     if isinstance(e, THIRComprehension):
         # The loop strategy and result container are the emit-shaping facts.
+        proto = " [iter_protocol]" if e.iter_protocol else ""
         return (f"comp[{e.kind}/{e.loop}]({e.container_cpp}, "
-                f"var %{e.var}{' const' if e.const_loop_var else ''})")
+                f"var %{e.var}{' const' if e.const_loop_var else ''}){proto}")
     if isinstance(e, THIRGenExpr):
         src = (f"range({_exprs(e.range_args)})" if e.range_args
                else "" if e.iterable is None else _expr(e.iterable))

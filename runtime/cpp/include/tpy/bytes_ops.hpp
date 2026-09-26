@@ -162,10 +162,11 @@ void bytes_extend_int_iterable(Buf& self, Arg&& arg) {
         }
         for (auto&& v : arg) self.push_back(int_to_byte(v));
     } else {
+        auto&& __iter = ::tpy::iter_of(arg);
         for (;;) {
-            auto __r = arg.__next__();
+            auto __r = __iter.__next__();
             if (!__r.has_value()) break;
-            self.push_back(int_to_byte(*__r));
+            self.push_back(int_to_byte(unwrap_ref(*__r)));
         }
     }
 }

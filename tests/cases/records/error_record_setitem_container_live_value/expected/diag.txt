@@ -1,0 +1,2 @@
+main.py:22: warning: copies list[int32] into container; use copy() to make this explicit
+main.py:22: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.assign:setitem.record_own_copy)

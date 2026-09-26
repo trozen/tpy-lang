@@ -592,6 +592,8 @@ class SemanticAnalyzer:
         # records/functions into the module while bodies are being analyzed.
         self._module = module
         self.ctx.analyze_genexpr_function = self._analyze_genexpr_function
+        self.ctx.queue_readonly_receiver_check = (
+            self.calls.pending_readonly_receiver_checks.append)
         self._genexpr_enclosing: list = []
         # Module resolver -- consumed by `_infer_field_type_from_default`
         # (same-module record lookup) and the macro post-resolve step in
@@ -1065,6 +1067,7 @@ class SemanticAnalyzer:
         self.calls.resolve_pending_borrow_checks()
         self.compat.resolve_pending_iter_copy_checks()
         self.calls.resolve_pending_match_subject_checks()
+        self.calls.resolve_pending_readonly_receiver_checks()
         # Last diagnostic-emitting step for this analyzer, so it is where a
         # body analyzed once per clone collapses back to one report.
         self.ctx.collapse_duplicate_diagnostics()
@@ -1193,17 +1196,17 @@ class SemanticAnalyzer:
                 # keep them mutable so the pair generates both overloads correctly.
                 if method.is_auto_readonly_mutable_clone:
                     continue
-                # @readonly(False) is an explicit opt-out -- respect it.
-                if method.readonly_opt_out:
-                    continue
                 fi = record_info.get_method(method.name)
                 if fi is None or not fi.is_readonly:
                     continue
+                # @readonly(False) is an explicit opt-out -- respect it.
                 # For @dynamic protocol overrides, the const-ness of the concrete
                 # method must match the virtual base declaration. If the protocol
                 # declares the method as non-const, don't infer const here --
                 # it would produce a different C++ signature and break the override.
-                if self._dynamic_proto_requires_nonconst(record_info, method.name):
+                if (method.readonly_opt_out
+                        or self._dynamic_proto_requires_nonconst(record_info, method.name)):
+                    fi.root.const_withheld = True
                     continue
                 method.is_readonly = True
 

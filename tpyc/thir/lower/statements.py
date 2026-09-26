@@ -280,6 +280,7 @@ from ..nodes import (
     WithTargetArm,
 )
 from .predicates import (
+    _record_getitem_key,
     copy_call_arg,
     _storage_family_ok,
     _own_return_const_projected,
@@ -338,6 +339,7 @@ from .predicates import (
     _union_base_member_match,
     _union_member_match,
     _f1_container_ref,
+    _nested_container_elem_type,
     record_like,
     _method_rvalue_record_like,
     _single_member_of_family,
@@ -2132,6 +2134,24 @@ def _for_each_reject_detail(stmt: TpyForEach, analyzer,
     # Admitted iterable family with no flags: the blocker is the node
     # shape / lvalue-ness or the element binding.
     return f"iter.{kind}_shape"
+
+
+def protocol_iterable_ok(lc: '_LowerCtx', it: TpyExpr) -> bool:
+    """Whether a protocol-typed iterable `it` (an `Iterable[T]` param, an
+    open-`T` field) may be iterated where it is read. Always in a SYNC body;
+    in a resumable leaf only a bare-rendering NAME, since a suspension-free
+    loop is one leaf statement rendering the sync shape inside the case block
+    (the param frame field reads bare). Slot/pointer-backed names and FIELD
+    iterables (receiver respell) keep the fence -- except a SELF field, whose
+    member renders `__self.items` through the ordinary field lowering."""
+    if not (lc.resumable_leaf_mode or lc.frame_slots):
+        return True
+    if not lc.resumable_leaf_mode:
+        return False
+    if isinstance(it, TpyName):
+        return it.name not in lc.frame_slots and it.name not in lc.pointers
+    return (isinstance(it, TpyFieldAccess) and isinstance(it.obj, TpyName)
+            and it.obj.name == "self")
 
 
 def _select_for_each_route(
@@ -6912,6 +6932,70 @@ def _lower_any_narrow_if(stmt: TpyIf, ainfo, lc: _LowerCtx,
                                   declared, loc, loop_depth=loop_depth)
 
 
+def _lower_container_elem_value(stmt: TpyAssign, eu: TpyType,
+                                target: THIRExpr, lc: _LowerCtx,
+                                declared: dict[str, TpyType],
+                                loc) -> THIRExpr:
+    """The value of a write into a CONTAINER element slot (`g["a"] = ...`
+    with a list/dict/set element), shared by the builtin container write and
+    a user `__setitem__` whose value slot is a container.
+
+    A MOVE-source same-type container NAME moves in whole (`g["a"] = a` ->
+    `__setitem__(g, "a", std::move(a))`); a by-value CALL rvalue forwards
+    bare, statement-flushed; a comprehension builds the container in place;
+    a container LITERAL renders against the slot -- with the type prefix off
+    the bounds-safe lvalue path, since the checked `__setitem__` template
+    cannot deduce a bare brace-init. Copy-shaped names reject here (their
+    warn-copy render is unwitnessed on the builtin write)."""
+    analyzer = lc.analyzer
+    v = stmt.value
+    vt = analyzer.get_expr_type(v)
+    vt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vt)))
+          if vt is not None else None)
+    # An `Own[T]`-returning callee is a by-value rvalue of T; the NAME row
+    # keeps the un-peeled comparison.
+    vt_own = unwrap_readonly(vt.wrapped) if isinstance(vt, OwnType) else vt
+    if (isinstance(v, TpyName)
+            and v.name not in lc.narrow.narrowed
+            and v.name not in lc.pointers
+            and vt == eu
+            and _is_move_source(v, lc)):
+        _witness("setitem.container_move")
+        return THIRMove(
+            result_type=eu,
+            value=_lower_expr(v, lc, declared, allow_unrouted_name=True),
+            form=Form.STORAGE, loc=loc)
+    if (isinstance(v, (TpyCall, TpyMethodCall))
+            and vt_own == eu
+            and is_rvalue_source(analyzer, v)):
+        _witness("setitem.container_rvalue")
+        return _flush_witness(
+            "flush.assign",
+            _lower_expr(v, lc, declared,
+                        use=_ExprUse(
+                            result=_ExprResultUse.STORAGE,
+                            # The element SLOT holds the value past the
+                            # statement; name the sink so a borrow of
+                            # storage the statement kills cannot land in it.
+                            pos=SinkPos.SETITEM_VALUE,
+                            forms=_NO_FORMS,
+                            allow_temps=True)))
+    if (type(v) in _comprehensions._COMP_KINDS
+            and _container_comp_arg(v, eu)):
+        _witness("setitem.container_comp")
+        return _comprehensions._lower_comprehension(
+            v, eu, lc, declared,
+            _comp_shadow_pointers(lc.pointers, declared, analyzer))
+    if not isinstance(v, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
+        note_detail("setitem.container_value_shape")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    value = _lower_expr(v, lc, declared, use=_ExprUse(slot_target=eu))
+    if not target.bounds_safe and isinstance(value, THIRContainerLiteral):
+        value = replace(value, typed_brace_cpp=lc.render_type(eu))
+    _witness("setitem.container_value")
+    return value
+
+
 def _lower_slice_assign(stmt: TpyAssign, lc: _LowerCtx,
                         declared: dict[str, TpyType], loc) -> THIRStmt:
     """`c[a:b] = v` / `c[a:b:s] = v` -> the slice `__setitem__`'s @cpp_template
@@ -8778,7 +8862,7 @@ def _overload_adjusted_return(stmt: TpyReturn, lc: _LowerCtx) -> TpyReturn:
     return adjusted
 
 
-def _augassign_recv_is_accessor(target: TpyExpr) -> bool:
+def _augassign_recv_is_accessor(target: TpyExpr, analyzer) -> bool:
     """Whether an augmented assignment reaches its lvalue THROUGH a
     `@property` read.
 
@@ -8791,16 +8875,23 @@ def _augassign_recv_is_accessor(target: TpyExpr) -> bool:
 
     A subscript's INDEX is a hop for this question as much as its receiver
     is: the render spells the whole TARGET on both sides, so `xs[b.i] += 1`
-    runs the getter twice exactly as `b.rec.x += 1` does.
+    runs the getter twice exactly as `b.rec.x += 1` does. So is a user
+    `__getitem__` read below the outermost subscript (`r[0][0] += 1`
+    spells `::tpy::__getitem__(r, 0)` on both sides).
     """
     if isinstance(target, TpySubscript):
-        return (_augassign_recv_is_accessor(target.obj)
-                or _augassign_recv_is_accessor(target.index))
+        if (isinstance(target.obj, TpySubscript)
+                and _record_getitem_key(
+                    analyzer.get_expr_type(target.obj.obj),
+                    analyzer) is not None):
+            return True
+        return (_augassign_recv_is_accessor(target.obj, analyzer)
+                or _augassign_recv_is_accessor(target.index, analyzer))
     if isinstance(target, TpyFieldAccess):
-        return _augassign_recv_is_accessor(target.obj)
+        return _augassign_recv_is_accessor(target.obj, analyzer)
     if isinstance(target, TpyMethodCall):
         return (is_property_getter_read(target)
-                or _augassign_recv_is_accessor(target.obj))
+                or _augassign_recv_is_accessor(target.obj, analyzer))
     return False
 
 
@@ -12130,6 +12221,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     form=Form.STORAGE, loc=loc)
                 _witness("setitem.user_record")
                 return THIRSetItem(target=target, value=value, loc=loc)
+            if (_nested_container_elem_type(elem_t)
+                    and not isinstance(v, TpyName)):
+                _witness("setitem.user_record")
+                return THIRSetItem(
+                    target=target,
+                    value=_lower_container_elem_value(
+                        stmt, unwrap_readonly(unwrap_ref_type(
+                            unwrap_send_sync(elem_t))),
+                        target, lc, declared, loc),
+                    loc=loc)
             if record_like(elem_t, analyzer) and isinstance(v, TpyName):
                 if not _is_move_source(v, lc):
                     if _record_setitem_own_value_slot(
@@ -12225,74 +12326,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                       or ba_write or tp_field_recv
                                       or tuple_elem_recv or _optrecv_w))
             if eu is not None and _f1_container_ref(eu):
-                # Nested-container element slot: a container-LITERAL value
-                # routes (the target-threaded render -- the checked
-                # `__setitem__` template cannot deduce a bare brace-init, so
-                # it takes the type prefix; the bounds-safe lvalue path
-                # binds the brace directly), a MOVE-source same-type
-                # container NAME moves in whole (`g["a"] = a` ->
-                # `__setitem__(g, "a", std::move(a))`), and a by-value CALL
-                # rvalue forwards bare -- the same statement-flushed render
-                # the F1-record element arm below gives its rvalue sources.
-                # Copy-shaped names keep the named reject (their warn-copy
-                # render is unwitnessed here).
-                _cv = stmt.value
-                _cvt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    analyzer.get_expr_type(_cv))))
-                    if analyzer.get_expr_type(_cv) is not None else None)
-                # An `Own[T]`-returning callee is a by-value rvalue of T;
-                # the NAME row keeps the un-peeled comparison it had.
-                _cvt_own = (unwrap_readonly(_cvt.wrapped)
-                            if isinstance(_cvt, OwnType) else _cvt)
-                if (isinstance(_cv, TpyName)
-                        and _cv.name not in lc.narrow.narrowed
-                        and _cv.name not in lc.pointers
-                        and _cvt == eu
-                        and _is_move_source(_cv, lc)):
-                    value = THIRMove(
-                        result_type=eu,
-                        value=_lower_expr(_cv, lc, declared,
-                                          allow_unrouted_name=True),
-                        form=Form.STORAGE, loc=loc)
-                    _witness("setitem.container_move")
-                elif (isinstance(_cv, (TpyCall, TpyMethodCall))
-                      and _cvt_own == eu
-                      and is_rvalue_source(analyzer, _cv)):
-                    value = _flush_witness(
-                        "flush.assign",
-                        _lower_expr(_cv, lc, declared,
-                                    use=_ExprUse(
-                                        result=_ExprResultUse.STORAGE,
-                                        # The element SLOT holds the value
-                                        # past the statement; name the sink
-                                        # so a borrow of storage the
-                                        # statement kills cannot land in it.
-                                        pos=SinkPos.SETITEM_VALUE,
-                                        forms=_NO_FORMS,
-                                        allow_temps=True)))
-                    _witness("setitem.container_rvalue")
-                elif (type(_cv) in _comprehensions._COMP_KINDS
-                      and _container_comp_arg(_cv, eu)):
-                    # The stmt-expr builds the element's container in place
-                    # and moves into the slot, the field-write row's render.
-                    value = _comprehensions._lower_comprehension(
-                        _cv, eu, lc, declared,
-                        _comp_shadow_pointers(lc.pointers, declared,
-                                              analyzer))
-                    _witness("setitem.container_comp")
-                elif not isinstance(stmt.value,
-                                    (TpyArrayLiteral, TpyDictLiteral,
-                                     TpySetLiteral)):
-                    note_detail("setitem.container_value_shape")
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
-                else:
-                    value = _lower_expr(stmt.value, lc, declared,
-                                        use=_ExprUse(slot_target=eu))
-                    if (not target.bounds_safe
-                            and isinstance(value, THIRContainerLiteral)):
-                        value = replace(value,
-                                        typed_brace_cpp=lc.render_type(eu))
-                    _witness("setitem.container_value")
+                value = _lower_container_elem_value(stmt, eu, target, lc,
+                                                    declared, loc)
             elif _optional_record_field_inner(eu, analyzer) is not None:
                 # Pointer-repr Optional[F1] element: a borrow `T*` NAME lifts
                 # borrow->storage (`::tpy::ptr_to_optional(p)` -- the element
@@ -12792,7 +12827,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         if (isinstance(stmt.target, TpyName)
                 and stmt.target.name in narrowed):
             raise ThirUnsupported("stmt.aug_assign")
-        if _augassign_recv_is_accessor(stmt.target):
+        if _augassign_recv_is_accessor(stmt.target, analyzer):
             note_detail("augassign.recv.accessor_double_eval")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         inplace = _list_inplace_extend(stmt, lc, declared)
@@ -16095,28 +16130,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         route = _select_for_each_route(
             stmt, analyzer, declared, lc.narrow.narrowed.keys(),
             lc.pointers, lc.iterator_object_locals,
-            # Protocol-typed param iterables route in SYNC bodies and, for
-            # a bare-rendering NAME, in resumable leaves: a suspension-free
-            # protocol loop is one leaf statement, rendering the same
-            # universal `::tpy::__iter__` shape inside the case block
-            # (`auto& __src_N = items;` -- the param frame field reads
-            # bare). Slot/pointer-backed names and FIELD iterables (receiver
-            # respell) keep the fence.
-            protocol_param_ok=(
-                not (lc.resumable_leaf_mode or lc.frame_slots)
-                or (lc.resumable_leaf_mode
-                    and isinstance(stmt.iterable, TpyName)
-                    and stmt.iterable.name not in lc.frame_slots
-                    and stmt.iterable.name not in lc.pointers)
-                # A SELF-field iterable in a leaf: the member renders
-                # `__self.items` through the ordinary field lowering (the
-                # same respell every frame self-field read takes), so the
-                # open-T field leg's `auto& __src_N =` capture is the
-                # sync render verbatim.
-                or (lc.resumable_leaf_mode
-                    and isinstance(stmt.iterable, TpyFieldAccess)
-                    and isinstance(stmt.iterable.obj, TpyName)
-                    and stmt.iterable.obj.name == "self")),
+            protocol_param_ok=protocol_iterable_ok(lc, stmt.iterable),
             tparam_bounds=lc.tparam_bounds,
             shadowable_globals=_shadowable_globals(lc, declared))
         it = stmt.iterable

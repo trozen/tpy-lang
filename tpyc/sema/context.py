@@ -319,6 +319,59 @@ def iter_borrow_storage(expr: TpyExpr) -> str | None:
     return _borrow_storage_root(expr)
 
 
+def _local_traces_to_self(borrow_tracker: 'BorrowTracker', name: str) -> bool:
+    """True when a local borrow-traces to self or a self.<field> storage key.
+
+    Used to recognize a method call receiver whose root is a local alias of
+    self-owned storage (e.g. ``frame = self.frame; frame.get().cancel()``)
+    so the call's self-mutation flows back through the enclosing method.
+
+    ANY root answers for a re-seated name: the receiver aliases self-owned
+    storage on at least one reaching path, and the verdict only ever ADDS the
+    self-mutation edge, which demotes readonly -- the safe direction.
+    """
+    roots = borrow_tracker.storage_roots_or_self(name)
+    return any(root == "self" or root.startswith("self.") for root in roots)
+
+
+def _is_self_call_deferred(
+    expr_obj: TpyExpr, obj_root: str | None,
+    loop_var_iterable: dict[str, list[str]],
+    borrow_tracker: 'BorrowTracker',
+) -> bool:
+    """Check if a method call receiver traces to self through field accesses or loop vars.
+
+    When True, self-mutation is deferred to Phase 2 via call edges
+    (a receiver_idx) instead of being marked directly in Phase 1.
+    This enables readonly inference for methods that call non-mutating
+    methods on fields or loop elements.
+    """
+    if obj_root == "self":
+        # Verify the chain is purely field accesses (no subscripts like
+        # self.items[0].method()). _root_name_of_expr strips both FieldAccess
+        # and Subscript, so obj_root=="self" doesn't rule out subscripts.
+        # Subscript-rooted calls are not deferred because the call edge in
+        # calls.py also only walks TpyFieldAccess.
+        chain = expr_obj
+        while isinstance(chain, TpyFieldAccess):
+            chain = chain.obj
+        return isinstance(chain, TpyName) and chain.name == "self"
+    if obj_root is not None:
+        # loop_var.method() where loop_var iterates over self.field
+        if any(_storage_root(it) == "self"
+               for it in loop_var_iterable.get(obj_root, ())):
+            return True
+        # local.method() where `local = self.<field>` registered a FIELD borrow.
+        # Without this, the call is treated as a regular non-self call and the
+        # callee's self-mutation never propagates back to the enclosing method,
+        # so non-const methods reached through a local alias of a self field
+        # leave self_mutated unset and auto-readonly wrongly marks the method
+        # const. Deferring lets Phase 2 propagate precisely.
+        if _local_traces_to_self(borrow_tracker, obj_root):
+            return True
+    return False
+
+
 def _root_name_of_expr(expr: TpyExpr) -> str | None:
     """Extract the root TpyName from a chain of field/subscript accesses.
 
@@ -2483,6 +2536,10 @@ class SemanticContext:
     # Set by the analyzer: registers and analyzes a genexpr's function at the
     # expression that creates it, under a function state of its own.
     analyze_genexpr_function: 'Callable[[TpyFunction, tuple[tuple[str, LoanInfo], ...]], None] | None' = None
+    # Queues an implicit dunder call on a readonly receiver for the
+    # workspace-wide finalize pass (`CallAnalyzer.pending_readonly_receiver_checks`),
+    # installed by the analyzer: `(callee, dunder, site)`.
+    queue_readonly_receiver_check: 'Callable[[tuple], None] | None' = None
     genexpr_counter: int = 0
     # genexpr function -> the function or method whose emitted body creates
     # its frame (through any nested def or genexpr between them); None at

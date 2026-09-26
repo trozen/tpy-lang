@@ -1392,6 +1392,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # insert slot: the static view spelling
     "call.inst_proto_name_arg",     # structural-protocol param name at an
                                     # instantiation arg: bare in construct<>
+    "call.inst_user_iterable_arg",  # user iterable name/self/field at an
+                                    # instantiation arg: bare in construct<>
     "call.builtin_value_record_ret",   # builtin ValueType record return, bare at storage
     "decl.dyn_own_erased_call",        # already-erased Own[dyn] call decl (unique_ptr spelled)
     "decl.builtin_value_record_slot",  # builtin ValueType record decl, plain spelled copy
@@ -1594,6 +1596,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # A VALUE-yielding generator-factory comp source (`[v for v in
     # wrap(3)]`): the owning `auto __obj_N` capture with begin/end.
     "comp.genfac_source",
+    # A comp source of the `__iter__`/`__next__` family (a user iterable, an
+    # Iterable/Iterator param): captured through `::tpy::iter_range`.
+    "comp.iter_protocol_source",
     # A container-type ctor call at a VALUE sink (`print(asdict(p))` --
     # the expansion's `dict(...)` prvalue under the printer wrap).
     "call.container_ctor_value",
@@ -1620,9 +1625,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # A value-tuple needle in a tuple-keyed dict/set membership
     # (`(1, 2) in d`): the spelled tuple render inside contains(...).
     "binop.contains_tuple_needle",
-    # An open-T needle at sequence containment (`key in self._data` on
-    # dict[T, int] inside the generic body).
+    # An open-T needle at sequence containment (`x in self.items` on
+    # list[T] inside the generic body).
     "binop.contains_tparam_needle",
+    # ... and at a hashed container's `.contains` member (`key in
+    # self._data` on dict[K, V]).
+    "binop.contains_member_tparam_needle",
     # A user-RECORD needle at containment (`p in item.pts` on list[Point]):
     # admitted because the record's identity is observable, which the
     # `::tpy::seq_contains` render every needle kind shares tests for.

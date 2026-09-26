@@ -738,6 +738,10 @@ class TpySubscript(TpyExpr):
     # container ELEMENT read (a storage lvalue); the borrow/storage and
     # value-category classifiers key on it.
     getitem_function_info: 'FunctionInfo | None' = None
+    # Set by sema BEFORE the target of a plain assignment is analysed as a
+    # read: `g[k] = v` calls `__setitem__` only, so the read-side analysis
+    # must not credit a `__getitem__` call on the receiver.
+    is_write_target: bool = False
     typed_dict_field: str | None = None  # Set by sema: d["key"] on TypedDict -> field access
     typed_dict_optional: bool = False  # Set by sema: total=False field, needs runtime check
 

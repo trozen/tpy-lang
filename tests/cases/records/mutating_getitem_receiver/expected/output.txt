@@ -1,0 +1,25 @@
+free: 0 0 1
+in: True False 2
+self: 0 3
+generic: 0 1
+generic alias: 0 [1]
+generic alias after: [1, 2]
+comprehension: [0, 0] 4
+generator: 0
+generator: 0
+closure: 0 True
+loop: 0 1 1
+element: 0 2
+optional: 9 3
+protocol: 0 4
+plain: 7
+overload: 5 0
+inherited overload: 5 5 1 1
+readonly iteration: 3
+in iter: True 1
+async: 0 True
+match: 0 -1 True
+finally: ran
+try: 0 True
+ctor: 0
+method: 0 0 3

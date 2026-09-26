@@ -48,11 +48,12 @@ using step_elem_member_t = std::remove_reference_t<decltype(
 // we keep NO iterator state (the slot stays empty) and drive the source's
 // __next__() directly each step, re-read through `src` rather than through a
 // stored pointer to it. Its __iter__ is never called here
-// (BUGS.md#frame-for-skips-self-iterator-iter). Any other source yields an independent
-// iterator (a prvalue, e.g. a container's native_iterator) that we own in the
-// slot as before. A source whose __iter__ returns a reference to a *member*
-// iterator is intentionally NOT treated as self (its __iter__ is not idempotent)
-// and takes the owned path.
+// (BUGS.md#frame-for-skips-self-iterator-iter). Any other source yields an
+// iterator that we own in the slot: a fresh one (a prvalue, e.g. a container's
+// native_iterator) is moved in, and a stored one handed back by reference (a
+// *member* iterator -- not self, its __iter__ is not idempotent) is COPIED, so
+// the loop advances the copy and not the member CPython would advance
+// (BUGS.md#frame-stored-iter-copied).
 template<typename Slot, typename S>
 void resumable_iter_init(Slot& slot, S& src) {
     if constexpr (!is_self_iterator_v<S>) slot.emplace(::tpy::__iter__(src));

@@ -19,6 +19,7 @@
 #include "lookup_key.hpp"
 #include <format>
 #include <functional>
+#include <memory>
 #include <ranges>
 #include <span>
 #include <sstream>
@@ -797,6 +798,9 @@ decltype(auto) __iter__(const T& x) {
 // (the iterator slot and the per-step result slot) without the nested decltype
 // formulas inline. Defined after every free `__iter__` overload so the
 // qualified `::tpy::__iter__` lookup inside `iter_type_t` sees the full set.
+// The iterator slot is a decayed VALUE: a stored iterator an `__iter__()`
+// hands back by reference is copied into the frame
+// (BUGS.md#frame-stored-iter-copied).
 template<typename S>
 using iter_type_t = std::decay_t<decltype(::tpy::__iter__(std::declval<S&>()))>;
 template<typename It>
@@ -807,6 +811,69 @@ template<typename C>
 using begin_iter_t = decltype(std::declval<C&>().begin());
 template<typename S>
 using aiter_type_t = std::decay_t<decltype(std::declval<S&>().__aiter__())>;
+
+namespace detail {
+// The member type a combinator keeps an __iter__() result as: a non-const
+// reference stays a reference (the iterator is advanced in place), anything
+// else is a value -- a prvalue built in place, a const reference copied
+// (BUGS.md#readonly-iter-result-iterated-as-copy).
+template<typename R>
+using iter_member_t = std::conditional_t<
+    std::is_lvalue_reference_v<R> && !std::is_const_v<std::remove_reference_t<R>>,
+    R, std::decay_t<R>>;
+
+// What a range-for takes as is: a begin()/end() pair that is a real iterator
+// and sentinel (a next_iter_mixin type, whose sentinel differs from its
+// iterator, included) or a standard range. A class that merely has methods
+// named begin/end is not one.
+template<typename X>
+concept range_for_iterable =
+    requires(X& x) {
+        *x.begin();
+        x.begin() != x.end();
+        ++std::declval<decltype(x.begin())&>();
+    }
+    || std::ranges::range<X&>;
+
+// A type that steps with __next__() and has no __iter__() is its own iterator.
+template<typename X>
+concept bare_next_iterator =
+    requires(X& x) { x.__next__(); } && !requires(X& x) { ::tpy::__iter__(x); };
+
+// The begin()/end() face of the iterator an iterable's __iter__() returned,
+// held in the form it came in: any reference aliases the iterator (a const
+// one steps only through a const `__next__`, else the build fails -- a copy
+// would step a stale duplicate), a value is built in place. Never moved:
+// NextIterator points at `it`.
+template<typename It>
+struct iter_protocol_range {
+    It it;
+    using iter_t = std::remove_reference_t<It>;
+    using elem_t = typename iter_next_t<iter_t>::value_type;
+    NextIterator<iter_t, elem_t> begin() {
+        return NextIterator<iter_t, elem_t>(std::addressof(it));
+    }
+    NextSentinel end() { return {}; }
+};
+} // namespace detail
+
+template<typename X>
+decltype(auto) iter_of(X& x) {
+    if constexpr (detail::bare_next_iterator<X>) return (x);
+    else return ::tpy::__iter__(x);
+}
+
+// An lvalue only: the protocol face holds an iterator that may point into
+// `x`, so `x` must outlive the loop, which a temporary argument would not.
+template<typename X>
+decltype(auto) iter_range(X& x) {
+    if constexpr (detail::range_for_iterable<X>) {
+        return (x);
+    } else {
+        return detail::iter_protocol_range<decltype(::tpy::iter_of(x))>{
+            ::tpy::iter_of(x)};
+    }
+}
 
 // A resumable frame spells everything about a `for` loop off ONE type: the
 // source expression's own, `decltype((E))`. An existing object keeps its

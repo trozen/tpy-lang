@@ -1,0 +1,11 @@
+free: True False
+free set: False True
+free list: True False
+generic fn: True False
+method: True False
+generic method: True False
+user recv: True
+generator: True
+generator: False
+closure: True
+alias: True

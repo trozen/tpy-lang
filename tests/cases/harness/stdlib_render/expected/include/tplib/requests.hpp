@@ -870,7 +870,7 @@ inline void CaseInsensitiveDict::__delitem__(std::string_view key) {
 // def __contains__(self, key: str) -> bool:
 //     return key.lower() in self._store
 inline bool CaseInsensitiveDict::__contains__(std::string_view key) const {
-    return ::tpy::seq_contains(this->_store, ::tpy::str_lower(key));
+    return (this->_store.contains(::tpy::str_lower(key)));
 }
 
 // def __len__(self) -> int32:
@@ -1044,9 +1044,6 @@ inline std::string Cookie::pair() const {
 }
 
 // def __eq__(self, other: Cookie) -> bool:
-//     # Cookie must be Equatable so a `name in jar._store` membership test on a
-//     # const/readonly jar compiles -- an `in` over a const dict whose value
-//     # type is not Equatable is rejected (BUGS.md, the const-dict `in` entry).
 //     return (self.name == other.name and self.value == other.value
 //             and self.domain == other.domain and self.path == other.path
 //             and self.secure == other.secure and self.deleted == other.deleted
@@ -1072,7 +1069,7 @@ inline void CookieJar::set(std::string_view name, std::string_view value, std::s
 //         return self._store[name].value
 //     raise KeyError(name)
 inline std::string CookieJar::__getitem__(std::string_view name) const {
-    if ((::tpy::seq_contains(this->_store, name) && (!(::tpy::__getitem__(this->_store, name).deleted)))) {
+    if (((this->_store.contains(name)) && (!(::tpy::__getitem__(this->_store, name).deleted)))) {
         return ::tpy::__getitem__(this->_store, name).value;
     }
     throw ::tpy::KeyError(name);
@@ -1081,7 +1078,7 @@ inline std::string CookieJar::__getitem__(std::string_view name) const {
 // def __contains__(self, name: str) -> bool:
 //     return name in self._store and not self._store[name].deleted
 inline bool CookieJar::__contains__(std::string_view name) const {
-    return (::tpy::seq_contains(this->_store, name) && (!(::tpy::__getitem__(this->_store, name).deleted)));
+    return ((this->_store.contains(name)) && (!(::tpy::__getitem__(this->_store, name).deleted)));
 }
 
 // def __len__(self) -> int32:

@@ -137,4 +137,12 @@ struct next_iter_mixin {
     NextSentinel end() { return {}; }
 };
 
+// Declared here so the consumers in earlier headers can name them; defined in
+// dunder.hpp, after every free `__iter__` overload their qualified lookup must
+// see. `iter_range(x)` is what a range-for over any iterable loops over: `x`
+// itself when it has begin()/end(), else the iterator its `__iter__()` returns.
+// `iter_of(x)` is that iterator alone, for a loop that steps `__next__()`.
+template<typename X> decltype(auto) iter_range(X& x);
+template<typename X> decltype(auto) iter_of(X& x);
+
 } // namespace tpy

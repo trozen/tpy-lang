@@ -6402,9 +6402,10 @@ def _record_getitem_borrow_subscript(sub: TpyExpr,
                                      pointers: 'AbstractSet[str]') -> bool:
     """A borrow-returning user-record `__getitem__` subscript source
     (`r = e[k]` -> `Node& r = e[k];`): the record's bare operator[] `T&`
-    lvalue binds a REF_ALIAS decl directly (the prechecked record-getitem
-    emit renders it form-BORROW). Index/receiver shapes are the
-    record-getitem arm's, widened with a record-typed NAME key -- the
+    lvalue, rooted in the receiver, whose result is a record or a container
+    (`_nested_container_elem_type`) -- the same two element families a
+    builtin container's element lvalue carries. Index/receiver shapes are
+    the record-getitem arm's, widened with a record-typed NAME key -- the
     borrow shim's `T&` key param takes the bare name render. Slices and
     value-returning getitems keep their own arms."""
     if not isinstance(sub, TpySubscript) or isinstance(sub.index, TpySlice):
@@ -6423,7 +6424,9 @@ def _record_getitem_borrow_subscript(sub: TpyExpr,
     if fi is None or not (call_returns_cpp_ref(analyzer, fi)
                           or _open_ref_return(fi)):
         return False
-    if not _f1_record(analyzer.get_expr_type(sub), analyzer):
+    result_t = analyzer.get_expr_type(sub)
+    if not (_f1_record(result_t, analyzer)
+            or _nested_container_elem_type(result_t)):
         return False
     if _record_getitem_idx_recv_ok(sub, locals_, analyzer, pointers):
         return True
@@ -6433,6 +6436,18 @@ def _record_getitem_borrow_subscript(sub: TpyExpr,
     return bool(recv_ok and isinstance(idx, TpyName)
                 and idx.name in locals_ and idx.name not in pointers
                 and _f1_record(locals_.get(idx.name), analyzer))
+
+
+def _getitem_container_lvalue(sub: TpyExpr, locals_: dict[str, TpyType],
+                              analyzer, pointers: 'AbstractSet[str]') -> bool:
+    """A user `__getitem__` subscript whose reference-returned result is a
+    container (`g[k]` -> `V&` on a dict-backed wrapper): a container lvalue
+    rooted in the receiver, exactly like a builtin nested element
+    (`rows[0]` of `list[list[int]]`), so every consumer of that element
+    admits it through the same verdict."""
+    return (_nested_container_elem_type(analyzer.get_expr_type(sub))
+            and _record_getitem_borrow_subscript(sub, locals_, analyzer,
+                                                 pointers))
 
 
 def _field_over_record_getitem_ok(e: TpyExpr, locals_: dict[str, TpyType],
@@ -6770,26 +6785,31 @@ def _container_opt_record_elem(t: TpyType | None, analyzer) -> bool:
                                analyzer))
     return _container_elem_family(t, analyzer, elem_ok)
 
+def _nested_container_elem_type(a: 'TpyType | int | None') -> bool:
+    """An element type whose read out of its owner is a CONTAINER lvalue: a
+    list/dict/set/Array, whose `T&` binds a REF_ALIAS local and feeds every
+    container consumer in place. Array included alongside list/dict/set: the
+    element lvalue render (`T& x = __getitem__(c, k)`) is the same for a
+    demoted `std::array` value (`{1:[1,2],2:[3,4]}` -> dict[int,
+    Array[int,2]])."""
+    if not isinstance(a, TpyType):
+        return False
+    a = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a)))
+    if isinstance(a, OwnType):
+        a = unwrap_readonly(a.wrapped)
+    return is_list(a) or is_dict(a) or is_set(a) or is_array(a)
+
+
 def _container_ref_alias_elem(t: TpyType | None, analyzer) -> bool:
     """A container whose element/value is itself a plain list/dict/set: the
     element subscript yields a `T&` borrow bindable as a REF_ALIAS local
     (`row = matrix[0]` -> `std::vector<...>& row = ...`). The nested-container
     analog of `_container_record_elem`."""
-    def container_elem(a: 'TpyType | int') -> bool:
-        if not isinstance(a, TpyType):
-            return False
-        a = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(a)))
-        if isinstance(a, OwnType):
-            a = unwrap_readonly(a.wrapped)
-        # Array included alongside list/dict/set: the element lvalue render
-        # (`T& x = __getitem__(c, k)`) is the same for a demoted `std::array`
-        # value (`{1:[1,2],2:[3,4]}` -> dict[int, Array[int,2]]).
-        return is_list(a) or is_dict(a) or is_set(a) or is_array(a)
     # span_elem_ok: a Span-of-container receiver (`s[0][0]` on
     # `Span[Array[int32, 2]]`) reads the same checked `__getitem__`
     # element lvalue -- the render is receiver-family-blind.
-    return _container_elem_family(t, analyzer, container_elem,
-                                  span_elem_ok=container_elem)
+    return _container_elem_family(t, analyzer, _nested_container_elem_type,
+                                  span_elem_ok=_nested_container_elem_type)
 
 def _container_genrec_elem(t: TpyType | None, analyzer) -> bool:
     """A container whose element/value is a generic-recursive-alias

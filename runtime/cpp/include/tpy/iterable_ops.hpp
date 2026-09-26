@@ -4,8 +4,10 @@
  * Non-range overloads for container operations (list_extend, str_join, etc.)
  * that accept Iterable types (types with tpy::__iter__() but no begin()/end()).
  *
- * Uses tpy::__iter__() + __next__() to iterate non-range types.
- * The primary (range-based) overloads live in container_ops.hpp and format.hpp.
+ * They loop over `::tpy::iter_range`, the begin()/end() face of the iterator
+ * `__iter__()` returns. The primary (range-based) overloads live in
+ * container_ops.hpp and format.hpp; building a container from a non-range is
+ * `construct` / `set_construct` / `dict_construct`.
  */
 
 #pragma once
@@ -18,7 +20,6 @@
 
 #include "container_ops.hpp"
 #include "dunder.hpp"
-#include "ordered_map.hpp"
 
 namespace tpy {
 
@@ -32,12 +33,7 @@ namespace tpy {
 template<typename T, typename Container>
     requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
 void list_extend(std::vector<T>& v, Container&& other) {
-    auto&& __iter = tpy::__iter__(other);
-    for (;;) {
-        auto __r = __iter.__next__();
-        if (!__r.has_value()) break;
-        v.push_back(unwrap_ref(*__r));
-    }
+    for (auto&& e : ::tpy::iter_range(other)) v.push_back(e);
 }
 
 // -- list_set_slice for non-range iterables ---------------------------------
@@ -46,12 +42,7 @@ template<typename T, typename Container>
     requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
 void list_set_slice(std::vector<T>& vec, BasicSlice sl, Container&& other) {
     std::vector<T> tmp;
-    auto&& __iter = tpy::__iter__(other);
-    for (;;) {
-        auto __r = __iter.__next__();
-        if (!__r.has_value()) break;
-        tmp.push_back(unwrap_ref(*__r));
-    }
+    for (auto&& e : ::tpy::iter_range(other)) tmp.push_back(e);
     list_set_slice(vec, sl, tmp);
 }
 
@@ -61,12 +52,7 @@ template<typename T, typename Container>
     requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
 void list_set_stepped_slice(std::vector<T>& vec, Slice sl, Container&& other) {
     std::vector<T> tmp;
-    auto&& __iter = tpy::__iter__(other);
-    for (;;) {
-        auto __r = __iter.__next__();
-        if (!__r.has_value()) break;
-        tmp.push_back(unwrap_ref(*__r));
-    }
+    for (auto&& e : ::tpy::iter_range(other)) tmp.push_back(e);
     list_set_stepped_slice(vec, sl, tmp);
 }
 
@@ -77,45 +63,10 @@ template<typename Container>
 inline std::string str_join(std::string_view sep, Container&& items) {
     std::string result;
     bool first = true;
-    // A self-iterator (a generator frame) hands back itself and has no copy.
-    auto&& __iter = tpy::__iter__(items);
-    for (;;) {
-        auto __r = __iter.__next__();
-        if (!__r.has_value()) break;
+    for (auto&& e : ::tpy::iter_range(items)) {
         if (!first) result.append(sep);
-        result.append(std::string_view(unwrap_ref(*__r)));
+        result.append(std::string_view(e));
         first = false;
-    }
-    return result;
-}
-
-// -- from_range for non-range iterables -------------------------------------
-
-template<typename Container, typename Iterable>
-    requires (!std::ranges::input_range<std::remove_reference_t<Iterable>>)
-Container from_range(Iterable&& iterable) {
-    Container result;
-    auto&& __iter = tpy::__iter__(iterable);
-    for (;;) {
-        auto __r = __iter.__next__();
-        if (!__r.has_value()) break;
-        result.push_back(unwrap_ref(*__r));
-    }
-    return result;
-}
-
-// -- dict_from_pairs for non-range iterables --------------------------------
-
-template<typename K, typename V, typename Iterable>
-    requires (!std::ranges::input_range<std::remove_reference_t<Iterable>>)
-ordered_map<K, V> dict_from_pairs(Iterable&& iterable) {
-    ordered_map<K, V> result;
-    auto&& __iter = tpy::__iter__(iterable);
-    for (;;) {
-        auto __r = __iter.__next__();
-        if (!__r.has_value()) break;
-        auto&& __item = unwrap_ref_move(*__r);
-        result.insert_or_assign(std::get<0>(std::move(__item)), std::get<1>(std::move(__item)));
     }
     return result;
 }

@@ -23,6 +23,7 @@ from ...parse.nodes import (
 )
 from ...typesys import (
     IntLiteralType,
+    NominalType,
     OptionalType,
     OwnType,
     TpyType,
@@ -32,6 +33,7 @@ from ...typesys import (
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
+    is_dyn_protocol,
 )
 from ...type_def_registry import (
     is_array,
@@ -53,6 +55,7 @@ from ..nodes import (
     THIRComprehension, THIRContainerLiteral, THIRExpr, THIRGenExpr, THIRMove,
     THIRName)
 from .checks import (_combinator_pins_source, _container_storage_call_rvalue,
+                     _user_iterator_iterable,
                      _native_iter_combinator)
 from .predicates import (
     _mixed_own_storage_source,
@@ -82,6 +85,7 @@ from .predicates import (
     _value_tuple,
 )
 from .context import (
+    _ONLY_INDIRECT_READ,
     _ExprResultUse,
     _ExprUse,
     _LowerCtx,
@@ -120,6 +124,7 @@ class _CompRoute:
     owns_elements: bool = False      # source yields Own[T]: sinks move
     gen_factory: bool = False        # value-yielding generator-call source
     native_combinator: bool = False  # zip/map/filter/... rvalue source
+    iter_protocol: bool = False      # driven by __iter__/__next__ (iter_range)
 
 
 @dataclass(frozen=True)
@@ -139,6 +144,11 @@ class _SourceRoute:
     owns_elements: bool = False      # source yields Own[T]
     gen_factory: bool = False        # value-yielding generator-call source
     native_combinator: bool = False  # zip/map/filter/... rvalue source
+    # A source with no begin()/end() of its own -- a user iterable, an
+    # Iterable/Iterator param -- is iterated through the iterator its
+    # `__iter__()` returns (`::tpy::iter_range`), the same family the for
+    # statement drives with `__iter__`/`__next__`.
+    iter_protocol: bool = False
 
 
 def _comp_synth_begin_end(it_type: TpyType, analyzer) -> bool:
@@ -189,8 +199,88 @@ def _peel_value_readonly(t: 'TpyType | None') -> 'TpyType | None':
     return None if t is None else peel_value_readonly(t)
 
 
+def _user_iterable_source(gen, declared: dict[str, TpyType], analyzer,
+                          lc: '_LowerCtx | None') -> '_SourceRoute | None':
+    """The `__iter__`/`__next__` family as a comprehension source
+    (`_user_iterator_iterable`, the verdict the for statement's universal
+    loop keys on): a user record iterable or iterator read as a name, `self`,
+    a field or an OWNED call result, or an `Iterable[T]` / `Iterator[T]`-typed
+    NAME. None when the source is outside the family, or belongs to a route
+    of its own (a native iterable, a record with synthesized begin()/end())."""
+    it = gen.iterable
+    # An unpack head over this family is rejected by the for statement too
+    # (BUGS.md#unpack-over-user-iterable); an owned element has no move sink
+    # on this loop.
+    if gen.unpack_vars is not None or gen.owns_elements:
+        return None
+    if isinstance(it, TpyName):
+        if it.name == "self":
+            t = analyzer.get_expr_type(it)
+        elif it.name in declared:
+            t = declared[it.name]
+        else:
+            return None
+        lvalue = True
+    elif isinstance(it, TpyFieldAccess):
+        if not _field_receiver_ok(it, declared, analyzer):
+            return None
+        t = _field_decl_type(it, declared, analyzer)
+        lvalue = True
+    elif isinstance(it, (TpyCall, TpyMethodCall)):
+        t = analyzer.get_expr_type(it)
+        # A borrow the call returns is only as durable as what it lends from,
+        # and that can be a temporary any number of calls down
+        # (BUGS.md#borrow-call-comp-source).
+        if is_lvalue_iterable(it, analyzer.registry.get_record,
+                              analyzer.get_expr_type):
+            return None
+        lvalue = False
+    else:
+        return None
+    if t is None:
+        return None
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(u, OwnType):
+        u = unwrap_readonly(u.wrapped)
+    if (not isinstance(u, NominalType)
+            or is_native_iterable(u, analyzer.registry)
+            or not _user_iterator_iterable(u, analyzer)):
+        return None
+    if u.is_protocol:
+        # A protocol-typed NAME (a param, an iterator-object local); a
+        # protocol-returning call is a generator factory, its own route.
+        if (not isinstance(it, TpyName) or is_dyn_protocol(u)
+                or lc is None
+                or not _statements.protocol_iterable_ok(lc, it)):
+            return None
+    else:
+        if _comp_synth_begin_end(u, analyzer):
+            return None
+        rec = analyzer.registry.get_record_for_type(u)
+        if rec is not None and any(
+                fi.is_consuming for fi in
+                analyzer.registry.get_method_overloads_with_parents(
+                    rec, "__iter__")):
+            return None
+    et = get_iterable_element_type(u, registry=analyzer.registry)
+    if et is None:
+        return None
+    et_b = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+    # Elements that need a storage-form loop-var registration, which only a
+    # native-iterable source gets (the synthesized begin()/end() rule).
+    if (isinstance(et_b, (OptionalType, OwnType))
+            or (isinstance(et_b, TupleType)
+                and et_b.has_pointer_repr_element())):
+        return None
+    et = _peel_value_readonly(resolve_int_literals(
+        unwrap_ref_type(et), analyzer.ctx.default_int_for_literal))
+    return _SourceRoute(loop="begin_end", counter_type=None, it_type=u,
+                        et=et, iterable_lvalue=lvalue, iter_protocol=True)
+
+
 def _source_route(gen, declared: dict[str, TpyType],
-                  analyzer) -> '_SourceRoute | None':
+                  analyzer,
+                  lc: '_LowerCtx | None' = None) -> '_SourceRoute | None':
     """Classify a comprehension / genexpr SOURCE (`gen` is the
     TpyComprehensionGenerator), or None. Slice: range1/range2 counter loops
     (eligible-scalar counter), 3-arg range as a begin/end loop over the Range
@@ -223,6 +313,9 @@ def _source_route(gen, declared: dict[str, TpyType],
                                 et=counter, iterable_lvalue=False)
         return _SourceRoute(loop="range", counter_type=counter,
                             it_type=None, et=counter, iterable_lvalue=True)
+    user = _user_iterable_source(gen, declared, analyzer, lc)
+    if user is not None:
+        return user
     combinator = False
     if not owns and _native_iter_combinator(it, analyzer):
         # The combinator rvalue is captured owning (`auto __obj_N =
@@ -421,7 +514,8 @@ def _source_route(gen, declared: dict[str, TpyType],
 
 
 def _comp_route(init, declared: dict[str, TpyType],
-                analyzer) -> '_CompRoute | None':
+                analyzer,
+                lc: '_LowerCtx | None' = None) -> '_CompRoute | None':
     """Classify a comprehension init: the shared `_source_route` verdict plus
     the comp's own result-slot / unpack-target gates and the reserve fact, or
     None (the caller rejects)."""
@@ -429,7 +523,7 @@ def _comp_route(init, declared: dict[str, TpyType],
     if kind is None:
         return None
     gen = init.generator
-    src = _source_route(gen, declared, analyzer)
+    src = _source_route(gen, declared, analyzer, lc)
     if src is None:
         return None
     if _is_range_call(gen.iterable):
@@ -498,6 +592,7 @@ def _comp_route(init, declared: dict[str, TpyType],
                       it_type=it_type, et=et, iterable_lvalue=lvalue,
                       sized_reserve=sized, unpack_types=None,
                       owns_elements=owns, gen_factory=genfac,
+                      iter_protocol=src.iter_protocol,
                       native_combinator=combinator)
 
 def _comp_slot_ok(slot: 'TpyType | None', analyzer) -> bool:
@@ -598,7 +693,8 @@ def _comp_lowering_route(
         init, t: 'TpyType | None', declared: dict[str, TpyType],
         pointers: AbstractSet[str], rebind_slots: AbstractSet[str],
         storage_tuple_locals: AbstractSet[str],
-        narrowed: AbstractSet[str], analyzer) -> '_CompRoute | None':
+        narrowed: AbstractSet[str], analyzer,
+        lc: '_LowerCtx | None' = None) -> '_CompRoute | None':
     """Resolve the route data consumed while lowering a comprehension."""
     if t is None:
         return None
@@ -606,7 +702,7 @@ def _comp_lowering_route(
         return _comp_array_route(
             init, t, declared, pointers, rebind_slots,
             storage_tuple_locals, narrowed, analyzer)
-    route = _comp_route(init, declared, analyzer)
+    route = _comp_route(init, declared, analyzer, lc)
     if route is None:
         return None
     args = getattr(t, "type_args", None)
@@ -1059,7 +1155,7 @@ def _lower_comprehension_impl(
         pointers = frozenset(pointers) - ptr_shadow
     route = _comp_lowering_route(
         init, result_type, declared, pointers, lc.rebind_slot_locals,
-        lc.storage_tuple_locals, lc.narrow.narrowed.keys(), analyzer)
+        lc.storage_tuple_locals, lc.narrow.narrowed.keys(), analyzer, lc)
     if route is None or result_type is None:
         raise ThirUnsupported("comp.route", detail=True)
     if route.loop == "array_range":
@@ -1253,15 +1349,22 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
     else:
         if route.gen_factory:
             _witness("comp.genfac_source")
+        if route.iter_protocol:
+            _witness("comp.iter_protocol_source")
         if route.native_combinator:
             _witness("comp.combinator_source")
         # allow_temps: the source-call's own arg temps (`int32_t __tmp_N =
         # 8;` a generic factory's ref-slot literal) flush BEFORE the comp's
         # enclosing statement.
+        # The `__iter__` family hands on the OBJECT: a reassigned record
+        # local's pointer read derefs (`iter_range(*c)`), as the for
+        # statement's capture does.
         iterable = _lower_expr(
             gen.iterable, lc, declared,
             use=_ExprUse(result=_ExprResultUse.ITERABLE,
-                         pos=SinkPos.ITER_SOURCE, allow_temps=True))
+                         pos=SinkPos.ITER_SOURCE, allow_temps=True,
+                         forms=(_ONLY_INDIRECT_READ if route.iter_protocol
+                                else None)))
     unpack_targets: tuple = ()
     unpack_cpps: tuple = ()
     if route.unpack_types is not None:
@@ -1287,6 +1390,7 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
         range_stop_literal=stop_lit,
         iterable=iterable,
         iterable_lvalue=route.iterable_lvalue,
+        iter_protocol=route.iter_protocol,
         sized_reserve=route.sized_reserve,
         unpack_targets=unpack_targets,
         unpack_target_cpps=unpack_cpps,
@@ -1325,7 +1429,7 @@ def _lower_genexpr_impl(expr: TpyGeneratorExpression, lc: '_LowerCtx',
     if expr.frame_range_args:
         # The bounds go in by value; the frame loops over a range of them.
         return _lower_genexpr_frame(expr, None, False, False, lc, declared)
-    route = _source_route(gen, declared, analyzer)
+    route = _source_route(gen, declared, analyzer, lc)
     if route is None:
         raise ThirUnsupported("genexpr.iterable_shape")
     if route.owns_elements:
@@ -1335,6 +1439,11 @@ def _lower_genexpr_impl(expr: TpyGeneratorExpression, lc: '_LowerCtx',
         # slot, so the consumer would hold a borrow of that slot. The
         # comprehension's owned-move sinks have no yield twin yet.
         raise ThirUnsupported("genexpr.owned_source", loc=loc)
+    if route.iter_protocol:
+        # The `__iter__`/`__next__` family is a comprehension source only: a
+        # frame cannot yet hold what its `__iter__` lends
+        # (BUGS.md#genexpr-over-user-iterable).
+        raise ThirUnsupported("genexpr.iterable_shape", loc=loc)
     owned = not route.iterable_lvalue
     # Decided here, off the route: the owning boundary that would move the
     # frame (a lazy combinator taking this genexpr as its rvalue argument)

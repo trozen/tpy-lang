@@ -19,6 +19,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "next_iter.hpp"
+
 namespace tpy {
 
 // -- stdin helper --
@@ -215,7 +217,7 @@ bool to_bool(const T& x) {
 
 template<typename Iter>
 bool builtin_all(Iter&& iterable) {
-    for (auto&& elem : iterable) {
+    for (auto&& elem : ::tpy::iter_range(iterable)) {
         if (!to_bool(elem)) return false;
     }
     return true;
@@ -223,7 +225,7 @@ bool builtin_all(Iter&& iterable) {
 
 template<typename Iter>
 bool builtin_any(Iter&& iterable) {
-    for (auto&& elem : iterable) {
+    for (auto&& elem : ::tpy::iter_range(iterable)) {
         if (to_bool(elem)) return true;
     }
     return false;
@@ -234,7 +236,7 @@ bool builtin_any(Iter&& iterable) {
 template<typename T, typename Iter>
 T builtin_sum(Iter&& iterable) {
     T result{};
-    for (auto&& elem : iterable) {
+    for (auto&& elem : ::tpy::iter_range(iterable)) {
         result = add_check<T>(result, static_cast<T>(elem));
     }
     return result;
@@ -242,7 +244,7 @@ T builtin_sum(Iter&& iterable) {
 
 template<typename T, typename Iter>
 T builtin_sum_start(Iter&& iterable, T start) {
-    for (auto&& elem : iterable) {
+    for (auto&& elem : ::tpy::iter_range(iterable)) {
         start = add_check<T>(start, static_cast<T>(elem));
     }
     return start;
@@ -252,14 +254,14 @@ T builtin_sum_start(Iter&& iterable, T start) {
 template<typename Iter>
 BigInt builtin_sum_bigint(Iter&& iterable) {
     BigInt result(0);
-    for (auto&& elem : iterable) result = result + elem;
+    for (auto&& elem : ::tpy::iter_range(iterable)) result = result + elem;
     return result;
 }
 
 template<typename Iter>
 BigInt builtin_sum_start_bigint(Iter&& iterable, const BigInt& start) {
     BigInt result = start;
-    for (auto&& elem : iterable) result = result + elem;
+    for (auto&& elem : ::tpy::iter_range(iterable)) result = result + elem;
     return result;
 }
 
@@ -267,13 +269,13 @@ BigInt builtin_sum_start_bigint(Iter&& iterable, const BigInt& start) {
 template<typename Iter>
 double builtin_sum_float(Iter&& iterable) {
     double result = 0.0;
-    for (auto&& elem : iterable) result += static_cast<double>(elem);
+    for (auto&& elem : ::tpy::iter_range(iterable)) result += static_cast<double>(elem);
     return result;
 }
 
 template<typename Iter>
 double builtin_sum_start_float(Iter&& iterable, double start) {
-    for (auto&& elem : iterable) start += static_cast<double>(elem);
+    for (auto&& elem : ::tpy::iter_range(iterable)) start += static_cast<double>(elem);
     return start;
 }
 
@@ -282,7 +284,7 @@ double builtin_sum_start_float(Iter&& iterable, double start) {
 template<typename T, typename Iter>
 std::vector<T> builtin_sorted(Iter&& iterable) {
     std::vector<T> result;
-    for (auto&& elem : iterable) {
+    for (auto&& elem : ::tpy::iter_range(iterable)) {
         result.emplace_back(std::forward<decltype(elem)>(elem));
     }
     std::stable_sort(result.begin(), result.end());
@@ -292,7 +294,7 @@ std::vector<T> builtin_sorted(Iter&& iterable) {
 template<typename T, typename Iter, typename KeyFn>
 std::vector<T> builtin_sorted_key(Iter&& iterable, KeyFn&& key) {
     std::vector<T> items;
-    for (auto&& elem : iterable) {
+    for (auto&& elem : ::tpy::iter_range(iterable)) {
         items.emplace_back(std::forward<decltype(elem)>(elem));
     }
     // Schwartzian transform: compute key once per element (O(n)), then sort

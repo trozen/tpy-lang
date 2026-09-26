@@ -221,15 +221,6 @@ public:
     }
 };
 
-// The member type an all-lvalue combinator holds an __iter__() result as: a
-// non-const reference stays a reference (the iterator is advanced in place),
-// anything else is a value -- a prvalue moved in, a const reference copied,
-// since nothing can pull through it.
-template<typename R>
-using iter_member_t = std::conditional_t<
-    std::is_lvalue_reference_v<R> && !std::is_const_v<std::remove_reference_t<R>>,
-    R, std::decay_t<R>>;
-
 // Per-argument holder of a mixed combinator: X is `C&` for an lvalue argument
 // and `C` for a temporary.
 template<typename X>

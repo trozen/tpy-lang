@@ -1099,7 +1099,7 @@ bool CaseInsensitiveDict::__eq__(const CaseInsensitiveDict& other) const {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view lk = *__beg_0;
-        if (!::tpy::seq_contains(other._store, lk)) {
+        if ((!(other._store.contains(lk)))) {
             return false;
         }
         if ((std::get<1>(::tpy::__getitem__(this->_store, lk)) != std::get<1>(::tpy::__getitem__(other._store, lk)))) {

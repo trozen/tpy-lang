@@ -412,6 +412,8 @@ from .predicates import (
     _optional_checked_field_over_field_ok,
     _field_over_record_getitem_ok,
     _record_getitem_idx_recv_ok,
+    _record_getitem_borrow_subscript,
+    _getitem_container_lvalue,
     _own_bytes_identity_move_slot,
     _own_lvalue_temp_slot,
     _select_node,
@@ -719,6 +721,7 @@ from .checks import (
     _is_len_call,
     _is_len_native,
     _iter_proto_call_ret,
+    _user_iterable_ctor_arg,
     _marker_call_kind,
     _marker_call_supported,
     _marker_reject,
@@ -4136,8 +4139,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         fi = e.resolved_contains
         lt = _declared_type(e.left, declared, analyzer)
         if fi is None:
-            # No resolved `__contains__` member (`readonly[set]` strips it;
-            # list/array/span have none): the `is_native_in` arm renders
+            # No resolved `__contains__` member (list/array/span have
+            # none): the `is_native_in` arm renders
             # `::tpy::seq_contains(recv, x)`. Any native NativeIterable
             # receiver (set/list/array/span) with a scalar / owned-str needle;
             # the universal iterator-loop form is a later rung.
@@ -4287,6 +4290,12 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     and (_resolved_scalar(lt, analyzer)
                          or (isinstance(e.left, TpyName)
                              and record_like(lt_bare, analyzer))
+                         # An open-T needle inside a generic body (`key in
+                         # self._data` on `dict[K, V]`): the needle renders
+                         # by name per instantiation, the sequence row's
+                         # sibling.
+                         or (_is_type_param_slot(lt)
+                             and _witness("binop.contains_member_tparam_needle"))
                          # A record ctor RVALUE needle (`time(0) in {time(0),
                          # time(1)}`) renders bare inside `contains(...)` just
                          # like the name row -- it is a value position, so the
@@ -6845,7 +6854,21 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                           # receiver and index only, so a record element slot
                           # never renders an element read here.
                           or (use.result is _ExprResultUse.SETITEM_TARGET
-                              and record_like(rtype, analyzer)))
+                              and record_like(rtype, analyzer))
+                          # A CONTAINER returned by reference: the element
+                          # lvalue a builtin nested element is, bare in every
+                          # value position.
+                          or _getitem_container_lvalue(e, declared, analyzer,
+                                                       lc.pointers))
+                # A RECORD returned by reference in a RECEIVER position (the
+                # reassigned alias's `&(g[k])` lift, a member-call receiver):
+                # the `T&` lvalue, like a builtin record element there.
+                ref_record_recv = (
+                    use.result is _ExprResultUse.RECEIVER
+                    and record_like(rtype, analyzer)
+                    and _record_getitem_borrow_subscript(
+                        e, declared, analyzer, lc.pointers))
+                ret_ok = ret_ok or ref_record_recv
                 # A None-narrowed pointer-repr `Optional[record]` NAME reads
                 # its deref (`(*g)[i]`), the same shape the container arm's
                 # `_optrecv_deref` row renders one sink over.
@@ -6887,7 +6910,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         analyzer.get_expr_type(e.obj), analyzer, loc,
                         declared),
                     record_getitem=True,
-                    form=Form.BORROW if opt_ptr_ret else Form.VALUE,
+                    form=(Form.BORROW if opt_ptr_ret or ref_record_recv
+                          else Form.VALUE),
                     loc=loc)
             # A receiver that is itself a container-ELEMENT lvalue
             # (`cube[i][j]`, `a.bs[0].as_[0]`) resolves through the chained
@@ -8923,6 +8947,16 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     lowered_args.append(
                         _lower_call_arg(arg, param.type, lc, declared,
                                         callee_fi=inst_fi, arg_index=_inst_i))
+                elif _user_iterable_ctor_arg(arg, declared, analyzer):
+                    # A user iterable lvalue (`list(bag)` ->
+                    # `::tpy::construct<std::vector<T>>(bag)`): the template
+                    # drains the iterator its `__iter__()` returns.
+                    _witness("call.inst_user_iterable_arg")
+                    # A reassigned record local's pointer read derefs.
+                    lowered_args.append(_lower_expr(
+                        arg, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                                     forms=_ONLY_INDIRECT_READ)))
                 elif _container_field_bare_read(arg, declared, analyzer):
                     # A container FIELD read (`list(item.dirnames)`): the
                     # member render binds the construct template bare. No

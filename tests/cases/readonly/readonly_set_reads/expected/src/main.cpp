@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def has(s: readonly[set[int32]], x: int32) -> bool:
 //     return x in s
 bool has(const ::tpy::ordered_set<int32_t>& s, int32_t x) {
-    return ::tpy::seq_contains(s, x);
+    return (s.contains(x));
 }
 
 // def count(s: readonly[set[int32]]) -> int32:

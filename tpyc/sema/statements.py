@@ -85,9 +85,11 @@ from .narrowing import NarrowingTracker
 from .overloads import OverloadAmbiguityError, resolve_overload
 from .scope_tracker import ScopeTracker
 from .init_tracker import InitTracker
+from .receiver_calls import check_implicit_readonly_receiver, credit_implicit_receiver_call
 from .iter_loans import (
-    hold_whole, is_dangling_temporary_arg, register_iteration_loans,
-    temp_arg_kept_alive,
+    _record_iter_receiver_mutation, check_iter_receiver_loans, hold_whole,
+    is_dangling_temporary_arg,
+    register_iteration_loans, temp_arg_kept_alive,
 )
 from .value_range import ValueRange
 if TYPE_CHECKING:
@@ -119,7 +121,7 @@ from .type_ops import signature_may_return_borrow as _signature_may_return_borro
 from tpyc import modules as builtin_modules
 from tpyc import qnames
 from ..type_def_registry import (
-    is_iterator_adapter,
+    is_iterator_adapter, is_basic_slice_type, is_slice_type,
     is_dict, is_array, is_span, is_list,
     is_char_type, is_str_type, is_string_type, is_str_view_type,
     is_bytes_type, is_bytearray_type, is_bytes_view_type,
@@ -342,121 +344,6 @@ def _iter_source_root(expr: TpyExpr) -> str | None:
     """
     key = iter_borrow_storage(expr)
     return _storage_root(key) if key is not None else _root_name_of_expr(expr)
-
-
-def _local_traces_to_self(borrow_tracker: 'BorrowTracker', name: str) -> bool:
-    """True when a local borrow-traces to self or a self.<field> storage key.
-
-    Used to recognize a method call receiver whose root is a local alias of
-    self-owned storage (e.g. ``frame = self.frame; frame.get().cancel()``)
-    so the call's self-mutation flows back through the enclosing method.
-
-    ANY root answers for a re-seated name: the receiver aliases self-owned
-    storage on at least one reaching path, and the verdict only ever ADDS the
-    self-mutation edge, which demotes readonly -- the safe direction.
-    """
-    roots = borrow_tracker.storage_roots_or_self(name)
-    return any(root == "self" or root.startswith("self.") for root in roots)
-
-
-def _receiver_leaves(expr: TpyExpr) -> list[TpyExpr]:
-    """The operands a method-call receiver may BE: the receiver itself, or
-    for a ternary / value and/or select every operand it can pick
-    (recursively) -- the call mutates whichever one it runs on."""
-    while isinstance(expr, TpyCoerce):
-        expr = expr.expr
-    if isinstance(expr, TpyIfExpr):
-        return (_receiver_leaves(expr.then_expr)
-                + _receiver_leaves(expr.else_expr))
-    if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
-        return _receiver_leaves(expr.left) + _receiver_leaves(expr.right)
-    return [expr]
-
-
-def _is_self_call_deferred(
-    expr_obj: TpyExpr, obj_root: str | None,
-    loop_var_iterable: dict[str, list[str]],
-    borrow_tracker: 'BorrowTracker',
-) -> bool:
-    """Check if a method call receiver traces to self through field accesses or loop vars.
-
-    When True, self-mutation is deferred to Phase 2 via call edges
-    (a receiver_idx) instead of being marked directly in Phase 1.
-    This enables readonly inference for methods that call non-mutating
-    methods on fields or loop elements.
-    """
-    if obj_root == "self":
-        # Verify the chain is purely field accesses (no subscripts like
-        # self.items[0].method()). _root_name_of_expr strips both FieldAccess
-        # and Subscript, so obj_root=="self" doesn't rule out subscripts.
-        # Subscript-rooted calls are not deferred because the call edge in
-        # calls.py also only walks TpyFieldAccess.
-        chain = expr_obj
-        while isinstance(chain, TpyFieldAccess):
-            chain = chain.obj
-        return isinstance(chain, TpyName) and chain.name == "self"
-    if obj_root is not None:
-        # loop_var.method() where loop_var iterates over self.field
-        if any(_storage_root(it) == "self"
-               for it in loop_var_iterable.get(obj_root, ())):
-            return True
-        # local.method() where `local = self.<field>` registered a FIELD borrow.
-        # Without this, the call is treated as a regular non-self call and the
-        # callee's self-mutation never propagates back to the enclosing method,
-        # so non-const methods reached through a local alias of a self field
-        # leave self_mutated unset and auto-readonly wrongly marks the method
-        # const. Deferring lets Phase 2 propagate precisely.
-        if _local_traces_to_self(borrow_tracker, obj_root):
-            return True
-    return False
-
-
-def _record_iter_receiver_mutation(
-    ctx: 'SemanticContext', iterable_expr: TpyExpr, iterable_type: 'TpyType',
-) -> None:
-    """Record that iterating `iterable_expr` mutates it, when `__iter__` does.
-
-    `for v in obj:` implicitly calls `obj.__iter__()`; a user `__iter__` that
-    mutates the receiver needs a non-const one, but -- unlike an explicit
-    `obj.method()` -- the implicit call otherwise records no mutation, so an
-    enclosing method that only reads `obj` is wrongly inferred readonly. This
-    mirrors the receiver-mutation recording the explicit-call path does
-    (`MethodAnalyzer` + `CallAnalyzer._record_mutation_call_edges`); keep the
-    two in sync (consolidation tracked in TODO.md).
-    """
-    record_info = ctx.registry.get_record_for_type(iterable_type)
-    if record_info is None:
-        return
-    # Walk the MRO: an inherited `__iter__` mutates the receiver too.
-    iter_fi = next((fi for fi in ctx.registry.get_method_overloads_with_parents(
-                        record_info, "__iter__") if not fi.is_consuming), None)
-    if iter_fi is None or iter_fi.is_readonly or iter_fi.is_pure:
-        return
-    if (iter_fi.is_auto_readonly_mutable_clone
-            or iter_fi.borrows_receiver_via_auto_readonly):
-        return
-    # Iterating an interior-mutable field mutates bookkeeping the owner declared
-    # outside its readonly boundary -- it must not demote the enclosing method.
-    if (isinstance(iterable_expr, TpyFieldAccess)
-            and iterable_expr.accessed_field_is_interior):
-        return
-    root = _root_name_of_expr(iterable_expr)
-    if root is None:
-        return
-    # When the receiver is an (outer) loop variable, demote its binding so it is
-    # not bound `const` -- the mutating `__iter__` needs a mutable element.
-    ctx.mark_loop_var_mutated(root)
-    receiver_idx = ctx.self_receiver_index()
-    if receiver_idx is not None and _is_self_call_deferred(
-            iterable_expr, root, ctx.func.loop_var_iterable,
-            ctx.func.borrow_tracker):
-        # Self-rooted: defer to Phase 2 so the demotion is precise -- a
-        # non-mutating `__iter__` (self_mutated=False) does not demote.
-        ctx.func.current_call_edges.append(
-            MutationCallEdge(callee_fi=iter_fi.root, param_map={},
-                             receiver_idx=receiver_idx))
-    else:
-        ctx.mark_param_mutated(root)
 
 
 # view_family_for_type is in typesys (alongside ViewTypeFamily / VIEW_TYPE_FAMILIES).
@@ -2396,6 +2283,8 @@ class StatementAnalyzer:
                     # Track range facts for loop variable from range() calls
                     self._track_for_range_facts(stmt)
                     prior_iter = self.ctx.func.loop_var_iterable.get(stmt.var)
+                    check_iter_receiver_loans(
+                        self.ctx, stmt.iterable, inner_iterable_type)
                     self._register_foreach_iter_loans(stmt, iterable_type)
                     self._note_loop_var_iteration(
                         stmt.var, elem_type, prior_iter,
@@ -2405,7 +2294,8 @@ class StatementAnalyzer:
                     # method isn't wrongly inferred const (the loop_var_iterable
                     # self-tracing set above must already be populated).
                     _record_iter_receiver_mutation(
-                        self.ctx, stmt.iterable, inner_iterable_type)
+                        self.ctx, stmt.iterable, inner_iterable_type,
+                        check_loans=False)
                     if is_direct_next_iter or is_protocol_iter:
                         iter_depth = inner_scope.depth
                     elif is_iter_based:
@@ -3589,18 +3479,28 @@ class StatementAnalyzer:
             ns_types_before=ns_types_before, runs_once=runs_once,
             elem_type=elem_type)
 
-    def _mark_with_manager_mutated(self, manager: 'TpyExpr') -> None:
-        """Mark the durable root of a borrowed `with` manager mutated, so a
-        non-readonly __enter__/__exit__ doesn't bind it `const`. (See
-        _mark_await_operand_mutated -- the same receiver-mutation shape.)
-        """
-        obj_root = _root_name_of_expr(manager)
-        if obj_root is None:
+    def _mark_with_manager_mutated(
+            self, manager: 'TpyExpr', ctx_type: TpyType,
+            calls: 'list[tuple[str, FunctionInfo]]') -> None:
+        """A borrowed `with` manager is the receiver of each non-readonly
+        dunder in `calls` (`__enter__` and/or `__exit__`, with the callee the
+        with statement resolved, inherited ones included); an rvalue manager
+        has no durable root. Each call is credited on its own -- either one
+        may grow the manager, which its loan check and the structural mark
+        must both see, answered from that callee's facts. The mutation mark
+        is eager, not a Phase-2 edge on the callee: the with statement
+        resolves two callees, possibly rebound from a generic base, and a
+        `with self.<field>:` method is kept non-const on that eager mark
+        today."""
+        if _root_name_of_expr(manager) is None:
+            for method, callee in calls:
+                check_implicit_readonly_receiver(self.ctx, manager, callee,
+                                                 method, manager)
             return
-        self.ctx.mark_loop_var_mutated(obj_root)
-        self.ctx.mark_param_mutated(obj_root)
-        storage = self.ctx.func.borrow_tracker.effective_storage(obj_root)
-        self.ctx.mark_all_view_borrowers_mutated(storage)
+        bare = unwrap_readonly(ctx_type)
+        for method, callee in calls:
+            credit_implicit_receiver_call(self.ctx, manager, bare, callee,
+                                          method, manager, eager=True)
 
     def _analyze_with(self, stmt: TpyWith) -> None:
         """Analyze a with statement (context managers).
@@ -3691,7 +3591,11 @@ class StatementAnalyzer:
             # mutating enter/exit call.
             if item.manager_borrowed and not (
                     enter_info.is_readonly and exit_info.is_readonly):
-                self._mark_with_manager_mutated(item.context_expr)
+                self._mark_with_manager_mutated(
+                    item.context_expr, ctx_type,
+                    [(m, fi) for m, fi in ((enter_method, enter_info),
+                                           (exit_method, exit_info))
+                     if not fi.is_readonly])
 
             # An @error_return enter/exit has no admission site: the `with`
             # header calls it implicitly, so it never reaches the call
@@ -6517,6 +6421,32 @@ class StatementAnalyzer:
                     storage, "slice assignment", iterating=False), stmt)
             self.ctx.mark_all_view_borrowers_mutated(storage)
 
+    def _credit_user_setitem(self, target: TpySubscript, stmt: TpyStmt, *,
+                             check_loans: bool) -> None:
+        """A user `__setitem__` is a method call on the receiver that may
+        grow it, unlike a builtin element store (answered by the element-hop
+        check at the write site): credit it through the receiver-call
+        chokepoint, so the structural mark reaches a caller holding a loan
+        across the enclosing call. `check_loans=False` when the element-hop
+        check already warned at this write."""
+        recv_type = self.ctx.get_expr_type(target.obj)
+        recv_type = (unwrap_readonly(unwrap_own(unwrap_ref_type(recv_type)))
+                     if recv_type is not None else None)
+        if not (isinstance(recv_type, NominalType) and recv_type.is_user_record):
+            return
+        record = self.ctx.registry.get_record_for_type(recv_type)
+        if record is None:
+            return
+        overloads, _ = self.protocols.lookup_record_method_overloads(
+            record, "__setitem__")
+        callee = next((fi for fi in overloads
+                       if fi.params and not is_basic_slice_type(fi.params[0].type)
+                       and not is_slice_type(fi.params[0].type)), None)
+        if callee is not None:
+            credit_implicit_receiver_call(self.ctx, target.obj, recv_type, callee,
+                                          "__setitem__", stmt,
+                                          check_loans=check_loans)
+
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""
         # In nested defs, assigning to an outer variable requires nonlocal
@@ -6552,6 +6482,8 @@ class StatementAnalyzer:
             # Pin the write position before the target is analysed as a read:
             # a property read otherwise becomes its GETTER call and the setter
             # below would have no field name to look up.
+            stmt.target.is_write_target = True
+        elif isinstance(stmt.target, TpySubscript):
             stmt.target.is_write_target = True
         target_type = self.expr.analyze_expr(stmt.target)
         self._check_class_constant_write(stmt.target, stmt)
@@ -6866,6 +6798,7 @@ class StatementAnalyzer:
         # ELEMENT of this container -- index-blind -- is clobbered.
         if isinstance(stmt.target, TpySubscript):
             storage = self._resolve_obj_storage(stmt.target.obj)
+            hit = None
             if storage is not None:
                 bt = self.ctx.func.borrow_tracker
                 hit = bt.element_hop_loan(
@@ -6874,6 +6807,7 @@ class StatementAnalyzer:
                     self.ctx.warning(element_loan_mutation_warning(
                         f"{storage}[...]", "element assignment", hit), stmt)
                 self.ctx.mark_all_view_borrowers_mutated(storage)
+            self._credit_user_setitem(stmt.target, stmt, check_loans=hit is None)
         elif isinstance(stmt.target, TpyFieldAccess):
             storage = self._resolve_obj_storage(stmt.target.obj)
             # Also check the field-path key itself (e.g. "self.items" for self.items = [...])
@@ -7354,6 +7288,7 @@ class StatementAnalyzer:
         # subscript assign, no reallocation, element/ptr borrows remain valid.
         if isinstance(stmt.target, TpySubscript):
             storage = self._resolve_obj_storage(stmt.target.obj)
+            hit = None
             if storage is not None:
                 # A structural `+=` on an element (list, set) reallocates the
                 # element's own buffer, which a loan INTO that element rides.
@@ -7364,6 +7299,8 @@ class StatementAnalyzer:
                     self.ctx.warning(element_loan_mutation_warning(
                         f"{storage}[...]", f"'{op_spelling(stmt.op)}='", hit), stmt)
                 self.ctx.mark_all_view_borrowers_mutated(storage)
+            # `g[k] += v` writes back through `g.__setitem__` as well.
+            self._credit_user_setitem(stmt.target, stmt, check_loans=hit is None)
         elif isinstance(stmt.target, TpyFieldAccess):
             storage = self._resolve_obj_storage(stmt.target.obj)
             field_storage = _storage_key(stmt.target)

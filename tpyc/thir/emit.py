@@ -979,7 +979,16 @@ def _emit_comprehension(e: 'THIRComprehension', state: _EmitState) -> str:
         n = state.next_loop_index()
         obj, beg, end = f"__obj_{n}", f"__beg_{n}", f"__end_{n}"
         binding_kw = "auto&" if e.iterable_lvalue else "auto"
-        buf.write(f"{ind1}{binding_kw} {obj} = {_emit_expr(e.iterable, state)};\n")
+        src = _emit_expr(e.iterable, state)
+        if e.iter_protocol:
+            # `iter_range` takes an lvalue only: the iterator it holds may
+            # point into the source, which must outlive the loop.
+            if not e.iterable_lvalue:
+                buf.write(f"{ind1}auto __src_{n} = {src};\n")
+                src = f"__src_{n}"
+            buf.write(f"{ind1}auto&& {obj} = ::tpy::iter_range({src});\n")
+        else:
+            buf.write(f"{ind1}{binding_kw} {obj} = {src};\n")
         if not skip_reserve and e.sized_reserve:
             buf.write(f"{ind1}__result.reserve(static_cast<std::size_t>"
                       f"({obj}.size()));\n")

@@ -56,8 +56,10 @@ from .overloads import (
     _classify_overload, _score, _expand_arg_types_with_kwargs,
     _scalar_widening_cost,
 )
-from .context import CallOperands, _root_name_of_expr, call_lend_sources
-from .statements import _is_self_call_deferred, _receiver_leaves
+from .context import (
+    CallOperands, _is_self_call_deferred, _root_name_of_expr, call_lend_sources,
+)
+from .receiver_calls import receiver_leaves
 from .scope_tracker import lend_roots
 from .compatibility import TupleSink
 from .protocols import dynamic_dispatch_type_conforms
@@ -668,6 +670,11 @@ class CallAnalyzer:
         # reassign the borrowed subject storage) only settles in Phase 2.
         # Entry: (method_call, subject_path_str, match arm).
         self.pending_match_subject_checks: list = []
+        # Implicit dunder calls (`for x in g`, `g[k]`, `with g`, ...) on a
+        # readonly receiver: whether the dunder may be called on a const
+        # receiver is its emitted const-ness, final only once every module's
+        # const inference has run. Entry: (callee FunctionInfo, dunder, site).
+        self.pending_readonly_receiver_checks: list = []
 
     def _restore_readonly_arg(self, arg: TpyExpr, arg_type: TpyType,
                               target_is_readonly: bool = False) -> TpyType:
@@ -716,6 +723,19 @@ class CallAnalyzer:
                     f"bindings dangle (undefined behavior). Copy the bound "
                     f"values before the call", mcall)
         self.pending_match_subject_checks.clear()
+
+    def resolve_pending_readonly_receiver_checks(self) -> None:
+        """Reject a queued implicit dunder call on a readonly receiver whose
+        callee is emitted non-const: not inferred readonly, or inferred but
+        kept non-const (`FunctionInfo.const_withheld`)."""
+        pending = self.pending_readonly_receiver_checks[:]
+        self.pending_readonly_receiver_checks.clear()
+        for callee, method, site in pending:
+            root = callee.root
+            if not (callee.is_readonly or root.is_readonly) or root.const_withheld:
+                raise self.ctx.error(
+                    f"Cannot call non-readonly method '{method}' on readonly reference",
+                    site)
 
     def _resolve_call_kwargs(self, expr: TpyCall, func: FunctionInfo) -> None:
         """Resolve keyword arguments on a TpyCall into positional form."""
@@ -3425,7 +3445,7 @@ class CallAnalyzer:
         if isinstance(expr, TpyMethodCall):
             # A select receiver is each operand it may pick.
             self_rooted = False
-            for leaf in _receiver_leaves(expr.obj):
+            for leaf in receiver_leaves(expr.obj):
                 obj_root = _root_name_of_expr(leaf)
                 if obj_root is not None and _is_self_call_deferred(
                         leaf, obj_root, self.ctx.func.loop_var_iterable,

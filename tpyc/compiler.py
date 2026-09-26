@@ -1033,9 +1033,17 @@ class Compiler:
                 analyzer.discharge_own_copy_verdicts(own_copy_seen,
                                                      self.own_copy_verdicts)
         for module_name in self.compile_order:
-            analyzer = self.modules[module_name].analyzer
+            compiled = self.modules[module_name]
+            analyzer = compiled.analyzer
             if analyzer is not None:
-                analyzer.finalize_borrow_checks()
+                # The deferred readonly-receiver checks raise here, after
+                # every module's const inference.
+                try:
+                    analyzer.finalize_borrow_checks()
+                except SemanticError as e:
+                    if e.filename is None and not compiled.is_entry_point:
+                        e.filename = os.path.relpath(compiled.path)
+                    raise
 
         self._validate_ext_module_exports()
 

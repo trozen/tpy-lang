@@ -39,6 +39,7 @@ from ..parse.nodes import (
 )
 from ..value_category import is_rvalue_source
 from .context import record_stmt_borrow_binding, register_capture_alias_borrow
+from .receiver_calls import is_invalidating_method
 
 if TYPE_CHECKING:
     from ..typesys import RecordInfo
@@ -806,7 +807,8 @@ class MatchAnalyzer:
                 if recv is not None and prefix_aliases(recv):
                     recv_type = self.ctx.get_expr_type(expr.obj)
                     if (recv_type is not None
-                            and self.expr.methods._is_invalidating_method(
+                            and is_invalidating_method(
+                                self.ctx,
                                 unwrap_readonly(unwrap_ref_type(recv_type)),
                                 expr.method)):
                         note_offender(expr)

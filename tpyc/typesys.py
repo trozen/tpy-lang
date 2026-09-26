@@ -6162,6 +6162,10 @@ class FunctionInfo:
     # Self-mutation inference (Phase 1 + Phase 2, methods only)
     # None = not yet analyzed; True/False = Phase 1 direct fact; finalized by Phase 2.
     direct_self_mutated: Optional[bool] = None
+    # Set by `_sync_inferred_const` when inference proved the method readonly
+    # but the emitted C++ member stays non-const (a `@readonly(False)` opt-out,
+    # a `@dynamic` protocol override): a const receiver still cannot call it.
+    const_withheld: bool = False
     self_mutated: bool = True  # conservative default until Phase 2 resolves
     # Back-pointer to the canonical registry FunctionInfo. Set on ephemeral
     # copies produced by type-param substitution / cpp_template fill-in so

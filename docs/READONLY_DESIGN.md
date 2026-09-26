@@ -143,6 +143,28 @@ class CachedLookup:
         return self._data[idx]
 ```
 
+The implicit call a dunder stands for (`c[i]`, `k in c`, `for x in c:`,
+`with c:`, `await c`) is a method call on the receiver for readonly
+purposes: a function that only reads `c[i]` still takes `c` mutable, and a
+`readonly[...]` record receiver rejects a dunder that is emitted non-const
+-- at the subscript, `in` (through `__contains__`, or `__iter__` when there
+is none), `for`, `with` and `await` -- with *Cannot call non-readonly method
+'__iter__' on readonly reference*. The verdict is the dunder's EMITTED
+const-ness, read in the workspace-wide finalize pass after every module's
+const inference: an unannotated `__iter__` that neither mutates nor lends
+mutable borrows is inferred const and iterates a readonly source, while a
+`@readonly(False)` opt-out or a `@dynamic`-protocol override stays non-const
+and is rejected. An explicit `c.method()` is judged earlier, on the declared
+`is_readonly` (TODO.md "Converge the explicit method call with the
+implicit-dunder chokepoint"). Two gaps remain: a non-mutating `__iter__`
+that inference keeps non-const is rejected for mutation it does not do
+(BUGS.md#readonly-source-nonmutating-iter-rejected), and a readonly protocol
+or type-parameter param (`readonly[Iterable[int32]]`, `readonly[T]`)
+iterated over a record with a mutating `__iter__` still fails in C++
+(BUGS.md#readonly-protocol-param-mutating-iter-cpp-error). One helper
+(`tpyc/sema/receiver_calls.py`) holds the receiver effects of every implicit
+spelling.
+
 ### Local variable deduction
 
 When a local variable is assigned from a readonly expression, it inherits

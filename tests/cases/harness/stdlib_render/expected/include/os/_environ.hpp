@@ -109,7 +109,7 @@ inline _Environ::_Environ() : _data(::tpy::ordered_map<std::string, std::string>
 //         raise KeyError(key)
 //     return self._data[key]
 inline std::string _Environ::__getitem__(std::string_view key) const {
-    if (!::tpy::seq_contains(this->_data, key)) {
+    if ((!(this->_data.contains(key)))) {
         throw ::tpy::KeyError(key);
     }
     return ::tpy::__getitem__(this->_data, key);
@@ -141,7 +141,7 @@ inline void _Environ::__delitem__(std::string_view key) {
 // def __contains__(self, key: str) -> bool:
 //     return key in self._data
 inline bool _Environ::__contains__(std::string_view key) const {
-    return ::tpy::seq_contains(this->_data, key);
+    return (this->_data.contains(key));
 }
 
 // def __len__(self) -> int32:

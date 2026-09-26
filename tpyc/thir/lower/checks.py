@@ -242,6 +242,8 @@ from .predicates import (
     _field_over_subscript_ok,
     _field_over_record_getitem_ok,
     _record_getitem_borrow_subscript,
+    _getitem_container_lvalue,
+    _nested_container_elem_type,
     _borrow_tuple_param_elem_subscript,
     _tuple_field_opt_elem_subscript,
     _empty_instantiation_family,
@@ -1360,9 +1362,11 @@ def _container_ref_alias_elem_subscript(e: TpyExpr,
                                         pointers: "AbstractSet[str]") -> bool:
     """A container subscript whose element/value is itself a plain list/dict/set
     (`row = matrix[0]`): the element lvalue (`T&`) binds a REF_ALIAS local. The
-    nested-container analog of `_container_record_elem_subscript`."""
-    return _borrow_elem_subscript_shape(e, locals_, analyzer,
-                                        _container_ref_alias_elem, pointers)
+    nested-container analog of `_container_record_elem_subscript`. A user
+    `__getitem__` returning a container by reference is the same lvalue."""
+    return (_borrow_elem_subscript_shape(e, locals_, analyzer,
+                                         _container_ref_alias_elem, pointers)
+            or _getitem_container_lvalue(e, locals_, analyzer, pointers))
 
 
 def _container_wrapper_elem_subscript(e: TpyExpr,
@@ -2014,13 +2018,10 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
             return binding
         # A borrow-returning user-record `__getitem__` subscript (`r = e[k]`)
         # binds the single-assignment `T&` alias of the bare operator[]
-        # lvalue. REF_ALIAS only: the reassigned POINTER sibling reaches the
-        # subscript lowering's own record-getitem arm, which refuses the
-        # address-of lift. A CONTAINER pointee does not reach this rung at
-        # all in either flavor -- `_record_getitem_borrow_subscript` keys the
-        # RESULT on `_f1_record` -- so the sibling rungs' container reach
-        # stops here (BUGS.md#record-getitem-container-result-alias-rejects).
-        if (binding is LocalBinding.REF_ALIAS
+        # lvalue or, reassigned, the reseatable `T* r = &(e[k]);` -- the
+        # record-element rung's two flavors. A container result takes the
+        # nested-container rung below.
+        if (binding in (LocalBinding.REF_ALIAS, LocalBinding.POINTER)
                 and record_like(target_type, analyzer)
                 and _record_getitem_borrow_subscript(stmt.init, declared,
                                                      analyzer, pointers)):
@@ -3590,6 +3591,29 @@ def _record_setitem_record_source(v: TpyExpr, elem_t: 'TpyType',
             and analyzer.get_expr_type(v) == elem_t)
 
 
+def _setitem_container_value_source(v: TpyExpr, elem_t: 'TpyType',
+                                    analyzer) -> bool:
+    """A non-NAME value the container-element write renders
+    (`_lower_container_elem_value`) into a user `__setitem__`'s container
+    value slot: a container literal, a comprehension of the slot's kind, or
+    a by-value call of the slot's type. A NAME source is the record rows'
+    (moved at its last use, copied otherwise)."""
+    if not _nested_container_elem_type(elem_t):
+        return False
+    if isinstance(v, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
+        return True
+    if _container_comp_arg(v, elem_t):
+        return True
+    vt = analyzer.get_expr_type(v)
+    if not isinstance(v, (TpyCall, TpyMethodCall)) or vt is None:
+        return False
+    vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vt)))
+    if isinstance(vt, OwnType):
+        vt = unwrap_readonly(vt.wrapped)
+    return (vt == unwrap_readonly(unwrap_ref_type(unwrap_send_sync(elem_t)))
+            and is_rvalue_source(analyzer, v))
+
+
 def _user_record_setitem_ok(
         stmt: TpyAssign, declared: dict[str, TpyType], pointers: set[str],
         narrowed: AbstractSet[str], analyzer) -> bool:
@@ -3604,7 +3628,9 @@ def _user_record_setitem_ok(
     template forwards unchanged (a str/bytes value slot, whose render adds an
     owned-copy / storage lift, rejects) -- or an F1 RECORD, whose admitted
     sources are a bare record NAME and a record rvalue, both of which the
-    template forwards unchanged too."""
+    template forwards unchanged too -- or a CONTAINER, whose NAME source is
+    the record rows' and whose other sources are the container-element
+    write's (`_setitem_container_value_source`)."""
     sub = stmt.target
     if isinstance(sub.index, TpySlice) or sub.slice_function_info is not None:
         return False
@@ -3663,18 +3689,22 @@ def _user_record_setitem_ok(
                 or (record_like(et, analyzer)
                     and _record_setitem_record_source(stmt.value, et,
                                                       declared, pointers,
-                                                      narrowed, analyzer)))
+                                                      narrowed, analyzer))
+                or _setitem_container_value_source(stmt.value, et, analyzer))
     return (_eligible_scalar(vbare) or _eligible_char(vbare)
             or _eligible_enum(vbare, analyzer) is not None
             or _eligible_ptr_value(vbare, analyzer)
             # A plain F1-RECORD value slot binds `const T&`, so a record
             # NAME copies into it and an rvalue binds directly -- both are
             # the bare forward. The `Own[...]` flavor is a `T&&` sink and
-            # takes the move split in the write arm.
-            or (record_like(vbare, analyzer)
-                and _record_setitem_record_source(stmt.value, vbare, declared,
+            # takes the move split in the write arm, so its source matches
+            # the payload type.
+            or (record_like(vopen, analyzer)
+                and _record_setitem_record_source(stmt.value, vopen, declared,
                                                   pointers, narrowed,
                                                   analyzer))
+            or _setitem_container_value_source(
+                stmt.value, analyzer.get_expr_type(sub), analyzer)
             # A str LITERAL into a str-view value slot renders bare (no
             # owned-copy / storage lift fires on a literal) --
             # `other["CONTENT-TYPE"] = "application/json"`. Non-literal str
@@ -14653,6 +14683,34 @@ def _user_iterator_iterable(u: 'TpyType | None', analyzer) -> bool:
     return bool(
         analyzer.registry.get_method_overloads_with_parents(rec, "__iter__")
         or analyzer.registry.get_method_overloads_with_parents(rec, "__next__"))
+
+
+def _user_iterable_ctor_arg(a: TpyExpr, declared: dict[str, TpyType],
+                            analyzer) -> bool:
+    """A user iterable LVALUE -- a name, `self` or a field read off an
+    admitted receiver -- at a container constructor's `Iterable[T]` slot
+    (`list(bag)`): a record in the `__iter__`/`__next__` family with no
+    begin()/end() of its own, which the construct template drains through
+    the iterator its `__iter__()` returns. Binds bare, like a protocol param
+    name at the same slot."""
+    if isinstance(a, TpyName):
+        if a.name == "self":
+            t = analyzer.get_expr_type(a)
+        elif a.name in declared:
+            t = declared[a.name]
+        else:
+            return False
+    elif isinstance(a, TpyFieldAccess):
+        if not _field_receiver_ok(a, declared, analyzer):
+            return False
+        t = _field_decl_type(a, declared, analyzer)
+    else:
+        return False
+    u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+         if t is not None else None)
+    return (isinstance(u, NominalType) and not u.is_protocol
+            and not is_native_iterable(u, analyzer.registry)
+            and _user_iterator_iterable(u, analyzer))
 
 
 def _iter_proto_call_ret(it: 'TpyCall | TpyMethodCall', analyzer) -> bool:

@@ -1,0 +1,1 @@
+main.py:25: error: Cannot call non-readonly method '__iter__' on readonly reference

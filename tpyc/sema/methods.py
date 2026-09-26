@@ -41,9 +41,9 @@ from .calls import (
     resolve_inferred_type_arg,
 )
 from .type_ops import seeded_arg_hint
-from .context import _root_name_of_expr, PENDING_CONTAINER_TYPES
-from .statements import (_is_self_call_deferred, _local_traces_to_self,
-                         _receiver_leaves)
+from .context import PENDING_CONTAINER_TYPES
+from .receiver_calls import (check_receiver_call_loans, credit_receiver_mutation,
+                             receiver_is_readonly)
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -55,8 +55,6 @@ if TYPE_CHECKING:
     from .calls import CallAnalyzer
     from ..typesys import PendingGenericInstanceInfo
 
-from .context import (element_index_key, element_loan_mutation_warning,
-                      loan_mutation_warning)
 from .local_deduction import mark_pending_list_mutated, view_source_is_temporary
 
 
@@ -148,101 +146,6 @@ class MethodAnalyzer:
             return False
         overloads = record.get_method_overloads(method_name)
         return bool(overloads) and all(m.is_readonly for m in overloads)
-
-    def _credit_receiver_mutation(self, recv: TpyExpr, obj_type,
-                                  method: str) -> None:
-        """Record that a mutating (non-readonly) call mutates `recv`."""
-        obj_root = _root_name_of_expr(recv)
-        if obj_root is not None:
-            self.ctx.mark_loop_var_mutated(obj_root)
-            is_direct_self_call = (
-                isinstance(recv, TpyName) and recv.name == "self"
-            )
-            if is_direct_self_call:
-                # self.method() -- entirely deferred to call edges
-                pass
-            else:
-                # For self.field.method() and loop_var.method() (where the
-                # loop var iterates over a self field), defer self-mutation
-                # to Phase 2 via call edges (a receiver_idx, recorded
-                # by _record_mutation_call_edges). Phase 2 only sets
-                # self_mutated when the callee actually mutates its self,
-                # enabling readonly inference for methods like __json_encode__
-                # that call non-mutating methods on fields.
-                self_deferred = _is_self_call_deferred(
-                    recv, obj_root, self.ctx.func.loop_var_iterable,
-                    self.ctx.func.borrow_tracker)
-                if not self_deferred:
-                    self.ctx.mark_param_mutated(obj_root)
-                # Structural mutation tracked directly (Phase 2 doesn't
-                # propagate structural self-mutation through call edges).
-                if self._is_invalidating_method(obj_type, method):
-                    self.ctx.mark_param_structurally_mutated(obj_root)
-            storage = self.ctx.func.borrow_tracker.effective_storage(obj_root)
-            self.ctx.mark_all_view_borrowers_mutated(storage)
-            return
-        # Check for chained method calls rooted at self:
-        # self.get_span().sort() -- sort() is non-readonly and
-        # the span is a mutable view of self's storage.
-        # Treat as self-mutation conservatively. A chain rooted
-        # at a local that borrow-traces to self.<field> (e.g.
-        # `frame = self.frame; frame.get().mutating_method()`)
-        # is also a self-mutation since the receiver aliases
-        # self-owned storage.
-        chain = recv
-        while isinstance(chain, TpyMethodCall):
-            chain = chain.obj
-        chain_root = _root_name_of_expr(chain)
-        if chain_root is not None and _local_traces_to_self(
-                self.ctx.func.borrow_tracker, chain_root):
-            self.ctx.mark_param_mutated("self")
-
-    def _is_invalidating_method(self, obj_type: TpyType, method_name: str) -> bool:
-        """Check if a method invalidates iterators/references on a container.
-
-        For builtin types (list, dict, set, etc.): a method invalidates if it
-        is non-readonly AND not marked with @native_preserves_refs.
-        For user-defined types: fall back to treating any non-readonly method
-        as potentially invalidating, since we can't know if it reallocates.
-        """
-        # Builtin types: precise check using native_preserves_refs
-        qname = obj_type.qualified_name()
-        if qname:
-            builtin_record = self.ctx.registry.get_builtin_record(qname)
-            if builtin_record is not None:
-                overloads = builtin_record.get_method_overloads(method_name)
-                if not overloads:
-                    return False
-                # The mutable clone of an @auto_readonly accessor (values/
-                # items) hands out a borrow but does not mutate the receiver.
-                return any(not m.is_readonly and not m.native_preserves_refs
-                           and not m.is_auto_readonly_mutable_clone
-                           for m in overloads)
-        # User-defined types: use inferred direct_self_mutated from Phase 1
-        # mutation analysis. More precise than is_readonly -- a method that
-        # doesn't mutate self won't invalidate references even without
-        # @readonly annotation. None means not yet analyzed (forward ref);
-        # treat conservatively as potentially mutating.
-        record = self.ctx.registry.get_record_for_type(obj_type)
-        if record is None:
-            return False
-        overloads = record.get_method_overloads(method_name)
-        if not overloads:
-            return False
-        # Use inferred structural mutation: only methods that directly
-        # structurally mutate self (append/insert/del on self's fields) can
-        # invalidate references. Getters and field-only mutations are safe.
-        # None means not yet analyzed (forward ref) -> conservative.
-        # Note: indirect structural mutation through same-class method calls
-        # is not detected here (requires Phase 2 propagation, which runs
-        # after body analysis). This is a known limitation.
-        for m in overloads:
-            if m.is_readonly:
-                continue
-            smp = m.direct_structural_mutated_params
-            if smp is None or -1 in smp:
-                return True
-        return False
 
     def _infer_pending_container_element(
         self,
@@ -856,9 +759,7 @@ class MethodAnalyzer:
         # Send/Sync markers (canonically outermost) constrain stores into the
         # slot, not receiver dispatch -- strip before the readonly check.
         obj_type = unwrap_send_sync(unwrap_ref_type(obj_type))
-        is_readonly_receiver = isinstance(obj_type, ReadonlyType)
-        if not is_readonly_receiver and isinstance(expr.obj, TpyName):
-            is_readonly_receiver = self.ctx.is_readonly_name(expr.obj.name)
+        is_readonly_receiver = receiver_is_readonly(self.ctx, expr.obj, obj_type)
         if isinstance(obj_type, ReadonlyType):
             obj_type = obj_type.wrapped
 
@@ -925,31 +826,7 @@ class MethodAnalyzer:
                     )
 
         # Borrow conflict: structural mutation on a container with element-level borrows.
-        # Resolves aliases so that alias.append() warns when items has element borrows.
-        # Also handles field-path receivers (self.items.append()).
-        bt = self.ctx.func.borrow_tracker
-        storage = bt.resolve_obj_storage(expr.obj)
-        if storage is not None:
-            if bt.has_element_borrow(storage):
-                is_mutation = self._is_invalidating_method(obj_type, expr.method)
-                if is_mutation:
-                    self.ctx.warning(loan_mutation_warning(
-                        storage, f"'{expr.method}'",
-                        iterating=bt.has_iter_borrow(storage)), expr)
-        elif isinstance(expr.obj, TpySubscript):
-            # The receiver is itself an element read, which no storage key can
-            # spell. A loan taken out of an element of the SAME container is
-            # clobbered by a reallocating method on any of its elements, so the
-            # conflict is asked of the container the receiver came out of.
-            inner = expr.obj.obj
-            elem_of = bt.resolve_obj_storage(inner)
-            hit = (bt.element_hop_loan(
-                       elem_of, element_index_key(expr.obj.index))
-                   if elem_of is not None else None)
-            if hit is not None and self._is_invalidating_method(
-                    obj_type, expr.method):
-                self.ctx.warning(element_loan_mutation_warning(
-                    f"{elem_of}[...]", f"'{expr.method}'", hit), expr)
+        check_receiver_call_loans(self.ctx, expr.obj, obj_type, expr.method, expr)
 
         # Deref chain -- resolves through Ptr (mutable and readonly) and any Deref[T] type
         original_type = obj_type
@@ -1023,9 +900,9 @@ class MethodAnalyzer:
                         and not interior_receiver):
                     # A select receiver is each operand it may pick, and
                     # each is credited exactly as a single receiver would be.
-                    for leaf in _receiver_leaves(expr.obj):
-                        self._credit_receiver_mutation(leaf, obj_type,
-                                                       expr.method)
+                    # The self-rooted call edge is `_record_mutation_call_edges`'s.
+                    credit_receiver_mutation(self.ctx, expr.obj, obj_type,
+                                             expr.method, edges_recorded=True)
                 return result
 
             deref_target = self.expr.get_deref_target_type(

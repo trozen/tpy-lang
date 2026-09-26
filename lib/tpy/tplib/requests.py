@@ -374,9 +374,6 @@ class Cookie:
         return self.name + "=" + self.value
 
     def __eq__(self, other: Cookie) -> bool:
-        # Cookie must be Equatable so a `name in jar._store` membership test on a
-        # const/readonly jar compiles -- an `in` over a const dict whose value
-        # type is not Equatable is rejected (BUGS.md, the const-dict `in` entry).
         return (self.name == other.name and self.value == other.value
                 and self.domain == other.domain and self.path == other.path
                 and self.secure == other.secure and self.deleted == other.deleted

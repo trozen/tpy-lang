@@ -36,6 +36,8 @@ _SELFCHECKS = [
      "owning combinators stay movable until their first pull"),
     ("test_combinator_elem_form.cpp",
      "combinators hand an element on in the form its source steps it"),
+    ("test_iter_range.cpp",
+     "every iterable kind loops through iter_range in the form it came in"),
     ("test_copy_iter_sources.cpp",
      "copy_iter borrows an lvalue source, owns a temporary and copies each element"),
 ]

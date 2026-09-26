@@ -1372,6 +1372,9 @@ class THIRComprehension(THIRExpr):
     range_step: 'THIRExpr | None' = None  # 3-arg range step (untargeted render)
     iterable: 'THIRExpr | None' = None    # begin_end only
     iterable_lvalue: bool = True
+    # begin_end over the iterator `__iter__()` returns: the capture goes
+    # through `::tpy::iter_range` (an rvalue source is owned first).
+    iter_protocol: bool = False
     sized_reserve: bool = False           # list over a sized begin_end iterable
     unpack_targets: tuple = ()            # ('a', None, 'b') -- None = discard
     unpack_target_cpps: tuple = ()

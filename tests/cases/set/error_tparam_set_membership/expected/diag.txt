@@ -1,2 +1,0 @@
-main.py:14: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
-main.py:17: error: in function 'has': this construct is not yet supported by C++ code generation (stmt.return:binop.shape.in.tparam)
