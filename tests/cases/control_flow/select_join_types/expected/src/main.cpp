@@ -272,7 +272,7 @@ void int_float_select(int32_t a, int64_t big, double f, bool c) {
     std::cout << "int_float_declared:" << " " << ::tpy::print_float((::tpy::truediv(y, 2))) << "\n";
     double v = (a ? double(a) : 2.5);
     std::cout << "int_float_or_declared:" << " " << ::tpy::print_float((::tpy::truediv(v, 2))) << "\n";
-    if ((a || 2.5)) {
+    if ((a || true)) {
         std::cout << "int_float_or_condition" << "\n";
     }
     int64_t w = ((c) ? (static_cast<int64_t>(a)) : (big));

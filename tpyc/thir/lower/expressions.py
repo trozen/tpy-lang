@@ -167,7 +167,7 @@ from ..reject import (ThirUnsupported, call_reject_reason, expr_kind_tag,
                         is_bodyless_binding, note_detail)
 from ..faces import witness as _witness
 from .arg_table import (_ArgReq, _ArgRow, _ArgSink, arg_ok, register_sink)
-from ...sema.literal_utils import literal_value_from_expr
+from ...sema.literal_utils import literal_value_from_expr, numeric_literal_truth
 from ...sema.type_ops import signature_may_return_borrow
 from ...codegen_cpp.int_literals import render_int_literal_value
 from ..nodes import (
@@ -17162,11 +17162,18 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
     OPERANDS never thread it (a short-circuit RHS temp would hoist
     eagerly)."""
     if isinstance(e, (TpyStrLiteral, TpyBytesLiteral, TpyNoneLiteral)):
-        # A NUMERIC literal condition (`if 1:`) reaches the scalar arm below
-        # and renders bare, like any other scalar. The str/bytes/None
-        # literals keep rejecting: their render in this position is
-        # unverified, and `None` has no boolean spelling at all.
+        # A NUMERIC literal condition (`if 1:`) folds just below. The
+        # str/bytes/None literals keep rejecting: their render in this
+        # position is unverified, and `None` has no boolean spelling at all.
         raise ThirUnsupported("truthy.literal")
+    lit = numeric_literal_truth(e)
+    if lit is not None:
+        # The bare literal in a C++ condition trips clang's
+        # -Wliteral-conversion (`if (2.5)`) and -Wconstant-logical-operand
+        # (`a || 2`).
+        _witness("truthy.numeric_literal_fold")
+        return THIRLiteral(result_type=BOOL, value=lit,
+                           loc=getattr(e, "loc", None))
     if isinstance(e, TpyName) and e.name in lc.narrow.any_narrowed:
         # A narrowed-Any subject read in truthy position: truthiness keys
         # on the DECLARED Any (`::tpy::to_bool(alias)`) even though sema
@@ -17401,9 +17408,8 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
                 raise ThirUnsupported("truthy.subscript_mode")
         elif native_scalar:
             # Any remaining shape whose type renders its own test -- a scalar
-            # ELEMENT read (`if xs[i]:`), a numeric literal (`if 1:`). The
-            # value render is the condition, so there is nothing shape-
-            # specific left to decide.
+            # ELEMENT read (`if xs[i]:`). The value render is the condition,
+            # so there is nothing shape-specific left to decide.
             pass
         elif not isinstance(e, (TpyUnaryOp, TpyChainedCompare)):
             raise ThirUnsupported("truthy.shape")

@@ -2226,6 +2226,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "cond.isinstance_static",
     # Non-identity `_truthy_for_rendered` arms carried by THIRTruthy.
     "truthy.global_slot",           # ptr-repr Optional global: `!(g)`
+    "truthy.numeric_literal_fold",  # `if 2.5:` / `a or 0` -> `true` / `false`
     "truthy.nonempty",
     "truthy.is_truthy",
     "truthy.to_bool",

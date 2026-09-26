@@ -1,0 +1,36 @@
+a = 0 True
+if_float
+if_neg_float
+while_int: 2
+or_float
+or_big_float
+or_unary_plus
+not_literal: False True
+ternary_test: 1
+assert_ok
+assert_zero: zero
+comp_filter: 0
+genexpr_filter: 3
+gen: [1, 2]
+a = 3 False
+if_float
+if_neg_float
+while_int: 2
+or_float
+and_float_left
+and_int
+or_zero
+or_big_float
+or_unary_plus
+and_fixed_int
+not_literal: False False
+ternary_test: 1
+ternary_arm
+assert_ok
+assert_zero: zero
+comp_filter: 3
+genexpr_filter: 3
+gen: [1, 2]
+guard: guard guard
+method: 3
+module_if

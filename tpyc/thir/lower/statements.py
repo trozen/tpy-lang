@@ -138,7 +138,8 @@ from ...type_def_registry import (
 from ...modules.type_resolution import is_native_iterable
 from ...codegen_cpp.gen_async import sub_struct_qualname
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
-                                   literal_value_from_expr)
+                                   literal_value_from_expr,
+                                   numeric_literal_truth)
 from ...codegen_cpp.forms import (
     is_borrow_form_tuple_global,
     loop_binding_kind,
@@ -15705,6 +15706,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             cond = THIRLiteral(
                 result_type=analyzer.get_expr_type(stmt.condition),
                 value=stmt.condition.value, loc=getattr(stmt.condition, "loc", None))
+            return THIRAssert(condition=cond, message=msg, fold_constant=True,
+                              loc=loc)
+        if (lit := numeric_literal_truth(stmt.condition)) is not None:
+            cond = THIRLiteral(result_type=BOOL, value=lit,
+                               loc=getattr(stmt.condition, "loc", None))
             return THIRAssert(condition=cond, message=msg, fold_constant=True,
                               loc=loc)
         if isinstance(stmt.condition, TpyNoneLiteral):

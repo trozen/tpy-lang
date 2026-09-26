@@ -65,7 +65,7 @@ int32_t scalar_shapes(Holder& h, const std::vector<int32_t>& xs, char c) {
     if ((::tpy::add_check<int32_t>(seen, 1))) {
         seen = ::tpy::add_check<int32_t>(seen, 128);
     }
-    if (1) {
+    if (true) {
         seen = ::tpy::add_check<int32_t>(seen, 256);
     }
     if (c) {

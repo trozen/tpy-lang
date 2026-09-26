@@ -105,3 +105,17 @@ def fixed_int_literal_value_from_expr(expr: TpyExpr) -> int | None:
             assert isinstance(value.value, int) and not isinstance(value.value, bool)
             return value.value
     return None
+
+
+def numeric_literal_truth(expr: TpyExpr) -> bool | None:
+    """The compile-time truth of a numeric literal (`2.5`, `-0.0`, `+1`,
+    `int32(2)`), else None. A fixed-int ctor's literal is range-checked by
+    sema, so its value is the value C++ holds."""
+    if isinstance(expr, TpyUnaryOp) and expr.op in ("+", "-"):
+        return numeric_literal_truth(expr.operand)
+    lit = const_expr_type(expr)
+    if (isinstance(lit, (IntLiteralType, FloatLiteralType))
+            and lit.value is not None):
+        return bool(lit.value)
+    v = fixed_int_literal_value_from_expr(expr)
+    return None if v is None else bool(v)
