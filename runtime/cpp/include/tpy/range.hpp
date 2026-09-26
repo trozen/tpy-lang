@@ -10,6 +10,8 @@
 #include <cstdint>
 #include <iostream>
 #include <limits>
+#include <sstream>
+#include <string>
 #include <type_traits>
 #include "fixed_int.hpp"
 #include "type_traits.hpp"
@@ -106,12 +108,36 @@ public:
     }
     Iterator end() const { return {end_, end_, step_}; }
 
+    // CPython's range repr; `__repr__` / `__str__` below render through it.
     friend std::ostream& operator<<(std::ostream& os, const Range& r) {
-        os << "range(" << r.start_ << ", " << r.end_;
-        if (r.step_ != T{1}) os << ", " << r.step_;
+        // Unary + promotes int8_t / uint8_t, which ostream prints as characters.
+        auto num = [&os](const T& v) -> std::ostream& {
+            if constexpr (std::is_integral_v<T>) return os << +v;
+            else return os << v;
+        };
+        os << "range(";
+        num(r.start_) << ", ";
+        num(r.end_);
+        if (r.step_ != T{1}) {
+            os << ", ";
+            num(r.step_);
+        }
         return os << ")";
     }
 };
+
+// Spelled for Range itself rather than left to dunder.hpp's generic
+// fallbacks: where the standard library formats ranges, a fixed-int Range is
+// std::formattable, and that fallback would print its elements as a list.
+template<typename T>
+std::string __repr__(const Range<T>& r) {
+    std::ostringstream ss;
+    ss << r;
+    return ss.str();
+}
+
+template<typename T>
+std::string __str__(const Range<T>& r) { return __repr__(r); }
 
 // Owns three T values and borrows nothing -- a value type, Send / Sync by the
 // default that follows.

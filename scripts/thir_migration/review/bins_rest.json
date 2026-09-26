@@ -886,5 +886,53 @@
   "probe": null,
   "plain_raise": false,
   "known_shape": null
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6668,
+  "func": "_lower_expr_impl",
+  "reason": "\"subscript.slice_shape\"",
+  "bin": "BREAKS",
+  "confidence": "high",
+  "evidence": "A method returning a slice of a bytearray FIELD (`return self.cc[0:2]` at `-> bytes`) rejects as stmt.return:subscript.slice_shape; CPython returns the slice. Reproduced 2026-09-26; surfaced by the termios work.",
+  "probe": "scripts/thir_migration/review/probes/rest/bytearray_field_slice_return.py",
+  "plain_raise": false,
+  "known_shape": null
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 16954,
+  "func": "_lower_stmt_dispatch",
+  "reason": "\"print.arg.record_nonf1_field_access\"",
+  "bin": "BREAKS",
+  "confidence": "high",
+  "evidence": "`print(a.cc)` for a bytearray field of a record rejects as stmt.expr_stmt:print.arg.record_nonf1_field_access (tag composed from `print.arg.{fam}_` + the arg's kind detail); CPython prints bytearray(b'...'). Reproduced 2026-09-26.",
+  "probe": "scripts/thir_migration/review/probes/rest/print_bytearray_field.py",
+  "plain_raise": false,
+  "known_shape": null
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 6767,
+  "func": "_lower_expr_impl",
+  "reason": "\"subscript.tuple_shape\"",
+  "bin": "BREAKS",
+  "confidence": "high",
+  "evidence": "Subscripting a local tuple with a bytes element (`r = get(); print(r[0], r[1])`, get -> tuple[int32, bytes]) rejects as stmt.expr_stmt:subscript.tuple_shape, while unpacking the same tuple (`err, data = get()`) lowers. Reproduced 2026-09-26.",
+  "probe": "scripts/thir_migration/review/probes/rest/tuple_bytes_elem_subscript.py",
+  "plain_raise": false,
+  "known_shape": null
+ },
+ {
+  "file": "tpyc/thir/lower/expressions.py",
+  "line": 11877,
+  "func": "_lower_checked_container_elem",
+  "reason": "\"expr.container_literal\"",
+  "bin": "BREAKS",
+  "confidence": "high",
+  "evidence": "A list literal of ranges (`rs = [range(3), range(1, 5, 2)]`) rejects at the element arm; site pinned by instrumenting ThirUnsupported 2026-09-26. CPython builds the list. See BUGS.md#range-type-annotation-unknown for the annotated spelling.",
+  "probe": "scripts/thir_migration/review/probes/rest/range_list_literal.py",
+  "plain_raise": false,
+  "known_shape": null
  }
 ]

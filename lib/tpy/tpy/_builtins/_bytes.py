@@ -115,6 +115,11 @@ class bytes(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @pure
     def __hash__(self) -> uint64: ...
 
+    @native("tpy::__repr__", function=True)
+    @readonly
+    @pure
+    def __repr__(self) -> str: ...
+
     @native("tpy::bytes_decode", function=True)
     @readonly
     @pure
@@ -260,6 +265,11 @@ class bytearray(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @readonly
     @pure
     def __lt__(self, other: bytearray) -> bool: ...
+
+    @native("tpy::__repr__", function=True)
+    @readonly
+    @pure
+    def __repr__(self) -> str: ...
 
     @native("tpy::bytes_contains", function=True)
     @readonly

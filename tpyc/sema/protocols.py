@@ -402,10 +402,8 @@ class ProtocolChecker:
         # whose codegen template handles both branches via the runtime.
         if protocol.qualified_name() == qnames.STRINGABLE:
             record_info = self.ctx.registry.get_record_for_type(actual)
-            if record_info is not None:
-                if (record_info.get_method_overloads("__str__")
-                        or record_info.get_method_overloads("__repr__")):
-                    return ProtocolConformanceKind.EXPLICIT
+            if record_info is not None and record_info.declares_str_or_repr():
+                return ProtocolConformanceKind.EXPLICIT
 
         # Unified lookup - all protocols (builtin and user) are in the registry
         protocol_info = protocol_info_of(protocol)

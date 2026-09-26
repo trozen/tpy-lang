@@ -91,6 +91,11 @@ void close_fd(int64_t fd);
 int64_t write_fd(int64_t fd, std::span<const uint8_t> data);
 int64_t lseek_fd(int64_t fd, int64_t pos, int64_t how);
 std::tuple<int64_t, int64_t> pipe_fd();
+// O_NONBLOCK via fcntl(F_GETFL/F_SETFL).
+bool get_blocking_fd(int64_t fd);
+void set_blocking_fd(int64_t fd, bool blocking);
+// (master, slave) of a fresh pseudo-terminal pair.
+std::tuple<int64_t, int64_t> openpty_fd();
 int64_t dup_fd(int64_t fd);
 int64_t dup2_fd(int64_t fd, int64_t fd2);
 std::tuple<int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, int64_t,
