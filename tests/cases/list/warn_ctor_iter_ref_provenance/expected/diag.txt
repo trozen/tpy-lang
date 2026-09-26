@@ -1,0 +1,24 @@
+main.py:43: warning: copies C elements; use copy_iter() to make this explicit
+main.py:24: warning: copies C elements; use copy_iter() to make this explicit
+main.py:49: warning: copies C elements; use copy_iter() to make this explicit
+main.py:55: warning: copies C elements; use copy_iter() to make this explicit
+main.py:64: warning: copies tuple[int32, C] elements; use copy_iter() to make this explicit
+main.py:67: warning: copies C elements; use copy_iter() to make this explicit
+main.py:77: warning: copies C elements; use copy_iter() to make this explicit
+main.py:81: warning: copies C elements; use copy_iter() to make this explicit
+main.py:87: warning: may copy T elements if not a value type; use copy_iter() to make this explicit
+main.py:92: warning: may copy T elements if not a value type; use copy_iter() to make this explicit
+main.py:113: warning: copies tuple[int32, C] elements; use copy_iter() to make this explicit
+main.py:115: warning: copies tuple[int32, C] elements; use copy_iter() to make this explicit
+main.py:118: warning: copies tuple[int32, C] elements; use copy_iter() to make this explicit
+main.py:120: warning: copies tuple[int32, C] elements; use copy_iter() to make this explicit
+main.py:123: warning: copies tuple[int32, C] elements; use copy_iter() to make this explicit
+main.py:125: warning: copies C elements; use copy_iter() to make this explicit
+main.py:128: warning: copies C elements; use copy_iter() to make this explicit
+main.py:130: warning: copies C elements; use copy_iter() to make this explicit
+main.py:133: warning: copies C elements; use copy_iter() to make this explicit
+main.py:135: warning: copies C elements; use copy_iter() to make this explicit
+main.py:138: warning: copies C elements; use copy_iter() to make this explicit
+main.py:141: warning: copies tuple[int32, tuple[int32, C]] elements; use copy_iter() to make this explicit
+main.py:145: warning: copies C elements; use copy_iter() to make this explicit
+main.py:146: warning: copies C elements; use copy_iter() to make this explicit

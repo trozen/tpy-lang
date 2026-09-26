@@ -14,7 +14,7 @@ it is the old single-file `lower.py` API, unchanged.
 
 from .context import _LowerCtx, _LowerScope, _Prescan
 from .checks import _is_len_native, gen_recv_ctor_temp
-from .predicates import frame_temp_arg_slot
+from .predicates import frame_temp_arg_slot, frame_temp_elem_slots
 from .functions import (
     iter_module_callables,
     unemitted_overload_clones,
@@ -29,6 +29,7 @@ from .statements import _persistent_alias_name
 
 __all__ = [
     "frame_temp_arg_slot",
+    "frame_temp_elem_slots",
     "gen_recv_ctor_temp",
     "iter_module_callables",
     "unemitted_overload_clones",

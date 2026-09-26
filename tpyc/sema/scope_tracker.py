@@ -19,7 +19,8 @@ from ..parse import (
 from ..namespace import Namespace
 from ..diagnostics import Scope
 from ..value_category import call_returns_cpp_ref, property_access_returns_cpp_ref
-from .context import ITER_BORROWER, CallOperands, call_borrow_operands
+from .context import (
+    ITER_BORROWER, CallOperands, call_borrow_operands, call_lend_sources)
 from .type_ops import signature_may_return_borrow
 
 if TYPE_CHECKING:
@@ -90,7 +91,7 @@ def lend_roots(ctx: SemanticContext, expr: TpyExpr, through_call: bool = False,
         return []
     # A `@property` read is a path hop like the field it wraps.
     through_call = through_call or not is_property_getter_read(expr)
-    sources, facts_pending = _call_lend_sources(ctx, expr, operands)
+    sources, facts_pending = _call_result_sources(ctx, expr, operands)
     roots: list[LendRoot] = []
     for source, held in sources:
         roots.extend(lend_roots(ctx, source, through_call,
@@ -98,14 +99,13 @@ def lend_roots(ctx: SemanticContext, expr: TpyExpr, through_call: bool = False,
     return roots
 
 
-def _call_lend_sources(ctx: SemanticContext, expr: TpyExpr,
-                       operands: CallOperands
-                       ) -> tuple[list[tuple[TpyExpr, bool]], bool]:
+def _call_result_sources(ctx: SemanticContext, expr: TpyExpr,
+                         operands: CallOperands
+                         ) -> tuple[list[tuple[TpyExpr, bool]], bool]:
     """The operands of one call whose storage its result may point into,
     each with whether the result only holds it whole, and whether that
     answer is an assumption about a pending callee."""
-    fi, obj, args = operands
-    everything = ([obj] if obj is not None else []) + list(args)
+    fi, obj = operands.fi, operands.obj
     if is_property_getter_read(expr):
         # The read's own convention is decided per INSTANTIATION (a bare
         # type-param return) and per storage-ref shape, which the body
@@ -121,19 +121,16 @@ def _call_lend_sources(ctx: SemanticContext, expr: TpyExpr,
         if fi in pending or fi.root in pending:
             # Body not analyzed yet (a forward reference): assume every
             # operand, as the borrow registration does.
-            return [(op, False) for op in everything], True
+            return [(src.expr, False)
+                    for src in call_lend_sources(operands,
+                                                 expr_type=None)], True
         # A body-less stub records no fact; its declared convention is
         # the answer, and a reference it returns is into its receiver.
         return ([(obj, False)] if obj is not None
                 and call_returns_cpp_ref(ctx, fi) else []), False
-    held = held_whole_borrow_sources(fi)
-    sources = []
-    for idx in sorted(recorded_return_borrow_sources(fi)):
-        if idx == -1 and obj is not None:
-            sources.append((obj, idx in held))
-        elif 0 <= idx < len(args):
-            sources.append((args[idx], idx in held))
-    return sources, False
+    return [(src.expr, src.held_whole) for src in call_lend_sources(
+        operands, recorded_return_borrow_sources(fi),
+        held_whole_borrow_sources(fi), expr_type=None)], False
 
 
 class ScopeTracker:

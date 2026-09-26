@@ -5,8 +5,8 @@ namespace tpyapp::main {
 
 
 // def count(d: readonly[dict[str, Node]]) -> int32:
-//     # copies each Node (BUGS.md#dict-view-source-copy-unwarned); only len is read
-//     xs = ArrayList[tuple[str, readonly[Node]], 16](d.items())  # tpyc: ok
+//     # copies each Node out of the live dict, so it warns; only len is read
+//     xs = ArrayList[tuple[str, readonly[Node]], 16](d.items())  # tpyc: warning(/copies .* elements/)
 //     return len(xs)
 int32_t count(const ::tpy::ordered_map<std::string, Node>& d) {
     ::tpy::dict_items_view<std::string, const Node> __tmp_1 = ::tpy::dict_items(d);
@@ -15,8 +15,8 @@ int32_t count(const ::tpy::ordered_map<std::string, Node>& d) {
 }
 
 // def count_values(d: readonly[dict[str, Node]]) -> int32:
-//     # copies each Node (BUGS.md#dict-view-source-copy-unwarned); only len is read
-//     xs = ArrayList[readonly[Node], 16](d.values())  # tpyc: ok
+//     # copies each Node out of the live dict, so it warns; only len is read
+//     xs = ArrayList[readonly[Node], 16](d.values())  # tpyc: warning(/copies .* elements/)
 //     return len(xs)
 int32_t count_values(const ::tpy::ordered_map<std::string, Node>& d) {
     ::tpy::dict_values_view<std::string, const Node> __tmp_2 = ::tpy::dict_values(d);

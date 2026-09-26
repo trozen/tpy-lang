@@ -36,7 +36,7 @@ from ..typesys import (
     is_void_like_type,
     is_classvar_allowed_inner, CLASSVAR_INNER_TYPE_ERROR,
     STRVIEW, INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64, BIGINT, BOOL, NONE, TupleType, final_type_str_to_strview,
-    make_awaitable,
+    make_awaitable, unwrap_send_sync,
     make_cancellable,
     register_return_exception, is_return_exception,
     attach_type_param_bounds,
@@ -3351,12 +3351,19 @@ class TypeRegistrar:
         still see the right facts.
 
         A `*args` pack is value-typed but views the caller's argument array,
-        so the frame borrows it exactly the way a Span param is borrowed.
+        so the frame borrows it exactly the way a Span param is borrowed. A
+        tuple is held by value, yet a borrowing element is the same borrow
+        its scalar twin param is.
         """
+        def borrows_tuple(t: TpyType) -> bool:
+            t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+            return isinstance(t, TupleType) and t.has_borrowing_element()
+
         return frozenset(
             i for i, ptype in enumerate(param_types)
             if (not ptype.is_value_type() or is_str_type(ptype)
-                or is_borrowing_view_type(ptype) or is_varargs(ptype))
+                or is_borrowing_view_type(ptype) or is_varargs(ptype)
+                or borrows_tuple(ptype))
             and not is_owned_in_coro_frame(ptype)
         )
 

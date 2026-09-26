@@ -1,0 +1,29 @@
+global 31
+zip 2
+enumerate 2
+dict_zip 2
+dict_enumerate 1
+items 10
+values 20
+filter 2
+reversed 2
+generator 1
+method_generator 8
+genexpr 1
+nested_zip 2
+sinks 4 2
+zip_temp 5
+nested_zip_temp 6
+values_only 2 2
+owned_generator 1
+copy_iter 1 2 1 20 10
+copy_iter 2 2 2 1 4 4
+field 8
+param 41
+generator_body 51
+named_zip 2
+named_reversed 2
+named_zip_temp 5
+named_alias 2
+named_unpack 2 1
+generic 2 1 4

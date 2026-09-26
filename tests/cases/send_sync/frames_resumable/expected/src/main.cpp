@@ -205,7 +205,9 @@ void main() {
     std::string __tmp_1 = "abc";
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_while(3))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_for(3))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_str(__tmp_1))) << "\n";
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_own({4, 5}))) << "\n";
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::tup_ref(::tpy::tuple_value_to_borrow<std::tuple<Counter*, Counter*>>(std::tuple<Counter, Counter>{Counter(2), Counter(3)})))) << "\n";
+    Counter __tmp_2 = Counter(2);
+    Counter __tmp_3 = Counter(3);
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::tup_ref(std::tuple<Counter*, Counter*>{&(__tmp_2), &(__tmp_3)}))) << "\n";
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::tup_val(std::tuple<int32_t, int32_t>{4, 5}))) << "\n";
 }
 

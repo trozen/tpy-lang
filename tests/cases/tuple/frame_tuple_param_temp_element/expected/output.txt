@@ -1,0 +1,45 @@
+module 25
+module 6
+module r 6
+free 7
+free 16
+free r 26
+method 15
+method 16
+method r 26
+opt 6
+opt r 6
+comp [17, 6] 6
+held 4 50
+held 7 50
+held r 7
+gen-body 4
+gen-body 14
+gen-body 24
+await 404004
+task 507057
+run 1906 6
+sync 706 6
+ctor [21, 6]
+closure [23, 2] 2
+invalidate 7 2
+invalidate 6 6
+owned [6] 3
+edge free 1 1
+edge method 3 3
+edge gen [6] 6
+edge frame 8 7
+loop local 2 3
+loop dict 7
+loop gen [11, 12, 11]
+callee method 1 1
+callee async 11 11
+generic accessor 42
+ro elem 105 4
+ptr elem 1001
+generic slot 2 4
+owned view owned-element-source-long-enough-to-defeat-sso literal-element-long-enough-to-defeat-sso owned-element-source-long-enough-to-defeat-sso 8
+owned view twins owned-element-source-long-enough-to-defeat-sso owned-element-source-long-enough-to-defeat-sso-tmp owned-element-param-long-enough-to-defeat-sso
+owned view gen ['owned-element-source-long-enough-to-defeat-sso8']
+unbacked local unbacked-name-long-enough-to-defeat-sso unbacked-name-long-enough-to-defeat-sso 2 2
+unbacked method 6 6

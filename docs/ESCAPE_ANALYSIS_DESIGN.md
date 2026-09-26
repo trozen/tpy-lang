@@ -140,9 +140,13 @@ depth D from a source whose storage lives at depth D+N, the source may be freed
 before the target. The source's storage is the set of NAMES it lends from
 (`ScopeTracker.lend_roots`): a name, a field or an element lends its root, a ternary
 lends both arms when both lend, and a call lends whichever receiver or argument its
-callee's `return_borrows_from` names -- the fact the borrow tracker files the
-binding's loans from -- so the hoistable verdict does not turn on how a borrow is
-spelled. Each lent name is judged on its own, all of them before any is hoisted. A callee whose body is not
+callee's `return_borrows_from` names (for a tuple-literal argument at a tuple
+parameter, each element whose slot borrows: `call_lend_sources`) -- the fact the
+borrow tracker files a call result's binding loans from -- so the hoistable verdict does not turn on how a borrow is
+spelled. (A tuple literal bound directly to a local is a separate binding rule,
+`_register_tuple_binding_borrows`, where the element capture decides and a view
+element files no loan; the two rules share only the element iterator
+`tuple_literal_elems`.) Each lent name is judged on its own, all of them before any is hoisted. A callee whose body is not
 analyzed yet has no fact: its operands are hoisted on the assumption and the
 diagnostic is settled after every body in the module (`settle_deferred_escapes`);
 the fact-side residue is Future-Extension 8b-A below and

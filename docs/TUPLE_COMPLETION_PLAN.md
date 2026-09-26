@@ -1,6 +1,6 @@
 # Tuple completion plan
 
-Status: OPEN. Scope decided 2026-09-21; U0 done, U1 is next.
+Status: OPEN. Scope decided 2026-09-21; U0 and U1 done, U2 is next.
 Measured on `04a797ddf2` (2026-09-21); the matrix cells re-run 2026-09-23
 on `b7fa3e92cb` (U3 D1). Every figure here is valid for that
 tree only -- re-run the matrix before acting on a cell.
@@ -99,11 +99,11 @@ per shape; the mixed tuple global (D2) waits on that entry.
   end, and the commit's diff of the table IS the unit's claim -- every moved
   cell is either the fix or a regression, and the commit body says which. A
   cell whose parity reads "?" in `--report` is stale and owed a build.
-- [ ] **U1 -- no silent tuple divergence.** Size: 2-3 weeks; the frame entries
+- [x] **U1 -- no silent tuple divergence.** Size: 2-3 weeks; the frame entries
   are the risk. Order: the three HIGH first. PARTIAL on `u1-tuple-meds`
-  (2026-09-23): every box below but two is done; still open are
+  (2026-09-23), closed on `u1-close` (2026-09-25): the last two boxes,
   `list-of-zip-ref-element-silent-copy` and
-  `frame-tuple-param-temp-element-dangles` (both HIGH, silent). Shipped
+  `frame-tuple-param-temp-element-dangles`, are done. Shipped
   limitations of the unit (valid Python now rejected, loud): an alias of an
   element of a rebound owning tuple frame slot (`BUGS.md#resumable-alias-identity`,
   including a rebind in a branch exclusive with the alias, chained paths and
@@ -191,8 +191,11 @@ per shape; the mixed tuple global (D2) waits on that entry.
     `(d := c)` at a field, a return into `Own`, an append and the scalar
     `return (d := c)` into `Own[C]` warn or error exactly like `c`; the
     bound name takes no last-use exemption (the render never moves)
-  - [ ] `BUGS.md#list-of-zip-ref-element-silent-copy` (HIGH, silent;
-    `list(zip(ns, cs))` into a list of tuples)
+  - [x] `list(zip(ns, cs))` into a list of tuples (was HIGH, entry removed)
+    -- DONE on `u1-zip`: the container-copy warning asks the iterator's
+    provenance per tuple element (a combinator, a dict view, a generator),
+    so the copy out of named storage warns; `copy_iter()` acknowledges it
+    and now also takes a container or view temporary
   - [x] the tuple return under a `finally` (was MED, entry removed) -- DONE on
     `u1-b3`: the finally-deferred return takes one capture per member -- an
     owned reference local at an `Own` element slot is captured by pointer
@@ -219,9 +222,14 @@ per shape; the mixed tuple global (D2) waits on that entry.
   - Found while fixing the frame items, loud, queued elsewhere:
     `BUGS.md#frame-two-hop-tuple-alias-ice` (U7 loud tail) and
     `BUGS.md#tuple-param-rebind-from-readonly-tuple` (a U2 row).
-  - [ ] `BUGS.md#frame-tuple-param-temp-element-dangles` (frame, dangling)
-    -- a generator's borrow-tuple param bound from a tuple literal with a
-    temporary element points into the dead temporary (found 2026-09-22).
+  - [x] the frame tuple param bound from a temporary element (frame,
+    dangling; was HIGH, entry removed) -- DONE on `u1-frame`: a tuple literal
+    at a generator / coroutine call hoists each temporary element the frame
+    would borrow (`A __tmp_1 = A(7); h(std::tuple<A*, A*>{&(__tmp_1),
+    &(r)})`, a frame field inside a resumable body), the scalar argument's
+    hoist applied per element (`tuple/frame_tuple_param_temp_element`). A
+    temporary union element at such a call rejects
+    (`BUGS.md#res-param-tuple-element-shapes`).
   - [x] the frame tuple element alias of a pointer element (frame, entry
     removed) -- DONE on `u1-tuple-meds`: an alias of a pointer-repr element
     in a resumable body re-addresses the pointee (`a = &((*std::get<0>(p)));`)

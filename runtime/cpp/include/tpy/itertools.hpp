@@ -123,6 +123,14 @@ public:
     }
     owned_iter_source& operator=(owned_iter_source&&) = delete;
 
+    // A pinned holder has no eligible copy or move constructor, and the
+    // calling convention may then return a small one in registers -- a
+    // bitwise relocation that leaves the cursor pointing into the callee's
+    // dead frame. A non-trivial destructor forces the return through memory,
+    // where guaranteed elision builds it in its final place.
+    ~owned_iter_source() requires separate_user_iterator<C> {}
+    ~owned_iter_source() = default;
+
     // The observable half of iter(): a self-iterator's __iter__ is user code
     // that CPython runs at the combinator call. The combinator calls start()
     // on its sources in argument order.

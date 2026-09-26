@@ -827,6 +827,29 @@ class AsyncCoroCodegen:
         from ..thir.lower import frame_temp_arg_slot
         return frame_temp_arg_slot(arg, ptype, self.ctx.analyzer)
 
+    def _seat_frame_temp_elems(self, func: TpyFunction, fi, i: int,
+                               arg: TpyExpr, pre: list[TpyStmt], *,
+                               shared: bool, binds: str | None) -> None:
+        """Seat every temporary ELEMENT of a tuple-literal argument `i` that
+        the callee's frame would borrow on a local of THIS frame, rewriting
+        the element to the seat's name -- the element half of the argument
+        seat, from the same plan the lowering row hoists (`frame_temp_elem_
+        slots`). The tuple stays in place: the callee's frame copies its
+        pointers, and what they point at is now storage this frame holds."""
+        from ..thir.lower import frame_temp_elem_slots
+        for entry in frame_temp_elem_slots(arg, fi.params[i].type,
+                                           self.ctx.analyzer):
+            k = entry.path[-1]
+            source = entry.holder.elements[k]
+            if shared:
+                self._reject_shared_loop_seat(
+                    fi, source,
+                    f"an element of argument '{fi.params[i].name}'",
+                    ", or declare the parameter 'Own[...]' so the callee "
+                    "owns its copy")
+            entry.holder.elements[k] = self._frame_local_for(
+                func, source, entry.owned, pre, binds=binds)
+
     def _view_backing_coerce(self, ptype: 'TpyType',
                              arg: 'TpyExpr') -> 'TpyCoerce | None':
         """The coerce node the lift re-seats when a hoisted temporary argument
@@ -1411,6 +1434,8 @@ class AsyncCoroCodegen:
             # dangle class tracked in BUGS.md; leave them for the *args path.
             if i >= len(fi.params):
                 break
+            self._seat_frame_temp_elems(func, fi, i, arg, pre, shared=False,
+                                        binds=_bound_local(stmt))
             # A BORROWING-VIEW slot is passed by value, but the value IS a
             # borrow the sub-coro's frame keeps for its whole life -- the same
             # standing the REF / POINTER kinds have. What must outlive the
@@ -1693,6 +1718,9 @@ class AsyncCoroCodegen:
                 if i >= len(fi.params):
                     break
                 ptype = fi.params[i].type
+                self._seat_frame_temp_elems(func, fi, i, arg, pre,
+                                            shared=shared,
+                                            binds=_bound_local(stmt))
                 temp_slot = self._frame_temp_slot(ptype, arg)
                 if temp_slot is None:
                     continue

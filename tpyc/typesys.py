@@ -2907,11 +2907,13 @@ def is_primitive_type(t: 'TpyType | None') -> bool:
 
 def is_bufferless_scalar(t: 'TpyType | None') -> bool:
     """A value no view or reference can point into: a number (literal or
-    not), `bool`, `char`, enum or None."""
+    not), `bool`, `char`, enum or None, or an Optional / union of those."""
     if t is None:
         return False
     from .type_def_registry import is_char_type, is_enum_type
     t = unwrap_qualifiers(t)
+    if isinstance(t, (OptionalType, UnionType)):
+        return all(is_bufferless_scalar(m) for m in t.inner_types())
     if isinstance(t, LiteralType):
         t = t.base_type
     return (is_numeric_type(t) or is_char_type(t) or is_enum_type(t)
@@ -4213,6 +4215,56 @@ class TupleType(TpyType):
         codegen form site must keep asking that shallower question."""
         return self.has_nested_element(self._element_is_pointer_repr)
 
+    @staticmethod
+    def element_borrows(e: 'TpyType') -> bool:
+        """Whether this tuple's borrow form holds element `e` as a borrow of
+        storage outside the tuple rather than by value: a borrowing view, or
+        any borrow value form -- BORROW_REF (every non-value element: record,
+        container, non-value union), PTR_OPTIONAL, or TYPE_PARAM (its
+        `val_or_ptr_t` resolves to a pointer at a reference instantiation).
+        Wider than `_element_is_pointer_repr`, which asks for a bare `T*`."""
+        if _is_borrowing_view_type(e):
+            return True
+        return e.value_form() in (ValueForm.BORROW_REF, ValueForm.PTR_OPTIONAL,
+                                  ValueForm.TYPE_PARAM)
+
+    def has_borrowing_element(self) -> bool:
+        """True if an element at any depth through nested value tuples
+        borrows (`element_borrows`): a copy of the tuple still aliases
+        storage outside it."""
+        return self.has_nested_element(self.element_borrows)
+
+    @staticmethod
+    def element_lends(slot: 'TpyType') -> bool:
+        """Whether a tuple's borrow form holds what fills element slot `slot`
+        as a borrow of storage outside the tuple: a borrowing element
+        (`element_borrows`), or a nested tuple holding one."""
+        bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
+        if isinstance(bare, TupleType):
+            return bare.has_borrowing_element()
+        return TupleType.element_borrows(bare)
+
+    @staticmethod
+    def element_holds_storage(slot: 'TpyType') -> bool:
+        """Whether a tuple holds, BY VALUE at element slot `slot`, storage a
+        view or reference can point into: an owned element (a `str`, an
+        `Own[T]`) other than a bufferless scalar, or a nested tuple holding
+        one. A tuple temporary built for a call owns that storage, so a
+        result borrowing the tuple can point into what dies with it."""
+        bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
+        if isinstance(bare, TupleType):
+            return bare.has_nested_element(TupleType._element_owns_storage)
+        return TupleType._element_owns_storage(bare)
+
+    @staticmethod
+    def _element_owns_storage(e: 'TpyType') -> bool:
+        bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e)))
+        # has_nested_element descends into a nested tuple itself.
+        if isinstance(bare, TupleType):
+            return False
+        return (not TupleType.element_borrows(bare)
+                and not is_bufferless_scalar(bare))
+
     def _element_to_cpp_param(self, t: 'TpyType', const: bool) -> str:
         """C++ type for a tuple element in param/return (borrow) context.
 
@@ -5288,6 +5340,7 @@ _ELEMENT_FROM_FIRST_ARG_CATEGORIES = frozenset({
 
 # View-type family descriptors (must follow singleton definitions)
 from .type_def_registry import is_string_type as _is_string_type, is_bytearray_type as _is_bytearray_type, enum_info_of as _enum_info_of
+from .type_def_registry import is_borrowing_view_type as _is_borrowing_view_type
 STR_FAMILY = ViewTypeFamily(
     owned_type=STR, view_type=STRVIEW, promote_param_match=_is_string_type,
     is_any_member=is_any_str_type,

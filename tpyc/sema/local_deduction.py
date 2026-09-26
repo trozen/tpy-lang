@@ -55,6 +55,7 @@ from ..typesys import (
     unwrap_ref_type,
 )
 from .context import (PENDING_CONTAINER_TYPES, MODULE_INIT_CONTEXT,
+                      call_borrow_operands, call_lend_sources,
                       contains_pending_leaf)
 from ..namespace import BindingKind
 from ..diagnostics import SemanticError
@@ -169,8 +170,12 @@ def view_source_is_temporary(expr: TpyExpr) -> bool:
         sources = (recorded_return_borrow_sources(fi)
                    if fi is not None else frozenset())
         if sources:
-            return any(0 <= i < len(expr.args) and view_source_is_temporary(expr.args[i])
-                       for i in sources if i >= 0)
+            ops = call_borrow_operands(expr)
+            return ops is not None and any(
+                src.temp_backed or view_source_is_temporary(src.expr)
+                for src in call_lend_sources(ops, sources, expr_type=None,
+                                              temp_backing=True)
+                if src.idx >= 0)
         # Otherwise: a view return is the callee's responsibility (durable),
         # an owned return is a fresh temporary that dangles as a view.
         ret = fi.return_type if fi is not None else None

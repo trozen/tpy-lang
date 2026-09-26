@@ -10,14 +10,14 @@ class Node:
 
 
 def count(d: readonly[dict[str, Node]]) -> int32:
-    # copies each Node (BUGS.md#dict-view-source-copy-unwarned); only len is read
-    xs = ArrayList[tuple[str, readonly[Node]], 16](d.items())  # tpyc: ok
+    # copies each Node out of the live dict, so it warns; only len is read
+    xs = ArrayList[tuple[str, readonly[Node]], 16](d.items())  # tpyc: warning(/copies .* elements/)
     return len(xs)
 
 
 def count_values(d: readonly[dict[str, Node]]) -> int32:
-    # copies each Node (BUGS.md#dict-view-source-copy-unwarned); only len is read
-    xs = ArrayList[readonly[Node], 16](d.values())  # tpyc: ok
+    # copies each Node out of the live dict, so it warns; only len is read
+    xs = ArrayList[readonly[Node], 16](d.values())  # tpyc: warning(/copies .* elements/)
     return len(xs)
 
 

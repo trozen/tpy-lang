@@ -33,14 +33,16 @@ from ..typesys import (
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
     unwrap_readonly, unwrap_ref_type, unwrap_qualifiers,
     FunctionInfo, ParamInfo, RecordInfo,
-    is_dyn_protocol, contains_pending_leaf,
+    is_dyn_protocol, contains_pending_leaf, is_bufferless_scalar,
+    is_protocol_type, TypeParamRef, substitute_type_params_structural,
 )
 from ..namespace import BindingKind, NameBinding, Namespace
-from ..type_def_registry import int_traits_of, is_borrowing_view_type
+from ..type_def_registry import (int_traits_of, is_borrowing_view_type,
+                                 is_bytes_type, is_str_type, type_def_of)
 from ..parse import (
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
     TpyCall, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp,
-    TpyUnaryOp, TpyIfExpr, TpyTupleLiteral, TpyVarargPack, TpyStarUnpack,
+    TpyUnaryOp, TpyIfExpr, TpyVarargPack, TpyStarUnpack,
     TpyNestedDef, TpyNamedExpr, TpyIntLiteral, TpyStrLiteral,
     TpyGeneratorExpression, TpyForEach, TpyWhile,
     walk_body_stmts,
@@ -48,7 +50,10 @@ from ..parse import (
     is_property_getter_read,
 )
 from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
-from ..value_category import call_returns_cpp_ref, frame_factory_callee
+from ..value_category import (
+    ExprTypeOf, call_returns_cpp_ref, frame_factory_callee, lent_operands,
+    lent_operand_binds_open_param,
+)
 from ..prescan import bound_names_of, walrus_names_of
 from .type_ops import signature_may_return_borrow
 
@@ -91,24 +96,16 @@ def addr_taken_roots(expr: TpyExpr) -> list[str]:
 
 
 def tuple_borrow_escape_roots(expr: 'TpyExpr', tuple_bare: 'TupleType',
-                              ro_tuple: bool) -> list[tuple[str, bool]]:
+                              ro_tuple: bool, *,
+                              expr_type: 'ExprTypeOf | None'
+                              ) -> list[tuple[str, bool]]:
     """(root, grants_write) pairs for a borrow-form tuple escaping through a
-    yield/return slot. A tuple literal borrows exactly its pointer-repr
-    elements' roots (addr_taken_roots has no tuple-literal case; value
-    elements are copied into the slot); a readonly slot or element records
-    provenance without granting write access.
-    """
-    inner = expr.expr if isinstance(expr, TpyCoerce) else expr
-    if isinstance(inner, TpyTupleLiteral):
-        return [
-            (root, not ro_tuple and not isinstance(
-                tuple_bare.element_types[i], ReadonlyType))
-            for i, el in enumerate(inner.elements)
-            if i < len(tuple_bare.element_types)
-            and TupleType._element_is_pointer_repr(tuple_bare.element_types[i])
-            for root in addr_taken_roots(el)
-        ]
-    return [(root, not ro_tuple) for root in addr_taken_roots(expr)]
+    yield/return slot: what the tuple lends at that slot (`lent_operands`,
+    which also decides each element's write access), with a readonly slot
+    recording provenance only."""
+    return [(root, not ro_tuple and lent.grants_write)
+            for lent in lent_operands(expr, tuple_bare, expr_type=expr_type)
+            for root in addr_taken_roots(lent.expr)]
 
 
 def _storage_key(expr: TpyExpr) -> str | None:
@@ -389,10 +386,175 @@ def _borrow_storage_roots(expr: TpyExpr) -> list[str]:
 
 class CallOperands(NamedTuple):
     """A call-shaped expression as the borrow facts index it: the callee,
-    its receiver (source index -1) and its positional arguments."""
+    its receiver (source index -1), its positional arguments and the
+    keyword arguments sema left unnormalized."""
     fi: FunctionInfo
     obj: TpyExpr | None
     args: list[TpyExpr]
+    kwargs: dict[str, TpyExpr] = {}
+
+    def positioned(self) -> list[tuple[int, TpyExpr]]:
+        """Each argument with the parameter index it binds -- positionally,
+        then keywords by name (-2 for a name no parameter has)."""
+        by_name = {p.name: i for i, p in enumerate(self.fi.params)}
+        return list(enumerate(self.args)) + [
+            (by_name.get(k, -2), a) for k, a in (self.kwargs or {}).items()]
+
+
+class LendSource(NamedTuple):
+    """One operand of a call -- or one lending element of a tuple-literal
+    operand -- whose storage the call's result may point into."""
+    # Parameter index; -1 is the receiver.
+    idx: int
+    expr: TpyExpr
+    # The parameter, or the tuple element slot, `expr` fills.
+    slot: TpyType | None
+    # The result holds it only as a whole object (`held_whole_params`).
+    held_whole: bool = False
+    # A write through the callee's parameter reaches `expr`'s storage
+    # (`lent_operands`); always True for the receiver.
+    grants_write: bool = True
+    # The callee DECLARES the position `expr` fills as an open type param:
+    # its C++ slot is a mutable borrow whatever the body does.
+    binds_open_param: bool = False
+    # Not a lent operand: the storage a tuple temporary holds by value for
+    # `expr` (`lent_operands`). It adds no root, but a result borrowing it
+    # points into what dies with the statement.
+    temp_backed: bool = False
+
+
+def holds_no_pointer(t: TpyType) -> bool:
+    """A value of this declared type holds nothing that can point into other
+    storage: a bufferless scalar or an owned `str` / `bytes`."""
+    t = unwrap_qualifiers(t)
+    return is_bufferless_scalar(t) or is_str_type(t) or is_bytes_type(t)
+
+
+def value_may_point(t: TpyType) -> bool:
+    """A value of this declared type (a field, a moved `self` field, a type
+    argument) may be or hold a pointer into other storage: a value type
+    that is not pointer-free (a `Ptr`, a view, a callable, a user value
+    type), a protocol, a type parameter, or an Optional / union / tuple
+    with such a member. A reference type holds its own storage; what its
+    fields point at is `reference_may_hold_pointer`, and for a moved
+    `self` field BUGS.md#self-aimed-ptr-field-borrow-unrecorded."""
+    t = unwrap_qualifiers(t)
+    if isinstance(t, (OptionalType, UnionType, TupleType)):
+        return any(value_may_point(m) for m in t.inner_types())
+    if holds_no_pointer(t):
+        return False
+    return (t.is_value_type() or isinstance(t, TypeParamRef)
+            or is_protocol_type(t) or is_dyn_protocol(t))
+
+
+def reference_may_hold_pointer(t: NominalType,
+                               seen: frozenset[str] = frozenset()) -> bool:
+    """Whether a reference-type value may hold a pointer into storage it
+    does not own, through a type argument (`W[StrView]`), a field or a
+    base, recursing into reference-type members (`value_may_point`)."""
+    key = str(t)
+    if key in seen:
+        return False
+    seen = seen | {key}
+
+    def may(m: TpyType) -> bool:
+        m = unwrap_qualifiers(m)
+        if isinstance(m, (OptionalType, UnionType, TupleType)):
+            return any(may(x) for x in m.inner_types())
+        if (isinstance(m, NominalType) and not m.is_value_type()
+                and not (is_protocol_type(m) or is_dyn_protocol(m))):
+            return reference_may_hold_pointer(m, seen)
+        return value_may_point(m)
+
+    args = [a for a in t.type_args if isinstance(a, TpyType)]
+    if any(may(a) for a in args):
+        return True
+    td = type_def_of(t)
+    rec = td.record if td is not None else None
+    if rec is None:
+        return False
+    subst = dict(zip(rec.type_params, args))
+    return any(
+        may(substitute_type_params_structural(m, subst) if subst else m)
+        for m in [*(f.type for f in rec.fields), *rec.parents])
+
+
+def temp_element_can_back(slot: TpyType | None,
+                          result: TpyType | None) -> bool:
+    """Whether a call result of type `result` can point into the storage a
+    tuple temporary holds by value at element slot `slot`.
+
+    A reference-type result points at an object of its type, so only an
+    element that is or holds a reference type can back it (a `str` or a
+    number cannot hold a record) -- unless the result may itself hold a
+    pointer (`reference_may_hold_pointer`: a view field, `W[StrView]`),
+    which can point into any element. Any other result -- a view, a `Ptr`,
+    an open type parameter -- may point into any storage, so it is kept."""
+    if slot is None or result is None:
+        return True
+    r = unwrap_qualifiers(result)
+    if isinstance(r, (OptionalType, UnionType, TupleType)):
+        return any(temp_element_can_back(slot, m) for m in r.inner_types())
+    if is_bufferless_scalar(r):
+        return False
+    if (r.is_value_type() or not isinstance(r, NominalType)
+            or is_protocol_type(r) or is_dyn_protocol(r)):
+        return True
+    return (own_copy.contains_reference_type(slot)
+            or reference_may_hold_pointer(r))
+
+
+def call_lend_sources(ops: CallOperands,
+                      indices: 'frozenset[int] | set[int] | None' = None,
+                      held: 'frozenset[int]' = frozenset(), *,
+                      expr_type: 'ExprTypeOf | None',
+                      temp_backing: bool = False
+                      ) -> list[LendSource]:
+    """The sources behind the operand positions `indices` (None: every
+    operand) of one call, in position order.
+
+    THE call-site rule every provenance consumer of a call reads: a tuple
+    literal at a tuple parameter lends each element whose slot borrows,
+    exactly as that element would lend as a scalar argument at the
+    element's slot, and an element whose slot owns lends nothing
+    (`lent_operands`). A tuple literal BOUND to a local is a second rule
+    (`_register_tuple_binding_borrows`: the element capture decides, a
+    view element files no loan); the two share only the element iterator
+    `tuple_literal_elems`. `expr_type`
+    lets `lent_operands` see a `Ptr[T]` operand, which grants no write; a
+    caller reading `grants_write` passes it, one that does not passes None.
+
+    That answers "which caller storage does the result borrow". A consumer
+    asking "can the result point into a temporary" passes `temp_backing`
+    and also gets the owned elements of a tuple-literal operand, flagged
+    `temp_backed` -- only those the result's type can point into
+    (`temp_element_can_back`), and none when the call builds a frame,
+    which holds the tuple by value for as long as the handle lives."""
+    fi, obj, _args, _kwargs = ops
+    temp_backing = temp_backing and not (fi.is_async
+                                         or frame_factory_callee(fi))
+    result = fi.return_type
+    out: list[LendSource] = []
+    if obj is not None and (indices is None or -1 in indices):
+        out.append(LendSource(-1, obj, None, -1 in held))
+    params = fi.params
+    declared_params = fi.root.params
+    for idx, arg in ops.positioned():
+        if indices is not None and idx not in indices:
+            continue
+        slot = params[idx].type if 0 <= idx < len(params) else None
+        declared = (declared_params[idx].type
+                    if 0 <= idx < len(declared_params) else None)
+        out.extend(LendSource(
+            idx, lent.expr, lent.slot, idx in held, lent.grants_write,
+            not lent.temp_backed
+            and lent_operand_binds_open_param(lent, arg, declared),
+            lent.temp_backed)
+            for lent in lent_operands(arg, slot, expr_type=expr_type,
+                                      temp_backing=temp_backing)
+            if not lent.temp_backed
+            or temp_element_can_back(lent.slot, result))
+    return out
 
 
 def call_borrow_operands(expr: TpyExpr) -> CallOperands | None:
@@ -404,10 +566,13 @@ def call_borrow_operands(expr: TpyExpr) -> CallOperands | None:
     fi: the resolved copy is synthesized before the dunder's body facts land,
     so only the root carries them.
     """
+    kwargs: dict[str, TpyExpr] = {}
     if isinstance(expr, TpyCall):
         fi, obj, args = expr.resolved_function_info, None, expr.args
+        kwargs = expr.kwargs or {}
     elif isinstance(expr, TpyMethodCall):
         fi, obj, args = expr.resolved_function_info, expr.obj, expr.args
+        kwargs = expr.kwargs or {}
     elif isinstance(expr, TpyBinOp) and expr.resolved_binop is not None:
         rb = expr.resolved_binop
         fi = rb.method.root
@@ -420,14 +585,14 @@ def call_borrow_operands(expr: TpyExpr) -> CallOperands | None:
         return call_borrow_operands(expr.frame_creation)
     else:
         return None
-    return None if fi is None else CallOperands(fi, obj, args)
+    return None if fi is None else CallOperands(fi, obj, args, kwargs)
 
 
 def frame_borrowed_operands(call: TpyExpr) -> list[TpyExpr] | None:
     """The operands the frame a generator or coroutine call builds keeps a
-    reference to -- its receiver and the arguments `return_borrows_from`
-    names (every argument while that fact is unknown) -- or None when `call`
-    builds no frame."""
+    reference to -- its receiver and the `call_lend_sources` of the
+    arguments `return_borrows_from` names (every argument while that fact
+    is unknown) -- or None when `call` builds no frame."""
     if not isinstance(call, (TpyCall, TpyMethodCall)):
         return None
     fi = call.resolved_function_info
@@ -439,10 +604,10 @@ def frame_borrowed_operands(call: TpyExpr) -> list[TpyExpr] | None:
             and not call.user_module_call):
         out.append(call.obj)
     borrowed = fi.root.return_borrows_from
-    out += [a for i, a in enumerate(call.args)
-            if borrowed is None or i in borrowed]
-    if borrowed is None or borrowed:
-        out += list((call.kwargs or {}).values())
+    ops = CallOperands(fi, None, list(call.args), call.kwargs or {})
+    out += [src.expr for src in call_lend_sources(
+        ops, None if borrowed is None else frozenset(borrowed),
+        expr_type=None)]
     return out
 
 

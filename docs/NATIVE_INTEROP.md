@@ -290,9 +290,10 @@ applies to it.
 
 The kwarg describes a TYPE whose every value borrows. A handle that borrows
 only for some producing calls must not declare it: `copy_iter()`'s `CopyIter`
-borrows a container passed as an lvalue but moves in and owns an iterator
-passed as an rvalue (`copy_iter(map(f, xs))`), so as a borrowing view it would
-reject or warn about the owning form. That borrow depends on the argument's
+borrows a source passed as an lvalue but moves in and owns any temporary
+source -- a container, a view, a record or an iterator (`copy_iter(make())`,
+`copy_iter(map(f, xs))`) -- so as a borrowing view it would reject or warn
+about the owning form. That borrow depends on the argument's
 value category and belongs to the producing call -- the callable-level borrow
 annotation in TODO.md ("Callable-level borrow annotation for native stubs").
 

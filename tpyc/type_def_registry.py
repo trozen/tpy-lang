@@ -180,6 +180,10 @@ class TypeDef:
     # through tuple_to_pointer instead of `&(*it)`. Set only from the stub's
     # `@native(..., iter_yields_ref_tuple_proxies=True)`.
     iter_yields_ref_tuple_proxies: bool = False
+    # Iterating this type hands out elements it OWNS (a copy, or one moved out
+    # of a source it consumed), never a reference into the storage it walks,
+    # although the adapter itself may hold that storage.
+    iter_yields_owned_elements: bool = False
     is_send: Optional[Union[bool, Callable[[tuple], bool]]] = None
     is_sync: Optional[Union[bool, Callable[[tuple], bool]]] = None
     cpp_formatter: Optional[Callable[[tuple], str]] = None
@@ -948,6 +952,11 @@ def iter_yields_ref_tuple_proxies(t: "TpyType") -> bool:
     return td is not None and td.iter_yields_ref_tuple_proxies
 
 
+def iter_yields_owned_elements(t: "TpyType") -> bool:
+    td = type_def_of(t)
+    return td is not None and td.iter_yields_owned_elements
+
+
 # Trait accessors. Return the dataclass or None if the type isn't in the
 # corresponding category. Callers should prefer these over reading .bits /
 # .signed / .min_value / .max_value from subclasses directly.
@@ -1326,9 +1335,9 @@ def _populate() -> None:
 
     # Iterator adapters. SpanIter forces is_send/is_sync=False (borrows from
     # the underlying span). OwnIter owns its source; CopyIter copies each
-    # ELEMENT out but holds the source's iterator: over an lvalue container it
-    # borrows that container, while an rvalue iterator is moved in and owned
-    # (runtime copy_iter.hpp). That depends on the argument's value category,
+    # ELEMENT out but holds its source: an lvalue source is borrowed, while a
+    # temporary (container, view or iterator) is moved in and owned (runtime
+    # copy_iter.hpp). That depends on the argument's value category,
     # so CopyIter is not declared a borrowing view. Both inherit the
     # value-type is_send/is_sync defaults
     # (BUGS.md#copy-iter-send-while-borrowing).
@@ -1341,8 +1350,10 @@ def _populate() -> None:
                      cpp_formatter=_span_iter_cpp,
                      element_of=_readonly_view_elem))
     register(TypeDef("tpy.CopyIter", TC.ITERATOR, is_value_type=True,
+                     iter_yields_owned_elements=True,
                      cpp_formatter=lambda args: "auto"))
     register(TypeDef("tpy.OwnIter",  TC.ITERATOR, is_value_type=True,
+                     iter_yields_owned_elements=True,
                      cpp_formatter=lambda args: "auto"))
 
     # Async Waker: TPy-owned `ValueType` class in `tpy/coro/__init__.py`.

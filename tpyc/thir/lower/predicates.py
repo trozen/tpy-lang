@@ -142,6 +142,8 @@ from ...coercions import CoercionContext, context_free_wrap_template
 from ...value_category import (
     CONTAINER_LITERAL_NODES,
     call_returns_cpp_ref,
+    FrameTempElem,
+    frame_temp_elem_plan,
     frame_temp_arg_source,
     is_rvalue_source,
     materializing_temp_source,
@@ -10459,6 +10461,17 @@ def frame_temp_arg_slot(a: TpyExpr, ptype: 'TpyType | None',
         # type, so that is what the local holds.
         return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
     return st
+
+def frame_temp_elem_slots(a: TpyExpr, ptype: 'TpyType | None',
+                          analyzer) -> tuple[FrameTempElem, ...]:
+    """`frame_temp_elem_plan`'s entries for argument `a`, each with the
+    OWNED storage type `frame_temp_arg_slot` spells for its local."""
+    out: list[FrameTempElem] = []
+    for entry in frame_temp_elem_plan(a, ptype, analyzer):
+        owned = frame_temp_arg_slot(entry.source, entry.slot, analyzer)
+        if owned is not None:
+            out.append(entry._replace(owned=owned))
+    return tuple(out)
 
 def _own_cascade_fires(ptype: TpyType | None) -> bool:
     """Whether the call-argument ownership cascade fires for this slot: an

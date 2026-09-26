@@ -40,7 +40,7 @@ struct Cell {
 
     // def pair(self) -> tuple[T, int32]:
     //     return (self.value, int32(1))
-    std::tuple<::tpy::val_or_cptr_t<T>, int32_t> pair() const {
+    std::tuple<::tpy::val_or_ptr_t<T>, int32_t> pair() {
         return std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(this->value), 1};
     }
 

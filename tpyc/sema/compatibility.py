@@ -7,7 +7,7 @@ Type compatibility checking, coercions, and lvalue analysis.
 from __future__ import annotations
 from dataclasses import replace as dc_replace
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, ListRepeatType,
@@ -24,10 +24,12 @@ from ..typesys import (
     unify_literal_types,
     is_polymorphic_class_type, is_exception_type, SendType, SyncType, unwrap_send_sync, FrameType,
     unwrap_qualifiers,
-    disambiguated_pair, ConcreteCoroType, recorded_return_borrow_sources)
+    disambiguated_pair, ConcreteCoroType, recorded_return_borrow_sources,
+    GenExprType)
 from .. import qnames
 from ..value_category import (
-    async_result_aliases, is_rvalue_source, peel_value_wrappers,
+    async_result_aliases, is_iterator_protocol, is_rvalue_source,
+    peel_value_wrappers,
     property_access_returns_cpp_ref, returns_borrow)
 from . import own_copy
 from .frame_traits import frame_traits_of_function, frame_type_of_function
@@ -44,7 +46,7 @@ from ..parse import (
 from .literal_utils import literal_value_from_expr
 from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY
 from ..modules import get_span_return_type
-from .context import addr_taken_roots, _storage_root, BorrowKind, BorrowTracker, tuple_borrow_escape_roots
+from .context import addr_taken_roots, _storage_root, BorrowKind, BorrowTracker, CallOperands, LendSource, call_borrow_operands, call_lend_sources, tuple_borrow_escape_roots
 from .numeric_lattice import fixed_int_range_contains, numeric_info
 from ..diagnostics import (
     SemanticError, NOCOPY_REMEDIATION_HINT, CONSUMING_FIELD_MOVE_NOTE,
@@ -54,9 +56,11 @@ from ..type_def_registry import (
     is_str_view_type, is_bytes_view_type, is_borrowing_view_type, int_traits_of,
     is_big_int_type, is_str_category, is_bytes_category, is_str_type, is_string_type,
     is_bytes_type, is_bytearray_type,
-    protocol_info_of,
+    protocol_info_of, iter_yields_owned_elements, is_iterator_adapter,
+    is_dict_view,
 )
 from .overloads import type_matches_numeric
+from .iter_loans import iteration_copies_lent_reference, iteration_lend_pending
 
 
 def _literal_value_from_source(
@@ -301,6 +305,40 @@ if TYPE_CHECKING:
     from .local_deduction import LocalTypeDeduction
 
 
+class PendingIterCopyCheck(NamedTuple):
+    """An element-copy check on an iterator source whose lending callee's
+    borrow facts were still pending when the copy was analyzed."""
+    source_expr: TpyExpr
+    elem_type: TpyType
+    display_type: TpyType
+    hint: str
+    loc: SourceLocation | None
+
+
+def _handle_lends_elements(t: TpyType) -> bool:
+    """Whether a value of type `t` is a handle that hands out elements it
+    does not own: an iterator (a combinator, a generator frame or
+    expression, a Span/view iterator) or a dict view.
+
+    An allow-list: every such handle lends unless its type PROVES the
+    elements owned (`iter_yields_owned_elements`, an `Own[T]` element). A
+    handle whose provenance is temporaries only is answered by its
+    binding's init, not here (`_dead_handle_value`)."""
+    bare = unwrap_ref_type(unwrap_readonly(unwrap_own(unwrap_send_sync(t))))
+    if isinstance(bare, GenExprType):
+        elem: TpyType | None = bare.element_type
+    elif is_iterator_protocol(bare):
+        elem = bare.type_args[0] if bare.type_args else None
+    elif is_iterator_adapter(bare) or is_dict_view(bare):
+        elem = None
+    else:
+        return False
+    if iter_yields_owned_elements(bare):
+        return False
+    return not (elem is not None
+                and isinstance(unwrap_readonly(elem), OwnType))
+
+
 class TypeCompatibility:
     """Type compatibility checking, coercions, and lvalue analysis."""
 
@@ -311,6 +349,19 @@ class TypeCompatibility:
         self.protocols: ProtocolChecker
         self.methods: MethodAnalyzer
         self.deduction: 'LocalTypeDeduction'
+        self.pending_iter_copy_checks: list[PendingIterCopyCheck] = []
+
+    def resolve_pending_iter_copy_checks(self) -> None:
+        """Decide the element-copy checks deferred on a pending callee, now
+        that every body's borrow facts are final -- so the verdict does not
+        depend on whether the generator is defined above or below its use."""
+        for check in self.pending_iter_copy_checks:
+            if iteration_copies_lent_reference(
+                    self.ctx, check.source_expr, check.elem_type):
+                self.ctx.warning_from_loc(
+                    f"copies {check.display_type} elements; {check.hint}",
+                    check.loc)
+        self.pending_iter_copy_checks.clear()
 
     def _mark_addr_taken(self, expr: TpyExpr) -> None:
         """Mark all param roots of expr as mutated because their address is taken.
@@ -1053,34 +1104,56 @@ class TypeCompatibility:
                     # Suppress at last use: no observable semantic divergence from
                     # CPython when the source is dead after this point (Framing A).
                     is_auto_moved = self._is_auto_moved(source_expr)
-                    if not is_auto_moved:
+                    # A dead HANDLE moves only itself: the elements it hands
+                    # out still live in the storage it lends from.
+                    lent_value = (self._dead_handle_value(source_expr)
+                                  if is_auto_moved else None)
+                    prov_src = source_expr
+                    if lent_value is not None:
+                        prov_src, is_lvalue_src = lent_value, False
+                    if not is_auto_moved or lent_value is not None:
                         for inner_t in expected.inner_types():
                             if not isinstance(inner_t, OwnType):
                                 continue
                             elem_type = inner_t.wrapped
+                            if not own_copy.contains_reference_type(elem_type):
+                                continue
+                            display_type = unwrap_ref_type(elem_type)
+                            # Lvalue source (container): suggest copy_iter or copy.
+                            # Rvalue (iterator): only copy_iter.
+                            if is_lvalue_src:
+                                hint = "use copy_iter() to make this explicit (or copy() to copy the entire container)"
+                            else:
+                                hint = "use copy_iter() to make this explicit"
                             # Rvalue iterators that yield Ref elements (e.g.
                             # map(identity, pts)) copy on materialization.
                             # RefType in the Own-wrapped element is the proof.
-                            has_ref_elements = _contains_semantic_ref(elem_type)
-                            if is_lvalue_src or has_ref_elements:
-                                if not own_copy.contains_reference_type(elem_type):
+                            if not (is_lvalue_src or _contains_semantic_ref(elem_type)):
+                                # A combinator, view or generator lends its
+                                # sources' elements with no Ref marker: the
+                                # proof is their provenance.
+                                if iteration_lend_pending(self.ctx, prov_src):
+                                    # A generic payload's hedge must be filed
+                                    # before the copy verdicts discharge, so it
+                                    # assumes the pending callee lends.
+                                    if not own_copy.type_has_type_param(display_type):
+                                        self.pending_iter_copy_checks.append(
+                                            PendingIterCopyCheck(
+                                                prov_src, elem_type, display_type,
+                                                hint, self.ctx._resolve_loc(source_expr)))
+                                        continue
+                                elif not iteration_copies_lent_reference(
+                                        self.ctx, prov_src, elem_type):
                                     continue
-                                display_type = unwrap_ref_type(elem_type)
-                                # Lvalue source (container): suggest copy_iter or copy.
-                                # Rvalue with Ref elements (iterator): only copy_iter.
-                                if is_lvalue_src:
-                                    hint = "use copy_iter() to make this explicit (or copy() to copy the entire container)"
-                                else:
-                                    hint = "use copy_iter() to make this explicit"
-                                if self.ctx.defer_own_copy_verdict(
-                                        display_type, display_type,
-                                        "owned storage", source_expr,
-                                        kind=own_copy.KIND_ELEMENTS, hint=hint):
-                                    continue
-                                self.ctx.warning(
-                                    f"copies {display_type} elements; {hint}",
-                                    source_expr,
-                                )
+                            if self.ctx.defer_own_copy_verdict(
+                                    display_type, display_type,
+                                    "owned storage", source_expr,
+                                    kind=own_copy.KIND_ELEMENTS, hint=hint):
+                                continue
+                            self.ctx.warning(
+                                f"copies {display_type} elements; {hint}",
+                                source_expr,
+                            )
                 return None
             if is_protocol_type(expected):
                 return CompatError(
@@ -2202,6 +2275,37 @@ class TypeCompatibility:
         """Last-use of an owned local: auto-move makes the copy invisible."""
         return self.is_auto_move_use(source_expr)
 
+    def _dead_handle_value(self, name: TpyName) -> 'TpyExpr | None':
+        """The value a last-use local HANDLE (an iterator or view over
+        other storage) lends its elements from, or None when the local's
+        type proves its elements owned or it is no handle at all. Keyed on
+        the TYPE, not on the loans the binding filed: an alias (`w = z`) or
+        an unpack target files none, yet lends as much as its source. It is
+        the local's one binding (its init) when that is all it was ever
+        bound to, followed through sole-binding aliases the chain moves
+        from (an unpack target's per-element temp is one), so the
+        per-element provenance of the direct call carries over; otherwise
+        the name itself, which lends every element."""
+        t = self.ctx.get_expr_type(name)
+        if t is None or not _handle_lends_elements(t):
+            return None
+        cur = name
+        seen: set[str] = set()
+        while True:
+            decl = self.ctx.func.var_decl_by_name.get(cur.name)
+            if (decl is None or decl.init is None
+                    or self.ctx.is_reseated(cur.name)):
+                return name
+            init = decl.init
+            # A source still read after the alias shares its handle, so
+            # only a moved-from one hands its provenance over.
+            if (not isinstance(init, TpyName)
+                    or init.name in seen
+                    or init not in self.ctx.all_last_uses):
+                return init
+            seen.add(cur.name)
+            cur = init
+
     def _copy_diag_type(self, t: TpyType) -> TpyType:
         """User-facing type for copy diagnostics: a pending container local is
         unresolved during body analysis, so render the concrete type it
@@ -2839,17 +2943,22 @@ class TypeCompatibility:
         if view_arg is not None:
             self._borrow_root_names(view_arg, out)
             return
-        if isinstance(expr, (TpyCall, TpyMethodCall)):
-            fi = expr.resolved_function_info
-            sources = (recorded_return_borrow_sources(fi)
-                       if fi is not None else frozenset())
-            if sources:
-                obj = expr.obj if isinstance(expr, TpyMethodCall) else None
-                for idx in sources:
-                    if idx == -1 and obj is not None:
-                        self._borrow_root_names(obj, out)
-                    elif 0 <= idx < len(expr.args):
-                        self._borrow_root_names(expr.args[idx], out)
+        for src in self._call_return_lend_sources(expr):
+            self._borrow_root_names(src.expr, out)
+
+    @staticmethod
+    def _call_return_lend_sources(expr: TpyExpr) -> 'list[LendSource]':
+        """The operands a call's result points into by its recorded
+        `return_borrows_from` (`call_lend_sources`); [] for any other
+        expression."""
+        if not isinstance(expr, (TpyCall, TpyMethodCall)):
+            return []
+        ops = call_borrow_operands(expr)
+        if ops is None:
+            return []
+        recorded = recorded_return_borrow_sources(ops.fi)
+        return (call_lend_sources(ops, recorded, expr_type=None)
+                if recorded else [])
 
     def _return_borrows_global_storage(self, name: str,
                                        return_type: TpyType) -> str | None:
@@ -2948,18 +3057,9 @@ class TypeCompatibility:
         # the borrowed-from argument(s) are themselves param-derived.
         # No recorded source (unanalyzed, or a new value) leaves the loop body
         # unrun and falls through to return False below -- correct either way.
-        if isinstance(expr, (TpyCall, TpyMethodCall)):
-            fi = expr.resolved_function_info
-            if fi is not None:
-                args = expr.args
-                obj = expr.obj if isinstance(expr, TpyMethodCall) else None
-                for idx in recorded_return_borrow_sources(fi):
-                    if idx == -1 and obj is not None:
-                        if self.is_param_derived_expr(obj):
-                            return True
-                    elif 0 <= idx < len(args):
-                        if self.is_param_derived_expr(args[idx]):
-                            return True
+        if any(self.is_param_derived_expr(src.expr)
+               for src in self._call_return_lend_sources(expr)):
+            return True
         # Constructors, function calls, literals -- local storage
         return False
 
@@ -3012,7 +3112,9 @@ class TypeCompatibility:
     def _call_borrow_operands_dangle(
             self, expr: 'TpyCall | TpyMethodCall', fi: Any, *,
             gen_yield: bool, assume_unknown_calls_safe: bool) -> bool:
-        """True if an operand the callee's return borrows from dangles.
+        """True if an operand the callee's return borrows from dangles -- an
+        owned element of a tuple-literal operand lives in the tuple
+        temporary, so it dangles as a scalar temporary argument does.
 
         Index -1 is the receiver (the 8b convention). An index naming no
         operand leaves the result's provenance unknown: only the closed-world
@@ -3020,18 +3122,19 @@ class TypeCompatibility:
         skip, where a missing index is not evidence against the callee.
         """
         obj = expr.obj if isinstance(expr, TpyMethodCall) else None
-        for idx in recorded_return_borrow_sources(fi):
-            src = (obj if idx == -1
-                   else expr.args[idx] if 0 <= idx < len(expr.args) else None)
-            if src is None:
-                if assume_unknown_calls_safe:
-                    continue
-                return True
-            if self.is_dangling_return(
-                    src, gen_yield=gen_yield,
-                    assume_unknown_calls_safe=assume_unknown_calls_safe):
-                return True
-        return False
+        recorded = recorded_return_borrow_sources(fi)
+        ops = CallOperands(fi, obj, list(expr.args), expr.kwargs or {})
+        present = {idx for idx, _ in ops.positioned()}
+        if obj is not None:
+            present.add(-1)
+        if not assume_unknown_calls_safe and not recorded <= present:
+            return True
+        return any(
+            src.temp_backed or self.is_dangling_return(
+                src.expr, gen_yield=gen_yield,
+                assume_unknown_calls_safe=assume_unknown_calls_safe)
+            for src in call_lend_sources(ops, recorded, expr_type=None,
+                                         temp_backing=True))
 
     def is_mutable_lvalue(self, expr: TpyExpr) -> bool:
         """Check if an expression is a mutable lvalue (can get a mutable Ptr).
@@ -3773,7 +3876,7 @@ class TypeCompatibility:
         """
         sources: set[str] = set()
         for root, _grants_write in tuple_borrow_escape_roots(
-                init_expr, tt, False):
+                init_expr, tt, False, expr_type=None):
             expanded = self.ctx.func.bp_borrow_source_roots(root)
             for s in (expanded if expanded else (root,)):
                 if s != name:

@@ -777,6 +777,13 @@ def _walk_arg_list(owner: str, args: 'Sequence[THIRExpr]',
             if a.value is not None:
                 _walk(owner, a.value, return_type, argtemp_ok=argtemp_ok,
                       eager_only=eager_only)
+        elif isinstance(a, THIRBorrowTupleLiteral):
+            # A borrow tuple AT an argument position is built in place there,
+            # so an element hoisted for a frame-capturing callee (`&(__tmp_N)`)
+            # flushes exactly as a direct argument's temp does.
+            _check_node(owner, a)
+            _walk_arg_list(owner, a.elements, return_type,
+                           argtemp_ok=argtemp_ok, eager_only=eager_only)
         else:
             _walk(owner, a, return_type, argtemp_ok=argtemp_ok,
                   eager_only=eager_only)

@@ -36,13 +36,16 @@ _SELFCHECKS = [
      "owning combinators stay movable until their first pull"),
     ("test_combinator_elem_form.cpp",
      "combinators hand an element on in the form its source steps it"),
+    ("test_copy_iter_sources.cpp",
+     "copy_iter borrows an lvalue source, owns a temporary and copies each element"),
 ]
 
 
 # Self-checks also built the way a release build sees the headers: their
 # debug-only guards compile out under NDEBUG, so the guarded paths must hold
 # without them.
-_RELEASE_SHAPE = {"test_owning_combinator_move.cpp", "test_frame_state_pin.cpp"}
+_RELEASE_SHAPE = {"test_owning_combinator_move.cpp", "test_frame_state_pin.cpp",
+                  "test_copy_iter_sources.cpp"}
 _RELEASE_FLAGS = ("-O2", "-DNDEBUG")
 
 _BUILDS = [(s, w, ()) for s, w in _SELFCHECKS] + [

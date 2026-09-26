@@ -1,10 +1,14 @@
 /**
  * TurboPython Runtime - CopyIter
  *
- * Iterator adapter that copies each element from a borrowing iterator.
+ * Iterator adapter that copies each element its source yields.
  * Used by copy_iter() to acknowledge element-by-element copies when
  * extending containers. Each element is copied directly into the
  * destination -- no intermediate container copy.
+ *
+ * The source is held the way a combinator holds an argument: an lvalue is
+ * borrowed, a temporary is owned (a container, a dict view, a user record, an
+ * iterator alike), so a temporary lives exactly as long as the adapter.
  *
  * Implements the TurboPython Iterator protocol (__next__/__iter__).
  */
@@ -13,14 +17,22 @@
 
 #include "core.hpp"
 #include "dunder.hpp"
+#include "itertools.hpp"
 
 #include <expected>
+#include <utility>
 
 namespace tpy {
 
-template<typename T, typename Inner>
+template<typename T, typename Source>
 struct CopyIter {
-    Inner inner;
+    Source inner;
+
+    // `__iter__` is user code CPython runs when the copy starts, and a
+    // record's separate iterator may point into the record: both happen here,
+    // in the adapter's final place.
+    template<typename A>
+    CopyIter(std::in_place_t, A&& src) : inner(std::forward<A>(src)) { inner.start(); }
 
     // Iterator protocol: copy each element from the inner iterator.
     // unwrap_ref_move copies from a val_or_ref that BORROWS and moves out of
@@ -65,20 +77,10 @@ struct CopyIter {
     }
 };
 
-// Factory: create CopyIter from a container by calling __iter__ and wrapping.
-// Excluded for iterator types (have __next__) -- use the rvalue overload via std::move.
-template<typename T, typename Container>
-    requires (!requires(Container& c) { c.__next__(); })
-auto copy_iter(Container& c) {
-    auto it = tpy::__iter__(c);
-    return CopyIter<T, decltype(it)>{std::move(it)};
-}
-
-// Rvalue overload: wrap an iterator directly (e.g. copy_iter(map(f, xs))).
-template<typename T, typename Iter>
-    requires (!std::is_lvalue_reference_v<Iter&&>)
-auto copy_iter(Iter&& iter) {
-    return CopyIter<T, std::remove_cvref_t<Iter>>{std::move(iter)};
+// Src is `C&` for an lvalue source (borrowed) and `C` for a temporary (owned).
+template<typename T, typename Src>
+auto copy_iter(Src&& src) {
+    return CopyIter<T, detail::arg_source_t<Src>>(std::in_place, std::forward<Src>(src));
 }
 
 } // namespace tpy

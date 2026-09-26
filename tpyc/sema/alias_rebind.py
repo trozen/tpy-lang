@@ -65,7 +65,8 @@ from ..typesys import (
 from ..value_category import is_rvalue_source
 from .context import (
     BorrowKind, ITER_BORROWER, _borrow_storage_roots, addr_taken_roots,
-    call_borrow_operands, call_param_args, frame_borrowed_operands,
+    call_borrow_operands, call_lend_sources, call_param_args,
+    frame_borrowed_operands,
 )
 
 if TYPE_CHECKING:
@@ -509,13 +510,10 @@ class _Replay:
         ops = call_borrow_operands(e)
         if ops is None:
             return []
-        out: list[str] = []
-        for idx in recorded_return_borrow_sources(ops.fi):
-            if idx == -1 and ops.obj is not None:
-                out += _borrow_storage_roots(ops.obj)
-            elif 0 <= idx < len(ops.args):
-                out += _borrow_storage_roots(ops.args[idx])
-        return out
+        return [root for src in call_lend_sources(
+                    ops, recorded_return_borrow_sources(ops.fi),
+                    expr_type=None)
+                for root in _borrow_storage_roots(src.expr)]
 
     def origins_of(self, root: str, st: _State) -> frozenset[int]:
         base = root.split(".", 1)[0]

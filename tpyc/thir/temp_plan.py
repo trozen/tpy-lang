@@ -122,7 +122,7 @@ class _Planner:
             case th.THIRCall():
                 _plain(expr, {"callee", "args", "callee_cpp", "resolved_callee"})
                 for arg in expr.args:
-                    self.expr(arg)
+                    self.argument(arg)
             case th.THIRCtorCall():
                 _plain(expr, {"type_cpp", "args", "full_expression_storage"})
                 for arg in expr.args:
@@ -143,6 +143,16 @@ class _Planner:
                 self.lazy(expr.orelse)
             case _:
                 raise _Unplanned()
+
+    def argument(self, arg: th.THIRExpr) -> None:
+        # A borrow tuple built in place at an argument holds its hoisted
+        # elements' addresses, so those temps flush with the call's own.
+        if isinstance(arg, th.THIRBorrowTupleLiteral):
+            _plain(arg, {"spelled_cpp", "elements", "addr_of", "elem_wraps", "tuple_layout", "elem_cpps"})
+            for element in arg.elements:
+                self.expr(element)
+            return
+        self.expr(arg)
 
     def flush(self, stmt: th.THIRStmt, scope: int, *, argument_scope: int | None = None) -> None:
         for node in self.named:

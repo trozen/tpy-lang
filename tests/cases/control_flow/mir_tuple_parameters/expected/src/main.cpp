@@ -93,8 +93,8 @@ void main() {
     std::cout << "mixed" << " " << ::tpyapp::main::mixed(std::tuple<int32_t, Cell*>{cell.value, &(cell)}) << " " << cell.value << "\n";
     std::cout << "singleton" << " " << ::tpyapp::main::singleton(std::tuple<Cell*>(&(cell)), cell) << "\n";
     std::cout << "readonly" << " " << ::tpyapp::main::readonly_capture(std::tuple<const Cell*>(&(cell)), cell) << "\n";
-    std::cout << "mixed-access-distinct" << " " << ::tpyapp::main::mixed_access(std::tuple<Cell*, Cell*>{&(cell), &(other)}) << "\n";
-    std::cout << "mixed-access-shared" << " " << ::tpyapp::main::mixed_access(std::tuple<Cell*, Cell*>{&(cell), &(cell)}) << "\n";
+    std::cout << "mixed-access-distinct" << " " << ::tpyapp::main::mixed_access(std::tuple<const Cell*, Cell*>{&(cell), &(other)}) << "\n";
+    std::cout << "mixed-access-shared" << " " << ::tpyapp::main::mixed_access(std::tuple<const Cell*, Cell*>{&(cell), &(cell)}) << "\n";
     std::cout << "tuple-copy-distinct" << " " << ::tpyapp::main::copies(std::tuple<Cell*, int32_t>{&(cell), 1}, other) << "\n";
     std::cout << "tuple-copy-shared" << " " << ::tpyapp::main::copies(std::tuple<Cell*, int32_t>{&(cell), 1}, cell) << "\n";
     std::cout << "tuple-scalar-copy" << " " << ::tpyapp::main::scalar_copies(std::tuple<int32_t, bool>{27, true}) << "\n";

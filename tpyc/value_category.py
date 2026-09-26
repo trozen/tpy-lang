@@ -13,14 +13,16 @@ and `registry`. Both the sema `AnalyzerContext` and the codegen
 """
 
 from enum import Enum, auto
-from typing import Any, NamedTuple, Protocol
+from typing import Any, Callable, NamedTuple, Protocol
 
 from .typesys import (
-    FunctionInfo, NominalType, PtrType, TpyType, TypeParamRef, OwnType,
+    FunctionInfo, NominalType, PtrType, ReadonlyType, TpyType, TupleType,
+    TypeParamRef, OwnType,
     OptionalType, ResultPosition, ResultRepresentation, classify_result_representation,
     is_open_type_param_return, is_primitive_type, is_protocol_type,
     property_getter_returns_storage_ref, returns_cpp_reference_shape,
-    unwrap_optional_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
+    unwrap_optional_own, unwrap_readonly, unwrap_ref_type,
+    unwrap_send_sync,
 )
 from .parse import (
     TpyExpr, TpyForEach,
@@ -29,10 +31,11 @@ from .parse import (
     TpyDictLiteral, TpySetLiteral, TpyDictComprehension, TpySetComprehension,
     TpyGeneratorExpression, TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall,
     TpySubscript, TpyCall, TpyName, TpyFieldAccess, TpyIfExpr, TpyAwait,
-    TpyBytesLiteral, TpyFString, TpyNamedExpr,
+    TpyBytesLiteral, TpyFString, TpyNamedExpr, TpyTupleLiteral,
     is_property_getter_read,
 )
 from .type_def_registry import is_bool_type, is_borrowing_view_type
+from . import qnames
 
 
 def wants_move(t: TpyType) -> bool:
@@ -464,6 +467,17 @@ def materializing_temp_source(a: TpyExpr, analyzer) -> bool:
     return False
 
 
+def is_iterator_protocol(t: 'TpyType | None') -> bool:
+    """Whether `t` is the `typing.Iterator` protocol -- the declared return
+    of a frame factory or combinator, or the type of a handle bound from
+    one (a concrete frame included: it is a subtype of the protocol)."""
+    if not isinstance(t, TpyType):
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return (isinstance(t, NominalType) and t.is_protocol
+            and t.qualified_name() == qnames.ITERATOR)
+
+
 def frame_factory_callee(fi: 'FunctionInfo | None') -> bool:
     """Is this callee a generator factory -- a call that builds a frame
     holding its reference-typed arguments past the statement?
@@ -486,12 +500,7 @@ def frame_factory_callee(fi: 'FunctionInfo | None') -> bool:
             or getattr(fi, "cpp_template", None)
             or getattr(fi, "is_stub", False)):
         return False
-    rt = getattr(fi, "return_type", None)
-    if not isinstance(rt, TpyType):
-        return False
-    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
-    return (isinstance(rt, NominalType) and rt.is_protocol
-            and rt.qualified_name() == "typing.Iterator")
+    return is_iterator_protocol(getattr(fi, "return_type", None))
 
 
 def iterator_source_callee(fi: 'FunctionInfo | None') -> bool:
@@ -506,12 +515,7 @@ def iterator_source_callee(fi: 'FunctionInfo | None') -> bool:
         return False
     if frame_factory_callee(fi):
         return True
-    rt = getattr(fi, "return_type", None)
-    if not isinstance(rt, TpyType):
-        return False
-    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
-    return (isinstance(rt, NominalType) and rt.is_protocol
-            and rt.qualified_name() == "typing.Iterator")
+    return is_iterator_protocol(getattr(fi, "return_type", None))
 
 
 def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
@@ -543,7 +547,8 @@ def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
     dangling-borrow warnings, which must not fire where the hoist has already
     pinned the storage. Both must read one answer -- a second copy of this
     shape rule is how a warning and a hoist drift into disagreeing about the
-    same argument."""
+    same argument. `frame_temp_elem_plan` applies this same rule to the
+    elements of a tuple-literal argument."""
     pt = unwrap_ref_type(ptype) if isinstance(ptype, TpyType) else None
     if pt is None:
         return None
@@ -556,6 +561,188 @@ def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
     if not materializing_temp_source(src, analyzer):
         return None
     return src
+
+
+class FrameTempElem(NamedTuple):
+    """One temporary ELEMENT of a tuple-literal argument that a
+    frame-capturing call owes a named local: it sits at
+    `holder.elements[path[-1]]` (`path` locates it inside the argument),
+    materializes `source` and fills element slot `slot`; `owned` is the
+    local's storage type once a lowering row has spelled it."""
+    path: tuple[int, ...]
+    holder: TpyTupleLiteral
+    source: TpyExpr
+    slot: TpyType
+    owned: 'TpyType | None' = None
+
+
+def frame_temp_elem_plan(a: TpyExpr, ptype: 'TpyType | None',
+                         analyzer) -> tuple[FrameTempElem, ...]:
+    """Every temporary element of tuple-literal argument `a` that a
+    generator/coroutine factory keeps past the statement:
+    `frame_temp_arg_source`'s rule applied to each element the tuple only
+    borrows (`TupleType.element_borrows`) -- the frame holds the tuple
+    itself by value, and an owned element owes nothing. A non-literal
+    element at a nested tuple slot has no hoist render, so it owes none."""
+    out: list[FrameTempElem] = []
+    for leaf in tuple_literal_elems(a, ptype) or ():
+        if not TupleType.element_borrows(_bare_slot(leaf.slot)):
+            continue
+        src = frame_temp_arg_source(leaf.elem, leaf.slot, analyzer)
+        if src is not None:
+            out.append(FrameTempElem(leaf.path, leaf.holder, src, leaf.slot))
+    return tuple(out)
+
+
+class TupleLiteralElem(NamedTuple):
+    """One leaf element of a tuple literal filling a tuple slot: it sits at
+    `holder.elements[path[-1]]` (`path` locates it inside the whole
+    literal) and fills element slot `slot`, as written; `under_readonly`
+    says an enclosing tuple slot is `readonly[...]`."""
+    path: tuple[int, ...]
+    holder: TpyTupleLiteral
+    elem: TpyExpr
+    slot: TpyType
+    under_readonly: bool = False
+
+
+def _bare_slot(t: TpyType) -> TpyType:
+    return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+
+
+def _is_readonly_slot(t: 'TpyType | None') -> bool:
+    return (isinstance(t, TpyType)
+            and isinstance(unwrap_ref_type(unwrap_send_sync(t)), ReadonlyType))
+
+
+def tuple_literal_elems(expr: TpyExpr, slot: 'TpyType | None'
+                        ) -> 'tuple[TupleLiteralElem, ...] | None':
+    """The leaf elements of `expr` when it is a tuple literal filling a
+    tuple slot of its arity -- a nested literal at a nested tuple slot is
+    expanded in place -- or None for any other shape."""
+    lit = peel_coerce(expr)
+    if not isinstance(lit, TpyTupleLiteral) or not isinstance(slot, TpyType):
+        return None
+    bare = _bare_slot(slot)
+    if (not isinstance(bare, TupleType)
+            or len(bare.element_types) != len(lit.elements)):
+        return None
+    out: list[TupleLiteralElem] = []
+    _collect_tuple_literal_elems(lit, bare, (), _is_readonly_slot(slot), out)
+    return tuple(out)
+
+
+def _collect_tuple_literal_elems(lit: TpyTupleLiteral, bare: TupleType,
+                                 path: tuple[int, ...], under_readonly: bool,
+                                 out: 'list[TupleLiteralElem]') -> None:
+    for i, (elem, et) in enumerate(zip(lit.elements, bare.element_types)):
+        inner = peel_coerce(elem)
+        et_bare = _bare_slot(et)
+        if (isinstance(inner, TpyTupleLiteral) and isinstance(et_bare, TupleType)
+                and len(et_bare.element_types) == len(inner.elements)):
+            _collect_tuple_literal_elems(
+                inner, et_bare, path + (i,),
+                under_readonly or _is_readonly_slot(et), out)
+        else:
+            out.append(TupleLiteralElem(path + (i,), lit, elem, et,
+                                        under_readonly))
+
+
+ExprTypeOf = Callable[[TpyExpr], "TpyType | None"]
+
+
+class LentOperand(NamedTuple):
+    """One expression an operand lends at its slot (`lent_operands`)."""
+    expr: TpyExpr
+    # The slot `expr` fills: the parameter, or the tuple element slot.
+    slot: 'TpyType | None'
+    # A write through the callee's view of `expr` reaches `expr`'s storage.
+    grants_write: bool
+    # Where `expr` sits inside a tuple-literal operand; () for the operand.
+    path: tuple[int, ...] = ()
+    # Not a lent operand: the storage the operand's tuple temporary holds
+    # by value for `expr`. A result borrowing the operand can point into
+    # it, but `expr`'s own storage is not lent (no root, no write).
+    temp_backed: bool = False
+
+
+def _operand_is_pointer_value(expr: TpyExpr,
+                              expr_type: 'ExprTypeOf | None') -> bool:
+    # A `Ptr[T]` operand is a pointer VALUE copied out of its storage:
+    # writing through the copy reaches the pointee, never that storage.
+    return (expr_type is not None
+            and isinstance(expr_type(expr), PtrType))
+
+
+def lent_operands(expr: TpyExpr, slot: 'TpyType | None', *,
+                  expr_type: 'ExprTypeOf | None',
+                  temp_backing: bool = False
+                  ) -> 'list[LentOperand]':
+    """What `expr` lends as the value of slot `slot`: the expression itself,
+    or -- a tuple literal at a tuple slot -- each element whose slot borrows,
+    exactly as that element would lend at its slot as a scalar; an owned
+    element (a primitive, a `str`, an `Own[T]`) lends nothing.
+
+    `temp_backing` also reports each element the tuple temporary holds as
+    storage a borrow can point into (`TupleType.element_holds_storage`),
+    flagged `temp_backed`: the question "can a result borrowing `expr`
+    point into a temporary" needs them, the question "which caller storage
+    is lent" must not see them.
+
+    Write access is decided here, once: a readonly slot grants none, and an
+    element grants it only through a bare-pointer (reference) element slot
+    -- a union or view element's borrow form is const. A `Ptr[T]` operand
+    grants none either; `expr_type=None` leaves that unknown and gives
+    the wider answer, so a caller reading `grants_write` passes the getter
+    (required, so no caller omits it by accident)."""
+    leaves = tuple_literal_elems(expr, slot)
+    if leaves is None:
+        return [LentOperand(
+            expr, slot, not _is_readonly_slot(slot)
+            and not _operand_is_pointer_value(expr, expr_type))]
+    out: list[LentOperand] = []
+    for leaf in leaves:
+        if TupleType.element_lends(leaf.slot):
+            out.append(LentOperand(
+                leaf.elem, leaf.slot,
+                not leaf.under_readonly and not _is_readonly_slot(leaf.slot)
+                and TupleType._element_is_pointer_repr(leaf.slot)
+                and not _operand_is_pointer_value(leaf.elem, expr_type),
+                leaf.path))
+        # A nested tuple value can do both: lend its borrowing elements and
+        # have its owned ones copied into the temporary.
+        if temp_backing and TupleType.element_holds_storage(leaf.slot):
+            out.append(LentOperand(leaf.elem, leaf.slot, False, leaf.path,
+                                   True))
+    return out
+
+
+def slot_binds_open_param(slot: 'TpyType | None') -> bool:
+    """Whether a DECLARED slot is an open type param, whose C++ form
+    (`param_val_or_ref_t<T>`, `val_or_ptr_t<T>`) is a mutable borrow at
+    every reference instantiation whatever the body does with it.
+    `readonly[T]` renders the const form."""
+    return (isinstance(slot, TpyType)
+            and isinstance(unwrap_ref_type(unwrap_send_sync(slot)),
+                           TypeParamRef))
+
+
+def lent_operand_binds_open_param(operand: LentOperand,
+                                  arg: TpyExpr,
+                                  declared: 'TpyType | None') -> bool:
+    """Whether `operand` (lent by `arg`) fills a position that the callee's
+    DECLARED parameter type `declared` spells as an open type param -- the
+    parameter itself, or an element slot at or enclosing `operand.path`
+    (a `T` element filled by a nested literal holds the whole literal).
+    Asked of the declaration: a call site's substituted slot no longer says
+    it was generic."""
+    if not operand.path:
+        return slot_binds_open_param(declared)
+    for leaf in tuple_literal_elems(arg, declared) or ():
+        if (operand.path[:len(leaf.path)] == leaf.path
+                and not leaf.under_readonly):
+            return slot_binds_open_param(leaf.slot)
+    return False
 
 
 def peel_value_wrappers(expr: TpyExpr) -> TpyExpr:

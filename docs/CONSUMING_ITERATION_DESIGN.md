@@ -137,13 +137,28 @@ the difference is **observable** (the source is still alive after the operation)
 **Warn** when all of:
 1. Parameter expects `Iterator[Own[T]]` (or `Iterable[Own[T]]` transitionally)
 2. Element type is non-value (copy is meaningful)
-3. Argument is lvalue, not `copy_iter()` / `copy()`, not at last use
+3. Argument is not `copy_iter()` / `copy()`, and either
+   - an lvalue container not at its last use, or
+   - an iterator or view (a combinator, a dict view, a generator, a
+     generator expression) whose reference elements it LENDS out of named
+     storage: `list(zip(ns, cs))`, `list(reversed(cs))`, `list(d.values())`.
+     Provenance is per element: `zip(ns, cs)` warns for its `C` half, which
+     `cs` lends, and not for its `int` half. A named adapter at its last use
+     (`z = zip(ns, cs); list(z)`) still warns: moving the adapter moves only
+     the adapter, the elements still live in `cs`.
 
 **Don't warn** when any of:
 - Value-type elements -- copy is semantically invisible
 - `copy_iter()` or `copy()` -- user explicitly acknowledged
-- Rvalue / temporary / literal -- no live alias exists
-- Last use -- source is dead after this, no observable aliasing divergence
+- An iterator whose reference elements come out of a temporary or are owned
+  by it (`zip(ns, [C(5)])`, a generator yielding `Own[C]`) -- no live alias
+  exists
+- Last use of a container -- source is dead after this, no observable
+  aliasing divergence
+
+In a generic body the element type decides per instantiation, so a
+reference-capable `T` hedges ("may copy T elements if not a value type") and
+a `T: ValueType` bound stays quiet.
 
 ### User experience
 
@@ -152,6 +167,7 @@ a.extend(b)              # b at last use -> auto-move, 0 copies, no warn
 a.extend(b)              # b NOT at last use -> warn: copies Node elements
 a.extend(copy_iter(b))   # explicit copy ack, N copies, no warn
 a.extend([Node(1)])      # rvalue -> auto-move from temporary, no warn
+a.extend(reversed(b))    # rvalue lending b's Nodes -> warn: copies Node elements
 ```
 
 ### Iterable -> Iterator auto-coercion
@@ -293,19 +309,27 @@ struct OwnIter {
 
 ### `CopyIter[T]` -- for `copy_iter()` function
 
-`CopyIter[T]` wraps a borrowing iterator and copies each element:
+`CopyIter[T]` holds its source the way a combinator holds an argument
+(`detail::arg_source_t`: an lvalue is borrowed, any temporary -- a container,
+a dict view, a user record, an iterator -- is moved in and owned) and copies
+each element it yields:
 
 ```cpp
-template<typename T, typename Inner>
+template<typename T, typename Source>
 struct CopyIter {
-    Inner inner;
+    Source inner;  // borrowed_iter_source<C> or owned_iter_source<C>
 
     std::expected<T, StopIteration> __next__() {
         auto r = inner.__next__();
-        if (!r.has_value()) return std::unexpected(r.error());
-        return T(*r);  // copy element directly into expected (destination)
+        if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
+        return T(unwrap_ref_move(*r));  // copy element straight into the result
     }
 };
+
+template<typename T, typename Src>
+auto copy_iter(Src&& src) {
+    return CopyIter<T, detail::arg_source_t<Src>>(std::in_place, std::forward<Src>(src));
+}
 ```
 
 Each element is copied exactly once, directly into the destination. No

@@ -1,0 +1,2 @@
+main.py:170: warning: copies tuple[int32, Bag2] elements; use copy_iter() to make this explicit
+main.py:172: warning: copies tuple[Bag2, int32] elements; use copy_iter() to make this explicit

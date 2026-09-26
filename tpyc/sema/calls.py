@@ -56,7 +56,7 @@ from .overloads import (
     _classify_overload, _score, _expand_arg_types_with_kwargs,
     _scalar_widening_cost,
 )
-from .context import _root_name_of_expr
+from .context import CallOperands, _root_name_of_expr, call_lend_sources
 from .statements import _is_self_call_deferred, _receiver_leaves
 from .scope_tracker import lend_roots
 from .compatibility import TupleSink
@@ -3382,8 +3382,13 @@ class CallAnalyzer:
                                 self.ctx.mark_param_mutated(sub_root)
                                 self.ctx.mark_loop_var_mutated(sub_root)
                 continue
-            if not unwrap_readonly(param.type).is_value_type():
-                arg_root = _root_name_of_expr(arg)
+            for src in call_lend_sources(
+                    CallOperands(fi, None, list(expr.args)), frozenset((i,)),
+                    expr_type=self.ctx.get_expr_type):
+                if (src.slot is None or not src.grants_write
+                        or unwrap_readonly(src.slot).is_value_type()):
+                    continue
+                arg_root = _root_name_of_expr(src.expr)
                 if arg_root is not None:
                     self.ctx.mark_loop_var_mutated(arg_root)
 
@@ -3483,21 +3488,25 @@ class CallAnalyzer:
             # generic-slot tuples. Tuples and pointer-repr Optionals with
             # non-readonly elements DO need edges so transitive mutation
             # through them propagates.
-            if self._generic_slot_binds_mutable(fi, i):
-                # An open-`T` slot renders `param_val_or_ref_t<T>`, which is a
-                # MUTABLE `T&` at every reference instantiation, so whatever
-                # binds there must stay a mutable lvalue. The callee's own
-                # mutated_params cannot answer this -- the generic body need
-                # not touch the param for its C++ slot to be a mutable borrow
-                # -- so it is a direct fact at the call site, not an edge.
-                _gr = _root_name_of_expr(expr.args[i])
-                if _gr is not None:
-                    self.ctx.mark_param_mutated(_gr)
+            sources = call_lend_sources(
+                CallOperands(fi, None, list(expr.args)), frozenset((i,)),
+                expr_type=self.ctx.get_expr_type)
+            # An open-`T` slot (the param, or a tuple param's element) renders
+            # a MUTABLE borrow at every reference instantiation, so whatever
+            # binds there must stay a mutable lvalue. The callee's own
+            # mutated_params cannot answer this -- the generic body need not
+            # touch the param for its C++ slot to be a mutable borrow -- so it
+            # is a direct fact at the call site, not an edge.
+            for src in sources:
+                if src.binds_open_param:
+                    _gr = _root_name_of_expr(src.expr)
+                    if _gr is not None:
+                        self.ctx.mark_param_mutated(_gr)
+            sources = [s for s in sources
+                       if s.grants_write and not s.binds_open_param]
+            if not sources or not param_has_mutable_borrow_surface(
+                    callee_param.type):
                 continue
-            if not param_has_mutable_borrow_surface(callee_param.type):
-                continue
-            arg = expr.args[i]
-            arg_root = _root_name_of_expr(arg)
             # An argument with no path root may still lend storage: a call
             # whose result borrows its own arguments (a lazy combinator, a
             # generator factory) or a conditional of two lvalues hands the
@@ -3505,14 +3514,18 @@ class CallAnalyzer:
             # through the callee's param reaches each of them. An assumed
             # root (a callee whose facts are pending) is kept: the edge only
             # widens the mutated set, which is the safe direction.
-            if arg_root is not None:
-                arg_roots = [arg_root]
-                through_handle = False
-            else:
-                roots = [r for r in lend_roots(self.ctx, arg)
+            arg_roots: list[str] = []
+            through_handle = False
+            for src in sources:
+                arg_root = _root_name_of_expr(src.expr)
+                if arg_root is not None:
+                    arg_roots.append(arg_root)
+                    continue
+                roots = [r for r in lend_roots(self.ctx, src.expr)
                          if not r.held_whole]
-                arg_roots = [r.name for r in roots]
-                through_handle = any(r.through_call for r in roots)
+                arg_roots += [r.name for r in roots]
+                through_handle = through_handle or any(
+                    r.through_call for r in roots)
             # Resolve alias and element borrow chains to find the original param.
             # 8a.5: the walk also follows element/field/ptr borrows so that
             # mutating a call arg that element-borrows from a param correctly
@@ -3548,19 +3561,6 @@ class CallAnalyzer:
                                  param_map={callee_idx: caller_idx},
                                  lent=frozenset(lent & {callee_idx}))
             )
-
-    @staticmethod
-    def _generic_slot_binds_mutable(fi: FunctionInfo, index: int) -> bool:
-        """Whether callee param `index` is an open type param whose C++ slot is
-        a mutable borrow. Read off the CANONICAL declaration: the call site's
-        fi may carry the substituted concrete type, which no longer says the
-        slot was generic. `readonly[T]` is excluded -- it renders
-        `readonly_form_t<T>`, the const form."""
-        params = fi.root.params
-        if index >= len(params):
-            return False
-        declared = unwrap_ref_type(params[index].type)
-        return isinstance(declared, TypeParamRef)
 
     def _arg_storage_roots(self, arg_root: str, *,
                            cross_handles: bool = True) -> list[str]:

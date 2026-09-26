@@ -65,7 +65,8 @@ from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
 from .context import PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_generator_object, frame_binding_fact, record_frame_binding_roots, call_param_args
 from ..value_category import (is_rvalue_source, async_result_aliases,
-                             return_type_is_cpp_ref, peel_value_wrappers)
+                             return_type_is_cpp_ref, peel_value_wrappers,
+                             lent_operands)
 from .alias_rebind import bind_kind_of
 from .compatibility import TupleSink
 from .narrowing import NarrowingTracker, deref_view_narrowed, truthy_operands
@@ -3987,7 +3988,10 @@ class ExpressionAnalyzer:
             # The frame iterates only its source and reads a capture afresh at
             # each pull, so a capture is held whole -- unless the yield may
             # point into it (`ys[i][1:]` views an element of `ys`).
-            lent = ({r.name for r in lend_roots(self.ctx, expr.element_expr)}
+            lent = ({r.name for lo in lent_operands(
+                         expr.element_expr, func.generator_yield_type,
+                         expr_type=None)
+                     for r in lend_roots(self.ctx, lo.expr)}
                     if frame_yield_may_borrow(func.generator_yield_type)
                     else set())
             n_source = len(range_args) or 1

@@ -14,27 +14,28 @@ with the call-result binding (`_register_call_result_borrow` in
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, NamedTuple
+from typing import TYPE_CHECKING, Iterable, NamedTuple, Union
 
 from ..parse import (
     TpyCall, TpyCoerce, TpyExpr, TpyFieldAccess, TpyFString, TpyBinOp,
     TpyGeneratorExpression, TpyIfExpr, TpyMethodCall, TpyName, TpySubscript,
     is_property_getter_read,
 )
-from ..type_def_registry import is_borrowing_view_type
+from ..type_def_registry import is_borrowing_view_type, iter_yields_owned_elements
 from ..typesys import (
     FunctionInfo, TpyType, TupleType, TypeParamRef, held_whole_borrow_sources,
     is_protocol_type, recorded_return_borrow_sources, type_param_names,
-    unwrap_readonly, unwrap_ref_type,
+    unwrap_own, unwrap_readonly, unwrap_ref_type,
 )
 from ..value_category import (
     frame_factory_callee, frame_temp_arg_source, iterator_source_callee,
 )
 from .context import (
-    BorrowKind, ITER_BORROWER, LoanInfo, _borrow_storage_roots,
+    BorrowKind, ITER_BORROWER, LoanInfo, _borrow_storage_roots, call_lend_sources,
     _storage_root, call_borrow_operands, element_index_key,
     iter_borrow_storage,
 )
+from .own_copy import contains_reference_type
 from .scope_tracker import lend_roots
 
 if TYPE_CHECKING:
@@ -61,11 +62,8 @@ def _yield_elem_sources(fi: FunctionInfo,
     named = False
     for et in args[0].element_types:
         names = type_param_names(et)
-        srcs: list[str] = []
-        if names:
-            for idx, p in enumerate(root.params):
-                if idx in srcs_by_idx and names & type_param_names(p.type):
-                    srcs.extend(srcs_by_idx[idx])
+        srcs = [src for idx in _elem_param_indices(root, et)
+                if idx in srcs_by_idx for src in srcs_by_idx[idx]]
         if names and not srcs and not et.is_value_type():
             # A reference element whose type param names no retained
             # argument: the whole-variable attribution, as if unnamed.
@@ -75,6 +73,107 @@ def _yield_elem_sources(fi: FunctionInfo,
         named = named or bool(srcs) and srcs is not every
         out.append(srcs)
     return out if named else None
+
+
+def _elem_param_indices(root: FunctionInfo, et: TpyType) -> list[int]:
+    """The parameters of a callee's generic signature whose type mentions a
+    type param spelling yield element `et` -- where that element comes from."""
+    names = type_param_names(et)
+    if not names:
+        return []
+    return [idx for idx, p in enumerate(root.params)
+            if names & type_param_names(p.type)]
+
+
+# Per element of an iteration's yield, the named storage the element is a
+# reference into: a flat root list for a whole element, or one entry per
+# element of a tuple yield.
+ElemProvenance = Union[list[str], tuple["ElemProvenance", ...]]
+
+
+def _flat_provenance(prov: ElemProvenance) -> list[str]:
+    if isinstance(prov, tuple):
+        return [root for p in prov for root in _flat_provenance(p)]
+    return prov
+
+
+def _iterates_type_param(param_type: TpyType, et: TpyType) -> bool:
+    """Whether a parameter is an iterable whose ELEMENT is the bare type
+    param `et` (`Iterable[T1]` against `T1`), so the yield element is exactly
+    what iterating the argument yields and its structure carries over."""
+    p = unwrap_ref_type(unwrap_readonly(param_type))
+    args = getattr(p, "type_args", None)
+    return bool(args) and is_protocol_type(p) and args[0] == et
+
+
+def iteration_elem_provenance(ctx: SemanticContext,
+                              iterable: TpyExpr) -> ElemProvenance:
+    """Per element of what iterating `iterable` yields, the named storage it
+    points into. Strict about the callee's generic signature: a type-param
+    element comes only from the operands whose parameter mentions that
+    param (and the receiver), so `zip(ns, [C(5)])` blames nothing for its
+    `C`; an element spelled without one keeps whole-call attribution."""
+    it_type = ctx.get_expr_type(iterable)
+    if it_type is not None and iter_yields_owned_elements(
+            unwrap_ref_type(unwrap_readonly(unwrap_own(it_type)))):
+        return []
+    storage = iterated_storage(ctx, iterable)
+    fi = storage.callee
+    if fi is None:
+        return [_storage_root(key) for key, _ in storage.loans]
+    by_idx = _sources_by_idx(storage.operands)
+    every = [src for op in storage.operands for src in op.sources]
+    root = fi.root
+    ret = unwrap_ref_type(unwrap_readonly(root.return_type))
+    args = getattr(ret, "type_args", None)
+    if not args or not is_protocol_type(ret):
+        # A view or container result (`d.items()`, a borrowed `list[C]`):
+        # its signature does not spell the yield, so the whole call lends.
+        return every
+
+    def elem(et: TpyType) -> ElemProvenance:
+        if isinstance(et, TupleType):
+            return tuple(elem(e) for e in et.element_types)
+        if not type_param_names(et):
+            return every
+        idxs = [i for i in _elem_param_indices(root, et) if i in by_idx]
+        if -1 in by_idx:
+            idxs.append(-1)
+        if (isinstance(et, TypeParamRef) and len(idxs) == 1 and idxs[0] >= 0
+                and _iterates_type_param(root.params[idxs[0]].type, et)):
+            op = by_idx[idxs[0]]
+            # Only a nested lending call has a yield structure of its own; a
+            # named operand's roots are already `sources`, deep chains included.
+            if call_borrow_operands(op.arg) is None:
+                return op.sources
+            return iteration_elem_provenance(ctx, op.arg)
+        return [src for i in idxs for src in by_idx[i].sources]
+
+    return elem(args[0])
+
+
+def iteration_lend_pending(ctx: SemanticContext, iterable: TpyExpr) -> bool:
+    """Whether what `iterable` lends still waits on a callee whose body is
+    not analyzed yet (a generator defined below its use), so a provenance
+    verdict taken now would depend on definition order."""
+    return any(r.assumed for r in lend_roots(ctx, iterable))
+
+
+def iteration_copies_lent_reference(ctx: SemanticContext, iterable: TpyExpr,
+                                    elem_type: TpyType) -> bool:
+    """Whether materializing `iterable` into owned storage of `elem_type`
+    copies a reference-typed element out of named storage it lends from --
+    the copy CPython's shallow `list(...)` would alias instead. Per tuple
+    element: `zip(ns, cs)`'s `int` half lends from `ns` but copies no
+    reference, its `C` half lends from `cs`."""
+    def copies(t: TpyType, prov: ElemProvenance) -> bool:
+        bare = unwrap_ref_type(unwrap_readonly(t))
+        if (isinstance(prov, tuple) and isinstance(bare, TupleType)
+                and len(prov) == len(bare.element_types)):
+            return any(copies(e, p) for e, p in zip(bare.element_types, prov))
+        return bool(_flat_provenance(prov)) and contains_reference_type(t)
+
+    return copies(elem_type, iteration_elem_provenance(ctx, iterable))
 
 
 def is_dangling_temporary_arg(expr: TpyExpr) -> bool:
@@ -103,7 +202,7 @@ def is_dangling_temporary_arg(expr: TpyExpr) -> bool:
 
 
 def temp_arg_kept_alive(fi: FunctionInfo, idx: int, arg: TpyExpr,
-                        ctx: SemanticContext) -> bool:
+                        slot: TpyType | None, ctx: SemanticContext) -> bool:
     """Whether a temporary argument outlives the statement although the
     callee's result borrows it, so the dangle warnings below must stay
     silent: the compiler hoists a frame factory's argument into a named
@@ -118,7 +217,7 @@ def temp_arg_kept_alive(fi: FunctionInfo, idx: int, arg: TpyExpr,
         return False
     if not frame_factory_callee(fi):
         return iterator_source_callee(fi)
-    return frame_temp_arg_source(arg, fi.params[idx].type, ctx) is not None
+    return frame_temp_arg_source(arg, slot, ctx) is not None
 
 
 def hold_whole(bt: 'BorrowTracker', borrower: str, roots: Iterable[str]) -> None:
@@ -145,12 +244,26 @@ class IterationLoan(NamedTuple):
 
 
 class _BorrowedOperand(NamedTuple):
-    """One operand whose storage a call iterable's result points into: its
-    parameter index (-1 = the receiver), the expression, and the storage
-    keys it lends (empty when it has none -- a temporary)."""
+    """One source (`call_lend_sources`) a call iterable's result points
+    into: its parameter index (-1 = the receiver), the expression, the
+    storage keys it lends (empty when it has none -- a temporary) and the
+    slot it fills."""
     idx: int
     arg: TpyExpr
     sources: list[str]
+    slot: TpyType | None = None
+
+
+def _sources_by_idx(operands: 'list[_BorrowedOperand]'
+                    ) -> dict[int, _BorrowedOperand]:
+    """The operands per parameter index, the lending elements of one
+    tuple-literal argument merged into one entry."""
+    out: dict[int, _BorrowedOperand] = {}
+    for op in operands:
+        prev = out.get(op.idx)
+        out[op.idx] = (op if prev is None else
+                       prev._replace(sources=prev.sources + op.sources))
+    return out
 
 
 class IteratedStorage(NamedTuple):
@@ -243,26 +356,20 @@ def _provenance_storage(ctx: SemanticContext,
     # The iterable is a call whose return borrows from source arg(s): the
     # ITER borrow goes directly on those source containers so that
     # structural mutations during the loop generate conflict warnings.
-    fi_iter, call_obj, call_args = operands
+    fi_iter = operands.fi
     iter_sources = recorded_return_borrow_sources(fi_iter)
-    held = held_whole_borrow_sources(fi_iter)
     if not iter_sources:
         return IteratedStorage([], [])
     loans: list[tuple[str, LoanInfo]] = []
     held_whole: list[str] = []
     borrowed: list[_BorrowedOperand] = []
-    for idx in iter_sources:
-        if idx in held and 0 <= idx < len(call_args):
-            held_whole.extend(_borrow_storage_roots(call_args[idx]))
+    for src in call_lend_sources(operands, iter_sources,
+                                 held_whole_borrow_sources(fi_iter),
+                                 expr_type=None):
+        if src.held_whole and src.idx >= 0:
+            held_whole.extend(_borrow_storage_roots(src.expr))
             continue
-        arg = None
-        if idx == -1 and call_obj is not None:
-            arg = call_obj
-        elif idx >= 0 and idx < len(call_args):
-            arg = call_args[idx]
-        if arg is None:
-            continue
-        srcs = _borrow_storage_roots(arg)
+        srcs = _borrow_storage_roots(src.expr)
         # An argument that is itself a lending call (a nested
         # combinator, `zip(filter(pos, ns), xs)`) or a
         # conditional has no storage key, but it lends: the
@@ -273,11 +380,11 @@ def _provenance_storage(ctx: SemanticContext,
         # invalidation warning -- on a name the callee may never
         # lend, by declaration order.
         if not srcs:
-            lent = [r for r in lend_roots(ctx, arg) if not r.assumed]
+            lent = [r for r in lend_roots(ctx, src.expr) if not r.assumed]
             srcs = [r.name for r in lent if not r.held_whole]
             held_whole.extend(r.name for r in lent if r.held_whole)
-        borrowed.append(_BorrowedOperand(idx, arg, srcs))
-        loans.extend((src, LoanInfo(BorrowKind.ITER)) for src in srcs)
+        borrowed.append(_BorrowedOperand(src.idx, src.expr, srcs, src.slot))
+        loans.extend((key, LoanInfo(BorrowKind.ITER)) for key in srcs)
     return IteratedStorage(loans, held_whole, fi_iter, borrowed)
 
 
@@ -334,7 +441,8 @@ def register_iteration_loans(
         # survive the for-loop. A borrowing-VIEW slot of a frame-capturing
         # callee is materialized too, by the view-backing hoist. Only warn
         # for what neither pins.
-        is_materialized = temp_arg_kept_alive(fi_iter, op.idx, op.arg, ctx)
+        is_materialized = temp_arg_kept_alive(
+            fi_iter, op.idx, op.arg, op.slot, ctx)
         if isinstance(op.arg, (TpyCall, TpyMethodCall)):
             arg_fi = op.arg.resolved_function_info
             if arg_fi is not None and not arg_fi.return_type.is_value_type():
@@ -352,6 +460,7 @@ def register_iteration_loans(
     iter_srcs = [key for key, _ in storage.loans]
     if not iter_srcs:
         return IterationLoan([], unplaceable=storage.unplaceable)
-    srcs_by_idx = {op.idx: op.sources for op in storage.operands}
+    srcs_by_idx = {idx: op.sources
+                   for idx, op in _sources_by_idx(storage.operands).items()}
     return IterationLoan(iter_srcs, _yield_elem_sources(fi_iter, srcs_by_idx),
                          unplaceable=storage.unplaceable)

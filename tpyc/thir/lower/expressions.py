@@ -330,6 +330,7 @@ from .predicates import (
     _f1_tuple,
     _union_member_match,
     frame_temp_arg_slot,
+    frame_temp_elem_slots,
     _field_read_ref_ctor_arg,
     _field_over_global_record_ok,
     _field_over_subscript_ok,
@@ -10437,7 +10438,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # shape RAISES rather than fall through to an inline render
             # where a hoist is required.
             frame_factory = (not proto_recv and not stub_recv and fi is not None
-                             and (fi.is_generator or fi.is_async)
+                             and (frame_factory_callee(fi) or fi.is_async)
                              and isinstance(ptype, TpyType))
             if frame_factory:
                 fpr = unwrap_ref_type(unwrap_send_sync(ptype))
@@ -10574,6 +10575,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     method_arg_stub=stub_recv and not proto_recv,
                     protocol_slots=proto_slot_flush,
                     readonly_target=ro_slot,
+                    frame_capturing=frame_factory,
                     callee_fi=measured_arg_callee(fi), arg_index=index),
                 lower_owned=lambda owned: _lower_call_arg(
                     _peel_coerce(a), owned, lc, declared, temp_args=True,
@@ -12524,7 +12526,9 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                                 rvalue_ok: bool = False,
                                 use: _ExprUse = _ExprUse(),
                                 storage_context: bool = False,
-                                consuming: bool = False) -> THIRExpr:
+                                consuming: bool = False,
+                                frame_elems: 'dict[tuple[int, ...], TpyType] | None' = None,
+                                frame_flush: bool = False) -> THIRExpr:
     """Lower a tuple literal at a BORROW-form slot (`std::tuple<..., T*>`) --
     the ref-element path reduced to the lvalue-NAME
     subset. Per element the slot-info ladder's sliced arms: VALUE mode lowers
@@ -12540,11 +12544,23 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
     slot there, since a borrow's element address dies with the call, and a
     generic element takes the bare `T` its destination is spelled with -- it
     is never bare-pointer repr, so no later storage lift materializes it.
-    The same flag moves out of the borrow slots the sink does keep."""
+    The same flag moves out of the borrow slots the sink does keep.
+
+    `frame_elems` (None unless the call is frame-capturing) maps each owed
+    element's path to the owned type `frame_temp_elem_slots` spelled for it:
+    the frame keeps the tuple past the full expression, so such an element
+    hoists into a `__tmp_N` whose address the tuple holds, and an rvalue
+    element it does NOT name has no storage that outlives the call and
+    rejects. `frame_flush` is the call-argument flush right the hoist
+    needs."""
     analyzer = lc.analyzer
     n = len(e.elements)
     if n != len(slot.element_types):
         note_detail("btuple.arity")
+        raise ThirUnsupported("expr.tuple_literal")
+    if frame_elems is not None and any(len(p) != 1 for p in frame_elems):
+        # A nested tuple literal element has no render at a borrow slot.
+        note_detail("btuple.frame_elem_nested")
         raise ThirUnsupported("expr.tuple_literal")
     parts: list[str] = []
     src_parts: list[str] = []
@@ -12556,9 +12572,13 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
     wraps: list['str | None'] = []
     any_rvalue = False
     captures: list[TupleElemCapture] = []
+    frame_hoisted: set[int] = set()
     for i in range(n):
         et = unwrap_ref_type(slot.element_types[i])
         et_bare = unwrap_readonly(unwrap_send_sync(et))
+        # A readonly ELEMENT slot is a const borrow like a readonly target.
+        elem_readonly = (target_readonly
+                         or isinstance(unwrap_send_sync(et), ReadonlyType))
         mode = (e.elem_capture[i] if i < len(e.elem_capture) else None)
         if consuming and isinstance(et, TypeParamRef):
             # Ahead of the sema capture, like the slot-info ladder: an owning
@@ -12581,7 +12601,7 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                     and et_bare.uses_pointer_repr()):
                 # The slot-info ladder FORCES REF for pointer-repr Optional
                 # slots (uniform T* shape) ahead of the lvalue rule.
-                mode = (TupleElemCapture.CONST_REF if target_readonly
+                mode = (TupleElemCapture.CONST_REF if elem_readonly
                         else TupleElemCapture.REF)
             elif emit_prims.is_simple_lvalue(e.elements[i]):
                 mode = (TupleElemCapture.CONST_REF
@@ -12589,7 +12609,7 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                             or isinstance(
                                 analyzer.get_expr_type(e.elements[i]),
                                 ReadonlyType))
-                        else (TupleElemCapture.CONST_REF if target_readonly
+                        else (TupleElemCapture.CONST_REF if elem_readonly
                               else TupleElemCapture.REF))
             elif consuming:
                 # A non-lvalue element at an owning slot: the tuple outlives
@@ -12597,9 +12617,9 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                 # a borrow whose address dies with the full-expression.
                 mode = TupleElemCapture.VALUE
             else:
-                mode = (TupleElemCapture.CONST_REF if target_readonly
+                mode = (TupleElemCapture.CONST_REF if elem_readonly
                         else TupleElemCapture.REF)
-        elif target_readonly and mode == TupleElemCapture.REF:
+        elif elem_readonly and mode == TupleElemCapture.REF:
             mode = TupleElemCapture.CONST_REF
         captures.append(mode)
         member = e.elements[i]
@@ -12764,6 +12784,12 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             # source tuple holds the VALUE variant -- the member ctor
             # rvalue is absorbed by its converting ctor. Both spellings
             # come from the union type itself, never hand-assembled.
+            if frame_elems is not None:
+                # A frame would keep the helper's pointer into the source
+                # tuple, which dies at the semicolon; a hoisted element needs
+                # the variant's own borrow conversion, which has no row.
+                note_detail("btuple.frame_elem_union")
+                raise ThirUnsupported("expr.tuple_literal")
             _witness("btuple.elem_ptr_union")
             parts.append(et_slot.to_cpp_return_const())
             src_parts.append(lc.render_type(et_slot))
@@ -12792,10 +12818,10 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                 raise ThirUnsupported("expr.tuple_literal")
             ptr_base = lc.render_type(unwrap_readonly(unwrap_ref_type(
                 et_slot)))
-            parts.append(f"const {ptr_base}*"
-                         if mode == TupleElemCapture.CONST_REF
-                         else f"{ptr_base}*")
-            src_parts.append(ptr_base)
+            ptr_part = (f"const {ptr_base}*"
+                        if mode == TupleElemCapture.CONST_REF
+                        else f"{ptr_base}*")
+            parts.append(ptr_part)
             # The sink's flush right rides into a call-shaped rvalue element
             # (its nested arg temps hoist at the enclosing statement, like
             # any nested call arg's). A `copy(x)`
@@ -12804,12 +12830,36 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             # intercepts it like every other.
             copy_row = _lower_copy_record(
                 elem, lc, declared, loc=getattr(elem, "loc", None))
-            lowered.append(copy_row if copy_row is not None else _lower_expr(
+            elem_init = (copy_row if copy_row is not None else _lower_expr(
                 elem, lc, declared,
                 use=_ExprUse(result=_ExprResultUse.STORAGE,
                              allow_temps=use.allow_temps)))
             lifts.append(False)
             wraps.append(None)
+            if frame_elems is not None:
+                # A frame keeps the tuple, so the element's storage must
+                # outlive the call: it hoists into a named local and the
+                # tuple holds that local's address (the scalar hoist, per
+                # element).
+                temp_t = frame_elems.get((i,))
+                if temp_t is None:
+                    note_detail("btuple.frame_elem_unowned")
+                    raise ThirUnsupported("expr.tuple_literal")
+                if not frame_flush:
+                    note_detail("btuple.frame_elem_no_statement_slot")
+                    raise ThirUnsupported(
+                        call_reject_reason("expr.tuple_literal"))
+                frame_hoisted.add(i)
+                _witness("argtemp.frame_temp_elem")
+                src_parts.append(ptr_part)
+                lowered.append(THIRArgTemp(
+                    result_type=temp_t, cpp_type=lc.render_type(temp_t),
+                    init=elem_init, form=Form.BORROW, addr_of=True,
+                    movable=unwrap_ref_type(temp_t).is_movable(),
+                    loc=getattr(elem, "loc", None)))
+                continue
+            src_parts.append(ptr_base)
+            lowered.append(elem_init)
             any_rvalue = True
             continue
         _btuple_elem_passthrough = False
@@ -12898,6 +12948,10 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         else:
             wraps.append(None)
             lifts.append(lift)
+    if frame_elems and len(frame_hoisted) != len(frame_elems):
+        # An owed element reached an arm that renders it in place.
+        note_detail("btuple.frame_elem_unplanned")
+        raise ThirUnsupported("expr.tuple_literal")
     spelled = f"std::tuple<{', '.join(parts)}>"
     elem_wraps = (tuple(wraps) if any(w is not None for w in wraps)
                   else None)
@@ -14776,10 +14830,16 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             # spelled value render; pointer-repr slots take the borrow
             # builder -- lvalue elements lift `&(...)`, rvalue elements ride
             # the tuple_value_to_borrow source-tuple path (the arg is a full
-            # expression, so the source's lifetime covers the call). Element
+            # expression, so the source's lifetime covers a SYNC call). Element
             # shapes outside the builder's slice raise.
             # Shared with the user-record METHOD arg loop (`h.set((x, y))`);
             # the native / marker arg gates still have no tuple-literal row.
+            # A frame-capturing callee keeps the tuple past the full
+            # expression, so every temporary element it borrows is owed a
+            # named local (the element half of the frame-temp rule).
+            frame_elems = ({e.path: e.owned for e in frame_temp_elem_slots(
+                               a, ptype, lc.analyzer)}
+                           if frame_capturing else None)
             if (pslot.has_pointer_repr_element()
                     # A UNION-element tuple slot has no pointer-repr element
                     # (a variant is not a bare `T*`), but its borrow form
@@ -14794,7 +14854,14 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                         unwrap_ref_type(unwrap_send_sync(ptype)),
                         ReadonlyType),
                     rvalue_ok=True,
-                    use=_ExprUse(allow_temps=temp_args or nested_temps))
+                    use=_ExprUse(allow_temps=temp_args or nested_temps),
+                    frame_elems=frame_elems,
+                    frame_flush=temp_args or nested_temps)
+            if frame_elems:
+                # Only the borrow builder hoists an element; no other tuple
+                # render may hand a frame a borrow of a temporary.
+                note_detail("btuple.frame_elem_route")
+                raise ThirUnsupported("expr.tuple_literal")
             if _open_t_tuple_slot(pslot, lc.analyzer) is not None:
                 # An OPEN-T tuple slot (`s.consume((v, int32(2)))` at
                 # `tuple[T, int32]`): the element slot is `val_or_ptr_t<T>`,

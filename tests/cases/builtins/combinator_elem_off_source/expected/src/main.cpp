@@ -340,12 +340,13 @@ int32_t ro_map(const std::vector<Cell>& cells) {
 }
 
 // # collect: `list(enumerate(..))` / `list(zip(..))` copy the lent element into
-// # the storage-form tuple and leave the source intact (never move it out)
+// # the storage-form tuple and leave the source intact (never move it out),
+// # and say so: the copy warns
 // def collect_copies() -> None:
 //     bags = [Bag2(1), Bag2(2)]
-//     pairs = list(enumerate(bags))  # tpyc: ok
+//     pairs = list(enumerate(bags))  # tpyc: warning(/copies .* elements/)
 //     print("collect_copies", len(bags[0].items), len(bags[1].items), len(pairs))
-//     zs = list(zip(bags, [7, 8]))  # tpyc: ok
+//     zs = list(zip(bags, [7, 8]))  # tpyc: warning(/copies .* elements/)
 //     print("collect_copies", len(bags[0].items), len(bags[1].items), len(zs))
 void collect_copies() {
     std::array<Bag2, 2> bags = {Bag2(1), Bag2(2)};

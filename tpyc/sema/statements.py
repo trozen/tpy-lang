@@ -103,11 +103,11 @@ if TYPE_CHECKING:
 
 from .alias_rebind import decide_rebind_storage, stamp_bind_kind
 from .compatibility import TupleSink
-from .context import _is_borrowing_auto_readonly_accessor, _root_name_of_expr, BorrowKind, EphemeralKind, INVALIDATING_BORROW_KINDS, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, element_index_key, element_loan_mutation_warning, loan_mutation_warning, _borrow_storage_root, _borrow_storage_roots, iter_borrow_storage, field_chain_storage_key, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf
+from .context import _is_borrowing_auto_readonly_accessor, _root_name_of_expr, BorrowKind, EphemeralKind, INVALIDATING_BORROW_KINDS, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, element_index_key, element_loan_mutation_warning, loan_mutation_warning, _borrow_storage_root, _borrow_storage_roots, call_lend_sources, iter_borrow_storage, field_chain_storage_key, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf, holds_no_pointer, value_may_point
 from ..value_category import (
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
     async_return_form, AsyncReturnForm, iterator_source_callee,
-    peel_value_wrappers,
+    peel_value_wrappers, tuple_literal_elems,
 )
 from .expressions import (_nested_def_free_names, _find_list_member,
                           _names_rebound_by)
@@ -196,7 +196,7 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
     operands = call_borrow_operands(expr)
     if operands is None:
         return
-    fi, obj, args = operands
+    fi, obj = operands.fi, operands.obj
     bt = ctx.func.borrow_tracker
     if fi.return_borrows_from is None:
         # The callee's body has not been analyzed yet (forward reference in
@@ -211,8 +211,8 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
         # qualifies must be about the same fi the call site resolved to.
         if (fi in ctx.pending_borrow_fact_fis
                 and _signature_may_return_borrow(fi)):
-            for src in ([obj] if obj is not None else []) + list(args):
-                for root in _borrow_storage_roots(src):
+            for src in call_lend_sources(operands, expr_type=None):
+                for root in _borrow_storage_roots(src.expr):
                     if root != borrower:
                         bt.add_borrow(root, borrower, BorrowKind.OPAQUE)
         return
@@ -221,12 +221,27 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
     # points at, which is what the ITER kind tells the mutation climb.
     kind = (BorrowKind.ITER if iterator_source_callee(fi)
             else BorrowKind.ELEMENT)
-    held = held_whole_borrow_sources(fi)
-    for idx in recorded_return_borrow_sources(fi):
-        if idx in held and 0 <= idx < len(args):
-            hold_whole(bt, borrower, _borrow_storage_roots(args[idx]))
+    temp_warned: set[int] = set()
+    for src in call_lend_sources(operands, recorded_return_borrow_sources(fi),
+                                 held_whole_borrow_sources(fi),
+                                 expr_type=None, temp_backing=True):
+        if src.temp_backed:
+            # An owned tuple element copied into the argument temporary: the
+            # result points into storage that dies as a scalar temporary
+            # argument's does, and borrows nothing of the caller's.
+            if (src.idx not in temp_warned and not temp_arg_kept_alive(
+                    fi, src.idx, src.expr, src.slot, ctx)):
+                temp_warned.add(src.idx)
+                ctx.warning(
+                    f"Result borrows from temporary argument '{fi.params[src.idx].name}'; "
+                    f"the temporary is destroyed at end-of-statement",
+                    expr,
+                )
             continue
-        if idx == -1 and obj is not None:
+        if src.held_whole and src.idx >= 0:
+            hold_whole(bt, borrower, _borrow_storage_roots(src.expr))
+            continue
+        if src.idx == -1:
             root = _borrow_storage_root(obj)
             if root is not None:
                 bt.add_borrow(root, borrower, kind)
@@ -241,15 +256,15 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
                     f"the temporary is destroyed at end-of-statement",
                     expr,
                 )
-        elif idx >= 0 and idx < len(args):
-            roots = _borrow_storage_roots(args[idx])
+        else:
+            roots = _borrow_storage_roots(src.expr)
             for root in roots:
                 bt.add_borrow(root, borrower, kind)
-            if (not roots and is_dangling_temporary_arg(args[idx])
+            if (not roots and is_dangling_temporary_arg(src.expr)
                     and not temp_arg_kept_alive(
-                        fi, idx, args[idx], ctx)):
+                        fi, src.idx, src.expr, src.slot, ctx)):
                 ctx.warning(
-                    f"Result borrows from temporary argument '{fi.params[idx].name}'; "
+                    f"Result borrows from temporary argument '{fi.params[src.idx].name}'; "
                     f"the temporary is destroyed at end-of-statement",
                     expr,
                 )
@@ -263,24 +278,35 @@ def _register_tuple_binding_borrows(
     bare = unwrap_readonly(target_type)
     if isinstance(bare, OptionalType):
         bare = unwrap_readonly(bare.inner)
-    if not isinstance(bare, TupleType) or not bare.has_pointer_repr_element():
+    if not isinstance(bare, TupleType) or not bare.has_borrowing_element():
         return
     inner = value
     while isinstance(inner, TpyCoerce):
         inner = inner.expr
-    if isinstance(inner, TpyTupleLiteral):
-        for index, element in enumerate(inner.elements):
-            if index >= len(bare.element_types):
-                break
-            # Unannotated walrus literals use the target's borrow form;
-            # annotated locals may instead move an element into owned storage.
-            borrows = (inner.elem_capture[index] in (
-                TupleElemCapture.REF, TupleElemCapture.CONST_REF)
-                if index < len(inner.elem_capture)
-                else TupleType._element_is_pointer_repr(bare.element_types[index]))
-            if borrows:
-                register_binding_borrow(ctx, borrower, element)
-                _register_call_result_borrow(ctx, borrower, element)
+    leaves = tuple_literal_elems(inner, bare)
+    if leaves is not None:
+        for leaf in leaves:
+            slot = unwrap_readonly(unwrap_ref_type(leaf.slot))
+            if isinstance(slot, TupleType):
+                # A borrow-form tuple VALUE at a nested slot copies its
+                # element pointers along.
+                _register_tuple_binding_borrows(ctx, borrower, leaf.elem, slot)
+                continue
+            # A view element files no loan here, as a scalar view local
+            # does not (`v = mk().name` is quiet): its borrow is the view's.
+            if not TupleType.element_lends(leaf.slot) or slot.is_value_type():
+                continue
+            # The one per-element override: an annotated local may MOVE a
+            # reference element into owned storage (a last-use move, a
+            # temporary), which sema records as a VALUE capture.
+            index = leaf.path[-1]
+            capture = (leaf.holder.elem_capture[index]
+                       if index < len(leaf.holder.elem_capture) else None)
+            if (capture is TupleElemCapture.VALUE
+                    and not isinstance(slot, TypeParamRef)):
+                continue
+            register_binding_borrow(ctx, borrower, leaf.elem)
+            _register_call_result_borrow(ctx, borrower, leaf.elem)
     elif isinstance(inner, TpyIfExpr):
         _register_tuple_binding_borrows(ctx, borrower, inner.then_expr, bare)
         _register_tuple_binding_borrows(ctx, borrower, inner.else_expr, bare)
@@ -499,29 +525,6 @@ def _deferred_tuple_spelling(lit: TpyTupleLiteral) -> str:
     return f"({inner},)" if len(parts) == 1 else f"({inner})"
 
 
-def _read_field_holds_no_pointer(t: TpyType) -> bool:
-    """A `self` field of this declared type holds nothing that can point at
-    another field: a bufferless scalar or an owned `str` / `bytes`."""
-    t = unwrap_qualifiers(t)
-    return is_bufferless_scalar(t) or is_str_type(t) or is_bytes_type(t)
-
-
-def _moved_field_may_point(t: TpyType) -> bool:
-    """A moved `self` field of this declared type may be (or hold) a pointer
-    at another field: a value type that is not pointer-free (a `Ptr`, a
-    view, a callable, a user value type), a protocol, a type parameter, or
-    an Optional / union / tuple with such a member. A reference type moves
-    whole; what its own fields point at is
-    BUGS.md#self-aimed-ptr-field-borrow-unrecorded."""
-    t = unwrap_qualifiers(t)
-    if isinstance(t, (OptionalType, UnionType, TupleType)):
-        return any(_moved_field_may_point(m) for m in t.inner_types())
-    if _read_field_holds_no_pointer(t):
-        return False
-    return (t.is_value_type() or isinstance(t, TypeParamRef)
-            or is_protocol_type(t) or is_dyn_protocol(t))
-
-
 def _param_is_borrowed(t: TpyType) -> bool:
     """A parameter of this declared type is a borrow its caller keeps alive,
     so the method never destroys it: a reference type, `str` / `bytes` (a
@@ -535,7 +538,7 @@ def _param_is_borrowed(t: TpyType) -> bool:
     members = (bare.inner_types() if isinstance(bare, (OptionalType, UnionType))
                else (bare,))
     return all(
-        _read_field_holds_no_pointer(m)
+        holds_no_pointer(m)
         or not (m.is_value_type() or isinstance(m, TypeParamRef)
                 or is_protocol_type(m) or is_dyn_protocol(m))
         for m in members)
@@ -1119,7 +1122,7 @@ class StatementAnalyzer:
                 expected_bare = unwrap_readonly(expected)
                 returns_borrow_tuple = (
                     isinstance(expected_bare, TupleType)
-                    and expected_bare.has_pointer_repr_element())
+                    and expected_bare.has_borrowing_element())
                 if (not expected.is_value_type() or returns_borrowing_view
                         or returns_borrow_tuple):
                     # A readonly return hands out a CONST borrow -- of a
@@ -1132,7 +1135,8 @@ class StatementAnalyzer:
                     ro_return = isinstance(expected, ReadonlyType)
                     if returns_borrow_tuple:
                         ret_roots = tuple_borrow_escape_roots(
-                            stmt.value, expected_bare, ro_return)
+                            stmt.value, expected_bare, ro_return,
+                            expr_type=self.ctx.get_expr_type)
                     else:
                         ret_roots = [(root, not ro_return)
                                      for root in addr_taken_roots(stmt.value)]
@@ -1152,25 +1156,20 @@ class StatementAnalyzer:
                     ret_inner = stmt.value.expr if isinstance(stmt.value, TpyCoerce) else stmt.value
                     ret_operands = call_borrow_operands(ret_inner)
                     if ret_operands is not None:
-                        fi_ret, ret_obj, ret_args = ret_operands
-                        ret_sources = recorded_return_borrow_sources(fi_ret)
-                        if ret_sources:
-                            for idx in ret_sources:
-                                # One argument position can hold many
-                                # operands (a `*args` pack), and each is
-                                # borrowed by the same contract.
-                                if idx == -1 and ret_obj is not None:
-                                    srcs = _borrow_storage_roots(ret_obj)
-                                elif idx >= 0 and idx < len(ret_args):
-                                    srcs = _borrow_storage_roots(ret_args[idx])
-                                else:
-                                    srcs = []
-                                for src in srcs:
-                                    # Read-only sources (readonly callees, view returns)
-                                    # don't propagate mutation to their borrowed-from arg.
-                                    if not returns_borrowing_view and not fi_ret.is_readonly:
-                                        self.ctx.mark_param_mutated(src)
-                                    self.ctx.mark_param_returned(src)
+                        fi_ret = ret_operands.fi
+                        for lent in call_lend_sources(
+                                ret_operands,
+                                recorded_return_borrow_sources(fi_ret),
+                                expr_type=None):
+                            # One argument position can hold many
+                            # operands (a `*args` pack), and each is
+                            # borrowed by the same contract.
+                            for src in _borrow_storage_roots(lent.expr):
+                                # Read-only sources (readonly callees, view returns)
+                                # don't propagate mutation to their borrowed-from arg.
+                                if not returns_borrowing_view and not fi_ret.is_readonly:
+                                    self.ctx.mark_param_mutated(src)
+                                self.ctx.mark_param_returned(src)
 
     def _consuming_return_move_fields(self, stmt: TpyReturn) -> frozenset[str]:
         """The `self` fields this return of a consuming method moves out of.
@@ -1190,8 +1189,8 @@ class StatementAnalyzer:
         method, a property, `super()`) and no name that could reach the
         field (`_return_name_cannot_reach_field`). When the value reads more
         than one field, every one of them must be unable to point at another
-        by its declared type (`_moved_field_may_point`,
-        `_read_field_holds_no_pointer`). Every other read of a field is a
+        by its declared type (`value_may_point`,
+        `holds_no_pointer`). Every other read of a field is a
         borrow, which the owning slots copy and warn about."""
         fn = self.ctx.func.current_function
         rec = self.ctx.record_ctx.record
@@ -1231,8 +1230,8 @@ class StatementAnalyzer:
         # must be proven unable to point anywhere by its type alone.
         if len(set(reads)) > 1:
             for f in set(reads):
-                if (_moved_field_may_point(field_types[f]) if f in moves
-                        else not _read_field_holds_no_pointer(field_types[f])):
+                if (value_may_point(field_types[f]) if f in moves
+                        else not holds_no_pointer(field_types[f])):
                     return frozenset()
         return moves
 
@@ -1268,7 +1267,7 @@ class StatementAnalyzer:
                 types.append(decl_type)
             if not types:
                 return False
-            if all(_read_field_holds_no_pointer(t) for t in types):
+            if all(holds_no_pointer(t) for t in types):
                 continue
             if (name in func.current_param_names and name not in rebound
                     and all(_param_is_borrowed(t) for t in types)):
@@ -5120,10 +5119,11 @@ class StatementAnalyzer:
         # (or element) grants no write access, so it records provenance only.
         elem_bare = unwrap_readonly(unwrap_ref_type(elem_type))
         if (isinstance(elem_bare, TupleType)
-                and elem_bare.has_pointer_repr_element()):
+                and elem_bare.has_borrowing_element()):
             ro_tuple = isinstance(unwrap_ref_type(elem_type), ReadonlyType)
             for root, grants_write in tuple_borrow_escape_roots(
-                    stmt.value, elem_bare, ro_tuple):
+                    stmt.value, elem_bare, ro_tuple,
+                    expr_type=self.ctx.get_expr_type):
                 if grants_write:
                     self.ctx.mark_param_mutated(root, through_field=True)
                 self.ctx.mark_param_returned(root)

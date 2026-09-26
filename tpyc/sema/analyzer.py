@@ -1063,6 +1063,7 @@ class SemanticAnalyzer:
         self.discharge_own_copy_verdicts()
         self.ctx.apply_own_copy_verdicts(self._own_copy_verdicts)
         self.calls.resolve_pending_borrow_checks()
+        self.compat.resolve_pending_iter_copy_checks()
         self.calls.resolve_pending_match_subject_checks()
         # Last diagnostic-emitting step for this analyzer, so it is where a
         # body analyzed once per clone collapses back to one report.
