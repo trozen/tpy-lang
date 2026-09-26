@@ -206,7 +206,9 @@ ordinary pytest config warning.
   falls back to a fresh connection per worker and says so on stderr each
   time. Each worker spec therefore names the control socket of its
   group, eight workers per master connection, so sixty workers ride on
-  eight connections and stay under the limit.
+  eight connections and stay under the limit. The socket name carries
+  the session's slot on the host, so two concurrent sessions from one
+  machine never share a master.
 - A remote worker's cwd is the tree's parent (the spec's `chdir`, which
   xdist's path rewriting needs), while its rootdir is the tree. A local
   worker's cwd is the checkout. Tests that touch files relative to cwd

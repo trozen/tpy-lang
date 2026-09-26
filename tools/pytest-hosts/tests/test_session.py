@@ -273,6 +273,7 @@ def test_take_slot_picks_the_first_free_slot(fake_holder):
     hs = session.HostSession(remote=make_session(slots=2).remotes[0])
     make_session(slots=2).take_slot(hs)
     assert hs.slot == 1 and hs.lock is not None
+    assert hs.remote.slot == 1  # the worker specs name their sockets by it
     assert fake_holder.started == [0, 1]
 
 

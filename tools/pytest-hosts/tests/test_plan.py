@@ -1,3 +1,4 @@
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -88,6 +89,10 @@ def test_remote_specs_group_workers_per_connection():
     specs = plan.remote_specs(plan_remote(HF.hosts["big"], workers=20))
     groups = [spec.split("cm-big-")[1].split(" ")[0] for spec in specs]
     assert groups == ["0"] * 8 + ["1"] * 8 + ["2"] * 4
+    # a held slot names the sockets, so concurrent sessions never share a master
+    specs = plan.remote_specs(replace(plan_remote(HF.hosts["big"], workers=9), slot=1))
+    groups = [spec.split("cm-big-")[1].split(" ")[0] for spec in specs]
+    assert groups == ["s1-0"] * 8 + ["s1-1"]
 
 
 @pytest.mark.parametrize("args, expected", [

@@ -19,7 +19,7 @@ import tempfile
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, wait as wait_futures
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from pathlib import Path
 from typing import Callable
@@ -458,6 +458,7 @@ class Session:
                 text = line.decode(errors="replace").strip()
                 if text == LOCKED_TOKEN:
                     hs.slot, hs.lock = slot, proc
+                    hs.remote = replace(hs.remote, slot=slot)
                     hs.drain = threading.Thread(target=proc.stdout.read, daemon=True)
                     hs.drain.start()
                     return True

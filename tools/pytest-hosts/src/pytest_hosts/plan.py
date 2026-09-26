@@ -39,6 +39,7 @@ class RemoteHost:
     control_dir: str
     python: str
     tmp_base: str | None = None  # the configured `tmp`, with `~` expanded like `root`
+    slot: int | None = None  # the host slot this session holds, once taken
 
     @property
     def stamp(self) -> str:
@@ -105,9 +106,12 @@ def remote_spec(remote: RemoteHost, index: int) -> str:
     """The execnet spec string for worker `index` on `remote`. execnet splits
     the `ssh=` value into ssh arguments, which is how each worker names the
     control socket of its group (ControlMaster auto in the generated config
-    makes the group's first worker the master)."""
+    makes the group's first worker the master). The slot is part of the
+    socket name because concurrent sessions from this machine would
+    otherwise pile their workers onto one master and overrun MaxSessions."""
     group = index // SESSIONS_PER_CONNECTION
-    control = f"{remote.control_dir}/cm-{remote.host.name}-{group}"
+    slot = "" if remote.slot is None else f"s{remote.slot}-"
+    control = f"{remote.control_dir}/cm-{remote.host.name}-{slot}{group}"
     return (f"ssh=-o ControlPath={control} {remote.host.ssh}//python={remote.python}"
             f"//chdir={remote.parent}//ssh_config={remote.ssh_config}")
 
