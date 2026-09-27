@@ -1326,7 +1326,7 @@ Natural extension of the type system. Works well with overloads (different retur
 per literal value). Key enabler for `open()` binary mode dispatch.
 
 **Current state**: Done for the overload + narrowing surface (Phases 1-5) and for
-Literal returns (Phase 6 return position). Literal fields, union flattening, and
+Literal returns and fields (Phase 6). Union flattening and
 the Final variant of Phase 5 are future extensions -- see below. See
 `docs/LITERAL_TYPES_DESIGN.md` for the full design.
 
@@ -1358,14 +1358,16 @@ the Final variant of Phase 5 are future extensions -- see below. See
   `StrType` (Option A was rejected -- would ripple through 45+ `isinstance(StrType)`
   sites). The Final variant (`x: Final = "r"` infers `Literal["r"]`) is deferred: it
   requires three A1 future-extensions (bare `Final`, local `Final`, `Final[Literal[...]]`)
-  all not started today.
-- **Phase 6 (return position done; fields + union flattening deferred)**: Literal as
+  all not started today (the first and last are also filed as rejects-valid defects,
+  `BUGS.md#bare-final-annotation-rejects` and `BUGS.md#final-literal-annotation-rejected`).
+- **Phase 6 (return position and fields done; union flattening deferred)**: Literal as
   a general type. Return positions (`def get_mode() -> Literal["r", "rb"]`) work --
   `LiteralType` in return position is accepted by parser/sema, and codegen emits
   view storage (`std::string_view` for str-base, value form for int/bool) since all
   Literal values have static storage. Field types (`class C: mode: Literal["debug", "release"]`)
-  and union flattening (`Literal["a"] | Literal["b"]` == `Literal["a", "b"]` via
-  `make_union()`) remain.
+  store the base type; assignments and defaults are checked against the value set.
+  Union flattening (`Literal["a"] | Literal["b"]` == `Literal["a", "b"]` via
+  `make_union()`) remains.
 
 **Minor extensions** (separate from the phase ladder): Literal type in `Final`
 variables (variant of Phase 5); collision-free name mangling for unusual literal

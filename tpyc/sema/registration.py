@@ -207,7 +207,10 @@ def check_default_value_type(expr: TpyExpr, target_type: 'TpyType | None',
     `int32_t n = nullptr`, or an out-of-range `int8 = 200` wrapping silently.
     Routed through the same compatibility check an assignment uses, so a
     default and its equivalent `x: T = <const>` agree on what is legal and
-    report it in the same words.
+    report it in the same words. The default expression rides along as the
+    source because `const_expr_type` widens a str/bool literal to its base
+    type: only the expression tells a `Literal[...]` slot which value it
+    holds (`mode: Literal["r", "rb"] = "rb"`).
 
     A generic target is skipped: a literal default on a `T`-typed slot is
     legitimately polymorphic and judged at instantiation. So is a default
@@ -229,7 +232,8 @@ def check_default_value_type(expr: TpyExpr, target_type: 'TpyType | None',
             compat.check_type_compatible(inner, actual, context, loc)
     if is_char_literal_init(target_type, actual, expr):
         return
-    compat.check_type_compatible(actual, target_type, context, loc)
+    compat.check_type_compatible(actual, target_type, context, loc,
+                                 source_expr=expr)
 
 
 def _validate_const_field_default(expr: TpyExpr, loc: object,

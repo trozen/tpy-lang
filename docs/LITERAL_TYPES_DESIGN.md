@@ -12,7 +12,7 @@
 | 3c | Multi-value Literal dead branch elimination | Done |
 | 4 | `match`/`case` exhaustiveness for Literal subjects | Done |
 | 5 | Literal types in variables (`x: Literal["rb"] = "rb"`) | Done (annotated locals); Final variant deferred |
-| 6 | General type positions (return types, fields, union flattening) | Return position done (emits `std::string_view`); fields + union flattening deferred |
+| 6 | General type positions (return types, fields, union flattening) | Return position done (emits `std::string_view`); fields done (base-type storage, value-set-checked assignments and defaults); union flattening deferred |
 
 ## Future Extensions
 
@@ -474,14 +474,17 @@ unconditionally safe (no dangling-return risk). Callers binding the
 return into a `Literal[...]`-annotated local pick up view storage
 end-to-end (no heap allocation).
 
-### Fields
+### Fields (Done)
 
 ```python
 class Config:
-    mode: Literal["debug", "release"]
+    mode: Literal["debug", "release"] = "debug"
 ```
 
-Stored as the base type in C++. The constraint is compile-time only.
+Stored as the base type in C++. The constraint is compile-time only:
+field assignments and defaults are checked against the value set. A
+constructor or dataclass taking a `Literal` parameter cannot be called
+yet (`BUGS.md#literal-param-proxy-gates-reject-plain-call`).
 
 ### Union Interaction
 
