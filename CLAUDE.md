@@ -66,7 +66,7 @@ This governs how an agreed unit is executed, not when to start one. A unit start
 
 - You orchestrate; implementation, exploration and review go to your own harness's subagents (in Claude Code: on the Opus model).
 - Subagent worktrees: create them yourself (`git worktree add <path> -b <branch> <sha>`, then `uv sync`) and put "verify `git rev-parse HEAD` is <sha>, else stop" in the brief -- in Claude Code, `isolation: worktree` roots at the main checkout's HEAD, not at your branch. Integrate their work into ONE working branch.
-- Every brief says: tests through plain `uv run pytest`, never with `-n` (see "Agent testing workflow").
+- Every brief says: full or broad runs through plain `uv run pytest`, quick checks with a small local `-n` (see "Agent testing workflow").
 - Every batch goes through `/tpy-review` with its recommendations applied. At the end: `/tpy-merge-master` if master moved, then `/tpy-ready`. `/prep-merge` only when the user asks.
 - Set decisions aside per "Decide what the user would decide"; everything else runs to the end.
 - **Second opinion from the other harness**, read-only: from Claude Code `codex exec -c approval_policy=never --sandbox read-only "<prompt>"`, from Codex `claude -p --permission-mode plan "<prompt>"`. Suggest it in one line, and run it on the user's yes, before presenting an architectural plan with competing designs or Medium/Low confidence, when review rounds stop converging, or before a language-rule change.
@@ -130,8 +130,8 @@ Harness status lines are prefixed `tpy|` (exec tally, cache-invalidation cause, 
 **Running tests**: plain `uv run pytest <args>`. The `pytest-hosts` plugin (`tools/pytest-hosts/README.md`) spreads the session over a few local workers and the remote build hosts named in the developer's `~/.config/pytest-hosts/hosts.toml`; `uv run pytest-hosts` shows the resolved setup and `pytest-hosts status` the hosts. Rules:
 
 - **Run tests in the foreground** with the tool timeout raised (up to 600000 ms); a full or `--force-exec` run fits. Background only a run that exceeds that, then wait for its completion notification -- never poll it.
-- **Never type `-n`.** A typed `-n` means a local-only run with that many workers -- `-n auto` saturates this machine.
-- `--hosts-local` keeps a quick, small run off the hosts. `--cxx` must resolve on every worker, so a toolchain a host lacks needs `--hosts-local`.
+- **Quick checks run locally with a small `-n`** -- `uv run pytest -k <pattern> -n 4`, `uv run python tests/update_snapshots.py -k <name> -n 4`. A typed `-n` skips the hosts entirely (no slot queue, no tree sync), so it is the form for a handful up to a few hundred cases and for `tpyc/` unit tests. Never `-n auto` or more than `-n 4`: this machine's cores are shared by several sessions and the nightly.
+- Full suites and large subsets go through plain `uv run pytest` (the hosts). `--cxx` must resolve on every worker, so a toolchain a host lacks needs a local `-n` run.
 - Snapshot updates (`UPDATE_EXPECTED=1 uv run pytest -k <name>`) mirror the regeneration back, `tests/interop` included: files it wrote are pulled, files it removed on the host are deleted here (`-x <path>` lines, and an `N deleted` count in the summary). Afterwards check the summary for `pull-back FAILED` (the session still exits green).
 - A host takes a limited number of concurrent sessions; a further run queues (`busy, queued...`) until a slot frees.
 
