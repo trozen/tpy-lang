@@ -1,0 +1,8 @@
+free [1, 2, 3]
+free_min 1
+method [4, 5, 6]
+map_alias [102, 101, 103]
+map_arg_rooted 10
+fresh_key [3, 2, 1]
+temp_scalar_field [1, 2, 3]
+temp_scalar_via_borrow [3, 2, 1]

@@ -60,7 +60,8 @@ from ..type_def_registry import (
 from ..namespace import BindingKind, NameBinding
 from .frame_traits import build_closure_frame
 from ..coercions import CoercionContext, resolve_coercion
-from ..prescan import _expr_to_narrowing_key, bound_names_of, walrus_names_of
+from ..prescan import (
+    _expr_to_narrowing_key, bound_names_of, storage_spelling, walrus_names_of)
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
 from .context import PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_generator_object, frame_binding_fact, record_frame_binding_roots, call_param_args
@@ -277,6 +278,17 @@ def _expr_has_error_return_call(expr: TpyExpr) -> bool:
         if _expr_has_error_return_call(child):
             return True
     return False
+
+
+def _temp_root_spelling(root: TpyExpr) -> str | None:
+    """How a diagnostic names the call that creates a temporary: its callee
+    with the arguments elided, or None when the callee has no short name."""
+    if isinstance(root, TpyCall) and isinstance(root.func, TpyName):
+        return f"{root.func.name}(...)"
+    if isinstance(root, TpyMethodCall):
+        obj = storage_spelling(root.obj)
+        return f"{obj}.{root.method}(...)" if obj is not None else None
+    return None
 
 
 class _LambdaResultMismatch(SemanticError):
@@ -5229,6 +5241,7 @@ class ExpressionAnalyzer:
                                                      ret_slot)))
             expr.inferred_return_type = body_type
             self.compat.check_view_return_dangle(expr.body, body_type, expr.loc)
+            self._queue_lambda_borrow_check(expr, body_type)
             concrete_params = tuple(fn_type.param_types)
             if fn_type.is_template:
                 return make_fn_type(concrete_params, body_type)
@@ -5245,6 +5258,7 @@ class ExpressionAnalyzer:
                     expr)
                 raise _LambdaResultMismatch(err.message, err.loc, body_type)
         self.compat.check_view_return_dangle(expr.body, fn_type.return_type, expr.loc)
+        self._queue_lambda_borrow_check(expr, fn_type.return_type)
         if not isinstance(fn_type.return_type, VoidType):
             expr.body = self.compat.coerce_expr(
                 expr.body, body_type, fn_type.return_type, "lambda return",
@@ -5252,6 +5266,37 @@ class ExpressionAnalyzer:
 
         expr.inferred_return_type = fn_type.return_type
         return fn_type
+
+    def _queue_lambda_borrow_check(self, expr: TpyLambda,
+                                   result: TpyType | None) -> None:
+        if isinstance(result, RefType):
+            self.ctx.pending_lambda_borrow_checks.append(expr)
+
+    def resolve_pending_lambda_borrow_checks(self) -> None:
+        """Reject a lambda whose borrow result points into a value its own
+        body created: the value dies when the lambda returns, before the
+        caller reads the borrow. Only a PROVEN temporary root rejects; the
+        by-value result that would make the shape valid is
+        BUGS.md#lambda-body-partial-return-checks. A lambda re-analyzed at a
+        by-value result since it was queued is judged by its final result."""
+        pending = self.ctx.pending_lambda_borrow_checks[:]
+        self.ctx.pending_lambda_borrow_checks.clear()
+        for lam in pending:
+            result = lam.inferred_return_type
+            if not isinstance(result, RefType):
+                continue
+            root = self.compat.borrow_temp_root(lam.body)
+            if root is None:
+                continue
+            what = _temp_root_spelling(root)
+            into = f"'{what}', a value" if what else "a value"
+            raise self.ctx.error(
+                f"Cannot return a borrow of a temporary from this lambda: "
+                f"its result points into {into} created in the lambda body, "
+                f"which is destroyed when the lambda returns. Use a def "
+                f"returning 'Own[{result.wrapped}]' instead: bind the value "
+                f"to a local there and return tpy.copy(...) of the part you "
+                f"need", lam)
 
     # --- Class names as callables ---
 

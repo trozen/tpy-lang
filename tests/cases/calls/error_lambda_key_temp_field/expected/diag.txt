@@ -1,0 +1,1 @@
+main.py:37: error: Cannot return a borrow of a temporary from this lambda: its result points into 'mk(...)', a value created in the lambda body, which is destroyed when the lambda returns. Use a def returning 'Own[Inner]' instead: bind the value to a local there and return tpy.copy(...) of the part you need
