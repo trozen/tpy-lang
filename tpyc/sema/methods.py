@@ -14,14 +14,14 @@ from ..typesys import (
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
     PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type, unwrap_qualifiers, unwrap_send_sync, is_any_int_type,
-    is_callable_type, unwrap_own, ConcreteCoroType,
+    unwrap_own, ConcreteCoroType,
     RecordInfo,
     contains_type_param,
     FloatLiteralType, resolve_int_literals,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
-    TpyLambda, TpyStarUnpack,
+    TpyStarUnpack,
     is_docstring,
     TpyFString, TpyExpr, TpyCoerce, TpySubscript,
     is_super_del_call,
@@ -40,7 +40,7 @@ from .calls import (
     _enrich_literal_types,
     resolve_inferred_type_arg,
 )
-from .type_ops import seeded_arg_hint
+from .type_ops import ReturnSeed, seeded_arg_hint
 from .context import PENDING_CONTAINER_TYPES
 from .receiver_calls import (check_receiver_call_loans, credit_receiver_mutation,
                              receiver_is_readonly)
@@ -188,7 +188,8 @@ class MethodAnalyzer:
             # unpacked element type instead of hitting the structural
             # analyzer's "Unknown expression type" catch-all; the non-variadic
             # reject gate in _check_args_or_pack_varargs still rejects it.
-            pre_analyzed = [self.expr.analyze_call_arg(arg) for arg in expr.args]
+            pre_analyzed = [self.expr.analyze_call_arg(arg)
+                            for arg in expr.args]
 
             # Infer element type from params that directly carry a type param
             # (T or Own[T]). Params with nested type params like Iterable[Own[T]]
@@ -216,52 +217,6 @@ class MethodAnalyzer:
             self.ctx.func.pre_analyzed_method_args[expr] = pre_analyzed
             return obj_type
         return None
-
-    def _probe_analyze_method_args(
-        self,
-        expr: TpyMethodCall,
-        resolved_overloads: list[FunctionInfo],
-    ) -> list[TpyType]:
-        """Pre-analyze overload-candidate method args with an LHS-derived hint.
-
-        Method-call sibling of ``CallAnalyzer._probe_analyze_args``: each
-        substituted candidate's per-position hint comes from
-        ``TypeOperations.candidate_arg_hints``; the first non-None hint at
-        each position drives the arg's first analysis.
-
-        Without this, the inner generic-call / record-ctor arg would cache
-        a hint-naive type during probe pre-analysis, and the post-selection
-        ``_check_and_coerce_args`` would re-use that cached type verbatim
-        (the cache short-circuit at the top of
-        ``_analyze_generic_function_call`` / ``_analyze_record_constructor``
-        prevents the re-analysis from refreshing it).
-        """
-        lhs_hint = self.ctx.expr_type_hint
-        if lhs_hint is None:
-            return [self.expr.analyze_call_arg(arg) for arg in expr.args]
-
-        n = len(expr.args)
-        candidate_hints = [
-            self.type_ops.candidate_arg_hints(f, n, lhs_hint) for f in resolved_overloads
-        ]
-        # Require a single LHS-matching candidate (see
-        # CallAnalyzer._probe_analyze_args for the cross-candidate-mixing
-        # rationale). ``candidate_arg_hints`` returns None for non-matching
-        # candidates; the count tracks LHS-matchers, not hint-contributors.
-        matching = [c for c in candidate_hints if c is not None]
-        chosen: list[TpyType | None] = (
-            list(matching[0]) if len(matching) == 1 else [None] * n
-        )
-        arg_types: list[TpyType] = []
-        for i, arg in enumerate(expr.args):
-            hint = chosen[i]
-            # See CallAnalyzer._probe_analyze_args for the (TpyName | TpyLambda)
-            # + Callable filter rationale: avoid mutating AST state on the arg
-            # node before overload selection.
-            if hint is not None and is_callable_type(hint) and isinstance(arg, (TpyName, TpyLambda)):
-                hint = None
-            arg_types.append(self.expr.analyze_call_arg(arg, hint))
-        return arg_types
 
     def _check_args_or_pack_varargs(
         self, expr: TpyMethodCall,
@@ -379,7 +334,8 @@ class MethodAnalyzer:
                 self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
                 for m in overloads
             ]
-            arg_types = self._probe_analyze_method_args(expr, resolved_overloads)
+            arg_types = self.calls._probe_candidate_args(
+                expr, expr.args, resolved_overloads)
             kwarg_types: dict[str, TpyType] | None = None
             if expr.kwargs:
                 kwarg_types = {k: self.expr.analyze_expr(v) for k, v in expr.kwargs.items()}
@@ -1552,7 +1508,8 @@ class MethodAnalyzer:
         # Analyze arguments and accumulate constraints. analyze_call_arg so a
         # `*xs` arg yields the unpacked element type rather than crashing the
         # structural analyzer; non-variadic reject gate handles validity.
-        arg_types = [self.expr.analyze_call_arg(arg) for arg in expr.args]
+        arg_types = [self.expr.analyze_call_arg(arg)
+                     for arg in expr.args]
         type_param_names = set(info.type_params)
         for (pname, ptype), arg_type in zip(method.params, arg_types):
             if not contains_type_param(ptype, type_param_names):
@@ -1779,7 +1736,8 @@ class MethodAnalyzer:
                 self.expr.analyze_expr(key_expr)
                 has_default = len(expr.args) == 2
                 if has_default:
-                    default_type = self.expr.analyze_expr_with_hint(expr.args[1], inner_type)
+                    default_type = self.expr.analyze_expr_with_hint(
+                        expr.args[1], inner_type)
                     self.compat.check_type_compatible(
                         default_type, inner_type,
                         f"default value for TypedDict.get()", loc=expr.args[1].loc,
@@ -2098,31 +2056,24 @@ class MethodAnalyzer:
         positional type args (when present) overlay the seed at their
         positions.
         """
-        seed_subst = self.type_ops.seed_subst_from_return_hint(
-            partial_func, self.ctx.expr_type_hint
-        )
-        merged_seed = dict(seed_subst)
-        if explicit_type_args is not None:
-            for tp, ta in zip(new_params, explicit_type_args):
-                if ta is not None:
-                    merged_seed[tp] = ta
+        merged_seed = self.type_ops.seed_subst_from_return_hint(
+            partial_func, self.ctx.slot_hint_at(expr),
+        ).with_explicit(new_params, explicit_type_args)
 
         # Default-arg capture freezes ``partial_func`` and ``merged_seed`` at
         # def-time so this closure isn't sensitive to later rebinding.
         def _analyze_args(
             _pf: FunctionInfo = partial_func,
-            _seed: dict[str, TpyType] = merged_seed,
+            _seed: ReturnSeed = merged_seed,
         ) -> list[TpyType]:
-            out: list[TpyType] = []
-            for i, arg in enumerate(expr.args):
-                hint = seeded_arg_hint(_pf.params, i, _seed)
-                out.append(self.expr.analyze_call_arg(arg, hint))
-            return out
+            return [self.expr.analyze_call_arg(
+                        arg, seeded_arg_hint(_pf.params, i, _seed))
+                    for i, arg in enumerate(expr.args)]
 
         arg_types = _analyze_args()
         method_subst = self.type_ops.infer_type_params_for_function(
             partial_func, arg_types, self.protocols.satisfies_bound,
-            expected_return_type=self.ctx.expr_type_hint,
+            expected_return_type=self.ctx.slot_hint_at(expr),
             explicit_type_args=explicit_type_args,
         )
         if method_subst is None:

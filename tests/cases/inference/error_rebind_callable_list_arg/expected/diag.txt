@@ -1,0 +1,1 @@
+main.py:14: error: 'y' is bound to float at line 13 and to int32 here, and CPython keeps each value's own type; convert to one type: float(...) on the int32 value, or annotate y: float

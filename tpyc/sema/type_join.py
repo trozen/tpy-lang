@@ -23,11 +23,14 @@ from ..parse.nodes import (TpyArrayLiteral, TpyDictLiteral, TpyExpr,
                            TpyFloatLiteral, TpyIntLiteral, TpyListRepeat,
                            TpyNamedExpr, TpySetLiteral, TpyTupleLiteral,
                            TpyUnaryOp)
-from ..typesys import (BIGINT, NominalType, OptionalType, TpyType, TupleType,
-                       is_any_float_type, is_any_int_type, is_float_type,
-                       literal_peer_children, resolve_int_literals,
-                       unwrap_readonly)
-from ..type_def_registry import is_array, is_dict, is_list, is_set
+from ..typesys import (BIGINT, IntLiteralType, FloatLiteralType,
+                       LiteralType, NominalType, OptionalType, OwnType,
+                       PendingDictType, PendingListType, PendingSetType,
+                       ReadonlyType, RefType, TpyType, is_float_type,
+                       is_integer_type, literal_peer_children,
+                       make_dict, make_list, make_set,
+                       resolve_int_literals, unwrap_readonly,
+                       unwrap_send_sync)
 from ..value_category import peel_coerce
 from ..prescan import storage_spelling
 
@@ -53,6 +56,47 @@ class InferredJoin:
     # the operands down to the pair that met, so a diagnostic can find the
     # source nodes that hold the integer.
     path: tuple[int, ...] = ()
+    # The pair met below a `T | None` on the way down: a declared float slot
+    # cannot take the join as a plain float, since the value may be None.
+    through_optional: bool = False
+
+
+class NumKind(Enum):
+    INT = auto()
+    FLOAT = auto()
+
+
+def peel_value(t: TpyType) -> tuple[TpyType, bool]:
+    """The value type `t` stands for, for INSPECTION only (a join keeps
+    the original types): Send/Sync markers, `Ref`, `readonly`, `Own` and
+    `T | None` stripped repeatedly, and whether a `None` was stripped."""
+    nullable = False
+    while True:
+        u = unwrap_send_sync(t)
+        if isinstance(u, (RefType, ReadonlyType, OwnType)):
+            u = u.wrapped
+        elif isinstance(u, OptionalType):
+            u = u.inner
+            nullable = True
+        if u is t:
+            return t, nullable
+        t = u
+
+
+def numeric_kind(t: TpyType) -> NumKind | None:
+    """Whether `t` holds an integer or a float, for the int/float rule:
+    fixed-width ints, `int` and int literals (an integer `Literal[...]` by
+    its base type) are INT; `float`, `float32` and float literals FLOAT.
+    `bool`, `char`, enums (IntEnum included), unions other than `T | None`,
+    `Any` and type parameters are neither."""
+    t, _ = peel_value(t)
+    if isinstance(t, LiteralType):
+        t = t.base_type
+    if is_integer_type(t) or isinstance(t, IntLiteralType):
+        return NumKind.INT
+    if is_float_type(t) or isinstance(t, FloatLiteralType):
+        return NumKind.FLOAT
+    return None
 
 
 def descend(mix: InferredJoin, index: int) -> InferredJoin:
@@ -75,7 +119,7 @@ def join_inferred_value_types(
     descends; None means the two have no common type. A join that descends
     further itself (a pending container pinned to a concrete one) returns
     the verdict it reached there."""
-    mix = _find_int_float_mix(a, b, nested=False)
+    mix = _find_int_float_mix(a, b, False, None)
     if mix is not None:
         return mix
     joined = join(a, b)
@@ -86,32 +130,54 @@ def join_inferred_value_types(
     return InferredJoin(JoinOutcome.JOINED, joined)
 
 
-def find_int_float_mix(a: TpyType, b: TpyType) -> InferredJoin | None:
+MixLeaf = Callable[[TpyType, TpyType], 'InferredJoin | None']
+
+
+def find_int_float_mix(a: TpyType, b: TpyType,
+                       leaf: MixLeaf | None = None) -> InferredJoin | None:
     """The int/float mix that keeps two operand types from sharing one
-    type, or None; the pre-check `join_inferred_value_types` runs."""
-    return _find_int_float_mix(a, b, nested=False)
+    type, or None; the pre-check `join_inferred_value_types` runs.
+
+    `leaf` is asked about a pair the walk cannot descend itself (a pending
+    container beside a concrete one, a pair still wrapped in `Own`), before
+    the same-generic rule; the caller's answer is the mix found there."""
+    return _find_int_float_mix(a, b, False, leaf)
 
 
-def _find_int_float_mix(a: TpyType, b: TpyType,
-                        nested: bool) -> InferredJoin | None:
-    a, b = unwrap_readonly(a), unwrap_readonly(b)
-    if is_any_int_type(a) and is_any_float_type(b):
+def _find_int_float_mix(a: TpyType, b: TpyType, nested: bool,
+                        leaf: MixLeaf | None) -> InferredJoin | None:
+    (a, a_null), (b, b_null) = peel_value(a), peel_value(b)
+    mix = _find_peeled_mix(a, b, nested, leaf)
+    if mix is not None and (a_null or b_null):
+        mix = replace(mix, through_optional=True)
+    return mix
+
+
+def _find_peeled_mix(a: TpyType, b: TpyType, nested: bool,
+                     leaf: MixLeaf | None) -> InferredJoin | None:
+    ka, kb = numeric_kind(a), numeric_kind(b)
+    if ka is NumKind.INT and kb is NumKind.FLOAT:
         return InferredJoin(JoinOutcome.INT_FLOAT_MIX, int_side=a,
                             float_side=b, int_first=True, nested=nested)
-    if is_any_float_type(a) and is_any_int_type(b):
+    if ka is NumKind.FLOAT and kb is NumKind.INT:
         return InferredJoin(JoinOutcome.INT_FLOAT_MIX, int_side=b,
                             float_side=a, int_first=False, nested=nested)
     pairs = literal_peer_children(a, b)
     if pairs is not None:
         for k, (x, y) in enumerate(pairs):
-            mix = _find_int_float_mix(x, y, nested=True)
+            mix = _find_int_float_mix(x, y, True, leaf)
             if mix is not None:
                 return descend(mix, k)
         return None
-    return _same_generic_mix(a, b)
+    if leaf is not None:
+        mix = leaf(a, b)
+        if mix is not None:
+            return replace(mix, nested=True) if nested else mix
+    return _same_generic_mix(a, b, leaf)
 
 
-def _same_generic_mix(a: TpyType, b: TpyType) -> InferredJoin | None:
+def _same_generic_mix(a: TpyType, b: TpyType,
+                      leaf: MixLeaf | None) -> InferredJoin | None:
     """The mix between two instantiations of one generic type (`list[int32]`
     and `list[float]`, two dict literals) whose type arguments differ only
     by an integer meeting a float: nothing converts a concrete container's
@@ -126,59 +192,21 @@ def _same_generic_mix(a: TpyType, b: TpyType) -> InferredJoin | None:
     for k, (x, y) in enumerate(zip(ia, ib)):
         if unwrap_readonly(x) == unwrap_readonly(y):
             continue
-        mix = _find_int_float_mix(x, y, nested=True)
+        mix = _find_int_float_mix(x, y, True, leaf)
         if mix is None:
             return None
         found = found or descend(mix, k)
     return found
 
 
-def literal_leaf_mix(expr: TpyExpr, target: TpyType,
-                     leaf_type: Callable[[TpyExpr], TpyType | None],
-                     ) -> InferredJoin | None:
-    """The int/float mix between the leaves of a container literal, each at
-    its own type (`leaf_type`), and the concrete container `target`'s
-    element types at the same positions -- the leaf first. A literal
-    analyzed under a hint records its elements at the hint's type; its
-    leaves keep their own."""
-    e = peel_coerce(expr)
-    t = unwrap_readonly(target)
-    # The picked value of an `Optional` slot is the inner type's.
-    if isinstance(t, OptionalType):
-        t = unwrap_readonly(t.inner)
-    children = _literal_children(e)
-    if children is None:
-        leaf = leaf_type(e)
-        return (_find_int_float_mix(unwrap_readonly(leaf), t, nested=False)
-                if leaf is not None else None)
-    if isinstance(e, TpyTupleLiteral):
-        if not (isinstance(t, TupleType)
-                and len(t.element_types) == len(e.elements)):
-            return None
-        targets = t.element_types
-    elif isinstance(t, NominalType) and (
-            (isinstance(e, TpyDictLiteral) and is_dict(t))
-            or (isinstance(e, TpySetLiteral) and is_set(t))
-            or (isinstance(e, (TpyArrayLiteral, TpyListRepeat))
-                and (is_list(t) or is_array(t)))):
-        targets = t.type_args
-    else:
-        return None
-    for k, child in children:
-        mix = literal_leaf_mix(child, targets[k], leaf_type)
-        if mix is not None:
-            return descend(mix, k)
-    return None
-
-
 def declared_float_slot(slot: TpyType | None) -> TpyType | None:
     """The float type a declared slot converts an int/float pair into, so
     no inferred join is left to refuse: a float slot, or the float of a
     `float | None` one (the picked value is never None there)."""
-    t = unwrap_readonly(slot) if slot is not None else None
-    if isinstance(t, OptionalType):
-        t = unwrap_readonly(t.inner)
-    return t if t is not None and is_float_type(t) else None
+    if slot is None:
+        return None
+    t, _ = peel_value(slot)
+    return t if numeric_kind(t) is NumKind.FLOAT else None
 
 
 def python_type_name(t: TpyType | None) -> str:
@@ -187,7 +215,20 @@ def python_type_name(t: TpyType | None) -> str:
     settle on; a typed value keeps its own type."""
     if t is None:
         return "None"
-    return str(resolve_int_literals(unwrap_readonly(t), BIGINT))
+    return str(resolve_int_literals(_as_container(unwrap_readonly(t)), BIGINT))
+
+
+def _as_container(t: TpyType) -> TpyType:
+    """A literal whose storage is not decided yet, spelled as the container
+    the source wrote."""
+    if isinstance(t, PendingListType):
+        return make_list(_as_container(t.element_type))
+    if isinstance(t, PendingSetType):
+        return make_set(_as_container(t.element_type))
+    if isinstance(t, PendingDictType):
+        return make_dict(_as_container(t.key_type),
+                         _as_container(t.value_type))
+    return t.map_inner_types(_as_container)
 
 
 def operand_spelling(e: TpyExpr) -> str | None:
@@ -252,6 +293,35 @@ def _path_leaves(e: TpyExpr, path: tuple[int, ...]) -> list[TpyExpr] | None:
             return None
         out.extend(leaves)
     return out
+
+
+def float_left_open(mix: InferredJoin, peers: Sequence[TpyExpr],
+                    empty_call: Callable[[TpyExpr], bool]) -> bool:
+    """Whether the source writes no float where `mix` met one among a
+    literal's `peers` (up to and including the new one): every float-side
+    peer reaches, along `mix.path`, an empty container -- an empty literal,
+    or a call `empty_call` accepts (`list()`) -- whose element type only a
+    hint gave."""
+    float_nodes = peers[-1:] if mix.int_first else peers[:-1]
+    return bool(float_nodes) and all(
+        _left_open(n, mix.path, empty_call) for n in float_nodes)
+
+
+def _left_open(e: TpyExpr, path: tuple[int, ...],
+               empty_call: Callable[[TpyExpr], bool]) -> bool:
+    e = peel_coerce(e)
+    if empty_call(e):
+        return True
+    children = _literal_children(e)
+    if children is None:
+        return False
+    if not children:
+        return True
+    if not path:
+        return False
+    picked = [c for i, c in children if i == path[0]]
+    return bool(picked) and all(
+        _left_open(c, path[1:], empty_call) for c in picked)
 
 
 def _int_literal_spelling(e: TpyExpr) -> str | None:

@@ -1,0 +1,1 @@
+main.py:29: error: Lambda parameter types cannot be inferred without context. Pass the lambda to a function that accepts Fn[...] or Callable[...] type

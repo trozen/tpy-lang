@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from ..parse import TpyGeneratorExpression
     from ..parse.type_resolver import TypeResolver
     from .scope_tracker import DeferredEscape
+    from .slot_hint import SlotHint
 
 from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
@@ -2592,7 +2593,10 @@ class SemanticContext:
     in_consuming_method: bool = False
 
     # --- Expression type hint ---
-    expr_type_hint: TpyType | None = None
+    # The hint the current expression is analyzed under, with which of its
+    # positions an inferred local decides; set only via `slot_hint_scope`,
+    # read through `expr_slot_hint` or `slot_hint_at`.
+    current_slot_hint: 'SlotHint | None' = None
     # The whole value of the unannotated first binding `name = ...` being
     # analysed: a diagnostic on exactly this node can offer annotating the
     # name, which an already-declared name or any other value cannot take.
@@ -3239,6 +3243,36 @@ class SemanticContext:
     def restore_function_state(self, saved: FunctionTrackingState) -> None:
         """Restore per-function state from a snapshot."""
         self.func = saved
+
+    @property
+    def expr_slot_hint(self) -> 'SlotHint | None':
+        """The hint in force for the expressions analyzed now. A fill-only
+        hint (`SlotHint.fill`) is not one: it types only its own argument
+        node, which asks for it through `slot_hint_at`."""
+        h = self.current_slot_hint
+        return None if h is not None and h.is_fill else h
+
+    @property
+    def expr_type_hint(self) -> TpyType | None:
+        """The type of `expr_slot_hint`, for readers that ask no provenance."""
+        return self.expr_slot_hint.type if self.expr_slot_hint else None
+
+    def slot_hint_at(self, expr: 'TpyExpr') -> 'SlotHint | None':
+        """The hint `expr` itself is analyzed under: the one in force, or a
+        fill-only hint set for exactly this node."""
+        h = self.current_slot_hint
+        if h is not None and h.is_fill:
+            return h if h.fill_node is expr else None
+        return h
+
+    @contextmanager
+    def slot_hint_scope(self, hint: 'SlotHint | None') -> Iterator[None]:
+        saved = self.current_slot_hint
+        self.current_slot_hint = hint
+        try:
+            yield
+        finally:
+            self.current_slot_hint = saved
 
     @contextmanager
     def trial_scope(self) -> Iterator[None]:

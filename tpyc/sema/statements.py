@@ -114,7 +114,8 @@ from ..value_category import (
     peel_value_wrappers, tuple_literal_elems,
 )
 from .expressions import (_nested_def_free_names, _find_list_member,
-                          _names_rebound_by)
+                          _names_rebound_by, generic_constructor_factory)
+from .slot_hint import SlotHint
 from .local_deduction import (
     collect_pending_source_types, mark_pending_list_mutated,
     view_source_is_temporary, walk_view_source_leaves,
@@ -129,7 +130,7 @@ from ..type_def_registry import (
     is_bytes_type, is_bytearray_type, is_bytes_view_type,
     is_borrowing_view_type,
     is_fixed_int_type, is_big_int_type,
-    find_factory_by_simple_name, protocol_info_of,
+    protocol_info_of,
 )
 
 
@@ -5461,13 +5462,8 @@ class StatementAnalyzer:
             # Handle empty list literal or generic type constructor with explicit type annotation
             # Note: [] * N is collapsed to [] in the parser
             is_empty_literal = isinstance(stmt.init, TpyArrayLiteral) and not stmt.init.elements
-            _generic_td = (find_factory_by_simple_name(stmt.init.func_name)
-                           if isinstance(stmt.init, TpyCall) and isinstance(stmt.init.func, TpyName) else None)
-            is_generic_constructor = (isinstance(stmt.init, TpyCall) and
-                                      not stmt.init.args and
-                                      stmt.init.call_type is None and
-                                      _generic_td is not None and
-                                      bool(_generic_td.param_kinds))
+            ctor_td = generic_constructor_factory(stmt.init)
+            is_generic_constructor = ctor_td is not None
 
             if (is_empty_literal or is_generic_constructor) and stmt.type:
                 # Check if annotation matches the constructor's generic type
@@ -5476,10 +5472,9 @@ class StatementAnalyzer:
                 # through its list member (e.g. `x: JsonValue = []`), not just
                 # a direct list[T] annotation.
                 union_list_member = None
-                if is_generic_constructor:
-                    td = find_factory_by_simple_name(stmt.init.func_name)
-                    annotation_matches = (td is not None and
-                                          stmt.type.qualified_name() == td.qname)
+                if ctor_td is not None:
+                    annotation_matches = (
+                        stmt.type.qualified_name() == ctor_td.qname)
                 elif is_list(stmt.type):
                     annotation_matches = True
                 elif stmt.type.needs_wrapper():
@@ -5529,10 +5524,13 @@ class StatementAnalyzer:
             else:
                 # The existing type hints a reassignment even for an inferred
                 # local: it narrows float literals, types lambda parameters
-                # and infers a generic call's T. It also converts the value's
-                # int elements into the local's floats
-                # (BUGS.md#inferred-hint-converts-int-elements).
+                # and infers a generic call's T. Only a declared slot also
+                # converts the value's ints into its floats.
                 type_hint = stmt.type if stmt.type else existing_type
+                if (type_hint is not None and stmt.type is None
+                        and self.deduction.declared_slot_type(
+                            stmt.name, existing_type) is None):
+                    type_hint = SlotHint.inferred_local(type_hint)
                 init_type = (
                     self._analyze_fresh_binding(stmt.init)
                     if type_hint is None and not is_global_declared

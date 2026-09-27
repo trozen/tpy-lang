@@ -1,0 +1,1 @@
+main.py:8: error: 'ys' is bound to float elements at line 7 and to int32 elements here, and CPython keeps each value's own type; convert to one type: float(...) on the int32 value

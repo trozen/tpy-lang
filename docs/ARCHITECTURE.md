@@ -697,7 +697,7 @@ Top-level analyzers (one module each):
 `init_tracker`, `scope_tracker`, `iter_loans`, `flow_facts`, `value_range`,
 `numeric_lattice`, `mutation_propagation`, `method_expansion`,
 `macros`, `builder_trace`, `function_macros`, `reach_analysis`,
-`frame_traits`, `own_copy`, `context`. Error classes live in
+`frame_traits`, `own_copy`, `slot_hint`, `context`. Error classes live in
 `tpyc/diagnostics.py` (see "Compilation pipeline").
 
 `own_copy` holds the owning-slot copy contract of a body whose payload is
@@ -754,6 +754,25 @@ field/method chain (and not via a direct import), the chain of
 native-module headers it depends on is emitted into the consumer
 header. Native-to-native chains are followed explicitly in codegen
 since natives have no `.hpp` to chain through.
+
+`slot_hint` holds the type-hint value. A `SlotHint` has one of two kinds:
+DECLARED (the source states the slot's type; it converts an int into a float)
+and INFERRED (the hint's type plus the unsubstituted pattern it came from, so
+each position knows whether an inferred local decides it -- such a position
+types what the value leaves open and converts nothing). The context carries one
+(`SemanticContext.slot_hint_scope`); `ReturnSeed` (`type_ops`) builds every
+argument hint from a call's return-hint seed. An INFERRED hint may be FILL-ONLY
+(`SlotHint.fill`, its `fill_node` set): the one NON-GENERIC overload candidate
+an inferred local alone would pick hands each argument its declared parameter
+type that way. A fill-only hint belongs to its argument node alone -- only
+`SemanticContext.slot_hint_at(node)` returns it, `expr_slot_hint` hides it, and
+no projection keeps it -- and is retargeted to a ternary's arms and an and/or's
+operands. It types a literal's or empty constructor's open positions (as a
+plain inferred hint, `as_local`), seeds a generic call's or record
+construction's arguments, and in `TypeOps.result_bindings` binds only the type
+parameters that neither the arguments nor a `@type_param_default` bind. A
+lambda gets none, as a declared local's probe gives it no hint. A generic
+candidate takes the local's type as its return-hint seed like any generic call.
 
 ### Circular imports
 

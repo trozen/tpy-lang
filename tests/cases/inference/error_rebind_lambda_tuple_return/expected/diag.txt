@@ -1,0 +1,1 @@
+main.py:8: error: Type mismatch in reassignment to 'k': expected Callable[[], tuple[float, float]], got Callable[[], tuple[int32, int32]]

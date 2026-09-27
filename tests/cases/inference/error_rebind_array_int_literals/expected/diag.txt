@@ -1,0 +1,1 @@
+main.py:8: error: 'b' is bound to float elements at line 7 and to int elements here, and CPython keeps each value's own type; write 1.0 and 2.0 instead of 1 and 2

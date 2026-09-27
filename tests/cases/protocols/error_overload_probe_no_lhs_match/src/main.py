@@ -4,8 +4,8 @@
 # candidate returns the right shape.
 #
 # Pins the fallback path in `candidate_arg_hints` (returns None for all
-# candidates -> `_probe_analyze_args` / `_probe_analyze_method_args`
-# fall through to `[analyze_expr(arg) for arg in expr.args]`). The
+# candidates -> `_probe_candidate_args`
+# falls through to unhinted analysis of every argument). The
 # resulting call should fail (or succeed) on its OWN merits via
 # resolve_overload + type-checking, not via LHS-driven bias toward a
 # specific overload's arg shape.

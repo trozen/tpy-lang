@@ -1,0 +1,1 @@
+main.py:8: error: List literal has mixed types: element 2 is float, but earlier elements are int32; CPython keeps each value's own type, so convert to one type: float(...) on the int32 elements

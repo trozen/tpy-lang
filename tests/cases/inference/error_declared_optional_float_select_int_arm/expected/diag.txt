@@ -1,0 +1,1 @@
+main.py:7: error: this conditional expression mixes int32 and float, and CPython keeps whichever value it picks; convert to one type: float(a) if c else opt

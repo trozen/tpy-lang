@@ -5,9 +5,9 @@ Core expression analysis including literals, names, operators, field access, and
 """
 
 from __future__ import annotations
-from contextlib import ExitStack
+from contextlib import AbstractContextManager, ExitStack, nullcontext
 from dataclasses import replace as dc_replace
-from typing import Callable, Literal, TYPE_CHECKING
+from typing import Callable, Iterable, Literal, Sequence, TYPE_CHECKING
 
 from ..typesys import peel_value_readonly
 from ..typesys import (
@@ -72,11 +72,15 @@ from .compatibility import TupleSink
 from .narrowing import NarrowingTracker, deref_view_narrowed, truthy_operands
 from .numeric_lattice import widen_numeric_types
 from .type_join import (InferredJoin, JoinOutcome, declared_float_slot,
+                        peel_value,
                         find_int_float_mix, flipped,
-                        join_inferred_value_types, literal_mix_message,
+                        float_left_open, join_inferred_value_types,
+                        literal_mix_message,
                         operand_spelling, python_type_name,
                         select_mix_message)
 from .list_literals import IterableHelper
+from .slot_hint import (SlotHint, callable_return, element,
+                        optional_inner, type_arg)
 from .local_deduction import collect_pending_source_types, mark_pending_list_mutated
 from .operators import DUNDER_CPP_TEMPLATES, _substitute_type_params
 from .bound_check import raise_if_class_param_bound_violated
@@ -98,6 +102,7 @@ if TYPE_CHECKING:
     from .calls import CallAnalyzer
     from .methods import MethodAnalyzer
     from .scope_tracker import ScopeTracker
+    from ..type_def_registry import TypeDef
 
 from tpyc import modules as builtin_modules
 
@@ -200,6 +205,17 @@ def _union_like_members(ut: TpyType) -> 'tuple[TpyType, ...]':
     if isinstance(ut, UnionType):
         return ut.members
     return recursive_union_alternatives(ut) or ()
+
+
+def generic_constructor_factory(expr: TpyExpr) -> 'TypeDef | None':
+    """The generic type factory an argument-less constructor call such as
+    `list()`, `dict()` or `set()` names, whose type arguments only its
+    context can give; None for any other expression."""
+    if not (isinstance(expr, TpyCall) and isinstance(expr.func, TpyName)
+            and not expr.args and expr.call_type is None):
+        return None
+    td = find_factory_by_simple_name(expr.func_name)
+    return td if td is not None and td.param_kinds else None
 
 
 def _find_list_member(ut: TpyType) -> NominalType | None:
@@ -320,7 +336,10 @@ class ExpressionAnalyzer:
         """User-facing type name for error messages (resolves literal types)."""
         return str(self._resolve_literal_type(t))
 
-    def analyze_call_arg(self, arg: TpyExpr, hint: 'TpyType | None' = None) -> TpyType:
+    def analyze_call_arg(
+        self, arg: TpyExpr,
+        hint: 'SlotHint | TpyType | None' = None,
+    ) -> TpyType:
         """Analyze one call argument, transparently handling `*xs` unpack.
 
         Every call-argument pre-analyzer (generic inference, overload
@@ -331,16 +350,15 @@ class ExpressionAnalyzer:
         "Unknown expression type" error. For a `*container` arg this
         returns the container's element type (the value an individual
         positional arg would have contributed); for everything else it
-        is `analyze_expr[_with_hint]`.
+        is `analyze_expr[_with_hint]`. No `hint` (None) keeps the enclosing
+        call's hint in force.
         """
         if isinstance(arg, TpyStarUnpack):
-            return self._unpack_star_element_type(arg, hint)
-        if hint is not None:
-            return self.analyze_expr_with_hint(arg, hint)
-        return self.analyze_expr(arg)
+            return self._unpack_star_element_type(arg, SlotHint.of(hint))
+        return self.analyze_expr_with_hint(arg, hint)
 
     def _unpack_star_element_type(
-        self, node: TpyStarUnpack, elem_hint: 'TpyType | None'
+        self, node: TpyStarUnpack, elem_hint: 'SlotHint | None',
     ) -> TpyType:
         """Element type of the container unpacked by `*node.expr`.
 
@@ -358,7 +376,7 @@ class ExpressionAnalyzer:
         deliberately NOT unwrapped: sema must not accept a shape codegen can't
         emit (the owning-rvalue unpack gap is tracked in TODO.md).
         """
-        inner_hint = make_list(elem_hint) if elem_hint is not None else None
+        inner_hint = elem_hint.map(make_list) if elem_hint is not None else None
         if inner_hint is not None:
             inner_type = self.analyze_expr_with_hint(node.expr, inner_hint)
         else:
@@ -451,6 +469,14 @@ class ExpressionAnalyzer:
 
     def analyze_expr(self, expr: TpyExpr) -> TpyType:
         """Analyze an expression and return its type."""
+        own = self.ctx.slot_hint_at(expr)
+        if own is not None and own.is_fill and self._fill_types(expr):
+            # What the literal or empty constructor leaves open -- its
+            # empty element types, its float literals' width -- is filled
+            # from the overload's declared parameter type, which converts
+            # none of its ints: the same typing an inferred local's type
+            # gives.
+            return self._analyze_expr_under_hint(expr, own.as_local())
         if is_property_getter_read(expr):
             # A property read BECAME its getter call at the end of its own
             # analysis, and bodies re-analyse expressions (a chained
@@ -582,16 +608,109 @@ class ExpressionAnalyzer:
         truthy_operands(expr, selects)
         self.ctx.truth_test_selects.update(selects)
 
-    def analyze_expr_with_hint(self, expr: TpyExpr, type_hint: TpyType | None) -> TpyType:
+    def analyze_expr_with_hint(self, expr: TpyExpr,
+                               hint: SlotHint | TpyType | None) -> TpyType:
         """Analyze an expression with an optional type hint for inference.
 
         The type hint allows constructs like list() to infer their type parameters
-        from context (e.g., function parameter type).
+        from context (e.g., function parameter type). A bare type is a DECLARED
+        hint; a `SlotHint` also says which positions an inferred local's type
+        decides, where the hint types what the value leaves open but converts
+        no int into a float. With no hint the enclosing one stays in force.
         """
-        if type_hint is None:
+        slot = SlotHint.of(hint)
+        if slot is None:
             return self.analyze_expr(expr)
+        return self._analyze_expr_under_hint(expr, slot)
 
-        type_hint = unwrap_ref_type(type_hint)
+    @staticmethod
+    def _fill_types(expr: TpyExpr) -> bool:
+        """The argument shapes a fill-only hint (`SlotHint.fill`) types as
+        a whole; a generic call's or a record construction's type
+        parameters are filled by their inference. A lambda is not one:
+        typed from one candidate before the winner is chosen, it would keep
+        that typing if another won (the reason `_probe_arg_hint` drops a
+        Callable hint), so it gets no fill, as a declared local's probe
+        gives it no hint."""
+        return (isinstance(expr, (TpyArrayLiteral, TpyDictLiteral,
+                                  TpySetLiteral, TpyTupleLiteral,
+                                  TpyListComprehension, TpyDictComprehension,
+                                  TpySetComprehension))
+                or generic_constructor_factory(expr) is not None)
+
+    def _forward_fill(self, select: TpyExpr, operand: TpyExpr,
+                      ) -> AbstractContextManager[None]:
+        """A ternary's or an and/or's value is one of its operands, so a
+        fill-only hint for the select is one for each operand."""
+        own = self.ctx.slot_hint_at(select)
+        if own is None or not own.is_fill:
+            return nullcontext()
+        return self.ctx.slot_hint_scope(own.retarget(operand))
+
+    def _hint_converts_int(self, value: TpyType,
+                           hint: SlotHint | None) -> bool:
+        """Whether binding `value` at `hint` would turn an int in it into a
+        float at a position an inferred local decides: there the int stays
+        an int, for the join the value meets next to refuse. Every site
+        that would convert under a hint asks here."""
+        view = hint.inferred_view() if hint is not None else None
+        return view is not None and self._view_converts(view, value)
+
+    def _view_converts(self, view: TpyType, value: TpyType) -> bool:
+        if self.compat.deduction.int_float_mix(view, value) is not None:
+            return True
+        # A callable's return is the value it hands on: a lambda returning
+        # an int at an inferred float return keeps its int return.
+        view, value = peel_value(view)[0], peel_value(value)[0]
+        return (isinstance(view, CallableType)
+                and isinstance(value, CallableType)
+                and self._view_converts(view.return_type, value.return_type))
+
+    def _converting_element(self, types: Iterable[TpyType],
+                            hint: SlotHint | None) -> TpyType | None:
+        """The first of a literal's or comprehension's element types the
+        hint would convert (`_hint_converts_int`): the container then keeps
+        its own element types, for the join it meets next to refuse."""
+        return next((t for t in types if self._hint_converts_int(t, hint)),
+                    None)
+
+    @staticmethod
+    def _hint_gave_float(mix: InferredJoin, peers: Sequence[TpyExpr],
+                         hint: SlotHint | None) -> bool:
+        """Whether a hinted literal's peers mix an int only with a float the
+        hint gave an element the source left empty (`[[], [2]]` over a
+        `list[list[float]]` local). The source then mixes nothing: the
+        literal keeps its int side, and the join with the hint's source --
+        the rebound local's own type -- refuses it, naming the local."""
+        return hint is not None and float_left_open(
+            mix, peers, lambda e: generic_constructor_factory(e) is not None)
+
+    def _mark_list_annotated(self, typ: TpyType, list_hint: SlotHint,
+                             coerced_elem: TpyType | None) -> None:
+        """Record the list type a pending list literal or comprehension was
+        analyzed against as its annotation, which its deferred resolution
+        then follows -- unless that would turn the ints it holds into the
+        hint's floats (`_hint_converts_int`)."""
+        if (not isinstance(typ, PendingListType)
+                or self._hint_converts_int(typ, list_hint)):
+            return
+        info = self.ctx.list_literals.get(typ.literal_id)
+        if info is None:
+            return
+        info.has_explicit_annotation = True
+        info.explicit_type = list_hint.type
+        if coerced_elem is not None and info.coerced_element_type is None:
+            info.coerced_element_type = coerced_elem
+
+    @staticmethod
+    def _bare_hint(hint: SlotHint) -> SlotHint:
+        """`hint` without its readonly / Own wrappers."""
+        return hint.map(lambda t: unwrap_own(unwrap_readonly(t)))
+
+    def _analyze_expr_under_hint(self, expr: TpyExpr,
+                                 slot: SlotHint) -> TpyType:
+        slot = slot.map(unwrap_ref_type)
+        type_hint = slot.type
 
         # Lambda with Fn/Callable type hint: infer param types from the hint.
         # Transparent wrappers don't change the callable's shape, so peel them
@@ -602,20 +721,34 @@ class ExpressionAnalyzer:
         # back into the optional slot afterwards). `Send[Callable] | None` is NOT
         # handled: its marker sits inside the Optional, and narrowing + the call
         # path would also need to peel it -- see TODO.
-        lambda_hint = unwrap_own(unwrap_send_sync(type_hint))
-        if isinstance(lambda_hint, OptionalType):
-            lambda_hint = lambda_hint.inner
-        lambda_hint = unwrap_own(lambda_hint)
+        def callable_part(t: TpyType) -> TpyType:
+            t = unwrap_own(unwrap_send_sync(t))
+            if isinstance(t, OptionalType):
+                t = t.inner
+            return unwrap_own(t)
+        lambda_slot = slot.map(callable_part)
+        lambda_hint = lambda_slot.type
         if isinstance(expr, TpyLambda) and is_callable_type(lambda_hint):
-            typ = self._analyze_lambda_with_fn_hint(expr, lambda_hint)
+            typ = self._analyze_lambda_with_fn_hint(expr, lambda_slot)
             self.ctx.set_expr_type(expr, typ)
             return typ
 
         # Named function reference with Fn/Callable hint: resolve as function value.
         if isinstance(expr, TpyName) and is_callable_type(lambda_hint):
             result = self._try_resolve_function_ref(expr, lambda_hint)
+            ref = expr.function_ref_info if result is not None else None
+            if (isinstance(result, CallableType) and ref is not None
+                    and self._hint_converts_int(
+                        ref.return_type,
+                        lambda_slot.map(callable_return))):
+                # As for a lambda: an inferred hint's float return does not
+                # convert the function's int result.
+                own_return = unwrap_own(ref.return_type)
+                result = (make_fn_type(result.param_types, own_return)
+                          if result.is_template
+                          else CallableType(result.param_types, own_return))
             if result is None:
-                result = self._try_class_factory(expr, lambda_hint)
+                result = self._try_class_factory(expr, lambda_slot)
             if result is not None:
                 self.ctx.set_expr_type(expr, result)
                 return result
@@ -623,13 +756,13 @@ class ExpressionAnalyzer:
         # An and/or at a declared slot: its operands are analysed against
         # the declared type first, as a ternary's arms are.
         if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
-            typ = self._analyze_binop(expr, declared_slot=type_hint)
+            typ = self._analyze_binop(expr, declared_slot=slot)
             self.ctx.set_expr_type(expr, typ)
             return typ
 
         # Ternary expression: propagate hint to both branches
         if isinstance(expr, TpyIfExpr):
-            typ = self._analyze_if_expr(expr, type_hint=type_hint)
+            typ = self._analyze_if_expr(expr, type_hint=slot)
             self.ctx.set_expr_type(expr, typ)
             return typ
 
@@ -649,22 +782,18 @@ class ExpressionAnalyzer:
             return type_hint
 
         # Tuple literal with TupleType hint: pass per-element hints
-        tuple_hint = unwrap_own(type_hint)
+        tuple_slot = slot.map(unwrap_own)
+        tuple_hint = tuple_slot.type
         if isinstance(expr, TpyTupleLiteral) and isinstance(tuple_hint, TupleType):
             if len(expr.elements) == len(tuple_hint.element_types):
-                hints = list(tuple_hint.element_types)
+                hints = [tuple_slot.map(element(k))
+                         for k in range(len(tuple_hint.element_types))]
                 typ = self._analyze_tuple_literal(expr, element_hints=hints)
                 self.ctx.set_expr_type(expr, typ)
                 return typ
 
-        # Check for generic type constructor (list(), Container[T](), etc.)
-        _generic_td = (find_factory_by_simple_name(expr.func_name)
-                       if isinstance(expr, TpyCall) and isinstance(expr.func, TpyName) else None)
-        is_generic_constructor = (isinstance(expr, TpyCall) and
-                                  not expr.args and
-                                  expr.call_type is None and
-                                  _generic_td is not None and
-                                  bool(_generic_td.param_kinds))
+        ctor_td = generic_constructor_factory(expr)
+        is_generic_constructor = ctor_td is not None
 
         # Check for empty list literal []
         is_empty_literal = isinstance(expr, TpyArrayLiteral) and not expr.elements
@@ -680,10 +809,8 @@ class ExpressionAnalyzer:
             # list member (e.g. JsonValue's list[JsonValue]), not just a direct
             # list[T] hint.
             union_list_member = None
-            if is_generic_constructor:
-                td = find_factory_by_simple_name(expr.func_name)  # type: ignore
-                hint_matches = (td is not None and
-                                inner_hint.qualified_name() == td.qname)
+            if ctor_td is not None:
+                hint_matches = inner_hint.qualified_name() == ctor_td.qname
             elif is_list(inner_hint):
                 # Empty literal [] can match list[T] hint
                 hint_matches = True
@@ -729,18 +856,13 @@ class ExpressionAnalyzer:
         # Non-empty array literal with list type hint
         # (e.g. return [x, y] with -> Own[list[T]], or x: list[int32|None] = [1, None])
         if isinstance(expr, TpyArrayLiteral) and expr.elements:
-            inner_hint = unwrap_readonly(type_hint)
-            if isinstance(inner_hint, OwnType):
-                inner_hint = inner_hint.wrapped
+            inner = self._bare_hint(slot)
+            inner_hint = inner.type
             if is_array(inner_hint) or is_list(inner_hint):
-                result = self._analyze_array_literal(expr, inner_hint.get_element_type())
-                if isinstance(result, PendingListType):
-                    info = self.ctx.list_literals.get(result.literal_id)
-                    if info:
-                        info.has_explicit_annotation = True
-                        info.explicit_type = inner_hint
-                        if info.coerced_element_type is None:
-                            info.coerced_element_type = inner_hint.get_element_type()
+                result = self._analyze_array_literal(
+                    expr, inner.map(type_arg(0)))
+                self._mark_list_annotated(result, inner,
+                                          inner_hint.get_element_type())
                 self.ctx.set_expr_type(expr, result)
                 return result
             # Recursive union type with a list member: propagate the union
@@ -749,103 +871,77 @@ class ExpressionAnalyzer:
             if inner_hint.needs_wrapper():
                 list_member = _find_list_member(inner_hint)
                 if list_member is not None:
-                    result = self._analyze_array_literal(expr, inner_hint)
-                    if isinstance(result, PendingListType):
-                        info = self.ctx.list_literals.get(result.literal_id)
-                        if info:
-                            info.has_explicit_annotation = True
-                            info.explicit_type = list_member
-                            if info.coerced_element_type is None:
-                                info.coerced_element_type = inner_hint
+                    result = self._analyze_array_literal(expr, inner)
+                    self._mark_list_annotated(
+                        result, inner.map(_find_list_member), inner_hint)
                     self.ctx.set_expr_type(expr, result)
                     return result
 
         # List comprehension with list type hint: propagate element type
         if isinstance(expr, TpyListComprehension):
-            inner_hint = unwrap_readonly(type_hint)
-            if isinstance(inner_hint, OwnType):
-                inner_hint = inner_hint.wrapped
-            if is_list(inner_hint):
-                typ = self._analyze_list_comprehension(expr, expected_elem=inner_hint.get_element_type())
-                if isinstance(typ, PendingListType):
-                    info = self.ctx.list_literals.get(typ.literal_id)
-                    if info:
-                        info.has_explicit_annotation = True
-                        info.explicit_type = inner_hint
-                self.ctx.set_expr_type(expr, typ)
-                return typ
-            if is_array(inner_hint):
-                typ = self._analyze_list_comprehension(expr, expected_elem=inner_hint.get_element_type())
-                if isinstance(typ, PendingListType):
-                    info = self.ctx.list_literals.get(typ.literal_id)
-                    if info:
-                        info.has_explicit_annotation = True
-                        info.explicit_type = inner_hint
+            inner = self._bare_hint(slot)
+            if is_list(inner.type) or is_array(inner.type):
+                typ = self._analyze_list_comprehension(
+                    expr, expected_elem=inner.map(type_arg(0)))
+                self._mark_list_annotated(typ, inner, None)
                 self.ctx.set_expr_type(expr, typ)
                 return typ
 
         # Dict comprehension with dict type hint: propagate key/value types
         if isinstance(expr, TpyDictComprehension):
-            inner_hint = unwrap_readonly(type_hint)
-            if isinstance(inner_hint, OwnType):
-                inner_hint = inner_hint.wrapped
-            if is_dict(inner_hint):
+            inner = self._bare_hint(slot)
+            if is_dict(inner.type):
                 typ = self._analyze_dict_comprehension(
-                    expr, expected_key=inner_hint.type_args[0],
-                    expected_value=inner_hint.type_args[1])
+                    expr, key_hint=inner.map(type_arg(0)),
+                    value_hint=inner.map(type_arg(1)))
                 self.ctx.set_expr_type(expr, typ)
                 return typ
 
         # Dict literal with dict type hint
         if isinstance(expr, TpyDictLiteral):
-            inner_hint = unwrap_readonly(type_hint)
-            if isinstance(inner_hint, OwnType):
-                inner_hint = inner_hint.wrapped
-            if isinstance(inner_hint, OptionalType) and is_dict(inner_hint.inner):
+            inner = self._bare_hint(slot)
+            if isinstance(inner.type, OptionalType) and is_dict(inner.type.inner):
                 # A literal at an `Optional[dict]` slot is the dict member's:
                 # the None alternative cannot be written as a literal, so the
                 # member is the only annotation the key/value can take.
-                inner_hint = inner_hint.inner
+                inner = inner.map(optional_inner)
+            inner_hint = inner.type
             if is_dict(inner_hint):
-                result = self._analyze_dict_literal(expr, inner_hint.type_args[0], inner_hint.type_args[1])
+                result = self._analyze_dict_literal(
+                    expr, inner.map(type_arg(0)), inner.map(type_arg(1)))
                 self.ctx.set_expr_type(expr, result)
                 return result
             if inner_hint.needs_wrapper():
                 dict_member = _find_dict_member(inner_hint)
                 if dict_member is not None:
-                    result = self._analyze_dict_literal(expr, dict_member.type_args[0], inner_hint)
+                    result = self._analyze_dict_literal(
+                        expr, inner.map(_find_dict_member).map(type_arg(0)),
+                        inner)
                     self.ctx.set_expr_type(expr, result)
                     return result
 
         # Set comprehension with set type hint: propagate element type
         if isinstance(expr, TpySetComprehension):
-            inner_hint = unwrap_readonly(type_hint)
-            if isinstance(inner_hint, OwnType):
-                inner_hint = inner_hint.wrapped
-            if is_set(inner_hint):
+            inner = self._bare_hint(slot)
+            if is_set(inner.type):
                 typ = self._analyze_set_comprehension(
-                    expr, expected_elem=inner_hint.type_args[0])
+                    expr, expected_elem=inner.map(type_arg(0)))
                 self.ctx.set_expr_type(expr, typ)
                 return typ
 
         # Non-empty set literal with set type hint
         if isinstance(expr, TpySetLiteral) and expr.elements:
-            inner_hint = unwrap_readonly(type_hint)
-            if isinstance(inner_hint, OwnType):
-                inner_hint = inner_hint.wrapped
-            if is_set(inner_hint):
-                result = self._analyze_set_literal(expr, inner_hint.type_args[0])
+            inner = self._bare_hint(slot)
+            if is_set(inner.type):
+                result = self._analyze_set_literal(
+                    expr, inner.map(type_arg(0)))
                 self.ctx.set_expr_type(expr, result)
                 return result
 
         # Fall back to regular analysis, propagating hint through context
         # for functions that need it (e.g. unsafe_cast)
-        old_hint = self.ctx.expr_type_hint
-        self.ctx.expr_type_hint = type_hint
-        try:
+        with self.ctx.slot_hint_scope(slot):
             return self.analyze_expr(expr)
-        finally:
-            self.ctx.expr_type_hint = old_hint
 
     def _analyze_name(self, expr: TpyName) -> TpyType:
         """Analyze a name reference."""
@@ -1100,18 +1196,28 @@ class ExpressionAnalyzer:
             es = self._select_type_for_message(e, python_literals=True)
         return ts, es
 
+    def _slot_converts(self, verdict: InferredJoin,
+                       slot: SlotHint | None) -> bool:
+        """Whether a declared float slot takes a select's int/float mix as
+        its float: only a top-level operand pair, never one below a
+        `T | None` (the value may be None) nor at a position an inferred
+        local decides."""
+        return (not verdict.nested and not verdict.through_optional
+                and not self._hint_converts_int(verdict.int_side, slot))
+
     def _analyze_select_operand(self, e: TpyExpr,
-                                declared: TpyType) -> TpyType:
+                                declared: SlotHint) -> TpyType:
         """Analyze a ternary arm against the declared type of the select's
         slot, so a literal pins to it before the join sees the arms. A
         container literal takes the declared type while it is analysed; a
         tuple literal keeps its literal leaves, so they pin to the declared
         elements here. A variable keeps its own type: nothing converts it."""
         t = self.analyze_expr_with_hint(e, declared)
-        slot = unwrap_readonly(unwrap_own(unwrap_ref_type(declared)))
+        slot = declared.map(
+            lambda d: unwrap_readonly(unwrap_own(unwrap_ref_type(d))))
         if (isinstance(e, TpyTupleLiteral) and isinstance(t, TupleType)
-                and isinstance(slot, TupleType)
-                and self.compat.is_type_compatible(t, slot)):
+                and isinstance(slot.type, TupleType)
+                and self.compat.is_type_compatible(t, slot.type)):
             t = self._resolve_literals_with_hint(t, slot)
             self.ctx.set_expr_type(e, t)
         return t
@@ -1252,7 +1358,7 @@ class ExpressionAnalyzer:
 
     def _logical_op_result_type(self, expr: TpyBinOp, left: TpyType,
                                 right: TpyType,
-                                declared_slot: TpyType | None = None) -> TpyType:
+                                declared_slot: SlotHint | None = None) -> TpyType:
         """Result type of `a and b` / `a or b`: the operand it yields, joined
         like a ternary's arms. Falls back to bool (the C++ &&/|| value) when
         the operands have no common type or either is a bool, which a truth
@@ -1270,8 +1376,10 @@ class ExpressionAnalyzer:
         verdict = self._select_join(lt, rt, expr.left, expr.right)
         result = verdict.joined
         if verdict.outcome is JoinOutcome.INT_FLOAT_MIX:
-            slot_float = declared_float_slot(declared_slot)
-            if slot_float is not None and not verdict.nested:
+            slot_float = declared_float_slot(
+                declared_slot.type if declared_slot else None)
+            if (slot_float is not None and self._slot_converts(
+                    verdict, declared_slot)):
                 result = slot_float
             elif expr not in self.ctx.truth_test_selects:
                 op = "and" if expr.op == "&&" else "or"
@@ -1292,13 +1400,16 @@ class ExpressionAnalyzer:
         return result
 
     def _analyze_binop(self, expr: TpyBinOp,
-                       declared_slot: TpyType | None = None) -> TpyType:
+                       declared_slot: SlotHint | None = None) -> TpyType:
         """Analyze a binary operation. `declared_slot` is the declared type
         an and/or's value goes to; each operand is analysed against it."""
         def operand(e: TpyExpr) -> TpyType:
-            if declared_slot is None:
-                return self.analyze_expr(e)
-            return self.analyze_expr_with_hint(e, declared_slot)
+            if declared_slot is not None:
+                return self.analyze_expr_with_hint(e, declared_slot)
+            if expr.op in ("&&", "||"):
+                with self._forward_fill(expr, e):
+                    return self.analyze_expr(e)
+            return self.analyze_expr(e)
         left_type = operand(expr.left)
         if expr.op in ("&&", "||"):
             type_true, type_false = self.narrowing.condition_type_facts(expr.left)
@@ -2712,7 +2823,7 @@ class ExpressionAnalyzer:
             elem.loc, source_expr=elem)
 
     def _analyze_array_literal(
-        self, expr: TpyArrayLiteral, expected_elem: TpyType | None = None
+        self, expr: TpyArrayLiteral, expected: SlotHint | None = None
     ) -> TpyType:
         """Analyze an array literal [expr, expr, ...]
 
@@ -2758,9 +2869,11 @@ class ExpressionAnalyzer:
             self.ctx.set_expr_type(expr, typ)
             return typ
 
+        expected_elem = expected.type if expected is not None else None
         # Analyze all elements, propagating expected type as hint when available
-        if expected_elem is not None:
-            elem_types = [self.analyze_expr_with_hint(e, expected_elem) for e in expr.elements]
+        if expected is not None:
+            elem_types = [self.analyze_expr_with_hint(e, expected)
+                          for e in expr.elements]
         else:
             elem_types = [self.analyze_expr(e) for e in expr.elements]
 
@@ -2769,6 +2882,10 @@ class ExpressionAnalyzer:
         # underlying types (codegen handles the move/copy distinction).
         elem_types = [unwrap_own(t) for t in elem_types]
 
+        # As for a dict or set literal: an element the hint would convert
+        # keeps its own type, and the literal is joined like an unhinted one.
+        if self._converting_element(elem_types, expected) is not None:
+            expected_elem = None
         if expected_elem is not None:
             # Contextual mode: check each element against expected element type
             first_type = expected_elem
@@ -2822,6 +2939,11 @@ class ExpressionAnalyzer:
                     first_type = verdict.joined
                     continue
                 if verdict.outcome is JoinOutcome.INT_FLOAT_MIX:
+                    if self._hint_gave_float(verdict, expr.elements[:i],
+                                             expected):
+                        first_type = (first_type if verdict.int_first
+                                      else elem_type)
+                        continue
                     raise self.ctx.error(literal_mix_message(
                         verdict, "List literal has mixed types", "element",
                         i, elem_type, first_type, expr.elements[:i],
@@ -3371,7 +3493,7 @@ class ExpressionAnalyzer:
         return global_type
 
     def _analyze_if_expr(
-        self, expr: TpyIfExpr, type_hint: TpyType | None = None,
+        self, expr: TpyIfExpr, type_hint: SlotHint | None = None,
     ) -> TpyType:
         """Analyze a ternary conditional: then_expr if condition else else_expr."""
         self.analyze_condition(expr.condition)
@@ -3393,7 +3515,8 @@ class ExpressionAnalyzer:
                 then_type = self._analyze_select_operand(expr.then_expr,
                                                          type_hint)
             else:
-                then_type = self.analyze_expr(expr.then_expr)
+                with self._forward_fill(expr, expr.then_expr):
+                    then_type = self.analyze_expr(expr.then_expr)
 
             self.ctx.func.narrowed_types = dict(saved_narrowed)
             self.ctx.func.narrowed_types.update(else_facts)
@@ -3401,7 +3524,8 @@ class ExpressionAnalyzer:
                 else_type = self._analyze_select_operand(expr.else_expr,
                                                          type_hint)
             else:
-                else_type = self.analyze_expr(expr.else_expr)
+                with self._forward_fill(expr, expr.else_expr):
+                    else_type = self.analyze_expr(expr.else_expr)
         finally:
             self.ctx.cond_operand_depth -= 1
 
@@ -3420,8 +3544,10 @@ class ExpressionAnalyzer:
         # leave the ternary a bool.
         truth_test = expr in self.ctx.truth_test_selects
         if verdict.outcome is JoinOutcome.INT_FLOAT_MIX:
-            slot_float = declared_float_slot(type_hint)
-            if slot_float is not None and not verdict.nested:
+            slot_float = declared_float_slot(
+                type_hint.type if type_hint else None)
+            if (slot_float is not None
+                    and self._slot_converts(verdict, type_hint)):
                 common = slot_float
             elif truth_test:
                 self.ctx.truth_tested_arms.add(expr)
@@ -3475,7 +3601,8 @@ class ExpressionAnalyzer:
             return None
         return lambda then_s, else_s: f"{then_s} if {cond} else {else_s}"
 
-    def _resolve_literals_with_hint(self, t: TpyType, hint: TpyType | None) -> TpyType:
+    def _resolve_literals_with_hint(self, t: TpyType,
+                                    slot: SlotHint | None) -> TpyType:
         """Resolve IntLiteralType / FloatLiteralType and pending container types
         inside t using hint as a structural guide. Recurses into TupleType.
         Falls back to default_int / FLOAT when hint doesn't match the literal's
@@ -3485,11 +3612,16 @@ class ExpressionAnalyzer:
         literals adopt the hint when present (compat-checked downstream),
         float literals only adopt the hint when it's a float type.
         """
+        hint = slot.type if slot is not None else None
+        # An inferred hint leaves an int an int (`_hint_converts_int`).
         if isinstance(t, IntLiteralType):
-            return hint if hint is not None else self.ctx.default_int_for_literal(t)
+            return (hint if hint is not None
+                    and not self._hint_converts_int(t, slot)
+                    else self.ctx.default_int_for_literal(t))
         if isinstance(t, FloatLiteralType):
             return hint if is_float_type(hint) else FLOAT
-        if hint is not None and self._pending_matches_hint(t, hint):
+        if (hint is not None and self._pending_matches_hint(t, hint)
+                and not self._hint_converts_int(t, slot)):
             # The enclosing slot's annotation is the authority for a nested
             # literal's type, one level at a time: the literal's own elements
             # were already checked against the hint's when it was analyzed.
@@ -3497,8 +3629,9 @@ class ExpressionAnalyzer:
         if isinstance(t, TupleType):
             if isinstance(hint, TupleType) and len(t.element_types) == len(hint.element_types):
                 elems = tuple(
-                    self._resolve_literals_with_hint(et, ht)
-                    for et, ht in zip(t.element_types, hint.element_types)
+                    self._resolve_literals_with_hint(
+                        et, slot.map(element(k)))
+                    for k, et in enumerate(t.element_types)
                 )
             else:
                 elems = tuple(
@@ -3540,10 +3673,12 @@ class ExpressionAnalyzer:
 
     def _analyze_dict_literal(
         self, expr: TpyDictLiteral,
-        expected_key: TpyType | None = None,
-        expected_value: TpyType | None = None,
+        key_hint: SlotHint | None = None,
+        value_hint: SlotHint | None = None,
     ) -> TpyType:
         """Analyze a dict literal {key: value, ...}"""
+        expected_key = key_hint.type if key_hint is not None else None
+        expected_value = value_hint.type if value_hint is not None else None
         if not expr.keys:
             # Hint from LHS / param / return type pins K, V directly -- no
             # usage-based inference needed.
@@ -3564,14 +3699,16 @@ class ExpressionAnalyzer:
             self.ctx.func.pending_dict_resolutions.append(literal_id)
             return PendingDictType(UNKNOWN_ELEMENT, UNKNOWN_ELEMENT, literal_id)
 
-        if expected_key:
-            key_types = [self._analyze_and_strip(k, expected_key) for k in expr.keys]
-        else:
-            key_types = [self._analyze_and_strip(k) for k in expr.keys]
-        if expected_value:
-            value_types = [self._analyze_and_strip(v, expected_value) for v in expr.values]
-        else:
-            value_types = [self._analyze_and_strip(v) for v in expr.values]
+        key_types = [self._analyze_and_strip(k, key_hint) for k in expr.keys]
+        value_types = [self._analyze_and_strip(v, value_hint)
+                       for v in expr.values]
+        # A key or value whose int the hint would take as its float keeps
+        # its own type: the literal is then joined like an unhinted one.
+        if self._converting_element(key_types, key_hint) is not None:
+            key_hint = expected_key = None
+        value_slot = value_hint
+        if self._converting_element(value_types, value_hint) is not None:
+            value_hint = expected_value = None
 
         self._materialize_fresh_value_elements(
             expr.keys, key_types, expected_key, "dict literal key")
@@ -3652,6 +3789,11 @@ class ExpressionAnalyzer:
                     value_type = verdict.joined
                     continue
                 if verdict.outcome is JoinOutcome.INT_FLOAT_MIX:
+                    if self._hint_gave_float(verdict, expr.values[:i],
+                                             value_slot):
+                        value_type = (value_type if verdict.int_first
+                                      else vt)
+                        continue
                     raise self.ctx.error(literal_mix_message(
                         verdict, "Dict has mixed value types", "value", i,
                         vt, value_type, expr.values[:i],
@@ -3674,8 +3816,8 @@ class ExpressionAnalyzer:
 
         # Resolve any literal types (bare or nested in tuples) using the
         # annotation as a structural hint.
-        key_type = self._resolve_literals_with_hint(key_type, expected_key)
-        value_type = self._resolve_literals_with_hint(value_type, expected_value)
+        key_type = self._resolve_literals_with_hint(key_type, key_hint)
+        value_type = self._resolve_literals_with_hint(value_type, value_hint)
         # Container elements must be owned -- views can't be stored in a dict.
         if isinstance(key_type, PendingViewType):
             key_type = key_type.family.owned_type
@@ -3687,7 +3829,7 @@ class ExpressionAnalyzer:
 
     def _analyze_set_literal(
         self, expr: TpySetLiteral,
-        expected_elem: TpyType | None = None,
+        elem_hint: SlotHint | None = None,
     ) -> TpyType:
         """Analyze a set literal {value, ...}"""
         if not expr.elements:
@@ -3696,10 +3838,13 @@ class ExpressionAnalyzer:
                 "(e.g. s: set[int] = set())", expr,
             )
 
-        if expected_elem:
-            elem_types = [self._analyze_and_strip(e, expected_elem) for e in expr.elements]
-        else:
-            elem_types = [self._analyze_and_strip(e) for e in expr.elements]
+        elem_types = [self._analyze_and_strip(e, elem_hint)
+                      for e in expr.elements]
+        expected_elem = elem_hint.type if elem_hint is not None else None
+        # As for a dict literal: an element the hint would convert keeps
+        # its own type.
+        if self._converting_element(elem_types, elem_hint) is not None:
+            elem_hint = expected_elem = None
 
         self._materialize_fresh_value_elements(
             expr.elements, elem_types, expected_elem, "set literal element")
@@ -3752,7 +3897,7 @@ class ExpressionAnalyzer:
             for elem, et in zip(expr.elements, elem_types):
                 self._warn_storage_element_copy(elem, et)
 
-        elem_type = self._resolve_literals_with_hint(elem_type, expected_elem)
+        elem_type = self._resolve_literals_with_hint(elem_type, elem_hint)
         # Container elements must be owned -- views can't be stored in a set.
         if isinstance(elem_type, PendingViewType):
             elem_type = elem_type.family.owned_type
@@ -3833,12 +3978,12 @@ class ExpressionAnalyzer:
         return PendingListType(first_type, size, literal_id)
 
     def _analyze_list_comprehension(
-        self, expr: TpyListComprehension, expected_elem: TpyType | None = None
+        self, expr: TpyListComprehension, expected_elem: SlotHint | None = None
     ) -> TpyType:
         return self._analyze_elem_comprehension(expr, expected_elem, kind="list")
 
     def _analyze_set_comprehension(
-        self, expr: TpySetComprehension, expected_elem: TpyType | None = None
+        self, expr: TpySetComprehension, expected_elem: SlotHint | None = None
     ) -> TpyType:
         return self._analyze_elem_comprehension(expr, expected_elem, kind="set")
 
@@ -4077,7 +4222,7 @@ class ExpressionAnalyzer:
 
     def _analyze_elem_comprehension(
         self, expr: TpyListComprehension | TpySetComprehension,
-        expected_elem: TpyType | None,
+        expected: SlotHint | None,
         kind: Literal["list", "set"],
     ) -> TpyType:
         """Shared analysis for list and set comprehensions."""
@@ -4090,7 +4235,10 @@ class ExpressionAnalyzer:
 
         if self.scopes is None:
             raise RuntimeError(f"{kind} comprehension requires ScopeTracker")
-        result_elem_type = self._enter_comp_scope(gen, expr, elem_type, expected_elem)
+        result_elem_type = self._enter_comp_scope(gen, expr, elem_type, expected)
+        expected_elem = expected.type if expected is not None else None
+        if self._converting_element([result_elem_type], expected) is not None:
+            expected_elem = None
 
         if isinstance(result_elem_type, IntLiteralType):
             result_elem_type = expected_elem if expected_elem is not None else self.ctx.default_int_type
@@ -4227,8 +4375,8 @@ class ExpressionAnalyzer:
 
     def _analyze_dict_comprehension(
         self, expr: TpyDictComprehension,
-        expected_key: TpyType | None = None,
-        expected_value: TpyType | None = None,
+        key_hint: SlotHint | None = None,
+        value_hint: SlotHint | None = None,
     ) -> TpyType:
         """Analyze a dict comprehension: {key: value for var in iterable if cond}"""
         gen = expr.generator
@@ -4238,7 +4386,13 @@ class ExpressionAnalyzer:
         if self.scopes is None:
             raise RuntimeError("dict comprehension requires ScopeTracker")
         key_type, value_type = self._enter_comp_scope(
-            gen, expr, elem_type, (expected_key, expected_value))
+            gen, expr, elem_type, (key_hint, value_hint))
+        expected_key = key_hint.type if key_hint is not None else None
+        expected_value = value_hint.type if value_hint is not None else None
+        if self._converting_element([key_type], key_hint) is not None:
+            expected_key = None
+        if self._converting_element([value_type], value_hint) is not None:
+            expected_value = None
 
         if isinstance(key_type, IntLiteralType):
             key_type = expected_key if expected_key is not None else self.ctx.default_int_type
@@ -4384,44 +4538,38 @@ class ExpressionAnalyzer:
         self,
         gen: TpyComprehensionGenerator,
         expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension | TpyGeneratorExpression,
-        hint: TpyType | tuple[TpyType | None, TpyType | None] | None,
+        hint: SlotHint | tuple[SlotHint | None, SlotHint | None] | None,
     ) -> TpyType | tuple[TpyType, TpyType]:
         for cond in gen.conditions:
             self.analyze_condition(cond)
         if isinstance(expr, TpyDictComprehension):
             key_hint, value_hint = hint
-            key_type = (self.analyze_expr_with_hint(expr.key_expr, key_hint)
-                        if key_hint else self.analyze_expr(expr.key_expr))
-            value_type = (self.analyze_expr_with_hint(expr.value_expr, value_hint)
-                          if value_hint else self.analyze_expr(expr.value_expr))
-            return key_type, value_type
-        if hint is not None:
-            return self.analyze_expr_with_hint(expr.element_expr, hint)
-        return self.analyze_expr(expr.element_expr)
+            return (self.analyze_expr_with_hint(expr.key_expr, key_hint),
+                    self.analyze_expr_with_hint(expr.value_expr, value_hint))
+        return self.analyze_expr_with_hint(expr.element_expr, hint)
 
-    def _analyze_and_strip(self, expr: TpyExpr, hint: TpyType | None = None) -> TpyType:
+    def _analyze_and_strip(self, expr: TpyExpr, hint: SlotHint | None = None) -> TpyType:
         """Analyze an expression and strip sema-internal wrappers (Own/Ref).
 
         Used for container literal element types where the declared type
         should be the user-facing type, not the provenance-tagged expression type.
         """
-        if hint is not None:
-            self.analyze_expr_with_hint(expr, hint)
-        else:
-            self.analyze_expr(expr)
+        self.analyze_expr_with_hint(expr, hint)
         result = self.ctx.get_expr_type(expr)
         assert result is not None
         return result
 
     def _analyze_tuple_literal(
-        self, expr: TpyTupleLiteral, element_hints: list[TpyType | None] | None = None
+        self, expr: TpyTupleLiteral,
+        element_hints: list[SlotHint | None] | None = None
     ) -> TupleType:
         """Analyze a tuple literal (expr, expr, ...)."""
         elem_types = []
         for i, elem in enumerate(expr.elements):
-            hint = element_hints[i] if element_hints and i < len(element_hints) else None
-            if hint is not None:
-                analyzed = self.analyze_expr_with_hint(elem, hint)
+            elem_slot = element_hints[i] if element_hints and i < len(element_hints) else None
+            if elem_slot is not None:
+                hint = elem_slot.type
+                analyzed = self.analyze_expr_with_hint(elem, elem_slot)
                 # Preserve Own[] from hint when the analyzed type matches
                 if isinstance(hint, OwnType) and not isinstance(analyzed, OwnType):
                     analyzed = OwnType(analyzed)
@@ -4985,17 +5133,23 @@ class ExpressionAnalyzer:
             expr
         )
 
-    def _analyze_lambda_with_fn_hint(self, expr: TpyLambda, fn_type: CallableType,
+    def _analyze_lambda_with_fn_hint(self, expr: TpyLambda,
+                                     fn_hint: SlotHint | CallableType,
                                      *, as_class: str | None = None) -> CallableType:
         """Analyze a lambda with a Fn/Callable type hint providing parameter types.
 
         `as_class` names the class a synthesized factory lambda stands for,
-        so its diagnostics speak of the class name the user wrote.
+        so its diagnostics speak of the class name the user wrote. Where the
+        hint's return is inferred (`SlotHint`), the parameters still type the
+        lambda's, but a body that returns an int where the hint returns a
+        float keeps its int return.
         """
+        fn_slot = SlotHint.of(fn_hint)
+        fn_type = fn_slot.type
         if as_class is not None:
             origin = f"'{as_class}' used as a '{fn_type}'"
             try:
-                return self._analyze_lambda_with_fn_hint(expr, fn_type)
+                return self._analyze_lambda_with_fn_hint(expr, fn_slot)
             except _LambdaResultMismatch as e:
                 raise SemanticError(
                     f"{origin} constructs a '{e.body_type}', which is not "
@@ -5027,11 +5181,12 @@ class ExpressionAnalyzer:
             # slot as its hint like a `return` statement does -- unless the
             # slot is still being inferred from the body.
             ret_hint = fn_type.return_type
+            ret_slot = fn_slot.map(callable_return)
             if (ret_hint is None or isinstance(ret_hint, VoidType)
                     or contains_type_param(ret_hint)):
                 body_type = self.analyze_expr(expr.body)
             else:
-                body_type = self.analyze_expr_with_hint(expr.body, ret_hint)
+                body_type = self.analyze_expr_with_hint(expr.body, ret_slot)
 
         # Detect captures: names in body that are local variables from the outer scope
         # (not lambda params, not global functions, not builtins)
@@ -5056,12 +5211,22 @@ class ExpressionAnalyzer:
         ])
 
         # Check return type compatibility (allow implicit coercions like int literal -> int32)
-        if isinstance(fn_type.return_type, TypeParamRef):
+        if (isinstance(fn_type.return_type, TypeParamRef)
+                or self._hint_converts_int(body_type, ret_slot)):
             # Hint has unresolved type param (e.g. from generic builtin map[T,U]):
             # use the body's inferred type and return a concrete CallableType.
+            # An inferred hint's float return does not convert an int body
+            # either: the lambda returns what its body does.
             # Resolve IntLiteralType so overload resolution sees a concrete int type.
             if isinstance(body_type, IntLiteralType):
                 body_type = self.ctx.default_int_for_literal(body_type)
+            elif not isinstance(fn_type.return_type, TypeParamRef):
+                # A literal body takes the return hint where that converts
+                # nothing, its default elsewhere; a pending literal returns
+                # the container it resolves to.
+                body_type = self._resolve_literal_type(self._select_default_type(
+                    self._resolve_literals_with_hint(unwrap_own(body_type),
+                                                     ret_slot)))
             expr.inferred_return_type = body_type
             self.compat.check_view_return_dangle(expr.body, body_type, expr.loc)
             concrete_params = tuple(fn_type.param_types)
@@ -5118,7 +5283,7 @@ class ExpressionAnalyzer:
                 and bool(record.get_method_overloads("__init__")))
 
     def _try_class_factory(self, expr: TpyName,
-                           hint: CallableType) -> CallableType | None:
+                           hint: SlotHint) -> CallableType | None:
         """A class name at a Callable/Fn slot stands for `lambda *a: C(*a)`
         at the slot's arity, so the slot's parameter types pick the
         constructor overload and its return type types the construction.
@@ -5126,7 +5291,7 @@ class ExpressionAnalyzer:
         its place. None when the name is not a class."""
         if not self._names_class(expr.name):
             return None
-        lam = self._class_factory_lambda(expr, len(hint.param_types))
+        lam = self._class_factory_lambda(expr, len(hint.type.param_types))
         typ = self._analyze_lambda_with_fn_hint(lam, hint, as_class=expr.name)
         self.ctx.set_expr_type(lam, typ)
         expr.factory_expansion = lam
@@ -5338,22 +5503,22 @@ class ExpressionAnalyzer:
                 f"from {hint}"
             )
         # Validate type parameter bounds
-        for param_name, type_arg in inferred.items():
+        for param_name, bound_arg in inferred.items():
             if param_name in fi.type_param_bounds:
                 bound = fi.type_param_bounds[param_name]
-                if not self.protocols.type_conforms_to_protocol(type_arg, bound):
+                if not self.protocols.type_conforms_to_protocol(bound_arg, bound):
                     return None, (
                         f"Cannot use '{fi.name}' as function reference: "
-                        f"inferred type argument {type_arg} for {param_name} "
+                        f"inferred type argument {bound_arg} for {param_name} "
                         f"does not satisfy bound '{bound.name}'"
                     )
         # A still-OPEN type argument has no C++ parameter form at all, so the
         # Fn/Callable value cannot carry a signature.
-        for param_name, type_arg in inferred.items():
-            if contains_type_param(type_arg):
+        for param_name, bound_arg in inferred.items():
+            if contains_type_param(bound_arg):
                 return None, (
                     f"Cannot use '{fi.name}' as function reference with "
-                    f"{param_name}={type_arg}: the type argument is not "
+                    f"{param_name}={bound_arg}: the type argument is not "
                     f"resolved (use a lambda instead)"
                 )
         return tuple(inferred[tp] for tp in fi.type_params), None

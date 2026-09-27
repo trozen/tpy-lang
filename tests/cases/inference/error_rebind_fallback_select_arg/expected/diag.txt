@@ -1,0 +1,1 @@
+main.py:18: error: in function 'rebind': this construct is not yet supported by C++ code generation (expr.call:call.arg_shape.container)
