@@ -2257,7 +2257,8 @@ Entries tagged `deferred: MIR` are gated on the THIR/MIR migration (see `docs/IR
 - **[LOW small] (spurious diagnostic) `own_iter()` over a list that is then moved into an `Own` parameter warns about a copy that does not happen.** [`own-iter-spurious-copy-warning`] `for column in own_iter(columns): cols.append(Col(column))` with `Col.__init__(self, chars: Own[list[int32]])` warns `copies list[int32] into owned storage; use copy() to make this explicit`, while the emitted C++ is `::tpy::own_iter(std::move(columns))` and `Col(std::move(column))`. Same for `own_iter(self.grouped())` over an `Own[list[list[int32]]]`-returning method. Output matches CPython.
 - **[MED small] (rejects valid code, loud; hidden copy) The `Own`-argument last-use demotion ignores whether the borrow or the old value is still live.** [`own-arg-demotion-ignores-liveness`] Two shapes the call site misjudges. A borrow of the argument that is DEAD before the call still demotes it: with a `@nocopy` `T1` and `def sink(t: Own[T1])`, `s = T1(); v = s.get_xs(); k = len(v); return sink(s) * 10 + k` is `error: @nocopy type 'T1' is used after this point and cannot be moved into 't: Own[T1]'` although nothing reads `v` again, where CPython prints `dead_borrow_arg 33` (probe `/tmp/agents/rv11-fix/twins_dead.py`). And a rebind of the argument's own name, `s = grow(s)` with `def grow(s: Own[P]) -> Own[P]`, warns `copies P into owned storage; use copy() to make this explicit` and copies (`P __tmp_1 = (*s); (*s) = ::tpyapp::rt::grow(std::move(__tmp_1));`) although the old value is dead once the call returns; the output matches CPython (`rebind_arg 2`), the copy is the hidden cost (`rebind_arg` in `/tmp/agents/bugport/rt.py`). The demotion (`check_own_lvalue_into_own`, `tpyc/sema/compatibility.py`) needs liveness: a borrower dead before the call holds nothing, and `x = f(x)` is the last use of the old `x`. The consuming-receiver twin is `BUGS.md#consuming-call-borrowed-receiver-consumed`. Pre-existing; found 2026-09-24.
 - **[MED small] (ill-formed C++, toolchain-caught) A union with a `@nocopy` alternative counts as copyable, so a field store that copies one is not a TPy error.** [`nocopy-union-field-store-copies`] With `@nocopy class N` and a field `u: N | P`, a consuming method's `d.u = self.u` (a borrow-copy: a consuming field moves only in a `return`) emits `d.u = this->u;`, which g++ rejects (deleted `Union<N, P>` copy assignment), where CPython prints `union_last 1 True`; probe `/tmp/agents/rv9-safe/uni.py`. A plain `@nocopy` record field in the same position is a located TPy error. `is_type_non_copyable` (`tpyc/sema/context.py`) has arms for `Optional`, tuples and recursive unions but none for a non-recursive `UnionType`, so the store check sees the union as copyable and only warns. The union arm cannot land alone: the union field-write tail never moves (`tpyc/thir/lower/field_write.py`, `move=mv and not union_field`), and the store check calls any pointer-repr union source a copy (`is_compound_ref`, `tpyc/sema/statements.py`), so the constructor store `self.u = u` of an `Own[N | P]` parameter -- which compiles today as `u(std::move(u))` -- would become a false `cannot copy non-copyable type 'N | P' into field` error (seen on an unmerged attempt); the check has to ask whether the source is owned at its last use before it calls the store a copy. Found 2026-09-24.
-- **[LOW small] (wrong output, CPython divergence) argparse `--help` omits a positional's `choices`, and the invalid-choice message differs.** [`argparse-help-omits-positional-choices`] `parser.add_argument("effect", choices=["a", "b"])` renders `usage: p [-h] effect` and lists `effect`; CPython renders `usage: p [-h] {a,b}` and lists `{a,b}`. On a bad value TPy prints `p: error: invalid choice for effect: c`, CPython `argument effect: invalid choice: 'c' (choose from 'a', 'b')`. The choices ARE enforced. (The builder-trace limits -- `choices=` must be a literal, no `print_help()` under an `if` -- are feature gaps in TODO.md.)
+- **[LOW small] (wrong output, CPython divergence) argparse `--help` omits a positional's `choices`, and the invalid-choice message differs.** [`argparse-help-omits-positional-choices`] `parser.add_argument("effect", choices=["a", "b"])` renders `usage: p [-h] effect` and lists `effect`; CPython renders `usage: p [-h] {a,b}` and lists `{a,b}`. On a bad value TPy prints `p: error: invalid choice for effect: c`, CPython `argument effect: invalid choice: 'c' (choose from 'a', 'b')`. The same holds for an optional: `--render` with `choices=["half", "sextant"]` renders `[--render RENDER]` (CPython `[--render {half,sextant}]`) and errors `invalid choice for --render: x` (CPython `argument --render: invalid choice: 'x' (choose from 'half', 'sextant')`), so a mistyped value gets no hint of the valid ones. The choices ARE enforced. (The builder-trace limits -- `choices=` must be a literal, no `print_help()` under an `if` -- are feature gaps in TODO.md.)
+- **[LOW small] (wrong output, CPython divergence) argparse `--help` never wraps help text and aligns it past column 24.** [`argparse-help-no-wrap`] The renderer in `lib/tpy/argparse.py` pads every row to the longest signature plus two, so one long signature (`--render {half,quad,sextant,octant,braille}`) pushes every help text to column 47, and each text stays on one line however long. CPython caps the help column at 24 (`max_help_position`), moves the help of a longer signature to the next line, and wraps every text to the terminal width (`COLUMNS`, 80 in the cpy phase). The same renderer prints `description=` and `epilog=` as written, where CPython's default formatter reflows them into paragraphs (only `RawDescriptionHelpFormatter` keeps their line breaks), so a multi-line description matches CPython only under that class. Found 2026-09-26 on a game CLI; repro: any `help=` longer than a line.
 - **[MED small] (rejects-valid, loud) Returning or yielding a dict view is a lowering reject in every position, although CPython runs every one (spelled `KeysView[...]`).** [`dict-view-return-yield-rejected`] `def keys_of(d: dict[str, int32]) -> dict_keys[str, int32]: return d.keys()` stops with `this construct is not yet supported by C++ code generation (stmt.return:return.slot_type)`, and so do the view of a global dict and a view returned inside a tuple; a generator yielding the view of a PARAMETER dict stops at `res.yield_type`. The lifetime rule is already in sema -- a view rooted in a local or a temporary is rejected before lowering (`tests/cases/view_lifetime/error_return_dict_view_local`) -- so what is missing is only the lowering of a dict view at a return or yield slot. Planned as unit 7 of the `collections.defaultdict` work (dict views as first-class values). CPython runs these functions only with the `typing.KeysView` / `ValuesView` / `ItemsView` return spelling: `dict_keys` is not a CPython builtin name, so `-> dict_keys[str, int32]` raises `NameError` at the `def` under CPython 3.12, and TPy does not accept the `KeysView` spelling yet (TODO.md, "as aliases for the dict views"). Probe `/tmp/agents/nbv2/dvret.py`, verified 2026-09-24.
 - **[MED small] (ill-formed C++, toolchain-caught) `copy_iter(xs)` over an UNANNOTATED literal-initialized local renders its element type argument as the literal's value.** [`copy-iter-literal-local-type-arg`] `xs = [1, 2, 3]; ys: list[int32] = []; ys.extend(copy_iter(xs))` (and `list(copy_iter(xs))`) emits `::tpy::copy_iter<1>(xs)`, which g++ rejects ("type/value mismatch at argument 1"); `xs: list[int32] = [1, 2, 3]` renders `copy_iter<int32_t>` and runs. The element type reaching the `copy_iter` template argument is still the pending integer-literal type of the inferred local, rendered as its value instead of `int32_t`. The for-head literal form (`for x in copy_iter([1, 2, 3])`) is a located reject (`tests/cases/list/error_copy_iter_literal_elements`); this named-local form reaches the C++ compiler. Probe `/tmp/agents/nbv2/ci.py` (`ci2.py` is the annotated twin), identical with and without the `CopyIter` stub, 2026-09-24. The same value-for-type render reaches a combinator's element type: `ws = [1.5, 2.5]; list(enumerate(ws))` emits `std::tuple<int32_t, 1.5e+0>` (probe `/tmp/agents/u1zip/f1.py`, 2026-09-25). Needs `/tpy-fix-bug`.
 - **[MED small] (rejects valid, located) `xs.extend(<iterator temporary>)` rejects at `expr.method_call:method.arg_shape`, while `+=` and slice assignment of the same iterator lower.** [`list-extend-iterator-rvalue-rejects`] `ys.extend(reversed(ns))` over `ns: list[int]`, and `xs.extend(reversed(cs))` / `xs.extend(zip(...))` alike, stop at lowering; `xs += reversed(cs)` renders `::tpy::list_extend(xs, ::tpy::builtin_reversed(cs))` and `xs[0:1] = reversed(cs)` renders `::tpy::list_set_slice(...)`, and `xs.extend(copy_iter(reversed(cs)))` lowers too. All three reach the same `Iterable[Own[T]]` parameter in `lib/tpy/tpy/_builtins/_list.py`, so the method-argument row is the one missing an iterator-temporary shape. Probes `/tmp/agents/u1zip/ext.py`, `/tmp/agents/u1zip/z5.py`, 2026-09-25. Needs `/tpy-fix-bug`.
@@ -2520,6 +2521,121 @@ Entries tagged `deferred: MIR` are gated on the THIR/MIR migration (see `docs/IR
   `scripts/thir_migration/review/bins_rest.json`), a container of ranges
   cannot be built at all, so `repr` of range is reachable only on a scalar.
   Repro `/tmp/agents/ready2/lrange.py`. Found 2026-09-26.
+
+- **[MED small] (rejects valid, located) A vararg call inside a `with` header is refused: `with open(os.path.join(d, name), "rb") as f:`.** [`vararg-call-in-with-header`]
+  Reports `this construct is not yet supported by C++ code generation
+  (call.vararg_pack_flush)`. Binding the path to a local first
+  (`path = os.path.join(d, name)` then `with open(path, "rb")`) compiles.
+  Repro `/tmp/agents/aw/gaps/g01_vararg_in_with.py`. Found porting a
+  terminal game (2026-09-25). Needs `/tpy-fix-bug`.
+- **[MED small] (rejects valid, located) A constructor cannot set a container field from a function call: `self.xs = make(n)` with `make -> Own[list[int32]]`.** [`ctor-container-field-from-call`]
+  Reports `ctor.mil_field.container.call`. Assigning `[]` in the
+  constructor and filling the list through a helper that takes it as a
+  parameter compiles. Repro `/tmp/agents/aw/gaps/g02a_ctor_field_from_call.py`.
+  Found 2026-09-25. Needs `/tpy-fix-bug`.
+- **[MED small] (rejects valid, located) Subscripting a `bytes` field two hops deep into a local is refused: `b = int32(self.res.data[i])`.** [`two-hop-bytes-field-subscript-decl`]
+  Reports `stmt.var_decl:subscript.viewfam_shape`; the one-hop read
+  (`int32(self.data[i])`) compiles. Workaround: copy the field into a field
+  of the reading record through a method call. Repro
+  `/tmp/agents/aw/gaps/g03_two_hop_bytes_subscript.py`. Found 2026-09-25.
+  Needs `/tpy-fix-bug`.
+- **[MED small] (rejects valid, located) A `bytearray` field two hops deep cannot be passed as a method argument: `self.sink.take(self.video.mem, 0)`.** [`two-hop-bytearray-field-method-arg`]
+  Reports `expr.method_call:method.arg_shape`. Moving the call into a
+  method of the record that owns the field (`self.video.show(self.sink)`,
+  which passes `self.mem`) compiles. Repro
+  `/tmp/agents/aw/gaps/g04_two_hop_bytearray_method_arg.py`. Found
+  2026-09-25. Needs `/tpy-fix-bug`.
+- **[MED small] (rejects valid, located) A `bytes` field cannot be assigned from another record's `bytes` field or from a `dict[K, bytes]` value: `self.code = self.res.data`, `self.code = self.res.table[1]`.** [`bytes-field-write-from-field-or-dict`]
+  Both report `stmt.assign:assign.field_write_shape`. Assigning from a
+  method call that returns the same `bytes` compiles. Repro
+  `/tmp/agents/aw/gaps/g05_field_write_from_field.py`. Found 2026-09-25.
+  Needs `/tpy-fix-bug`.
+- **[MED small] (rejects valid, located) A local cannot bind an element of a `list[bytearray]` field: `p = self.pages[i]` then `p[0] = uint8(7)`.** [`local-from-list-of-bytearray-element`]
+  Reports `stmt.var_decl:decl.slot_type`. Indexing through the chain at
+  every use (`self.pages[i][0] = ...`) avoids the local. Part of the
+  large `decl.slot_type` bucket (TODO.md "`stmt.var_decl:decl.slot_type`
+  (158 units"), filed as a user-reached shape. Repro
+  `/tmp/agents/aw/gaps/g06_local_from_list_of_bytearray.py`. Found
+  2026-09-25. Needs `/tpy-fix-bug`.
+- **[MED small] (rejects valid, located) A list literal of `bytearray` values is refused: `pages = [bytearray(2), bytearray(2)]`.** [`bytearray-list-literal`]
+  Reports `expr.container_literal`. Appending each element to an empty
+  list compiles. Repro
+  `/tmp/agents/aw/gaps/g12_nested_subscript_list_of_bytearray.py`. Found
+  2026-09-25. Needs `/tpy-fix-bug`.
+- **[LOW small] (rejects valid, located) `for i, e in enumerate(records)` is refused when `e` is later rebound in the same function.** [`enumerate-unpack-target-rebound`]
+  `for i, e in enumerate(es): ...` followed by `e = es[best]` reports
+  `stmt.tuple_unpack`; renaming either binding compiles. The reverse order
+  of `BUGS.md#for-head-rebind-of-reference-local-rejected` (the loop head
+  binds the reference local first), in the same loop-variable family.
+  Repro `/tmp/agents/aw/gaps/g07_enumerate_rebind.py`. Found 2026-09-25.
+  Needs `/tpy-fix-bug`.
+- **[MED small] (rejects valid, loud) Slice assignment into a `bytearray` is refused: `a[:] = b`, `a[0:1] = b"z"`.** [`bytearray-slice-assign`]
+  Sema reports `Slice assignment not supported for type 'Own[bytearray]'`
+  (`'Ref[bytearray]'` for a list element); CPython replaces the slice from
+  any bytes-like value. `list` slice assignment works. Copying a page
+  buffer into another is the everyday shape. Repro
+  `/tmp/agents/aw/gaps2/ba_slice.py`. Found 2026-09-25. Needs
+  `/tpy-fix-bug`.
+
+- **[MED small] (silent lost output) A failed write to `sys.stdout` / `print` drops the output with no exception, and every write after it too.** [`stdout-write-error-silent`]
+  `sys.stdout` wraps `std::cout` (`runtime/cpp/include/tpy/system.hpp`),
+  so a short write sets the stream's badbit: nothing is raised and later
+  writes are discarded until the program exits. CPython raises
+  `BlockingIOError` (or `OSError`) at the failing write. Reached by
+  `os.set_blocking(0, False)` on a terminal, where stdin and stdout share
+  one open file: of 2 MB written to a slow pty reader only 12822 bytes
+  arrived and the program exited 0. Repro `/tmp/agents/aw/hang/nb_repro.py`
+  (run under a pty whose reader starts late). Found 2026-09-26 porting a
+  terminal game.
+
+- **[MED small] (rejects valid, loud; misleading message) A local bound to a list slice cannot be rebound to a list.** [`slice-local-rebind-rejected`]
+  `ys = xs[1:]` then `ys = ["z"]` reports `Cannot take address of a
+  temporary or expression in reassignment to 'ys'; assign to a variable
+  first`. The first binding types `ys` as the `Span[str]` view a basic
+  slice yields, so the list literal has nothing to point into; CPython
+  just rebinds. The everyday shape is `argv = sys.argv[1:]` with a
+  fallback `argv = ["--help"]`. The message names neither the view nor a
+  way out (`list(...)` at the first binding, which itself rejects when the
+  local is rebound: queued in
+  `scripts/thir_migration/review/bins_rest.json`). Repro
+  `/tmp/agents/aw/gaps2/slice_rebind_repro.py`. Found 2026-09-26.
+- **[LOW small] (wrong output, CPython divergence) argparse reports a missing positional without naming it.** [`argparse-missing-positional-unnamed`]
+  With `add_argument("data")` and no argument, TPy prints `error: missing
+  required positional argument(s)`; CPython prints `error: the following
+  arguments are required: data`. Found 2026-09-26 on a game CLI.
+
+- **[MED small] (rejects valid, loud) argparse accepts an option's value only as the next argument: `-r8` and `--render=8` are refused.** [`argparse-attached-option-value`]
+  Both fail with `error: unexpected positional argument: -r8` (and
+  `--frames=5` the same), while `-r 8` and `--render 8` work. CPython takes
+  the value attached to a short option and after `=` on a long one; both
+  are everyday spellings. (Prefix abbreviation, `--fr 5` for `--frames`,
+  is the separate `allow_abbrev` row of `docs/STDLIB_ROADMAP.md`.) The
+  error also differs: CPython says `unrecognized arguments: ...`. Found
+  2026-09-26 on a game CLI.
+
+- **[LOW small] (rejects valid, loud) argparse refuses two options writing one `dest`.** [`argparse-shared-dest-rejected`]
+  `add_argument("-r", "--render", choices=[...])` beside
+  `add_argument("-8", dest="render", action="store_const", const="octant")`
+  fails with `argparse: duplicate argument destination 'render'`. CPython
+  lets several options set one attribute (shortcut flags, `--verbose` /
+  `--quiet` pairs), the last one given winning. Found 2026-09-26 on a game
+  CLI; repro `/tmp/agents/aw/gaps2/ap_digits.py`.
+
+- **[MED small] (rejects valid, loud) A constructor cannot set a `bytes` field inside a `with` block.** [`ctor-field-set-in-with-block`]
+  `def __init__(self, path: str) -> None: with open(path, "rb") as f:
+  self.image = f.read()` fails with `field 'image' of type 'bytes' has no
+  default constructor and is not initialized before the constructor body`;
+  reading into a local inside the block and assigning the field after it
+  compiles. CPython runs it. Repro
+  `/tmp/agents/aw/gaps2/field_in_with_repro.py`. Found 2026-09-26.
+- **[LOW small] (spurious warning) A local first bound in a `try` body and passed on to an `Own[T]` parameter after it warns `copies Big into owned storage`, though the emitted C++ moves it.** [`try-bound-own-move-false-copy-warning`]
+  `try: b = Big() except ValueError: return` then `Holder(b)` with
+  `Holder.__init__(self, b: Own[Big])` warns at the call, while the
+  generated code is `Holder(std::move((*b)))` out of the hoisted
+  `std::optional<Big>`; the same call after a plain binding neither warns
+  nor copies. The warning pushes users to restructure code that is
+  already right. Repro `/tmp/agents/aw/gaps2/try_move_repro.py`. Found
+  2026-09-26.
 
 ## Safety / borrow checker
 
