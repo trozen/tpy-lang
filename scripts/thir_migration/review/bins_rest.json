@@ -934,5 +934,17 @@
   "probe": "scripts/thir_migration/review/probes/rest/range_list_literal.py",
   "plain_raise": false,
   "known_shape": null
+ },
+ {
+  "file": "tpyc/thir/lower/checks.py",
+  "line": 4135,
+  "func": "_free_callee_kind",
+  "reason": "\"call.special.call_type.builtin_generic\"",
+  "bin": "BREAKS",
+  "confidence": "high",
+  "evidence": "`argv = list(sys.argv[1:])` rejects when a later statement rebinds `argv` (`argv = [\"--help\"]`); without the rebind it lowers. The builtin `list()` call reaches the free-callee arm, which refuses every special call type. CPython runs it. Found 2026-09-26 on a game CLI.",
+  "probe": "scripts/thir_migration/review/probes/rest/list_of_slice_rebound.py",
+  "plain_raise": false,
+  "known_shape": null
  }
 ]

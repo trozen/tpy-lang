@@ -814,5 +814,17 @@
   "probe": null,
   "plain_raise": false,
   "known_shape": null
+ },
+ {
+  "file": "tpyc/thir/lower/statements.py",
+  "line": 1376,
+  "func": "_for_each_container_route",
+  "reason": "\"foreach.subscript_elem_family\"",
+  "bin": "BREAKS",
+  "confidence": "high",
+  "evidence": "Iterating a subscript whose element is a str (`for ch in d[1]`, `for ch in self.names[k]`) rejects: the subscript arm admits container elements only. Binding the element to a local first compiles. CPython iterates the characters. Found 2026-09-26 porting a terminal game.",
+  "probe": "scripts/thir_migration/review/probes/stmt1/foreach_1376_dict_str_elem.py",
+  "plain_raise": false,
+  "known_shape": null
  }
 ]
