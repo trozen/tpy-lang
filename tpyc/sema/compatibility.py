@@ -25,10 +25,11 @@ from ..typesys import (
     is_polymorphic_class_type, is_exception_type, SendType, SyncType, unwrap_send_sync, FrameType,
     unwrap_qualifiers,
     disambiguated_pair, ConcreteCoroType, recorded_return_borrow_sources,
-    GenExprType)
+    GenExprType, is_open_type_param_return)
 from .. import qnames
 from ..value_category import (
-    async_result_aliases, is_iterator_protocol, is_rvalue_source,
+    CONTAINER_LITERAL_NODES, async_result_aliases, call_returns_cpp_ref,
+    is_iterator_protocol, is_rvalue_source,
     peel_value_wrappers,
     property_access_returns_cpp_ref, returns_borrow)
 from . import own_copy
@@ -41,7 +42,7 @@ from ..parse import (
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFunction, TpyIfExpr, TpyTupleLiteral, TpyLambda, TpyNamedExpr, TpyFString,
     lambda_of,
-    TpyAwait, SourceLocation
+    TpyAwait, TpyGeneratorExpression, SourceLocation
 )
 from .literal_utils import literal_value_from_expr
 from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY
@@ -3464,6 +3465,80 @@ class TypeCompatibility:
         # Default: assume safe -- but closed-world, an expression form with no
         # provenance arm above has nothing proving it outlives the frame.
         return strict
+
+    def _call_result_is_fresh(self, expr: TpyExpr, fi: Any) -> bool:
+        """The call-shaped `expr` (callee `fi`) PROVABLY hands back a fresh
+        owned value -- a constructor, an `Own[T]` return, or a reference-type
+        result the callee's convention returns by value. A callable value
+        counts only through a declared `Own[T]`: its signature is the `Fn`
+        type's, which says nothing else about ownership."""
+        if fi.is_constructor or (
+                isinstance(expr, TpyCall) and isinstance(expr.func, TpyName)
+                and expr.func_name in self.ctx.registry.records):
+            return True
+        ret = unwrap_readonly(fi.return_type) if fi.return_type else None
+        if isinstance(ret, OwnType):
+            return True
+        if (fi.is_callable_value or ret is None
+                or is_open_type_param_return(fi.root.return_type)):
+            return False
+        return (isinstance(ret, NominalType) and not ret.is_value_type()
+                and not (is_protocol_type(ret) or is_dyn_protocol(ret))
+                and not call_returns_cpp_ref(self.ctx, fi))
+
+    def borrow_temp_root(self, expr: TpyExpr) -> TpyExpr | None:
+        """The fresh owned temporary a borrow-form `expr` PROVABLY points
+        into, or None when no root is proven one.
+
+        Follows the borrow chain the way the call-lending facts record it:
+        a field or container read borrows its object, a call borrows the
+        operands its `return_borrows_from` names (`call_lend_sources`), and
+        a conditional may hand out either arm. A callee whose borrow facts
+        are unknown proves nothing, and neither does a name -- whatever it
+        is bound to lives outside the expression."""
+        if isinstance(expr, TpyCoerce):
+            return self.borrow_temp_root(expr.expr)
+        if isinstance(expr, TpyFieldAccess):
+            if expr.hidden_call is not None:
+                return None
+            return self.borrow_temp_root(expr.obj)
+        if isinstance(expr, TpySubscript):
+            if (expr.slice_function_info is not None
+                    or expr.getitem_function_info is not None):
+                return None
+            return self.borrow_temp_root(expr.obj)
+        if isinstance(expr, TpyIfExpr):
+            return (self.borrow_temp_root(expr.then_expr)
+                    or self.borrow_temp_root(expr.else_expr))
+        if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
+            return (self.borrow_temp_root(expr.left)
+                    or self.borrow_temp_root(expr.right))
+        # A generator expression is a handle: what it yields borrows the
+        # storage it iterates, not the frame.
+        if (isinstance(expr, CONTAINER_LITERAL_NODES)
+                and not isinstance(expr, TpyGeneratorExpression)):
+            return expr
+        if isinstance(expr, TpyCall) and expr.call_type is not None:
+            if (isinstance(expr.call_type, PtrType)
+                    or is_borrowing_view_type(expr.call_type)):
+                return None
+            return expr
+        ops = call_borrow_operands(expr)
+        if ops is None:
+            return None
+        if self._call_result_is_fresh(expr, ops.fi):
+            return expr
+        if ops.fi.root.return_borrows_from is None:
+            return None
+        for src in call_lend_sources(
+                ops, recorded_return_borrow_sources(ops.fi),
+                expr_type=None, temp_backing=True):
+            if src.temp_backed:
+                return src.expr
+            root = self.borrow_temp_root(src.expr)
+            if root is not None:
+                return root
+        return None
 
     def check_view_return_dangle(self, expr: TpyExpr, return_type: TpyType,
                                  loc: SourceLocation | None,

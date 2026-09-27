@@ -1071,6 +1071,7 @@ class SemanticAnalyzer:
         self.compat.resolve_pending_iter_copy_checks()
         self.calls.resolve_pending_match_subject_checks()
         self.calls.resolve_pending_readonly_receiver_checks()
+        self.expr.resolve_pending_lambda_borrow_checks()
         # Last diagnostic-emitting step for this analyzer, so it is where a
         # body analyzed once per clone collapses back to one report.
         self.ctx.collapse_duplicate_diagnostics()

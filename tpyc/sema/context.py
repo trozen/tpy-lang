@@ -2623,6 +2623,12 @@ class SemanticContext:
     # a top-level record/function name in the synthesized module.
     builder_trace_fresh_counters: dict[str, int] = field(default_factory=dict)
 
+    # Lambdas whose result is a borrow: whether the borrow roots in a
+    # temporary the body creates reads callee borrow facts, which are
+    # complete only in the workspace-wide finalize pass.
+    # Rolled back by `trial_scope`, so a candidate trial queues nothing.
+    pending_lambda_borrow_checks: list = field(default_factory=list)
+
     # --- Diagnostics ---
     diagnostics: list[Diagnostic] = field(default_factory=list)
 
@@ -3299,6 +3305,7 @@ class SemanticContext:
         - The diagnostics list -- truncated to its pre-trial length so
           warnings/errors emitted during a rejected trial don't leak into
           the user-visible output.
+        - The deferred lambda borrow checks, truncated the same way.
 
         Lambda AST mutations (``inferred_param_types``, ``inferred_return_type``,
         ``captured_names``, ``captures_by_value``) are the caller's
@@ -3317,9 +3324,11 @@ class SemanticContext:
         saved_bytes_var_counter = self.bytes_var_counter
         saved_bytes_vars = dict(self.bytes_vars)
         saved_diagnostics_len = len(self.diagnostics)
+        saved_lambda_checks_len = len(self.pending_lambda_borrow_checks)
         try:
             yield
         finally:
+            del self.pending_lambda_borrow_checks[saved_lambda_checks_len:]
             self.restore_function_state(saved_func)
             self.expr_types.clear()
             self.expr_types.update(saved_expr_types)
