@@ -93,9 +93,10 @@ def analyze_last_uses(
     The analysis is conservative: if unsure, a node is NOT marked as last use.
     A missed optimization is just a copy (same as current behavior).
 
-    Also stamps `TpyWithItem.target_read_after` on the way through (see
-    _analyze_with) -- the same live sets answer it, and a body this never
-    walks keeps the field's conservative default.
+    Also stamps `TpyWithItem.target_read_after` (see _analyze_with) and
+    `TpyForEach.var_live_after` (see _analyze_loop) on the way through -- the
+    same live sets answer them, and a body this never walks keeps each
+    field's conservative default.
     """
     source_aliases = _build_source_aliases(alias_sources) if alias_sources else {}
     # Per-alias detachment: aliases created before their source's reassignment
@@ -676,6 +677,11 @@ def _analyze_loop(stmt: TpyWhile | TpyForEach, live: set[str],
     if stmt.orelse:
         _analyze_stmts_backward(stmt.orelse, live, w)
     exit_live = frozenset(live)
+    if w.mark and isinstance(stmt, TpyForEach):
+        # OR-ed in: a body the walk marks twice (a `finally` copy) keeps the
+        # live verdict of either walk.
+        stmt.var_live_after = (bool(stmt.var_live_after)
+                               or stmt.var in after or stmt.var in exit_live)
     header = _loop_header(stmt, exit_live, after, w)
     if not w.mark:
         live.clear()

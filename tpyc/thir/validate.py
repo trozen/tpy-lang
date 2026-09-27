@@ -82,6 +82,7 @@ from .nodes import (
     THIRLambda, THIRNestedDef, THIRClosureIdentity, THIRClosureKind,
     THIRCapture, THIRCaptureSlot, THIRCaptureSourceKind, THIRCaptureRelation,
 )
+from .temp_plan import if_chain
 
 
 class THIRValidationError(Exception):
@@ -335,6 +336,12 @@ def _check_node(owner: str, node: THIRNode) -> None:
             _fail(owner, node, "native container alias disagrees with binding")
     if isinstance(node, (THIRIf, THIRWhile, THIRForRange, THIRForEach)):
         _check_hoists(owner, node)
+    if isinstance(node, THIRIf):
+        # The emitter prints only the chain head's predecls: a flattened
+        # `else if` link has no block of its own to hold one.
+        for link in if_chain(node)[1:]:
+            if link.hoist_decls or link.hoist_slots:
+                _fail(owner, link, "elif link carries a predeclaration")
     if isinstance(node, THIRForEach) and node.iteration is not None:
         fact = node.iteration
         if (not isinstance(fact, THIRNativeIteration) or not isinstance(node.iterable, THIRName)

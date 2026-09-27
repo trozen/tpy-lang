@@ -46,7 +46,6 @@ from ...parse.nodes import (
     TpyStmt,
     TpyStrLiteral,
     TpySubscript,
-    TpyTry,
     TpyTupleLiteral,
     TupleElemCapture,
     collect_name_refs,
@@ -54,10 +53,9 @@ from ...parse.nodes import (
     expr_reads_self_field,
     is_base_init_call,
     is_docstring,
-    iter_capture_bindings,
 )
 from ...namespace import BindingKind
-from ...prescan import scan_reassigned_vars
+from ...prescan import scan_reassigned_vars, scope_bound_names
 from ...sema.registration import receiver_self_type
 from ...typesys import (
     AnyType,
@@ -662,30 +660,6 @@ def _param_reassign_copies(func: TpyFunction,
         _witness("fn.param_copy")
     return tuple(copies)
 
-def _shadow_bound_names(stmts: list[TpyStmt]) -> set[str]:
-    """Names bound by the binder forms `scan_reassigned_vars` does not record:
-    except-`as` bindings and match captures. A candidate read-only global one
-    of these shadows must not seed -- the binder may be hoisted/predeclared at
-    function scope while the seeded walk state would keep treating later reads
-    of the name as the global."""
-    out: set[str] = set()
-
-    def walk(body: list[TpyStmt]) -> None:
-        for s in body:
-            if isinstance(s, TpyTry):
-                for h in s.handlers:
-                    if h.binding is not None:
-                        out.add(h.binding)
-            elif isinstance(s, TpyMatch):
-                for case in s.cases:
-                    for b in iter_capture_bindings(case.pattern):
-                        out.add(b.name)
-            for sub in s.sub_bodies():
-                walk(sub)
-
-    walk(stmts)
-    return out
-
 def _seed_imported_globals(analyzer, cands: dict[str, TpyType],
                            spelled: dict[str, str], slots: set[str],
                            *, skip) -> None:
@@ -796,9 +770,7 @@ def _seed_readonly_globals(
                                            or n in hoisted))
     if not cands:
         return frozenset(), {}, frozenset()
-    scan = scan_reassigned_vars(func.body, pre_declared=set(cands))
-    for n in (scan.reassigned | scan.aug_assigned
-              | _shadow_bound_names(func.body)):
+    for n in scope_bound_names(func.body):
         cands.pop(n, None)
         spelled.pop(n, None)
         slots.discard(n)

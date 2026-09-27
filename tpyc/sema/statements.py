@@ -58,7 +58,8 @@ from ..coercions import CoercionContext
 from ..namespace import BindingKind, NameBinding
 from ..symbol_binding import SymbolKind, lookup_imported
 from ..prescan import (
-    bound_names_of, ScanResult, scan_reassigned_vars,
+    bound_names_of, walrus_names_of, scope_bound_names, ScanResult,
+    scan_reassigned_vars,
     parse_deref_view_key,
     FactKills, collect_fact_kills, liveness_alias_sources, is_scan_rvalue,
 )
@@ -68,7 +69,7 @@ from ..liveness import (analyze_last_uses, collect_finally_return_candidates,
                         stmts_terminate, tuple_literal_leaves,
                         while_head_always_true)
 from ..parse.nodes import SourceLocation, VarLinkage, op_spelling
-from .context import (addr_taken_roots, call_borrow_operands,
+from .context import (PendingLocal, addr_taken_roots, call_borrow_operands,
                       canonical_storage_key,
                       expr_yields_non_null_ptr, LoopClauseEdges,
                       record_borrow_binding, record_stmt_borrow_binding,
@@ -91,6 +92,7 @@ from .iter_loans import (
     is_dangling_temporary_arg,
     register_iteration_loans, temp_arg_kept_alive,
 )
+from .own_copy import contains_reference_type
 from .value_range import ValueRange
 if TYPE_CHECKING:
     from .context import SemanticContext, BorrowTracker
@@ -152,6 +154,17 @@ _BLOCK_KEYWORD = {
     TpyWith: "with",
     TpyMatch: "match",
 }
+
+
+def _declares_here(stmt: TpyStmt, name: str) -> bool:
+    """Whether `stmt`, as the first binding of `name` in its block, declares
+    it in that block -- rather than inside a block of its own, whose
+    declaration would end at that block's brace."""
+    if isinstance(stmt, TpyNestedDef):
+        return stmt.func.name == name
+    return name in walrus_names_of(stmt) or (
+        isinstance(stmt, (TpyVarDecl, TpyAssign, TpyTupleUnpack))
+        and name in bound_names_of(stmt))
 
 
 def _needs_provenance_tracking(t: TpyType) -> bool:
@@ -1148,7 +1161,7 @@ class StatementAnalyzer:
                 scope = scope.parent
             pending = func.pending_loop_vars.get(name)
             if pending is not None:
-                types.append(pending[0])
+                types.append(pending.var_type)
             decl_type = self.ctx.local_decl_type(name)
             if decl_type is not None:
                 types.append(decl_type)
@@ -2004,6 +2017,36 @@ class StatementAnalyzer:
         for name in [n for n, (owner, _) in live.items() if owner is stmt]:
             self.ctx.func.nested_def_block_dead[name] = live.pop(name)[1]
 
+    def _is_sole_else_if(self, stmt: TpyIf) -> bool:
+        owner = self._stmt_stack[-2] if len(self._stmt_stack) >= 2 else None
+        return (isinstance(owner, TpyIf) and len(owner.else_body) == 1
+                and owner.else_body[0] is stmt)
+
+    def _place_arm_decl(self, owner: TpyIf, body: list[TpyStmt], name: str,
+                        typ: TpyType | None) -> None:
+        """Where a block of the per-arm-declared `owner` declares `name`: at
+        its first binding when that is a statement of the block itself
+        (recorded in `arm_decl_sites` for the retype in `resolve_all`).
+        When the first binding sits in a nested block, its declaration ends
+        at that block's brace, so a statement after it declares in front of
+        it instead; sema never recorded that predecl because the sibling
+        arm's binding was still in scope. A nested block that ends the block
+        gets the same rule inside it."""
+        for i, s in enumerate(body):
+            if _declares_here(s, name):
+                self.ctx.func.arm_decl_sites.append((owner, name, s))
+                return
+            if name not in scope_bound_names([s]):
+                continue
+            if name in self.ctx.if_branch_decls.get(s, {}):
+                return
+            if i + 1 < len(body):
+                self.ctx.record_branch_decls(s, {name: typ})
+            else:
+                for sub in s.sub_bodies():
+                    self._place_arm_decl(owner, sub, name, typ)
+            return
+
     def _enclosing_block_phrase(self) -> 'str | None':
         """The statement the `def` now being analyzed sits in, named for a
         diagnostic -- None when it is a direct element of the scope's body
@@ -2152,13 +2195,25 @@ class StatementAnalyzer:
                 predecl = (branch_new & newly_assigned) - self.ctx.func.global_declarations
             else:
                 predecl = set()
-            self.ctx.block_locals_of[stmt] = branch_new - predecl
+            # An `if` that is the whole `else` body of another `if` (an
+            # `elif`, or `else:` over a nested `if` -- the AST is the same)
+            # has nothing after it in that block to read what its arms bound,
+            # so each arm declares the name itself instead of a predecl in
+            # front of it. A read after the whole chain is the enclosing
+            # if's own predecl. The type is the one joined here either way.
+            per_arm = self._is_sole_else_if(stmt)
+            self.ctx.block_locals_of[stmt] = (
+                branch_new if per_arm else branch_new - predecl)
             if predecl:
-                self.ctx.record_branch_decls(stmt, {
+                decls = self.ctx.record_branch_decls(stmt, {
                     name: self.ctx.func.current_scope.lookup(name)
                     for name in sorted(predecl)
-                })
+                }, per_arm=per_arm)
                 self.deduction.promote_hoisted_views(predecl, branch_new - predecl)
+                if per_arm:
+                    for name, typ in decls.items():
+                        self._place_arm_decl(stmt, stmt.then_body, name, typ)
+                        self._place_arm_decl(stmt, stmt.else_body, name, typ)
         elif isinstance(stmt, TpyWhile):
             head = self._analyze_condition_walrus(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
@@ -4207,13 +4262,19 @@ class StatementAnalyzer:
         live_after = stmt.live_names_after
         return live_after is None or not closures.isdisjoint(live_after)
 
-    def _pending_local_is_declared(self, name: str) -> bool:
-        """Whether a loop-body-first local already has its one declaration
-        recorded at its anchor (an earlier read or binding promoted it)."""
+    def _is_body_first_local(self, name: str) -> bool:
+        """Whether `name` is pending as a local a loop body (not a `for`
+        head) bound first."""
         pending = self.ctx.func.pending_loop_vars.get(name)
-        if pending is None or pending[2] is not None:
+        return pending is not None and pending.is_body_first
+
+    def _pending_local_is_declared(self, name: str) -> bool:
+        """Whether a pending local already has its one declaration recorded
+        at its anchor (an earlier read or binding promoted it)."""
+        pending = self.ctx.func.pending_loop_vars.get(name)
+        if pending is None or pending.head_stmt is not None:
             return False
-        anchor = self.expr._pending_decl_anchor(pending[1])
+        anchor = self.expr._pending_decl_anchor(pending.first_stack)
         return name in self.ctx.if_branch_decls.get(anchor, {})
 
     def _check_loop_var_rebind(self, stmt: TpyForEach, elem_type: TpyType) -> None:
@@ -4229,12 +4290,24 @@ class StatementAnalyzer:
         if (stmt.is_tuple_unpack
                 or stmt.var in self.ctx.func.global_declarations):
             return
-        if stmt.var not in self.ctx.func.definitely_assigned:
+        # Only a read after the loop can see what a zero-trip head leaves in
+        # the name; with none, the head binds a loop-scoped variable of its
+        # own -- unless a read or binding between the loops already declared
+        # the local, which the scope lookup below then finds and rebinds.
+        body_first_origin = self._is_body_first_local(stmt.var)
+        body_first = body_first_origin and stmt.var_live_after is not False
+        if body_first:
             # The question is which STORAGE the head binds, not whether the
-            # name holds a value yet: a loop-body-first local whose one
-            # declaration already stands at its anchor is the same Python
-            # local, so this head is one more binding of it, promoted the way
-            # a plain assignment after the loop is.
+            # name holds a value yet: a loop-body-first local is the same
+            # Python local, so this head is one more binding of it, promoted
+            # the way a plain assignment after the loop is -- otherwise the
+            # head declares a fresh local that a zero-trip loop leaves
+            # uninitialized where CPython keeps the body's value.
+            if self.ctx.func.current_scope.lookup(stmt.var) is None:
+                self.expr._promote_pending_loop_var(stmt.var)
+        elif stmt.var not in self.ctx.func.definitely_assigned:
+            # A head-first name is bound only once an earlier read or binding
+            # has placed its one declaration.
             if not self._pending_local_is_declared(stmt.var):
                 return
             self.expr._promote_pending_loop_var(stmt.var)
@@ -4243,7 +4316,15 @@ class StatementAnalyzer:
             return
         exist_bare = self._resolve_literal_type(
             unwrap_readonly(unwrap_ref_type(existing)))
-        if not exist_bare.is_value_type():
+        # A tuple answers is_value_type() for its own shape. A body-first
+        # local's reference element is rejected like a bare reference
+        # (whichever read promoted it): its one declaration is settled from
+        # the body's binding (an owning literal, a const element), which the
+        # head's per-iteration pointer binding cannot assign into.
+        is_reference = (contains_reference_type(exist_bare)
+                        if body_first_origin
+                        else not exist_bare.is_value_type())
+        if is_reference:
             raise self.ctx.error(
                 f"for-loop rebind of reference-type variable '{stmt.var}' "
                 f"is not yet supported; rename the loop variable", stmt)
@@ -4327,7 +4408,9 @@ class StatementAnalyzer:
                                    inner_scope: 'Scope',
                                    skip_var: str | None = None, *,
                                    runs_once: bool,
-                                   body_end_assigned: frozenset[str]) -> None:
+                                   body_end_assigned: frozenset[str],
+                                   head_targets: frozenset[str] = frozenset(),
+                                   ) -> None:
         """Store a loop body's declared variables as pending.
 
         Every loop kind calls this, and it is the one site that decides the
@@ -4339,6 +4422,8 @@ class StatementAnalyzer:
         definite-assignment reject.
 
         skip_var: loop variable name to exclude (already handled by caller).
+        head_targets: the targets of a tuple-unpack `for` head, which the
+        body's first statement binds but which are head bindings.
         """
         # Always non-empty: the dispatcher pushed `stmt` before the body walk.
         stack = tuple(self.ctx.func.compound_stack)
@@ -4362,9 +4447,13 @@ class StatementAnalyzer:
             # twice. The TYPE is this body's, already joined with the earlier
             # binding by the reassignment path (the second body's binding
             # promotes the pending entry before it declares anything).
-            name_stack = existing[1] if existing is not None else stack
-            self.ctx.func.pending_loop_vars[name] = (resolved, name_stack,
-                                                     None)
+            if existing is None:
+                entry = PendingLocal(resolved, stack, None,
+                                     head_first=name in head_targets)
+            else:
+                entry = PendingLocal(resolved, existing.first_stack, None,
+                                     head_first=existing.head_first)
+            self.ctx.func.pending_loop_vars[name] = entry
             if runs_once and name in body_end_assigned:
                 # Assigned past the loop, recorded on the flow state so the
                 # branch merges intersect it like any other binding -- a loop
@@ -4386,7 +4475,13 @@ class StatementAnalyzer:
                 and var_name not in self.ctx.func.global_declarations):
             resolved = self._resolve_literal_type(elem_type)
             stack = tuple(self.ctx.func.compound_stack)
-            self.ctx.func.pending_loop_vars[var_name] = (resolved, stack, stmt)
+            # A head that bound a loop-body-first local is one more binding of
+            # that local: its entry keeps the first binding's anchor, which is
+            # where the one declaration stands.
+            if not (stmt.hoist_loop_var
+                    and self._is_body_first_local(var_name)):
+                self.ctx.func.pending_loop_vars[var_name] = PendingLocal(
+                    resolved, stack, stmt, head_first=True)
             if runs_once:
                 # A provable loop binds its variable on every iteration, so
                 # it is assigned past the loop; an unprovable one leaves it
@@ -4394,9 +4489,14 @@ class StatementAnalyzer:
                 # merge can take it back when only one arm runs the loop.
                 self.ctx.func.loop_bound_assigned.add(var_name)
 
+        head = stmt.body[0] if stmt.body else None
+        head_targets = (frozenset(t for t in head.targets if t is not None)
+                        if isinstance(head, TpyTupleUnpack) and head.is_loop_head
+                        else frozenset())
         self._propagate_loop_body_vars(stmt, inner_scope, skip_var=var_name,
                                        runs_once=runs_once,
-                                       body_end_assigned=body_end_assigned)
+                                       body_end_assigned=body_end_assigned,
+                                       head_targets=head_targets)
 
     def _analyze_global_stmt(self, stmt: TpyGlobal) -> None:
         """Analyze a `global x, y` statement."""
@@ -5340,7 +5440,7 @@ class StatementAnalyzer:
                 # rather than from the user, so a later assignment must not be
                 # forced to adopt the element type.
                 pending = self.ctx.func.pending_loop_vars.get(stmt.name)
-                if (pending is not None and pending[2] is None
+                if (pending is not None and pending.head_stmt is None
                         and self.expr._promote_pending_loop_var(stmt.name)):
                     existing_type = self.ctx.func.current_scope.lookup(stmt.name)
 

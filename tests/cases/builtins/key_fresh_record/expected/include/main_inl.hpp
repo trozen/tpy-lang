@@ -6,12 +6,11 @@
 namespace tpyapp::main {
 
 // def gen(rs: list[Rec]) -> Iterator[int32]:
-//     # generator: `q`, since a lambda param named like a frame slot reads the
-//     # slot (BUGS.md#lambda-param-shadows-frame-slot)
+//     # generator
 //     for x in sorted(rs, key=lambda q: Key(q)):  # tpyc: ok
-//         yield x.n                                                             # -> S_RESUME_0
+//         yield x.n                                           # -> S_RESUME_0
 //     for y in sorted(rs, key=Key):  # tpyc: ok
-//         yield y.n                                                             # -> S_RESUME_1
+//         yield y.n                                           # -> S_RESUME_1
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry

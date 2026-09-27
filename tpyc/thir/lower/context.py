@@ -1,7 +1,7 @@
 """Per-function lowering state: _Prescan, _NarrowScope, and _LowerCtx."""
 
 from __future__ import annotations
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Set as AbstractSet
 from contextlib import contextmanager
 from dataclasses import dataclass, field, fields
 from enum import Enum, auto
@@ -1063,6 +1063,10 @@ _BRANCH_SCOPED_SETS = (
     # with it: a later write outside the branch (or in a sibling branch)
     # allocates its own, while a second write WITHIN the branch reuses.
     "global_slot_assigned",
+    # A walrus's pre-decl lands on the named row of the statement it sits in,
+    # so it is in C++ scope exactly as long as this block: a sibling branch
+    # binding the same name must declare it again.
+    "walrus_predeclared",
 )
 # DELIBERATELY NOT branch-scoped. Registration that must survive a scope
 # (with-targets, match full-binds, a nested def's name) is done by ORDERING:
@@ -1075,9 +1079,6 @@ _BRANCH_SCOPED_SETS = (
 #   inline_narrowed -- condition-scoped: saved/restored by _lower_narrow_cond
 #       within a single condition, never live across statements.
 #   tparam_bounds -- init-only per-function fact.
-#   walrus_predeclared -- mirrors codegen's walrus_pre_declared asymmetry:
-#       the named pre-decl is function-scoped, so a sibling-branch walrus
-#       re-bind must see the first branch's decl and assign in place.
 #   walrus_slot_locals -- the owned-slot walrus targets: the decl is
 #       function-scoped (named row) and the binding outlives its branch
 #       (Python scoping), so reads after the branch keep the `(*n)` render.
@@ -1088,7 +1089,7 @@ _BRANCH_SCOPED_SETS = (
 #       lower_resumable; membership is a layout fact, not a scope one.
 _FUNCTION_SCOPED_STATE = (
     "unhandled_hoists", "nested_def_locals", "nested_returns",
-    "inline_narrowed", "tparam_bounds", "walrus_predeclared",
+    "inline_narrowed", "tparam_bounds",
     "walrus_slot_locals",
     "frame_local_types",
     "frame_field_names",
@@ -1112,6 +1113,121 @@ _FUNCTION_SCOPED_STATE = (
     # reads, so a branch cannot make it stale.
     "_alias_taken_memo",
 )
+
+# Every per-name classification an inner Python scope (a nested def, a
+# lambda) would otherwise inherit from the enclosing body: `shadow_scope`
+# strips the names the inner scope binds from each. The branch-scoped sets,
+# plus the frame layout, walrus, alias and sema-ownership facts that are
+# function-scoped for the ENCLOSING body. The lazily computed borrow-tuple
+# const sets and the alias memo stay out: a restore would discard a result
+# computed inside the scope while its computed-flag survives.
+_SHADOWED_LC_STATE = _BRANCH_SCOPED_SETS + (
+    "nested_def_locals", "inline_narrowed",
+    "walrus_slot_locals", "sema_movable_locals", "deref_view_spelled",
+    "forwarded_map", "literal_facts", "global_ptr_slots",
+    "frame_local_types", "frame_field_names", "frame_own_tuple_types",
+    "plain_frame_fields", "borrow_tuple_frame_locals", "coro_handle_slots",
+    "value_tuple_frame_locals", "opt_tuple_holders", "opt_ptr_frame_locals",
+    "rebind_ptr_frame_locals", "oneshot_lift_locals", "alias_ptr_locals",
+    "const_alias_ptr_locals", "const_frame_bindings", "unpack_ptr_targets",
+    "source_typed_holders",
+    # An enclosing `@overload` stub's facts about ITS params: an inner param
+    # of the same spelling must not fold against them.
+    "overload_narrowing", "overload_literal_facts",
+    # A module's import spelling for a name it redefines later: an inner
+    # binding of that name is the inner local, never the import.
+    "pre_decl_import_cpp",
+)
+# The `_Prescan` twin: the enclosing signature's param facts, its rebind /
+# hoist / alias sets, and every seeded-global table. `bound_names` and
+# `module_global_names` stay: they fence SYNTHESIZED names, which must avoid
+# the shadowed spellings too.
+_SHADOWED_PRESCAN_FACTS = _ParamFacts._fields + (
+    "reassigned", "rvalue_reassigned", "hoisted", "move_through",
+    "alias_sources", "alias_born",
+    "global_seeded", "global_readonly", "global_cpp", "global_write_cpp",
+    "global_slots", "native_globals",
+)
+# `_NarrowScope` fields keyed by a narrowed subject's name; the alias-name
+# registries (`live_aliases`, `persistent_aliases`) stay, for the same
+# reason `bound_names` does.
+_SHADOWED_NARROW_FACTS = ("narrowed", "subject_union", "union_layouts",
+                          "persistent_narrowed", "any_narrowed", "spelled",
+                          "poly_source")
+
+# Every other field of the three owners, so each is classified exactly once
+# (tpyc/thir/test_shadow_scope_fields.py holds the partition): a name-keyed
+# field left out of the shadowed sets leaks the enclosing body's facts into a
+# nested def or lambda that rebinds the name.
+#
+# Shadowed by `shadow_scope` itself rather than through a table.
+_SHADOWED_LC_BY_HAND = ("params", "narrow", "self_receiver", "member_self")
+_LC_NOT_NAME_KEYED = (
+    "analyzer", "func", "prescan", "render_type", "render_type_stored",
+    "render_resolve", "render_concept", "record_name", "self_cpp",
+    "self_is_pointer", "error_return_cpp", "overload_stub_return",
+    "overload_terminated", "resumable_leaf_mode", "in_lambda_body",
+    "slot_hoist_ok", "in_container_elem", "in_finally_helper", "in_for_body",
+    "top_level_scope", "global_binding_scope", "top_level_line",
+    # Keyed by statement id / a list of return nodes / enclosing functions.
+    "import_calls", "nested_returns", "capture_funcs",
+)
+_LC_INHERITED_BY_DESIGN = (
+    # Lazily computed body-wide memos: a restore would discard a result
+    # computed inside the scope while its computed-flag survives.
+    "const_borrow_tuple_locals", "const_opt_borrow_tuple_locals",
+    "_btuple_const_computed", "_alias_taken_memo",
+    # Per-function residue ledger: `_nested_def_state_scope` swaps in the
+    # nested def's own, and a lambda body hoists nothing.
+    "unhandled_hoists",
+    # Type-param names, not value names; a generic nested def rejects.
+    "tparam_bounds",
+    # Node-keyed closure sites plus the outer body's entry locals, read only
+    # at a top-level closure (inner ones are ineligible), outside its scope.
+    "capture_sites",
+)
+_PRESCAN_NOT_NAME_KEYED = (
+    # Return-slot facts: a nested def swaps in its own prescan and a lambda
+    # body has no `return`.
+    "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple", "ret_record_borrow",
+    "ret_record_storage", "ret_res_container", "ret_value_tuple",
+    "ret_generic_tuple", "ret_own_storage_tuple", "ret_wrapper_ref_tuple",
+    "ret_str", "ret_bytes", "ret_char", "ret_union", "ret_ptr_union",
+    "ret_union_borrow", "ret_own_union", "ret_genrec", "ret_own_wrapper",
+    "ret_wrapper_borrow", "ret_dyn_borrow", "ret_dyn_own", "ret_supported",
+    "ret_callable", "ret_value_opt", "ret_value_opt_view",
+    "ret_value_opt_tuple",
+    # Facts about the enclosing FUNCTION, not a name: a nested def swaps in
+    # its own prescan, and a lambda parameter spelled `self` is shadowed
+    # through `self_receiver` / `member_self` instead.
+    "has_self", "is_constructor",
+)
+_PRESCAN_INHERITED_BY_DESIGN = (
+    # Fences for SYNTHESIZED names, which must avoid shadowed spellings too.
+    "bound_names", "module_global_names",
+    # Replaced per nested def by `_nested_def_state_scope`; a lambda cannot
+    # declare `nonlocal`.
+    "nonlocal_names",
+)
+_NARROW_NOT_NAME_KEYED: tuple[str, ...] = ()
+# Alias-name registries: they fence synthesized names, like `bound_names`.
+_NARROW_INHERITED_BY_DESIGN = ("live_aliases", "persistent_aliases")
+
+
+def _without_names(value: AbstractSet[str] | Mapping[str, object] | None,
+                   names: AbstractSet[str], *, shared: bool = False
+                   ) -> AbstractSet[str] | Mapping[str, object] | None:
+    """`value` minus `names`, as a new object so the restore gets the
+    original back. With nothing to strip it is returned as is when the
+    scope cannot change it in place: None, a frozenset, or `shared`."""
+    if value is None:
+        return None
+    if (all(n not in value for n in names)
+            and (shared or isinstance(value, frozenset))):
+        return value
+    if isinstance(value, Mapping):
+        return {k: v for k, v in value.items() if k not in names}
+    return value - names
 
 
 class _LowerCtx:
@@ -1899,21 +2015,58 @@ class _LowerCtx:
         `params` outright, so a first-match and a last-match (`dict`) lookup
         agree. (`bound_names` already holds lambda params: the body scan
         counts them.)"""
-        prescan = self.prescan
-        names = {n for n, _t in params}
-        saved_params = self.params
-        saved_facts = tuple(getattr(prescan, f) for f in _ParamFacts._fields)
-        self.params = tuple(params) + tuple(
-            p for p in saved_params if p[0] not in names)
-        for f, outer, inner in zip(_ParamFacts._fields, saved_facts,
-                                   _param_facts(params, self.analyzer)):
-            setattr(prescan, f, (outer - names) | inner)
-        try:
+        with self.shadow_scope({n for n, _t in params}):
+            prescan = self.prescan
+            self.params = tuple(params) + self.params
+            for f, inner in zip(_ParamFacts._fields,
+                                _param_facts(params, self.analyzer)):
+                setattr(prescan, f, getattr(prescan, f) | inner)
             yield
+
+    @contextmanager
+    def shadow_scope(self, names: AbstractSet[str],
+                     declared: 'dict[str, TpyType] | None' = None):
+        """For an inner scope (nested def, lambda) binding `names`, strip them
+        from every inherited per-name fact until exit; yields `declared`
+        minus `names` as a new dict (None when not passed)."""
+        names = frozenset(names)
+        prescan = self.prescan
+        saved_lc = [getattr(self, a) for a in _SHADOWED_LC_STATE]
+        saved_prescan = [getattr(prescan, a) for a in _SHADOWED_PRESCAN_FACTS]
+        saved_params = self.params
+        saved_narrow = self.narrow
+        saved_receiver = self.self_receiver
+        saved_member_self = self.member_self
+        for a, v in zip(_SHADOWED_LC_STATE, saved_lc):
+            setattr(self, a, _without_names(v, names))
+        # Prescan facts are rebound, never mutated in place, once the walk
+        # starts, so an untouched one can be shared with the inner scope.
+        for a, v in zip(_SHADOWED_PRESCAN_FACTS, saved_prescan):
+            setattr(prescan, a, _without_names(v, names, shared=True))
+        self.params = tuple(p for p in saved_params if p[0] not in names)
+        narrow = saved_narrow.snapshot()
+        for f in _SHADOWED_NARROW_FACTS:
+            setattr(narrow, f, _without_names(getattr(narrow, f), names,
+                                              shared=True))
+        self.narrow = narrow
+        # An inner param spelled `self` is not the method's receiver, nor
+        # an enum companion method's member.
+        if saved_receiver in names:
+            self.self_receiver = None
+        if "self" in names:
+            self.member_self = False
+        try:
+            yield (None if declared is None
+                   else _without_names(declared, names))
         finally:
+            for a, v in zip(_SHADOWED_LC_STATE, saved_lc):
+                setattr(self, a, v)
+            for a, v in zip(_SHADOWED_PRESCAN_FACTS, saved_prescan):
+                setattr(prescan, a, v)
             self.params = saved_params
-            for f, outer in zip(_ParamFacts._fields, saved_facts):
-                setattr(prescan, f, outer)
+            self.narrow = saved_narrow
+            self.self_receiver = saved_receiver
+            self.member_self = saved_member_self
 
 
 def _walrus_pairs(expr):

@@ -1638,6 +1638,34 @@ class DeferredGenericYieldSettle(NamedTuple):
     ns: Namespace | None
 
 
+@dataclass(frozen=True, slots=True)
+class PendingLocal:
+    """A loop body's or `for` head's binding, promoted into scope by the
+    first read (or binding) after the loop.
+
+    `first_stack` is the enclosing-statement stack at the FIRST binding: the
+    promotion anchors the C++ pre-declaration against it, and the read's own
+    stack says how far out the declaration has to go to reach both sites.
+    `head_stmt` is the `for` statement while the entry is that head's loop
+    variable, None once a loop body owns it. `head_first` says the first
+    binding was a `for` head -- its variable or a tuple-unpack head's
+    target. A later head over a body-first local's name binds it when the
+    name is live after that head's loop, a head-first one only once a read or
+    binding placed its declaration; either is bound once so declared. A
+    promoted body-first entry stays in the table, so its origin outlives
+    the promotion.
+    """
+
+    var_type: TpyType
+    first_stack: tuple[TpyStmt, ...]
+    head_stmt: TpyStmt | None
+    head_first: bool
+
+    @property
+    def is_body_first(self) -> bool:
+        return self.head_stmt is None and not self.head_first
+
+
 @dataclass
 class LoopClauseEdges:
     """Every edge that leaves one loop's BODY clause, and their verdict.
@@ -1745,6 +1773,11 @@ class FunctionTrackingState:
     # BEFORE the deferred container resolution, so resolve_all must finalize
     # each registered map or a Pending* leaf reaches codegen's to_cpp().
     pending_branch_decl_maps: list[dict] = field(default_factory=list)
+    # (`arm_branch_decls` key, name, the arm statement declaring it), inner
+    # links first (analysis order): resolve_all gives each declaring binding
+    # the joined type once it settles.
+    arm_decl_sites: list[tuple[TpyStmt, str, TpyStmt]] = field(
+        default_factory=list)
 
     # --- Pending generic instance tracking ---
     pending_generic_instances: dict[int, PendingGenericInstanceInfo] = field(default_factory=dict)
@@ -1769,12 +1802,7 @@ class FunctionTrackingState:
     # --- Control flow ---
     super_init_call: TpyMethodCall | None = None
     super_del_call: TpyMethodCall | None = None
-    # name -> (type, enclosing-statement stack at the binding, loop-var stmt
-    # or None): a loop body's bindings, promoted into scope by the first read
-    # after the loop. The stack is what the promotion anchors the C++
-    # pre-declaration against -- the read's own stack says how far out the
-    # declaration has to go to reach both sites.
-    pending_loop_vars: dict[str, tuple[TpyType, tuple[TpyStmt, ...], TpyStmt | None]] = field(default_factory=dict)
+    pending_loop_vars: dict[str, PendingLocal] = field(default_factory=dict)
     loop_vars: set[str] = field(default_factory=set)
     mutated_loop_vars: set[str] = field(default_factory=set)
     consumed_loop_vars: set[str] = field(default_factory=set)
@@ -2572,6 +2600,10 @@ class SemanticContext:
 
     # --- Branch-declared variable tracking ---
     if_branch_decls: IdentityMap = field(default_factory=IdentityMap)
+    # The same snapshot for an `if` that is the whole `else` body of another
+    # `if`: each arm declares these names at its own binding, all with the
+    # one type recorded here.
+    arm_branch_decls: IdentityMap = field(default_factory=IdentityMap)
     # Per branching statement, the names first bound inside it that it did
     # NOT hoist: their storage is the block's. A loop-body local hoisted to
     # that statement must not take them for outer storage.
@@ -3126,19 +3158,22 @@ class SemanticContext:
         if not isinstance(typ, PENDING_CONTAINER_TYPES) and contains_pending_leaf(typ):
             self.func.pending_composite_exprs.append(expr)
 
-    def record_branch_decls(self, stmt: TpyStmt, mapping: dict) -> dict:
+    def record_branch_decls(self, stmt: TpyStmt, mapping: dict, *,
+                            per_arm: bool = False) -> dict:
         """Store a branch-decl snapshot for `stmt`, registered for the
         pending-container finalization in resolve_all (see
         pending_branch_decl_maps). Incremental callers keep mutating the
-        one registered dict."""
+        one registered dict. `per_arm` places the declarations in each arm
+        (`arm_branch_decls`) instead of in front of `stmt`."""
         for typ in mapping.values():
             if typ is not None:
                 self._force_branch_decl_lists(typ)
-        existing = self.if_branch_decls.get(stmt)
+        table = self.arm_branch_decls if per_arm else self.if_branch_decls
+        existing = table.get(stmt)
         if existing is not None:
             existing.update(mapping)
             return existing
-        self.if_branch_decls[stmt] = mapping
+        table[stmt] = mapping
         self.func.pending_branch_decl_maps.append(mapping)
         return mapping
 

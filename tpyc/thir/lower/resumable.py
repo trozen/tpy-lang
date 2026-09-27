@@ -1921,10 +1921,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # OVERWRITES each branch-first-declared name with sema's branch-decl
     # snapshot (`if_branch_decls`), whose container types are forced off
     # the fixed-size Array optimization (sibling arms may bind different
-    # lengths). Renders spelling the slot must see the same override.
+    # lengths). Renders spelling the slot must see the same override. A
+    # per-arm snapshot (`arm_branch_decls`) is the same one type.
     for _stmt in _iter_nested_stmts(list(func.body)):
-        for _bname, _btype in (analyzer.if_branch_decls.get(_stmt)
-                               or {}).items():
+        for _bname, _btype in ((analyzer.if_branch_decls.get(_stmt) or {})
+                               | (analyzer.arm_branch_decls.get(_stmt)
+                                  or {})).items():
             if _bname in frame_fields and _btype is not None:
                 lc.frame_local_types[_bname] = unwrap_ref_type(_btype)
     lc.resumable_leaf_mode = True
@@ -3045,23 +3047,21 @@ def _lower_member_nested_def(nd, lc, declared) -> 'tuple':
         # Unaudited -- refuse rather than pick a spelling.
         note_detail("nesteddef.name_collision")
         raise ThirUnsupported("res.nested_def_member")
-    body_declared = dict(declared)
-    for pname, ptype in func.params:
-        if not isinstance(ptype, TpyType):
-            note_detail("nesteddef.param_unresolved")
-            raise ThirUnsupported("res.nested_def_member")
-        # No param seeding, like the lambda form: the params only enter the
-        # local scope by name. Unlike the lambda form there is no param-TYPE
-        # ladder: the member's signature is skeleton emission
-        # (`nested_def_signature`), and the body reads a param as a plain
-        # name -- the lambda ladder exists to fence shapes whose LAMBDA emit
-        # is ill-formed (BUGS.md), a hazard the member form does not share.
-        body_declared[pname] = ptype
+    # No param seeding, like the lambda form: the params only enter the
+    # local scope by name. Unlike the lambda form there is no param-TYPE
+    # ladder: the member's signature is skeleton emission
+    # (`nested_def_signature`), and the body reads a param as a plain
+    # name -- the lambda ladder exists to fence shapes whose LAMBDA emit
+    # is ill-formed (BUGS.md), a hazard the member form does not share.
+    if any(not isinstance(ptype, TpyType) for _p, ptype in func.params):
+        note_detail("nesteddef.param_unresolved")
+        raise ThirUnsupported("res.nested_def_member")
     saved_leaf = lc.resumable_leaf_mode
     lc.resumable_leaf_mode = False
     try:
-        with _nested_def_lowering_scope(lc, func, self_captured=True,
-                                        nonlocal_names=nd.nonlocal_names):
+        with _nested_def_lowering_scope(
+                lc, func, declared, self_captured=True,
+                nonlocal_names=nd.nonlocal_names) as body_declared:
             body = _lower_stmts(func.body, lc, body_declared)
             if lc.unhandled_hoists:
                 note_detail("nesteddef.hoisted_vars")

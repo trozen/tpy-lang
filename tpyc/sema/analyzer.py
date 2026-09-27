@@ -409,6 +409,9 @@ class SemanticAnalyzer:
 
         # Branch-declared vars that need pre-declaration before if-statements
         self.if_branch_decls: IdentityMap = IdentityMap()
+        # Branch-declared vars each arm of an if declares itself (the if is
+        # the whole else body of another if), with the one joined type
+        self.arm_branch_decls: IdentityMap = IdentityMap()
 
         # @overload dispatch groups: implementation func -> list of stub TpyFunctions
         # Used by codegen to emit per-overload specialized C++ functions.
@@ -1574,9 +1577,9 @@ class SemanticAnalyzer:
                 # impose on the field.
                 decl_type = self.ctx.local_decl_type(name)
                 locals_dict[name] = binding.type if decl_type is None else decl_type
-        for name, (vtype, _, _) in self.ctx.func.pending_loop_vars.items():
-            if keep(name) and vtype is not None:
-                locals_dict[name] = vtype
+        for name, entry in self.ctx.func.pending_loop_vars.items():
+            if keep(name) and entry.var_type is not None:
+                locals_dict[name] = entry.var_type
         if func.is_genexpr:
             # A loop var over a container literal of the ENCLOSING function
             # settles with that function, like the source param it comes from.
@@ -1952,6 +1955,7 @@ class SemanticAnalyzer:
         if self.ctx.func.global_declarations:
             self.function_global_decls[func] = self.ctx.func.global_declarations.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)
+        self.arm_branch_decls.update(self.ctx.arm_branch_decls)
         self.function_hoisted_vars.update(self.ctx.nested_def_hoisted_vars)
 
     def _validate_named_defaults(self, func: TpyFunction) -> None:
@@ -3825,6 +3829,7 @@ class SemanticAnalyzer:
         if self.ctx.func.move_through_vars:
             self.top_level_move_through_vars = self.ctx.func.move_through_vars.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)
+        self.arm_branch_decls.update(self.ctx.arm_branch_decls)
         self.function_hoisted_vars.update(self.ctx.nested_def_hoisted_vars)
 
         self.ctx.func.current_function = None

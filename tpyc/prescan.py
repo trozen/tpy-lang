@@ -6,6 +6,7 @@ Run once in sema; results consumed by both sema and codegen.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field, fields as dc_fields
 
 from .parse import (
@@ -23,7 +24,8 @@ from .parse import (
 )
 from .parse.nodes import (SourceLocation, is_property_getter_read,
                           iter_capture_bindings,
-                          stmts_have_any_suspension)
+                          stmts_have_any_suspension, walk_body_stmts,
+                          written_names)
 from .value_category import CONTAINER_LITERAL_NODES
 
 
@@ -568,6 +570,24 @@ def bound_names_of(stmt: TpyStmt) -> set[str]:
     if isinstance(stmt, TpyDelVar):
         return set(stmt.names)
     return set()
+
+
+def scope_bound_names(body: list[TpyStmt],
+                      params: Iterable[str] = ()) -> set[str]:
+    """A function's own-scope bindings: `params` plus every name its body
+    binds (`written_names`, lambda-body walruses included -- see
+    `walrus_names_of`), minus the names it declares `nonlocal` / `global`."""
+    out: set[str] = set(params)
+    declared_outside: set[str] = set()
+
+    def on_stmt(s: TpyStmt) -> None:
+        out.update(written_names(s))
+        out.update(walrus_names_of(s))
+        if isinstance(s, (TpyGlobal, TpyNonlocal)):
+            declared_outside.update(s.names)
+
+    walk_body_stmts(body, lambda e: None, on_stmt)
+    return out - declared_outside
 
 
 def walrus_names_of(stmt: TpyStmt) -> set[str]:

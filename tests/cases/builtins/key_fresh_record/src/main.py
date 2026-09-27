@@ -81,8 +81,7 @@ class Holder:
 
 
 def gen(rs: list[Rec]) -> Iterator[int32]:
-    # generator: `q`, since a lambda param named like a frame slot reads the
-    # slot (BUGS.md#lambda-param-shadows-frame-slot)
+    # generator
     for x in sorted(rs, key=lambda q: Key(q)):  # tpyc: ok
         yield x.n
     for y in sorted(rs, key=Key):  # tpyc: ok

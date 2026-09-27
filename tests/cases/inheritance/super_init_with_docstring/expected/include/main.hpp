@@ -78,10 +78,7 @@ inline Child::Child(const ::tpy::BigInt& value, const ::tpy::BigInt& extra) : Pa
 // def __init__(self, value: int, extra: int) -> None:
 //     super().__init__(value)
 //
-//     # the call above stays the first statement, so this is accepted. The
-//     # nested def takes no parameter named like a module-level global --
-//     # `n` below is one, and such a parameter miscompiles
-//     # (BUGS.md#nested-local-shadows-module-global)
+//     # the call above stays the first statement, so this is accepted
 //     def bonus() -> int:  # tpyc: ok
 //         return 5
 //

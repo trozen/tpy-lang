@@ -15,11 +15,11 @@ import pytest
 
 from ..codegen_cpp.context import CodeGenOptions
 from ..compilation_context import activate_compiler
-from ..typesys import INT32, VoidType
+from ..typesys import BOOL, INT32, VoidType
 from .nodes import (
     Form, THIRArgTemp, THIRBinOp, THIRCall, THIRCoerce, THIRExprStmt,
     THIRFieldAccess, THIRFormConvert, THIRFunction, THIRFunctionLayout,
-    THIRLiteral,
+    THIRIf, THIRLiteral,
     THIRMethodCall, THIRRaise, THIRResumableBody, THIRReturn, THIRSelf,
     THIRUnionArgLift,
 )
@@ -445,6 +445,31 @@ class TestNodeStructuralRules:
             validate_function(self._fn(THIRMethodCall(
                 result_type=INT32, receiver=self._self(True),
                 method_cpp="m", args=(), is_arrow=True)))
+
+    @staticmethod
+    def _chain(head: dict, link: dict) -> THIRFunction:
+        # Both links unlocated, so `if_chain` flattens the inner one.
+        cond = THIRLiteral(result_type=BOOL, value=True)
+        inner = THIRIf(condition=cond, then_body=(), **link)
+        outer = THIRIf(condition=cond, then_body=(), else_body=(inner,),
+                       **head)
+        return THIRFunction(name="w", params=(), return_type=VoidType(),
+                            body=(outer,), layout=THIRFunctionLayout())
+
+    def test_predecl_on_the_chain_head_passes(self):
+        validate_function(self._chain({"hoist_decls": (("r", "int32_t"),)}, {}))
+
+    def test_predecl_on_an_elif_link_fails(self):
+        # The emitter prints only the head's predecls; a flattened link has
+        # no block of its own to hold one.
+        with pytest.raises(THIRValidationError, match="elif link carries"):
+            validate_function(
+                self._chain({}, {"hoist_decls": (("r", "int32_t"),)}))
+
+    def test_slot_on_an_elif_link_fails(self):
+        with pytest.raises(THIRValidationError, match="elif link carries"):
+            validate_function(
+                self._chain({}, {"hoist_slots": (("__slot_1", "int32_t"),)}))
 
     def test_template_args_with_native_callee_fails(self):
         # A native or cpp_template callee spells its own template arguments.

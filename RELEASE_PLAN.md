@@ -38,11 +38,6 @@ unless marked otherwise. Batched by likely shared cause; each batch is one
   `deref_check`; likely one cause):
   - `optional-list-elem-decl-drops-deref-check`
   - `unnarrowed-optional-elem-field-read`
-- **C -- declarations and scoping:**
-  - `elif-else-binding-not-predeclared`
-  - `nested-local-shadows-module-global`
-  - `single-body-local-then-loop-var-uninitialized` -- not a regression:
-    v0.5.0 failed the C++ build, master reads garbage
 - **E -- lowering rejects and crashes** (mostly THIR lowering arms):
   - `ctor-str-concat-field-rejects` -- `self.full = a + "!"` in `__init__`
   - `thir-validator-escapes-unpack-temp` (crash)
@@ -62,6 +57,14 @@ unless marked otherwise. Batched by likely shared cause; each batch is one
   - `finally-rebind-eager-move-alias-read`
   - `foreach-rebound-name-reiterated`
   - `nested-list-literal-alias-rebind-clobbers`
+  - `lambda-body-reads-invisible-to-liveness` -- not a regression: a
+    value moved at its "last use" before a lambda that reads it (added
+    2026-09-27)
+- **C -- loop variable reuse** (added 2026-09-27; not a regression):
+  - `head-first-loop-var-then-head-uninitialized` -- needs
+    `for-head-rebind-of-reference-local-rejected` and
+    `str-local-rebound-by-for-head-rejected` first, so the head can bind
+    without rejecting today's correct programs
 - **Decision first:** `c-abi-allowlist-overshoot` -- the C-ABI allow-list
   as "C-spellable" or "ABI-compatible"; until decided it ships as a known
   limitation.

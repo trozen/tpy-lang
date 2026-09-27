@@ -30,7 +30,7 @@ from ..namespace import Namespace
 from ..typesys import (INT32, FunctionInfo, MutationCallEdge,
                        PendingGenericInstanceInfo, RecordInfo, TpyType)
 from .alias_rebind import BindKind
-from .context import (BorrowTracker, FunctionTrackingState,
+from .context import (BorrowTracker, FunctionTrackingState, PendingLocal,
                       LIVE_HANDLE_FIELDS)
 
 
@@ -59,7 +59,8 @@ def _populated() -> FunctionTrackingState:
         compound_stack=[stmt],
         super_init_call=N.TpyMethodCall(N.TpyName("super"), "__init__", []),
         super_del_call=N.TpyMethodCall(N.TpyName("super"), "__del__", []),
-        pending_loop_vars={'i': (INT32, (stmt,), stmt2)},
+        pending_loop_vars={'i': PendingLocal(INT32, (stmt,), stmt2,
+                                             head_first=True)},
         write_history={'x': [(INT32, expr)]},
         nested_def_nodes={'f': N.TpyNestedDef(func)},
         nested_def_block_defs={'f': (stmt, "the 'if' block on line 3")},
@@ -77,6 +78,8 @@ def _populated() -> FunctionTrackingState:
         frame_rebind_sites=frame_rebinds,
         pending_elem_type_fields=[(N.TpyName("comp"), 'result_elem_type')],
         pending_composite_exprs=[N.TpyName("z")],
+        arm_decl_sites=[(N.TpyIf(N.TpyName("c"), [], []), "r",
+                         N.TpyVarDecl("r", None, N.TpyName("c")))],
         borrow_tracker=tracker,
         current_call_edges=[MutationCallEdge(
             callee_fi=FunctionInfo(name="callee", params=[], return_type=INT32),
@@ -113,7 +116,8 @@ _FIXTURE_FIELDS = {
     'unread_coro_locals', 'var_decl_by_name', 'pending_return_borrows',
     'pre_analyzed_method_args', 'bind_kinds', 'gate_sites',
     'frame_rebind_sites',
-    'pending_elem_type_fields', 'pending_composite_exprs', 'borrow_tracker',
+    'pending_elem_type_fields', 'pending_composite_exprs', 'arm_decl_sites',
+    'borrow_tracker',
     'current_call_edges', 'current_awaited_subframes',
     'pending_generic_instances', 'current_ns', 'own_ns', 'current_scope',
 }

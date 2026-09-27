@@ -7,12 +7,14 @@ for function-local variables.
 
 from __future__ import annotations
 
+from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING, Callable
 
 from ..coercions import CoercionContext, resolve_coercion
 from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction, TpyListRepeat
 from ..parse.nodes import (TpyStrLiteral, TpyBytesLiteral, TpySubscript, TpyFieldAccess,
-                           TpyBinOp, TpyIfExpr, TpyNamedExpr, TpyArrayLiteral)
+                           TpyBinOp, TpyIfExpr, TpyNamedExpr, TpyArrayLiteral,
+                           TpyVarDecl)
 from ..typesys import (
     recorded_return_borrow_sources,
 
@@ -53,6 +55,7 @@ from ..typesys import (
     unwrap_qualifiers,
     unwrap_readonly,
     unwrap_ref_type,
+    unwrap_send_sync,
 )
 from .context import (PENDING_CONTAINER_TYPES, MODULE_INIT_CONTEXT,
                       call_borrow_operands, call_lend_sources,
@@ -950,7 +953,8 @@ class LocalTypeDeduction:
             self.ctx.func.current_ns.update_variable_type_recursive(name, resolved)
         entry = self.ctx.func.pending_loop_vars.get(name)
         if entry is not None:
-            self.ctx.func.pending_loop_vars[name] = (resolved, *entry[1:])
+            self.ctx.func.pending_loop_vars[name] = dc_replace(
+                entry, var_type=resolved)
 
     def _apply_container_resolution(
         self,
@@ -1930,7 +1934,48 @@ class LocalTypeDeduction:
             self._resolve_pending_view_types(family)
         self._finalize_pending_elem_type_fields()
         self._finalize_pending_in_bindings()
+        self._finalize_arm_decl_types()
         self._check_unresolved_pending_generics()
+
+    def _finalize_arm_decl_types(self) -> None:
+        """Give the binding that declares a name in each arm of a
+        per-arm-declared `if` (`arm_decl_sites`) the one joined type,
+        settled. A binding records no type of its own unless something set
+        one, so an arm's declaration would take its value's type (`"lit"` in
+        one arm, `a + "!"` in the next); it is one Python local, so every arm
+        declares it at the type a predecl in front of the `if` would have
+        had. Outer links run last, so every arm of a chain takes the type of
+        the outermost link recording the name. A walrus, unpack or `def`
+        declaration keeps its own type."""
+        for if_stmt, name, decl in self.ctx.func.arm_decl_sites:
+            if (not isinstance(decl, TpyVarDecl) or decl.type is not None
+                    or decl.init is None):
+                continue
+            target = self._settled_decl_type(
+                self.ctx.arm_branch_decls[if_stmt][name])
+            if target is None:
+                continue
+            own = self.ctx.var_types.get(decl)
+            if own is None:
+                own = self.ctx.expr_types.get(decl.init)
+            settled = self._settled_decl_type(own)
+            if settled is None or settled == target:
+                continue
+            self.ctx.var_types[decl] = target
+            if decl.loc is not None:
+                self.ctx.declared_var_types[(decl.loc.line, name)] = target
+
+    def _settled_decl_type(self, typ: TpyType | None) -> TpyType | None:
+        """A binding type as a declaration spells it once deduction settled:
+        qualifiers off, pending views and containers resolved, literals at
+        their default width. Own-carrying bindings are not settled here."""
+        if typ is None or isinstance(
+                unwrap_readonly(unwrap_ref_type(unwrap_send_sync(typ))), OwnType):
+            return None
+        return resolve_int_literals(
+            self._deep_resolve_pending(unwrap_qualifiers(typ),
+                                       settle_views=True),
+            self.ctx.default_int_for_literal)
 
     def _finalize_pending_elem_type_fields(self) -> None:
         """Refresh comprehension element/key/value-type snapshots post-resolution.
@@ -1988,11 +2033,11 @@ class LocalTypeDeduction:
                     )
 
         loop_vars = self.ctx.func.pending_loop_vars
-        for name, (vtype, *rest) in list(loop_vars.items()):
-            if vtype is not None:
-                resolved = self._deep_resolve_pending(vtype)
-                if resolved is not vtype:
-                    loop_vars[name] = (resolved, *rest)
+        for name, entry in list(loop_vars.items()):
+            if entry.var_type is not None:
+                resolved = self._deep_resolve_pending(entry.var_type)
+                if resolved is not entry.var_type:
+                    loop_vars[name] = dc_replace(entry, var_type=resolved)
 
         # Branch-decl snapshots capture binding types before the deferred
         # container resolution; codegen renders them directly (predecl /
@@ -2002,15 +2047,24 @@ class LocalTypeDeduction:
                 if vtype is not None:
                     decls[name] = self._deep_resolve_pending(vtype)
 
-    def _deep_resolve_pending(self, typ: TpyType) -> TpyType:
+    def _deep_resolve_pending(self, typ: TpyType, *,
+                              settle_views: bool = False) -> TpyType:
         """Replace every Pending* container leaf in a (possibly composite) type
         with its registry-resolved type, recursing through wrapper/composite
         types via `map_inner_types`. A genuinely-unresolved Pending (no resolved
-        type yet) is left as-is for the downstream unresolved-type diagnostic."""
+        type yet) is left as-is for the downstream unresolved-type diagnostic.
+        `settle_views` also resolves a PendingViewType leaf, to its family's
+        owned type when unresolved -- for callers running after view
+        resolution."""
+        if settle_views and isinstance(typ, PendingViewType):
+            info = self.ctx.view_vars(typ.family).get(typ.var_id)
+            return (info.resolved_type if info is not None and info.resolved_type
+                    else typ.family.owned_type)
         resolved = self._resolved_container_type(typ)
         if resolved is not None:
             return resolved
-        return typ.map_inner_types(self._deep_resolve_pending)
+        return typ.map_inner_types(
+            lambda t: self._deep_resolve_pending(t, settle_views=settle_views))
 
     def _resolved_container_type(self, typ: TpyType) -> TpyType | None:
         """The registry-resolved type for a Pending* container, else None."""

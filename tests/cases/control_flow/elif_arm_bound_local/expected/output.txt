@@ -1,0 +1,87 @@
+free one
+else_if one
+method one
+nested one
+loop one
+loop one
+try one
+match one
+ref one
+unpack one
+walrus one
+walrus_return 2
+2
+narrow other 7
+none_int one
+str_mix one
+after_return one
+all_three one
+rebind_after one
+rebind_after after
+twice one
+gen one
+capture one
+def_arm one
+async one
+free two
+else_if two
+method two
+nested two
+loop 0
+loop 2
+try two
+match two
+ref 11
+unpack 3
+walrus 4
+walrus_return 6
+6
+narrow two 7
+none_int None
+str_mix lit
+after_return two
+all_three two
+rebind_after two
+rebind_after after
+twice two!
+gen two
+gen again two
+capture two 20
+def_arm two
+async two
+free other
+else_if other
+method other
+nested other
+loop 0
+loop 3
+try other
+match other
+ref 22
+unpack 7
+walrus 9
+walrus 9
+walrus_return 9
+9
+narrow other 7
+none_int 5
+str_mix cat!
+after_return other
+all_three other
+rebind_after other
+rebind_after after
+twice three
+gen other
+capture else 3
+def_arm other 3
+async other
+chain2 one
+chain3 one
+chain2 two
+chain3 two
+chain2 three
+chain3 three
+chain2 other
+chain3 other
+narrow none
+module two

@@ -1,0 +1,49 @@
+fresh_local: 1.5
+fresh_local global: global label
+same_type: 7
+same_type global: 0
+aug: 6
+aug global: 100
+unpack: 1 2
+unpack global: global first 0
+param_slot: 4 11 5
+param_box: Box(3)
+param_box global: Box(7)
+param_imported: 4 10
+native_local: 1 2
+lambda_param: 4
+lambda_opt_param: 11 4
+for: 0
+for: 1
+with: 42
+except: boom
+binders global: global i global cm global err
+walrus: 3 50
+method: 2.5
+method ident: 6 global label
+enum_method: 221 222
+gen local: 3.5
+gen: 10
+gen: 3
+gen: 1
+gen after: 5
+reads: global label 5 0 3
+reads after: 6 4
+narrowed: 8 2
+narrowed: none
+lambda_self: 2
+frame_field: 0
+frame_field: 100
+frame_field helper: 1
+frame_field after: 100
+loop_var: 0
+loop_var: 1
+loop_var outer: 5
+overload: outer-one inner-other
+overload: outer-two inner-one
+match: 9
+match global: 0
+del: inner label
+del global: global label
+async local: 4.5
+async: 6

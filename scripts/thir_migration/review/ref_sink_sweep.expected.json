@@ -5452,7 +5452,7 @@
  "deref_list__ctor__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "match ctor(DL, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
+  "hoist %v: std::optional<DL> match ctor(DL, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
  ],
  "deref_list__ctor__ctor_rvalue__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -5542,7 +5542,7 @@
  "deref_list__ctor__local__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0])]) [raw])"
+  "hoist %v: DL* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0]"
  ],
  "deref_list__ctor__local__recv_mut": [
   "ok",
@@ -5572,7 +5572,7 @@
  "deref_list__ctor__local_last__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
+  "hoist %v: DL* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
  ],
  "deref_list__ctor__local_last__recv_mut": [
   "ok",
@@ -5692,7 +5692,7 @@
  "deref_list__ctor__obj_field__match_capture": [
   "ok",
   "",
-  "match %b._v: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%b._v])]) [raw])"
+  "hoist %v: DL* match %b._v: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%b"
  ],
  "deref_list__ctor__obj_field__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -5722,7 +5722,7 @@
  "deref_list__ctor__own_call__match_capture": [
   "ok",
   "",
-  "match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
+  "hoist %v: std::optional<DL> match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
  ],
  "deref_list__ctor__own_call__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -5752,7 +5752,7 @@
  "deref_list__ctor__param__match_capture": [
   "ok",
   "",
-  "match %pv: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%pv])]) [raw])"
+  "hoist %v: DL* match %pv: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%pv]"
  ],
  "deref_list__ctor__param__recv_mut": [
   "ok",
@@ -5997,7 +5997,7 @@
  "deref_list__fn__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "match ctor(DL, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
+  "hoist %v: std::optional<DL> match ctor(DL, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
  ],
  "deref_list__fn__ctor_rvalue__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -6102,7 +6102,7 @@
  "deref_list__fn__local__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0])]) [raw])"
+  "hoist %v: DL* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0]"
  ],
  "deref_list__fn__local__recv_mut": [
   "ok",
@@ -6132,7 +6132,7 @@
  "deref_list__fn__local_last__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
+  "hoist %v: DL* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
  ],
  "deref_list__fn__local_last__recv_mut": [
   "ok",
@@ -6252,7 +6252,7 @@
  "deref_list__fn__obj_field__match_capture": [
   "ok",
   "",
-  "match %b._v: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%b._v])]) [raw])"
+  "hoist %v: DL* match %b._v: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%b"
  ],
  "deref_list__fn__obj_field__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -6287,7 +6287,7 @@
  "deref_list__fn__own_call__match_capture": [
   "ok",
   "",
-  "match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
+  "hoist %v: std::optional<DL> match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
  ],
  "deref_list__fn__own_call__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -6322,7 +6322,7 @@
  "deref_list__fn__param__match_capture": [
   "ok",
   "",
-  "match %pv: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%pv])]) [raw])"
+  "hoist %v: DL* match %pv: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%pv]"
  ],
  "deref_list__fn__param__recv_mut": [
   "ok",
@@ -6867,7 +6867,7 @@
  "deref_list__meth__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "match ctor(DL, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
+  "hoist %v: std::optional<DL> match ctor(DL, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
  ],
  "deref_list__meth__ctor_rvalue__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -6972,7 +6972,7 @@
  "deref_list__meth__local__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0])]) [raw])"
+  "hoist %v: DL* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0]"
  ],
  "deref_list__meth__local__recv_mut": [
   "ok",
@@ -7002,7 +7002,7 @@
  "deref_list__meth__local_last__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
+  "hoist %v: DL* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
  ],
  "deref_list__meth__local_last__recv_mut": [
   "ok",
@@ -7122,7 +7122,7 @@
  "deref_list__meth__obj_field__match_capture": [
   "ok",
   "",
-  "match %b._v: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%b._v])]) [raw])"
+  "hoist %v: DL* match %b._v: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%b"
  ],
  "deref_list__meth__obj_field__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -7157,7 +7157,7 @@
  "deref_list__meth__own_call__match_capture": [
   "ok",
   "",
-  "match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
+  "hoist %v: std::optional<DL> match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->push_back, [coerce(lit(9) -> int32)])"
  ],
  "deref_list__meth__own_call__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -7192,7 +7192,7 @@
  "deref_list__meth__param__match_capture": [
   "ok",
   "",
-  "match %pv: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%pv])]) [raw])"
+  "hoist %v: DL* match %pv: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%pv]"
  ],
  "deref_list__meth__param__recv_mut": [
   "ok",
@@ -7437,7 +7437,7 @@
  "deref_list__nested__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "match ctor(DL, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
+  "hoist %v: std::optional<DL> match ctor(DL, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "deref_list__nested__ctor_rvalue__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -7727,7 +7727,7 @@
  "deref_list__nested__own_call__match_capture": [
   "ok",
   "",
-  "match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
+  "hoist %v: std::optional<DL> match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "deref_list__nested__own_call__recv_mut": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
@@ -8302,7 +8302,7 @@
  "deref_rec__ctor__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "match ctor(DR, [coerce(lit(7) -> int32)]): [if_elif_record] case default: as %v [assign_move] %v->x = coerce(lit(9) -> int32)"
+  "hoist %v: std::optional<DR> match ctor(DR, [coerce(lit(7) -> int32)]): [if_elif_record] case default: as %v [assign_move] %v->x = coerce(lit(9) -> int32)"
  ],
  "deref_rec__ctor__ctor_rvalue__recv_mut": [
   "reject:stmt.assign:assign.field_write_shape",
@@ -8332,7 +8332,7 @@
  "deref_rec__ctor__dict_subscript__match_capture": [
   "ok",
   "",
-  "match %d[str('k')] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%d[str('k')] [borrow].x [raw])"
+  "hoist %v: DR* match %d[str('k')] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%d[str('k')] [borrow].x [raw])"
  ],
  "deref_rec__ctor__dict_subscript__recv_mut": [
   "ok",
@@ -8392,7 +8392,7 @@
  "deref_rec__ctor__local__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%s0.x [raw])"
+  "hoist %v: DR* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%s0.x [raw])"
  ],
  "deref_rec__ctor__local__recv_mut": [
   "ok",
@@ -8422,7 +8422,7 @@
  "deref_rec__ctor__local_last__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32)"
+  "hoist %v: DR* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32)"
  ],
  "deref_rec__ctor__local_last__recv_mut": [
   "ok",
@@ -8542,7 +8542,7 @@
  "deref_rec__ctor__obj_field__match_capture": [
   "ok",
   "",
-  "match %b._v: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%b._v.x [raw])"
+  "hoist %v: DR* match %b._v: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%b._v.x [raw])"
  ],
  "deref_rec__ctor__obj_field__recv_mut": [
   "ok",
@@ -8572,7 +8572,7 @@
  "deref_rec__ctor__own_call__match_capture": [
   "ok",
   "",
-  "match call(mk, []): [if_elif_record] case default: as %v [assign_move] %v->x = coerce(lit(9) -> int32)"
+  "hoist %v: std::optional<DR> match call(mk, []): [if_elif_record] case default: as %v [assign_move] %v->x = coerce(lit(9) -> int32)"
  ],
  "deref_rec__ctor__own_call__recv_mut": [
   "reject:stmt.assign:assign.field_write_shape",
@@ -8602,7 +8602,7 @@
  "deref_rec__ctor__param__match_capture": [
   "ok",
   "",
-  "match %pv: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%pv.x [raw])"
+  "hoist %v: DR* match %pv: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%pv.x [raw])"
  ],
  "deref_rec__ctor__param__recv_mut": [
   "ok",
@@ -8692,7 +8692,7 @@
  "deref_rec__ctor__subscript__match_capture": [
   "ok",
   "",
-  "match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
+  "hoist %v: DR* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
  ],
  "deref_rec__ctor__subscript__recv_mut": [
   "ok",
@@ -8847,7 +8847,7 @@
  "deref_rec__fn__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "match ctor(DR, [coerce(lit(7) -> int32)]): [if_elif_record] case default: as %v [assign_move] %v->x = coerce(lit(9) -> int32)"
+  "hoist %v: std::optional<DR> match ctor(DR, [coerce(lit(7) -> int32)]): [if_elif_record] case default: as %v [assign_move] %v->x = coerce(lit(9) -> int32)"
  ],
  "deref_rec__fn__ctor_rvalue__recv_mut": [
   "reject:stmt.assign:assign.field_write_shape",
@@ -8882,7 +8882,7 @@
  "deref_rec__fn__dict_subscript__match_capture": [
   "ok",
   "",
-  "match %d[str('k')] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%d[str('k')] [borrow].x [raw])"
+  "hoist %v: DR* match %d[str('k')] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%d[str('k')] [borrow].x [raw])"
  ],
  "deref_rec__fn__dict_subscript__recv_mut": [
   "ok",
@@ -8952,7 +8952,7 @@
  "deref_rec__fn__local__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%s0.x [raw])"
+  "hoist %v: DR* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%s0.x [raw])"
  ],
  "deref_rec__fn__local__recv_mut": [
   "ok",
@@ -8982,7 +8982,7 @@
  "deref_rec__fn__local_last__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32)"
+  "hoist %v: DR* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32)"
  ],
  "deref_rec__fn__local_last__recv_mut": [
   "ok",
@@ -9102,7 +9102,7 @@
  "deref_rec__fn__obj_field__match_capture": [
   "ok",
   "",
-  "match %b._v: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%b._v.x [raw])"
+  "hoist %v: DR* match %b._v: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%b._v.x [raw])"
  ],
  "deref_rec__fn__obj_field__recv_mut": [
   "ok",
@@ -9137,7 +9137,7 @@
  "deref_rec__fn__own_call__match_capture": [
   "ok",
   "",
-  "match call(mk, []): [if_elif_record] case default: as %v [assign_move] %v->x = coerce(lit(9) -> int32)"
+  "hoist %v: std::optional<DR> match call(mk, []): [if_elif_record] case default: as %v [assign_move] %v->x = coerce(lit(9) -> int32)"
  ],
  "deref_rec__fn__own_call__recv_mut": [
   "reject:stmt.assign:assign.field_write_shape",
@@ -9172,7 +9172,7 @@
  "deref_rec__fn__param__match_capture": [
   "ok",
   "",
-  "match %pv: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%pv.x [raw])"
+  "hoist %v: DR* match %pv: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%pv.x [raw])"
  ],
  "deref_rec__fn__param__recv_mut": [
   "ok",
@@ -9277,7 +9277,7 @@
  "deref_rec__fn__subscript__match_capture": [
   "ok",
   "",
-  "match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
+  "hoist %v: DR* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
  ],
  "deref_rec__fn__subscript__recv_mut": [
   "ok",
@@ -9717,7 +9717,7 @@
  "deref_rec__meth__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "match ctor(DR, [coerce(lit(7) -> int32)]): [if_elif_record] case default: as %v [assign_move] %v->x = coerce(lit(9) -> int32)"
+  "hoist %v: std::optional<DR> match ctor(DR, [coerce(lit(7) -> int32)]): [if_elif_record] case default: as %v [assign_move] %v->x = coerce(lit(9) -> int32)"
  ],
  "deref_rec__meth__ctor_rvalue__recv_mut": [
   "reject:stmt.assign:assign.field_write_shape",
@@ -9752,7 +9752,7 @@
  "deref_rec__meth__dict_subscript__match_capture": [
   "ok",
   "",
-  "match %d[str('k')] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%d[str('k')] [borrow].x [raw])"
+  "hoist %v: DR* match %d[str('k')] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%d[str('k')] [borrow].x [raw])"
  ],
  "deref_rec__meth__dict_subscript__recv_mut": [
   "ok",
@@ -9822,7 +9822,7 @@
  "deref_rec__meth__local__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%s0.x [raw])"
+  "hoist %v: DR* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%s0.x [raw])"
  ],
  "deref_rec__meth__local__recv_mut": [
   "ok",
@@ -9852,7 +9852,7 @@
  "deref_rec__meth__local_last__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32)"
+  "hoist %v: DR* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32)"
  ],
  "deref_rec__meth__local_last__recv_mut": [
   "ok",
@@ -9972,7 +9972,7 @@
  "deref_rec__meth__obj_field__match_capture": [
   "ok",
   "",
-  "match %b._v: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%b._v.x [raw])"
+  "hoist %v: DR* match %b._v: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%b._v.x [raw])"
  ],
  "deref_rec__meth__obj_field__recv_mut": [
   "ok",
@@ -10007,7 +10007,7 @@
  "deref_rec__meth__own_call__match_capture": [
   "ok",
   "",
-  "match call(mk, []): [if_elif_record] case default: as %v [assign_move] %v->x = coerce(lit(9) -> int32)"
+  "hoist %v: std::optional<DR> match call(mk, []): [if_elif_record] case default: as %v [assign_move] %v->x = coerce(lit(9) -> int32)"
  ],
  "deref_rec__meth__own_call__recv_mut": [
   "reject:stmt.assign:assign.field_write_shape",
@@ -10042,7 +10042,7 @@
  "deref_rec__meth__param__match_capture": [
   "ok",
   "",
-  "match %pv: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%pv.x [raw])"
+  "hoist %v: DR* match %pv: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%pv.x [raw])"
  ],
  "deref_rec__meth__param__recv_mut": [
   "ok",
@@ -10147,7 +10147,7 @@
  "deref_rec__meth__subscript__match_capture": [
   "ok",
   "",
-  "match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
+  "hoist %v: DR* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
  ],
  "deref_rec__meth__subscript__recv_mut": [
   "ok",
@@ -10287,7 +10287,7 @@
  "deref_rec__nested__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "match ctor(DR, [coerce(lit(7) -> int32)]): [if_elif_record] case default: as %v [assign_move] %v->x = coerce(lit(9) -> int32) call(nested_inner, [])"
+  "hoist %v: std::optional<DR> match ctor(DR, [coerce(lit(7) -> int32)]): [if_elif_record] case default: as %v [assign_move] %v->x = coerce(lit(9) -> int32) call(nested_inner, [])"
  ],
  "deref_rec__nested__ctor_rvalue__recv_mut": [
   "reject:stmt.assign:assign.field_write_shape",
@@ -10577,7 +10577,7 @@
  "deref_rec__nested__own_call__match_capture": [
   "ok",
   "",
-  "match call(mk, []): [if_elif_record] case default: as %v [assign_move] %v->x = coerce(lit(9) -> int32) call(nested_inner, [])"
+  "hoist %v: std::optional<DR> match call(mk, []): [if_elif_record] case default: as %v [assign_move] %v->x = coerce(lit(9) -> int32) call(nested_inner, [])"
  ],
  "deref_rec__nested__own_call__recv_mut": [
   "reject:stmt.assign:assign.field_write_shape",
@@ -13732,7 +13732,7 @@
  "gen_rec__ctor__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "match ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +,"
+  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]): [if_elif_record] case default: as %v [assign_move] method_call(%v,"
  ],
  "gen_rec__ctor__ctor_rvalue__recv_mut": [
   "ok",
@@ -13792,7 +13792,7 @@
  "gen_rec__ctor__local__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%s"
  ],
  "gen_rec__ctor__local__recv_mut": [
   "ok",
@@ -13822,7 +13822,7 @@
  "gen_rec__ctor__local_last__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1))"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1))"
  ],
  "gen_rec__ctor__local_last__recv_mut": [
   "ok",
@@ -13942,7 +13942,7 @@
  "gen_rec__ctor__obj_field__match_capture": [
   "ok",
   "",
-  "match %b._v: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%b._v, get, []).x [raw])"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %b._v: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call("
  ],
  "gen_rec__ctor__obj_field__recv_mut": [
   "ok",
@@ -13972,7 +13972,7 @@
  "gen_rec__ctor__own_call__match_capture": [
   "ok",
   "",
-  "match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1))"
+  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1"
  ],
  "gen_rec__ctor__own_call__recv_mut": [
   "ok",
@@ -14002,7 +14002,7 @@
  "gen_rec__ctor__param__match_capture": [
   "ok",
   "",
-  "match %pv: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%pv, get, []).x [raw])"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%p"
  ],
  "gen_rec__ctor__param__recv_mut": [
   "ok",
@@ -14092,7 +14092,7 @@
  "gen_rec__ctor__subscript__match_capture": [
   "ok",
   "",
-  "match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [r"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(me"
  ],
  "gen_rec__ctor__subscript__recv_mut": [
   "ok",
@@ -14247,7 +14247,7 @@
  "gen_rec__fn__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "match ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +,"
+  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]): [if_elif_record] case default: as %v [assign_move] method_call(%v,"
  ],
  "gen_rec__fn__ctor_rvalue__recv_mut": [
   "ok",
@@ -14317,7 +14317,7 @@
  "gen_rec__fn__local__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%s"
  ],
  "gen_rec__fn__local__recv_mut": [
   "ok",
@@ -14347,7 +14347,7 @@
  "gen_rec__fn__local_last__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1))"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1))"
  ],
  "gen_rec__fn__local_last__recv_mut": [
   "ok",
@@ -14467,7 +14467,7 @@
  "gen_rec__fn__obj_field__match_capture": [
   "ok",
   "",
-  "match %b._v: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%b._v, get, []).x [raw])"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %b._v: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call("
  ],
  "gen_rec__fn__obj_field__recv_mut": [
   "ok",
@@ -14502,7 +14502,7 @@
  "gen_rec__fn__own_call__match_capture": [
   "ok",
   "",
-  "match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1))"
+  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1"
  ],
  "gen_rec__fn__own_call__recv_mut": [
   "ok",
@@ -14537,7 +14537,7 @@
  "gen_rec__fn__param__match_capture": [
   "ok",
   "",
-  "match %pv: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%pv, get, []).x [raw])"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%p"
  ],
  "gen_rec__fn__param__recv_mut": [
   "ok",
@@ -14642,7 +14642,7 @@
  "gen_rec__fn__subscript__match_capture": [
   "ok",
   "",
-  "match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [r"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(me"
  ],
  "gen_rec__fn__subscript__recv_mut": [
   "ok",
@@ -15082,7 +15082,7 @@
  "gen_rec__meth__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "match ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +,"
+  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]): [if_elif_record] case default: as %v [assign_move] method_call(%v,"
  ],
  "gen_rec__meth__ctor_rvalue__recv_mut": [
   "ok",
@@ -15152,7 +15152,7 @@
  "gen_rec__meth__local__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%s"
  ],
  "gen_rec__meth__local__recv_mut": [
   "ok",
@@ -15182,7 +15182,7 @@
  "gen_rec__meth__local_last__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1))"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1))"
  ],
  "gen_rec__meth__local_last__recv_mut": [
   "ok",
@@ -15302,7 +15302,7 @@
  "gen_rec__meth__obj_field__match_capture": [
   "ok",
   "",
-  "match %b._v: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%b._v, get, []).x [raw])"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %b._v: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call("
  ],
  "gen_rec__meth__obj_field__recv_mut": [
   "ok",
@@ -15337,7 +15337,7 @@
  "gen_rec__meth__own_call__match_capture": [
   "ok",
   "",
-  "match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1))"
+  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1"
  ],
  "gen_rec__meth__own_call__recv_mut": [
   "ok",
@@ -15372,7 +15372,7 @@
  "gen_rec__meth__param__match_capture": [
   "ok",
   "",
-  "match %pv: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%pv, get, []).x [raw])"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%p"
  ],
  "gen_rec__meth__param__recv_mut": [
   "ok",
@@ -15477,7 +15477,7 @@
  "gen_rec__meth__subscript__match_capture": [
   "ok",
   "",
-  "match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [r"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(me"
  ],
  "gen_rec__meth__subscript__recv_mut": [
   "ok",
@@ -15617,7 +15617,7 @@
  "gen_rec__nested__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "match ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +,"
+  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]): [if_elif_record] case default: as %v [assign_move] method_call(%v,"
  ],
  "gen_rec__nested__ctor_rvalue__recv_mut": [
   "ok",
@@ -15872,7 +15872,7 @@
  "gen_rec__nested__own_call__match_capture": [
   "ok",
   "",
-  "match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) call(nested_inner, [])"
+  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1"
  ],
  "gen_rec__nested__own_call__recv_mut": [
   "ok",
@@ -21552,7 +21552,7 @@
  "rec__ctor__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "match ctor(R, [coerce(lit(7) -> int32)]): [if_elif_record] case default: as %v [assign_move] %v->x = binop(%v->x, +, lit(1))"
+  "hoist %v: std::optional<R> match ctor(R, [coerce(lit(7) -> int32)]): [if_elif_record] case default: as %v [assign_move] %v->x = binop(%v->x, +, lit(1))"
  ],
  "rec__ctor__ctor_rvalue__recv_mut": [
   "ok",
@@ -21582,7 +21582,7 @@
  "rec__ctor__dict_subscript__match_capture": [
   "ok",
   "",
-  "match %d[str('k')] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%d[str('k')] [borrow].x [raw])"
+  "hoist %v: R* match %d[str('k')] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%d[str('k')] [borrow].x [raw])"
  ],
  "rec__ctor__dict_subscript__recv_mut": [
   "ok",
@@ -21642,7 +21642,7 @@
  "rec__ctor__local__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
+  "hoist %v: R* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
  ],
  "rec__ctor__local__recv_mut": [
   "ok",
@@ -21672,7 +21672,7 @@
  "rec__ctor__local_last__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1))"
+  "hoist %v: R* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1))"
  ],
  "rec__ctor__local_last__recv_mut": [
   "ok",
@@ -21792,7 +21792,7 @@
  "rec__ctor__obj_field__match_capture": [
   "ok",
   "",
-  "match %b._v: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%b._v.x [raw])"
+  "hoist %v: R* match %b._v: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%b._v.x [raw])"
  ],
  "rec__ctor__obj_field__recv_mut": [
   "ok",
@@ -21822,7 +21822,7 @@
  "rec__ctor__own_call__match_capture": [
   "ok",
   "",
-  "match call(mk, []): [if_elif_record] case default: as %v [assign_move] %v->x = binop(%v->x, +, lit(1))"
+  "hoist %v: std::optional<R> match call(mk, []): [if_elif_record] case default: as %v [assign_move] %v->x = binop(%v->x, +, lit(1))"
  ],
  "rec__ctor__own_call__recv_mut": [
   "ok",
@@ -21852,7 +21852,7 @@
  "rec__ctor__param__match_capture": [
   "ok",
   "",
-  "match %pv: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%pv.x [raw])"
+  "hoist %v: R* match %pv: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%pv.x [raw])"
  ],
  "rec__ctor__param__recv_mut": [
   "ok",
@@ -21942,7 +21942,7 @@
  "rec__ctor__subclass_local__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
+  "hoist %v: Sub* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
  ],
  "rec__ctor__subclass_local__recv_mut": [
   "ok",
@@ -21972,7 +21972,7 @@
  "rec__ctor__subscript__match_capture": [
   "ok",
   "",
-  "match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
+  "hoist %v: R* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
  ],
  "rec__ctor__subscript__recv_mut": [
   "ok",
@@ -22127,7 +22127,7 @@
  "rec__fn__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "match ctor(R, [coerce(lit(7) -> int32)]): [if_elif_record] case default: as %v [assign_move] %v->x = binop(%v->x, +, lit(1))"
+  "hoist %v: std::optional<R> match ctor(R, [coerce(lit(7) -> int32)]): [if_elif_record] case default: as %v [assign_move] %v->x = binop(%v->x, +, lit(1))"
  ],
  "rec__fn__ctor_rvalue__recv_mut": [
   "ok",
@@ -22162,7 +22162,7 @@
  "rec__fn__dict_subscript__match_capture": [
   "ok",
   "",
-  "match %d[str('k')] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%d[str('k')] [borrow].x [raw])"
+  "hoist %v: R* match %d[str('k')] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%d[str('k')] [borrow].x [raw])"
  ],
  "rec__fn__dict_subscript__recv_mut": [
   "ok",
@@ -22232,7 +22232,7 @@
  "rec__fn__local__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
+  "hoist %v: R* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
  ],
  "rec__fn__local__recv_mut": [
   "ok",
@@ -22262,7 +22262,7 @@
  "rec__fn__local_last__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1))"
+  "hoist %v: R* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1))"
  ],
  "rec__fn__local_last__recv_mut": [
   "ok",
@@ -22382,7 +22382,7 @@
  "rec__fn__obj_field__match_capture": [
   "ok",
   "",
-  "match %b._v: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%b._v.x [raw])"
+  "hoist %v: R* match %b._v: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%b._v.x [raw])"
  ],
  "rec__fn__obj_field__recv_mut": [
   "ok",
@@ -22417,7 +22417,7 @@
  "rec__fn__own_call__match_capture": [
   "ok",
   "",
-  "match call(mk, []): [if_elif_record] case default: as %v [assign_move] %v->x = binop(%v->x, +, lit(1))"
+  "hoist %v: std::optional<R> match call(mk, []): [if_elif_record] case default: as %v [assign_move] %v->x = binop(%v->x, +, lit(1))"
  ],
  "rec__fn__own_call__recv_mut": [
   "ok",
@@ -22452,7 +22452,7 @@
  "rec__fn__param__match_capture": [
   "ok",
   "",
-  "match %pv: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%pv.x [raw])"
+  "hoist %v: R* match %pv: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%pv.x [raw])"
  ],
  "rec__fn__param__recv_mut": [
   "ok",
@@ -22557,7 +22557,7 @@
  "rec__fn__subclass_local__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
+  "hoist %v: Sub* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
  ],
  "rec__fn__subclass_local__recv_mut": [
   "ok",
@@ -22587,7 +22587,7 @@
  "rec__fn__subscript__match_capture": [
   "ok",
   "",
-  "match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
+  "hoist %v: R* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
  ],
  "rec__fn__subscript__recv_mut": [
   "ok",
@@ -23027,7 +23027,7 @@
  "rec__meth__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "match ctor(R, [coerce(lit(7) -> int32)]): [if_elif_record] case default: as %v [assign_move] %v->x = binop(%v->x, +, lit(1))"
+  "hoist %v: std::optional<R> match ctor(R, [coerce(lit(7) -> int32)]): [if_elif_record] case default: as %v [assign_move] %v->x = binop(%v->x, +, lit(1))"
  ],
  "rec__meth__ctor_rvalue__recv_mut": [
   "ok",
@@ -23062,7 +23062,7 @@
  "rec__meth__dict_subscript__match_capture": [
   "ok",
   "",
-  "match %d[str('k')] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%d[str('k')] [borrow].x [raw])"
+  "hoist %v: R* match %d[str('k')] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%d[str('k')] [borrow].x [raw])"
  ],
  "rec__meth__dict_subscript__recv_mut": [
   "ok",
@@ -23132,7 +23132,7 @@
  "rec__meth__local__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
+  "hoist %v: R* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
  ],
  "rec__meth__local__recv_mut": [
   "ok",
@@ -23162,7 +23162,7 @@
  "rec__meth__local_last__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1))"
+  "hoist %v: R* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1))"
  ],
  "rec__meth__local_last__recv_mut": [
   "ok",
@@ -23282,7 +23282,7 @@
  "rec__meth__obj_field__match_capture": [
   "ok",
   "",
-  "match %b._v: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%b._v.x [raw])"
+  "hoist %v: R* match %b._v: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%b._v.x [raw])"
  ],
  "rec__meth__obj_field__recv_mut": [
   "ok",
@@ -23317,7 +23317,7 @@
  "rec__meth__own_call__match_capture": [
   "ok",
   "",
-  "match call(mk, []): [if_elif_record] case default: as %v [assign_move] %v->x = binop(%v->x, +, lit(1))"
+  "hoist %v: std::optional<R> match call(mk, []): [if_elif_record] case default: as %v [assign_move] %v->x = binop(%v->x, +, lit(1))"
  ],
  "rec__meth__own_call__recv_mut": [
   "ok",
@@ -23352,7 +23352,7 @@
  "rec__meth__param__match_capture": [
   "ok",
   "",
-  "match %pv: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%pv.x [raw])"
+  "hoist %v: R* match %pv: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%pv.x [raw])"
  ],
  "rec__meth__param__recv_mut": [
   "ok",
@@ -23457,7 +23457,7 @@
  "rec__meth__subclass_local__match_capture": [
   "ok",
   "",
-  "match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
+  "hoist %v: Sub* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
  ],
  "rec__meth__subclass_local__recv_mut": [
   "ok",
@@ -23487,7 +23487,7 @@
  "rec__meth__subscript__match_capture": [
   "ok",
   "",
-  "match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
+  "hoist %v: R* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
  ],
  "rec__meth__subscript__recv_mut": [
   "ok",
@@ -23627,7 +23627,7 @@
  "rec__nested__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "match ctor(R, [coerce(lit(7) -> int32)]): [if_elif_record] case default: as %v [assign_move] %v->x = binop(%v->x, +, lit(1)) call(nested_inner, [])"
+  "hoist %v: std::optional<R> match ctor(R, [coerce(lit(7) -> int32)]): [if_elif_record] case default: as %v [assign_move] %v->x = binop(%v->x, +, lit(1)) call(nested_inner, [])"
  ],
  "rec__nested__ctor_rvalue__recv_mut": [
   "ok",
@@ -23917,7 +23917,7 @@
  "rec__nested__own_call__match_capture": [
   "ok",
   "",
-  "match call(mk, []): [if_elif_record] case default: as %v [assign_move] %v->x = binop(%v->x, +, lit(1)) call(nested_inner, [])"
+  "hoist %v: std::optional<R> match call(mk, []): [if_elif_record] case default: as %v [assign_move] %v->x = binop(%v->x, +, lit(1)) call(nested_inner, [])"
  ],
  "rec__nested__own_call__recv_mut": [
   "ok",

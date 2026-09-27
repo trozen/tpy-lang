@@ -165,6 +165,7 @@ from ...prescan import (
     deref_view_key,
     match_is_none,
     parse_deref_view_key,
+    scope_bound_names,
 )
 from ...typesys import (is_polymorphic_subclass_fact,
                         polymorphic_source_inner,
@@ -2967,11 +2968,10 @@ def _frame_declares_hoist(name: str, lc: '_LowerCtx') -> bool:
     read/write model). Empty in a sync body. `frame_local_types` is the one
     map read here and by `_frame_hoist_type`; a frame PARAM cannot reach
     a hoist, because every caller checks `declared` -- seeded with the
-    params -- first. The capture-funcs conjunct keeps a nested def's OWN
-    fresh local on the ordinary hoist path; it does not decide a nested
-    local that collides with a frame member, which the caller's `declared`
-    check resolves to the frame field --
-    BUGS.md#nested-local-shadows-frame-field."""
+    params -- first. Inside a nested def the answer is always no (the
+    capture-funcs conjunct): the def is a separate function, not a frame
+    state block, and its own bindings -- a local spelled like a frame member
+    included -- leave `frame_local_types` for its body (`lc.shadow_scope`)."""
     return name in lc.frame_local_types and not lc.capture_funcs
 
 
@@ -5579,14 +5579,34 @@ def _lower_dyn_erased_source(init: TpyExpr, lc: _LowerCtx,
 
 
 @contextmanager
-def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction, *,
+def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction,
+                               declared: dict[str, TpyType], *,
                                self_captured: bool = False,
                                nonlocal_names: 'set[str] | frozenset[str]'
                                = frozenset()):
-    """Nested-def scope: swap in the nested function's per-function state (its
-    own prescan return slots / reassigned sets, param-seeded pointer and
-    movable entries), INHERIT the outer classification sets (a lambda body
-    keeps the outer local state, so a captured name keeps its outer render),
+    """Nested-def scope, shared by the lambda and frame-member forms. Yields
+    the body's `declared`: the enclosing one minus every name the nested
+    def binds, plus its params. Those names are the nested def's own locals
+    for its whole body (Python scoping), so they leave every inherited
+    per-name fact too (`lc.shadow_scope`) -- a local or param spelled like a
+    module global, an enclosing param or a frame field reads and writes its
+    own binding. `nonlocal` names stay inherited: they ARE the enclosing
+    binding."""
+    own = scope_bound_names(func.body, (p for p, _t in func.params))
+    with lc.shadow_scope(own, declared) as body_declared:
+        body_declared.update(func.params)
+        with _nested_def_state_scope(lc, func, self_captured=self_captured,
+                                     nonlocal_names=nonlocal_names):
+            yield body_declared
+
+
+@contextmanager
+def _nested_def_state_scope(lc: _LowerCtx, func: TpyFunction, *,
+                            self_captured: bool,
+                            nonlocal_names: 'set[str] | frozenset[str]'):
+    """Swap in the nested function's per-function state (its own prescan
+    return slots / reassigned sets), INHERIT the outer classification sets
+    for the names it does not bind (a captured name keeps its outer render),
     and restore everything after so body-added classifications don't leak
     out.
     `self_captured` keeps the receiver alive for a lambda whose capture list
@@ -5699,7 +5719,7 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
     """Lower `def name(...)` in a function body to a C++ lambda: the capture
     list spelled purely from sema's node facts, params and the non-void
     trailing return type through the resolver, and the body lowered under the
-    nested function's own per-function state over the outer `declared`.
+    nested function's own per-function state (`_nested_def_lowering_scope`).
     Out-of-slice shapes raise, rejecting the OUTER body."""
     lc = scope.lc
     analyzer = lc.analyzer
@@ -5754,7 +5774,6 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
         capture = "[]"
     closure_id, captures = capture_facts(stmt, lc, scope.declared)
     params_cpp = []
-    body_declared = dict(scope.declared)
     for pname, ptype in func.params:
         if not isinstance(ptype, TpyType):
             note_detail("nesteddef.param_unresolved")
@@ -5781,7 +5800,6 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
             raise ThirUnsupported(stmt_reject_reason(stmt))
         resolved = lc.render_resolve(ptype)
         params_cpp.append(resolved.to_cpp_param(escape_cpp_name(pname)))
-        body_declared[pname] = ptype
     rt = func.return_type if isinstance(func.return_type, TpyType) else VoidType()
     resolved_ret = lc.render_resolve(rt)
     ret_cpp = (None if isinstance(resolved_ret, VoidType)
@@ -5790,8 +5808,9 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
     # scope restore -- a later sibling closure captures it like any local.
     lc.nested_def_locals.add(func.name)
     with _nested_def_lowering_scope(
-            lc, func, self_captured="self" in stmt.captured_names,
-            nonlocal_names=stmt.nonlocal_names):
+            lc, func, scope.declared,
+            self_captured="self" in stmt.captured_names,
+            nonlocal_names=stmt.nonlocal_names) as body_declared:
         body = _lower_stmts(func.body, lc, body_declared)
         # lower_function's hoist-residue check: a nested-body hoisted name
         # no try predecl accounted for is not lowered here.

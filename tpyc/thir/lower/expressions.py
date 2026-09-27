@@ -7629,9 +7629,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         # pointer targets (`(n = &(v), *n)`). The remaining classes
         # (tuples, non-value optional slots, hoisted names) reject as
         # `expr.walrus` -- their renders carry registry side effects this
-        # lowering does not model. `walrus_predeclared` is FUNCTION-scoped
-        # (not branch-restored), so a sibling-branch re-bind assigns in
-        # place instead of re-declaring.
+        # lowering does not model. `walrus_predeclared` pops with the block
+        # its pre-decl lands in, so a sibling-branch re-bind declares its own.
         vt = (resolve_int_literals(rtype, analyzer.ctx.default_int_for_literal)
               if rtype is not None else None)
         vtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vt)))

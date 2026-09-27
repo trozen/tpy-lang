@@ -1112,6 +1112,11 @@ class TpyForEach(TpyStmt):
     is_tuple_unpack: bool = False  # set by parser: synthetic loop var for tuple destructuring
     const_loop_var: bool = False  # set by sema: loop var is never mutated, safe for const auto&
     hoist_loop_var: bool = False  # set by sema: loop var used after loop, needs pre-declaration
+    # Stamped by liveness: the loop variable is live on some exit from the
+    # loop (a read after it, in its `else` clause, or on a later pass of an
+    # enclosing loop) -- the only place a zero-trip head's leftover value is
+    # observable. None means the liveness walk never reached this node.
+    var_live_after: bool | None = field(default=None, repr=False)
     # Set by sema at the ITER registration: the lvalue iterable names storage
     # no loan key can spell (`self.grid.rows[i]`, `table[k].cells`), so nothing
     # matches a mutation of what is iterated against the iteration's borrow.

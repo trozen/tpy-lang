@@ -992,8 +992,8 @@ class ExpressionAnalyzer:
         pending = self.ctx.func.pending_loop_vars.get(name)
         if pending is None:
             return False
-        var_type, bind_stack, orig_stmt = pending
-        decl_stmt = self._pending_decl_anchor(bind_stack)
+        var_type, orig_stmt = pending.var_type, pending.head_stmt
+        decl_stmt = self._pending_decl_anchor(pending.first_stack)
         # A body-declared local stays in the table: the promotion defines
         # it in the scope only, and the table is what the frame-local hoist
         # and its resolution sinks read -- popped, a local read after a
@@ -1036,10 +1036,12 @@ class ExpressionAnalyzer:
         first type and the one declaration would render two types.
         """
         pending = self.ctx.func.pending_loop_vars.get(name)
-        if pending is None or pending[2] is not None or pending[0] == var_type:
+        if (pending is None or pending.head_stmt is not None
+                or pending.var_type == var_type):
             return
-        self.ctx.func.pending_loop_vars[name] = (var_type, pending[1], None)
-        self.ctx.record_branch_decls(self._pending_decl_anchor(pending[1]),
+        self.ctx.func.pending_loop_vars[name] = dc_replace(
+            pending, var_type=var_type)
+        self.ctx.record_branch_decls(self._pending_decl_anchor(pending.first_stack),
                                      {name: var_type})
 
     def _normalize_pending_container(self, t: TpyType) -> TpyType:

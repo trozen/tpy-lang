@@ -426,6 +426,17 @@ def _deferred_parts(parts) -> str:
 
 
 def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
+    # A predeclaration is part of where a name lives, so the dump shows it at
+    # the statement that owns it.
+    pad = "  " * depth
+    slots = dict(getattr(stmt, "hoist_slots", ()))
+    lines = [f"{pad}hoist %{name}: {cpp}"
+             + (f" [slot {slots[name]}]" if name in slots else "")
+             for name, cpp in getattr(stmt, "hoist_decls", ())]
+    return lines + _stmt_body_lines(stmt, depth)
+
+
+def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
     pad = "  " * depth
     if isinstance(stmt, THIRVarDecl):
         init = _expr(stmt.init) if stmt.init is not None else "<uninit>"

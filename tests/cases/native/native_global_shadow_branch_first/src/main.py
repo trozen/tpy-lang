@@ -4,9 +4,8 @@
 # read after the block must be that local -- reading the extern instead would
 # return whatever the C++ side holds. The extern is never read, so this program
 # needs no C++ companion and runs under CPython too; the straight-line shadow
-# is native_global_local_shadow. The nested-def position is NOT covered: a
-# nested def's local named like a module global is emitted as a write to the
-# global (BUGS.md#nested-local-shadows-module-global).
+# is native_global_local_shadow. The nested-def position is covered by
+# nested_def/nested_binding_shadows_global.
 import asyncio
 from tpy.extern import native_global
 from tpy import int32
