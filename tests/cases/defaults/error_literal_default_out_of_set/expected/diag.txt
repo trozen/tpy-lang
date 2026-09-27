@@ -1,0 +1,1 @@
+main.py:6: error: Type mismatch in parameter 'mode': expected Literal["r", "rb", "r+b", "rb+"], got "wb"

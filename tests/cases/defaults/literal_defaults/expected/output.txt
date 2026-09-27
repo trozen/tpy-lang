@@ -1,0 +1,12 @@
+free_str rb r
+kwonly 1rb 2r
+int_neg -1 9
+bool_lit True True
+optional rb r none
+keyword_skip rb2 rb1 r1
+narrowing binary:rb text
+generator rb
+generator r
+async_fn rb r
+stub stub:rb stub:r stub:rb
+field rb
