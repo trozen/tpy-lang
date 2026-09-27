@@ -1,0 +1,1 @@
+main.py:7: error: 'p' is bound to float elements at line 6 and to int elements here, and CPython keeps each value's own type; write 3.0 instead of 3

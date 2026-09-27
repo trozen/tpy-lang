@@ -133,8 +133,9 @@ sink(make_empty())                       # expected type for make_empty() = list
 ```
 
 This works because `_analyze_user_function_call` already calls
-`analyze_expr_with_hint(arg, ptype)`, which sets `ctx.expr_type_hint` before
-analyzing the argument. Phase 1's return-type fallback then picks it up.
+`analyze_expr_with_hint(arg, ptype)`, which puts the hint in scope
+(`ctx.slot_hint_scope`; `ctx.expr_type_hint` is a read-only view of
+`ctx.expr_slot_hint`) before analyzing the argument. Phase 1's return-type fallback then picks it up.
 
 Record constructor arguments also propagate hints (both generic and non-generic
 records use `analyze_expr_with_hint` for constructor args).

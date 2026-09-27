@@ -1,0 +1,1 @@
+main.py:7: error: 'zs' is bound to float elements at line 6 and to int elements here, and CPython keeps each value's own type; convert to one type: float(...) on the int value

@@ -5,8 +5,8 @@ Type validation, substitution, and inference operations.
 """
 
 from __future__ import annotations
-from dataclasses import replace as dc_replace
-from typing import Literal, TYPE_CHECKING
+from dataclasses import dataclass, field, replace as dc_replace
+from typing import Literal, Sequence, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, TypeParamRef, NominalType, RecursiveAliasInstanceType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, InteriorMutableType,
@@ -15,9 +15,10 @@ from ..typesys import (
     IntLiteralType, FloatLiteralType, TypeParamKind, BIGINT, NONE, UnknownElementType,
     NoneType, VoidType, CallableType, SendType, SyncType, unwrap_send_sync,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
-    unwrap_ref_type, unwrap_qualifiers, RefType, is_dyn_protocol,
+    unwrap_ref_type, unwrap_qualifiers, unwrap_own, RefType, is_dyn_protocol,
     is_polymorphic_class_type, is_dynamic_dispatch_inner,
-    is_callable_type, is_integer_type, is_float_type, is_void_like_type,
+    is_callable_type, is_integer_type, is_float_type,
+    is_void_like_type,
     is_open_type_param_return, contains_type_param, coro_struct_owner,
     strip_template_repr,
 )
@@ -32,6 +33,8 @@ from ..type_def_registry import (
 from ..parse import TpyFunction
 from tpyc import modules as builtin_modules
 from .overloads import resolve_overload
+from .slot_hint import SlotHint, params_at_inferred
+from .type_join import NumKind, numeric_kind
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
@@ -142,19 +145,58 @@ def post_substitute_hint(
     """
     if not subst:
         return None
-    hint = partial_substitute(ptype, subst)
-    hint = unwrap_qualifiers(hint)
-    if isinstance(hint, OptionalType):
-        hint = hint.inner
-        hint = unwrap_qualifiers(hint)
+    hint = _hint_shape(partial_substitute(ptype, subst))
     if contains_type_param(hint):
         return None
     return hint
 
 
+def _hint_shape(t: TpyType) -> TpyType:
+    """The shape ``post_substitute_hint`` hands a hint in: qualifiers and
+    one ``Optional`` stripped."""
+    t = unwrap_qualifiers(t)
+    if isinstance(t, OptionalType):
+        t = unwrap_qualifiers(t.inner)
+    return t
+
+
+@dataclass(frozen=True)
+class ReturnSeed:
+    """Type-param bindings a call's expected type pre-binds, and which of
+    them an INFERRED local's type decided (`SlotHint`)."""
+    subst: dict[str, TpyType] = field(default_factory=dict)
+    seeded: frozenset[str] = frozenset()
+
+    def with_explicit(self, type_params: 'Sequence[str]',
+                      explicit: 'Sequence[TpyType | None] | None',
+                      ) -> 'ReturnSeed':
+        """Explicit type arguments override the seed and are declared."""
+        if not explicit:
+            return self
+        subst, seeded = dict(self.subst), set(self.seeded)
+        for tp, ta in zip(type_params, explicit):
+            if ta is not None:
+                subst[tp] = ta
+                seeded.discard(tp)
+        return ReturnSeed(subst, frozenset(seeded))
+
+    def slot(self, pattern: TpyType, hint: TpyType) -> SlotHint:
+        """The hint an argument gets whose parameter type is `pattern`,
+        `hint` being `pattern` under this seed in the same shape: inferred
+        exactly at the seeded type params it names. Every argument hint a
+        seed builds goes through here."""
+        if self.seeded and contains_type_param(pattern, set(self.seeded)):
+            return SlotHint.partly_inferred(hint, pattern, self.seeded)
+        return SlotHint.declared(hint)
+
+    def arg_hint(self, ptype: TpyType) -> SlotHint | None:
+        hint = post_substitute_hint(ptype, self.subst)
+        return None if hint is None else self.slot(_hint_shape(ptype), hint)
+
+
 def seeded_arg_hint(
-    params: list[ParamInfo], idx: int, subst: dict[str, TpyType],
-) -> TpyType | None:
+    params: list[ParamInfo], idx: int, seed: ReturnSeed | None,
+) -> SlotHint | None:
     """Per-arg ``expr_type_hint`` from a seeded type-param substitution.
 
     Resolves the param the call argument at position ``idx`` targets, then
@@ -169,8 +211,14 @@ def seeded_arg_hint(
     ``post_substitute_hint`` rejects the result. Caller dispatches on None
     to fall back to hint-less arg analysis.
     """
-    if not subst:
+    if seed is None or not seed.subst:
         return None
+    ptype = _seeded_arg_param_type(params, idx)
+    return seed.arg_hint(ptype) if ptype is not None else None
+
+
+def _seeded_arg_param_type(params: list[ParamInfo],
+                           idx: int) -> TpyType | None:
     if idx < len(params):
         target = params[idx]
     elif params and params[-1].is_variadic:
@@ -182,7 +230,7 @@ def seeded_arg_hint(
     if target.is_variadic and is_varargs(ptype):
         # *args: T has the varargs[T] (or varargs[readonly[T]]) body view; expose the element.
         ptype = unwrap_readonly(ptype.type_args[0])
-    return post_substitute_hint(ptype, subst)
+    return ptype
 
 
 def _is_useful_seed_binding(t: object) -> bool:
@@ -1390,15 +1438,21 @@ class TypeOperations:
         func: FunctionInfo,
         arg_types: list[TpyType],
         type_conforms_to_protocol: callable,
-        expected_return_type: TpyType | None = None,
+        expected_return_type: SlotHint | TpyType | None = None,
         explicit_type_args: 'tuple[TpyType | None, ...] | None' = None,
     ) -> dict[str, TpyType] | None:
         """Infer type parameters from function arguments.
 
         Returns dict of inferred type params (e.g., {"T": int32}) on success, None on failure.
-        If expected_return_type is provided, unresolved params are matched against the return type.
+        If expected_return_type is provided, unresolved params are matched against the return type
+        (a `SlotHint` also says which of its positions an inferred local decides,
+        and a fill-only one binds only what nothing else does -- `result_bindings`).
         If explicit_type_args is provided, pre-populates inferred with those (positional).
         """
+        return_hint = SlotHint.of(expected_return_type)
+        # A fill-only hint prefers no protocol form for the result.
+        expected_return_type = (return_hint.type if return_hint is not None
+                                and not return_hint.is_fill else None)
         if len(arg_types) < func.min_args or len(arg_types) > func.max_args:
             return None
 
@@ -1447,12 +1501,10 @@ class TypeOperations:
             arg_idx += 1
 
         # Fallback: infer remaining params from expected return type
-        if expected_return_type is not None:
-            unresolved = [tp for tp in func.type_params if tp not in inferred]
-            if unresolved:
-                ret = func.return_type.wrapped if isinstance(func.return_type, OwnType) else func.return_type
-                exp = expected_return_type.wrapped if isinstance(expected_return_type, OwnType) else expected_return_type
-                self.match_type_with_inference(ret, exp, inferred)
+        if return_hint is not None and func.return_type is not None:
+            inferred.update(self.result_bindings(
+                func.return_type, func.type_params, inferred, return_hint,
+                func=func))
 
         # LHS-hint @dynamic-protocol preference for function-call inference;
         # mirrors the equivalent block in `infer_type_params_for_record`.
@@ -1568,15 +1620,17 @@ class TypeOperations:
         self,
         record: RecordInfo,
         arg_types: list[TpyType],
-        expected_type: TpyType | None = None,
+        expected_type: SlotHint | TpyType | None = None,
         explicit_type_args: tuple['TpyType | None', ...] | None = None,
     ) -> dict[str, TpyType] | None:
         """Infer type parameters from constructor arguments for user-defined generic record.
 
         Returns dict of inferred type params (e.g., {"T": int32}) on success, None on failure.
-        If expected_type is provided, unresolved params are matched against the record type pattern.
+        If expected_type is provided, unresolved params are matched against the record type
+        pattern (a fill-only hint binds only what nothing else does -- `result_bindings`).
         If explicit_type_args is provided, pre-populates inferred with those (positional, None = skip).
         """
+        hint = SlotHint.of(expected_type)
         min_args = sum(1 for _, _, default in record.init_params if default is None)
         if len(arg_types) < min_args or len(arg_types) > len(record.init_params):
             return None
@@ -1597,13 +1651,10 @@ class TypeOperations:
                 return None
 
         # Fallback: infer remaining params from expected type
-        if expected_type is not None:
-            unresolved = [tp for tp in record.type_params if tp not in inferred]
-            if unresolved:
-                exp = expected_type.wrapped if isinstance(expected_type, OwnType) else expected_type
-                record_pattern = NominalType(record.name, tuple(TypeParamRef(tp) for tp in record.type_params),
-                                              _module_qname=record.qualified_name())
-                self.match_type_with_inference(record_pattern, exp, inferred)
+        if hint is not None:
+            inferred.update(self.result_bindings(
+                self.record_pattern(record), record.type_params, inferred,
+                hint))
 
         # Verify all type params were inferred
         for tp in record.type_params:
@@ -1612,8 +1663,9 @@ class TypeOperations:
 
         # LHS-hint @dynamic-protocol preference (structural conformer -> Adapter
         # wrap at call site). See `_apply_dyn_hint_at_position` for the gate.
-        if expected_type is not None:
-            exp = unwrap_qualifiers(expected_type)
+        # A fill-only hint prefers no protocol form.
+        if hint is not None and not hint.is_fill:
+            exp = unwrap_qualifiers(hint.type)
             if (isinstance(exp, NominalType)
                     and exp.qualified_name() == record.qualified_name()
                     and len(exp.type_args) == len(record.type_params)):
@@ -1727,13 +1779,82 @@ class TypeOperations:
             result.add(tp_name)
         return frozenset(result) if result else None
 
+    @staticmethod
+    def drop_inferred_non_int_defaults(func: FunctionInfo,
+                                       bindings: dict[str, TpyType],
+                                       seeded: frozenset[str],
+                                       ) -> dict[str, TpyType]:
+        """`bindings` from a return hint, less what an INFERRED local's type
+        (`seeded`) gives a type param with an integer `@type_param_default`
+        that no parameter mentions (`round[T](x: float) -> T`), unless that
+        is an integer. Nothing but the return picks such a param, so a
+        float, `bool` or `float | None` local would turn `round(2.7)` into
+        its own type where CPython returns an int; the default applies
+        instead. An integer local still picks the width."""
+        if not seeded or not func.type_param_defaults:
+            return bindings
+        return {
+            tp: t for tp, t in bindings.items()
+            if not (tp in seeded and tp in func.type_param_defaults
+                    and numeric_kind(t) is not NumKind.INT
+                    and not any(contains_type_param(p.type, {tp})
+                                for p in func.params))}
+
+    def result_bindings(self, pattern: TpyType, type_params: 'Sequence[str]',
+                        inferred: dict[str, TpyType], expected: SlotHint, *,
+                        func: FunctionInfo | None = None,
+                        ) -> dict[str, TpyType]:
+        """What matching a call's result `pattern` against the type its
+        context expects adds to `inferred`, the arguments' bindings.
+
+        An expected type (the slot hint) binds every param the arguments
+        left open, may refine what a literal bound, and gives a
+        `@type_param_default` param of `func` what
+        `drop_inferred_non_int_defaults` lets it. A fill-only hint (an
+        overload's declared parameter type, `SlotHint.fill`) binds only the
+        params that neither the arguments nor a default bind -- the one
+        thing it types in a generic function or record construction."""
+        fill = expected.is_fill
+        defaults = func.type_param_defaults if func is not None else {}
+        unbound = {tp for tp in type_params if tp not in inferred
+                   and not (fill and tp in defaults)}
+        if not unbound:
+            return {}
+        pattern = unwrap_own(pattern)
+        # A parameter type may carry readonly / reference qualifiers a
+        # local's type does not.
+        exp = unwrap_qualifiers(expected.type) if fill else unwrap_own(expected.type)
+        trial = dict(inferred)
+        self.match_type_with_inference(pattern, exp, trial)
+        if fill:
+            return {tp: t for tp, t in trial.items() if tp in unbound}
+        if func is None:
+            return trial
+        return self.drop_inferred_non_int_defaults(
+            func, trial, params_at_inferred(pattern, expected))
+
+    @staticmethod
+    def record_pattern(record: RecordInfo) -> NominalType:
+        """`record` over its own type params, `Box[T]` for `class Box[T]`.
+        Each ref carries its kind and bound, so an INT-kind param (Array's
+        N) pairs against an integer value when matched."""
+        kinds = record.type_param_kinds or [TypeParamKind.TYPE] * len(record.type_params)
+        return NominalType(
+            record.name,
+            tuple(TypeParamRef(tp, bound=record.type_param_bounds.get(tp),
+                               kind=kinds[i])
+                  for i, tp in enumerate(record.type_params)),
+            _module_qname=record.qualified_name())
+
     def seed_subst_from_return_hint(
-        self, func: FunctionInfo, expected_return_type: TpyType | None,
-    ) -> dict[str, TpyType]:
+        self, func: FunctionInfo,
+        expected_return_type: SlotHint | TpyType | None,
+    ) -> ReturnSeed:
         """Pre-bind type params by matching ``expected_return_type`` against
         ``func.return_type``. Used to give nested generic call args a hint
         that reflects the LHS-derived outer type before arg-driven inference
-        has any evidence to contribute.
+        has any evidence to contribute. The seed records which bindings an
+        inferred local's type decided (``ReturnSeed.seeded``).
 
         For each unbound method-local type param `U` with a bound `B`, if
         substituting the seed into `B` yields a concrete type, default `U =
@@ -1744,11 +1865,15 @@ class TypeOperations:
         `Box[Greeter]` -- would analyze the inner arg with no type-arg hint
         and infer `U=Box[Cat]` instead of `Box[Greeter]`.
         """
-        if expected_return_type is None or func.return_type is None:
-            return {}
+        hint = SlotHint.of(expected_return_type)
+        if hint is None or func.return_type is None:
+            return ReturnSeed()
         if not func.type_params:
-            return {}
-        seed = self._seed_subst(func.return_type, expected_return_type)
+            return ReturnSeed()
+        seed = self._seed_subst(func.return_type, hint.type)
+        seeded = set(params_at_inferred(func.return_type, hint) & seed.keys())
+        seed = self.drop_inferred_non_int_defaults(func, seed,
+                                                   frozenset(seeded))
         if seed and func.type_param_bounds:
             for tp in func.type_params:
                 if tp in seed:
@@ -1769,11 +1894,13 @@ class TypeOperations:
                 substituted = self.substitute_type_params(bound, seed)
                 if not contains_type_param(substituted):
                     seed[tp] = substituted
-        return seed
+                    if contains_type_param(bound, seeded):
+                        seeded.add(tp)
+        return ReturnSeed(seed, frozenset(seeded & seed.keys()))
 
     def seed_subst_from_record_pattern(
-        self, record: RecordInfo, expected_type: TpyType | None,
-    ) -> dict[str, TpyType]:
+        self, record: RecordInfo, expected_type: SlotHint | TpyType | None,
+    ) -> ReturnSeed:
         """Pre-bind type params by matching ``expected_type`` against a
         ``NominalType(record.name, [TypeParamRef(tp) ...])`` pattern.
 
@@ -1783,32 +1910,18 @@ class TypeOperations:
         Lets nested generic chains like ``Rc.new(Box(Box(Dog(...))))`` resolve
         through the inner Box's args, not just the outer Rc.new's.
         """
-        if expected_type is None or not record.type_params:
-            return {}
-        # Carry kind + bound on each TPRef so the seed pattern matches the
-        # record's actual type-param shape: INT-kind params (e.g. Array's N)
-        # pair against integer values in ``_match_array_with_inference``, and
-        # bounded type params surface the bound for downstream consumers
-        # that inspect TPRef.bound.
-        type_param_kinds = record.type_param_kinds or [TypeParamKind.TYPE] * len(record.type_params)
-        pattern_args: tuple[TpyType, ...] = tuple(
-            TypeParamRef(
-                tp,
-                bound=record.type_param_bounds.get(tp),
-                kind=type_param_kinds[i],
-            )
-            for i, tp in enumerate(record.type_params)
-        )
-        pattern = NominalType(
-            record.name,
-            pattern_args,
-            _module_qname=record.qualified_name(),
-        )
-        return self._seed_subst(pattern, expected_type)
+        hint = SlotHint.of(expected_type)
+        if hint is None or not record.type_params:
+            return ReturnSeed()
+        pattern = self.record_pattern(record)
+        subst = self._seed_subst(pattern, hint.type)
+        return ReturnSeed(
+            subst, params_at_inferred(pattern, hint) & subst.keys())
 
     def candidate_arg_hints(
-        self, func: FunctionInfo, n_args: int, lhs_hint: TpyType | None,
-    ) -> list[TpyType | None] | None:
+        self, func: FunctionInfo, n_args: int,
+        lhs: SlotHint | TpyType | None,
+    ) -> list[SlotHint | None] | None:
         """Per-arg ``expr_type_hint`` from one overload candidate + the LHS hint.
 
         Probe-time helper for overload pre-analysis: lets nested generic-call
@@ -1824,16 +1937,21 @@ class TypeOperations:
           entries may still be ``None`` when no useful hint can be derived
           (e.g. a generic candidate whose seed binds only return-type-only
           TPRefs, leaving every param's hint reduced via ``post_substitute_hint``
-          to None).
+          to None). A generic candidate's entries come from its return seed
+          (``ReturnSeed.arg_hint``, inferred where the seed is); a non-generic
+          candidate's are its declared parameter types. The probe decides
+          what they are to the arguments (``CallAnalyzer._probe_candidate_args``).
 
-        This split lets ``_probe_analyze_args`` / ``_probe_analyze_method_args``
+        This split lets ``CallAnalyzer._probe_candidate_args``
         distinguish "doesn't LHS-match" from "matches but has no useful per-arg
         hint" -- a conflation that would otherwise let a non-contributing
         LHS-matching candidate slip past the single-LHS-matching gate and
         leave the seed candidate's hint cached against a different winner.
         """
-        if lhs_hint is None:
+        lhs = SlotHint.of(lhs)
+        if lhs is None:
             return None
+        lhs_hint = lhs.type
         # Arity gate: skip candidates that can't actually accept ``n_args``
         # positional args. Otherwise an arity-mismatched-but-LHS-matching
         # candidate could be the sole contributor in the probe's
@@ -1847,8 +1965,8 @@ class TypeOperations:
         if n_args > func.max_args or n_args < func.min_args:
             return None
         if func.type_params:
-            seed = self.seed_subst_from_return_hint(func, lhs_hint)
-            if not seed:
+            seed = self.seed_subst_from_return_hint(func, lhs)
+            if not seed.subst:
                 return None
             return [seeded_arg_hint(func.params, i, seed) for i in range(n_args)]
         # Non-generic / substituted candidate. Gate on a structural match
@@ -1876,7 +1994,7 @@ class TypeOperations:
             {},
         ):
             return None
-        out: list[TpyType | None] = []
+        out: list[SlotHint | None] = []
         for i in range(n_args):
             # Mirrors ``seeded_arg_hint``: trailing args beyond fixed positional
             # slots target the variadic param's element type.
@@ -1890,14 +2008,9 @@ class TypeOperations:
             ptype = unwrap_ref_type(target.type)
             if target.is_variadic and is_varargs(ptype):
                 ptype = unwrap_readonly(ptype.type_args[0])
-            hint = unwrap_qualifiers(ptype)
-            # Mirror ``post_substitute_hint``: an ``Optional[T]`` param accepts
-            # a bare T arg, so the seeded hint exposes the inner T to the
-            # inner ctor / call's seed instead of forcing it to match the
-            # Optional shape.
-            if isinstance(hint, OptionalType):
-                hint = unwrap_qualifiers(hint.inner)
-            out.append(hint)
+            # An ``Optional[T]`` param accepts a bare T arg, so the hint
+            # exposes the inner T (``post_substitute_hint``'s shape).
+            out.append(SlotHint.declared(_hint_shape(ptype)))
         return out
 
     def _inherits_protocol(self, concrete: TpyType, protocol: NominalType) -> bool:

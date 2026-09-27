@@ -30,8 +30,6 @@ from ..typesys import (
     make_array,
     NoneType,
     is_bufferless_scalar,
-    is_any_float_type,
-    is_any_int_type,
     OptionalType,
     OwnType,
     PendingDictType,
@@ -64,7 +62,7 @@ from ..namespace import BindingKind
 from ..diagnostics import SemanticError
 from .type_join import (InferredJoin, JoinOutcome, descend,
                         find_int_float_mix, flipped, join_inferred_value_types,
-                        literal_leaf_mix,
+                        numeric_kind, peel_value,
                         python_type_name, rebind_mix_message,
                         usage_mix_message)
 from .numeric_lattice import (
@@ -416,18 +414,13 @@ class LocalTypeDeduction:
         truncate a float), where CPython keeps each value's own type."""
         if self.declared_slot_type(name, existing_type) is not None:
             return
-        current = unwrap_own(unwrap_ref_type(unwrap_readonly(existing_type)))
-        if isinstance(current, OptionalType):
-            current = unwrap_readonly(current.inner)
-        new = unwrap_own(unwrap_ref_type(unwrap_readonly(init_type)))
-        mix = self._rebind_mix(current, new, init_expr)
+        mix = self.int_float_mix(existing_type, init_type)
         if mix is None:
             return
         func = self.ctx.func
         earlier = []
         for t, e in func.write_history.get(name, []):
-            m = self._rebind_mix(
-                unwrap_own(unwrap_ref_type(unwrap_readonly(t))), new, init_expr)
+            m = self.int_float_mix(t, init_type)
             if e is not None and m is not None and m.int_first == mix.int_first:
                 earlier.append(e)
         line = next((e.loc.line for e in earlier if e.loc is not None), None)
@@ -441,22 +434,18 @@ class LocalTypeDeduction:
                                annotatable, bound_elsewhere),
             init_expr if init_expr is not None else site)
 
-    def _rebind_mix(self, current: TpyType, new: TpyType,
-                    new_expr: TpyExpr | None = None) -> InferredJoin | None:
+    def int_float_mix(self, current: TpyType,
+                      new: TpyType) -> InferredJoin | None:
         """The int/float mix between a local's type so far and a new binding,
         asked in that order. A pending container on one side is joined with
-        the concrete container on the other element by element."""
-        mix = find_int_float_mix(current, new)
-        if mix is not None:
-            return mix
-        # The value was analyzed with the local's type as its hint, which
-        # records a literal's int elements at the local's float type
-        # (BUGS.md#inferred-hint-converts-int-elements); its leaves keep
-        # their own.
-        if new_expr is not None and not isinstance(current, PENDING_CONTAINER_TYPES):
-            leaf_mix = literal_leaf_mix(new_expr, current, self.ctx.get_expr_type)
-            if leaf_mix is not None:
-                return flipped(leaf_mix)
+        the concrete container on the other element by element, also below
+        a tuple element or a container's type argument."""
+        return find_int_float_mix(current, new, leaf=self._pending_mix_leaf)
+
+    def _pending_mix_leaf(self, current: TpyType,
+                          new: TpyType) -> InferredJoin | None:
+        """`int_float_mix` at a pending container beside the concrete one it
+        would pin to, which the type walk does not descend itself."""
         pending = PENDING_CONTAINER_TYPES
         if isinstance(new, pending) and not isinstance(current, pending):
             verdict = self.pin_pending_container(new, current, commit=False)
@@ -751,7 +740,9 @@ class LocalTypeDeduction:
         incompatible = InferredJoin(JoinOutcome.INCOMPATIBLE)
 
         def literal_join(lit: TpyType, want: TpyType) -> TpyType | None:
-            numeric = is_any_int_type(want) or is_any_float_type(want)
+            # A `T | None` element is no numeric one to pin a literal to.
+            bare, nullable = peel_value(want)
+            numeric = numeric_kind(bare) is not None and not nullable
             return (want if numeric and self.compat.is_type_compatible(lit, want)
                     else None)
 
@@ -760,8 +751,10 @@ class LocalTypeDeduction:
             if isinstance(current, UnknownElementType):
                 return InferredJoin(JoinOutcome.JOINED, want)
             if not isinstance(current, (IntLiteralType, FloatLiteralType)):
-                return (InferredJoin(JoinOutcome.JOINED, current)
-                        if current == want else incompatible)
+                if current == want:
+                    return InferredJoin(JoinOutcome.JOINED, current)
+                # A nested container or tuple element keeps its ints too.
+                return self.int_float_mix(current, want) or incompatible
             # The recorded element type keeps one literal's value only, so
             # each element's own literal is joined.
             for leaf in leaves or [current]:
@@ -780,18 +773,26 @@ class LocalTypeDeduction:
 
         if isinstance(pending, PendingListType):
             info = self.ctx.list_literals.get(pending.literal_id)
-            if info is None or not is_list(target):
-                # An Array target already pinned the elements while it
-                # matched the literal's size (`pending_list_matches_array`).
+            to_array = is_array(target)
+            if info is None or not (is_list(target) or to_array):
                 return joined
             elem = target.type_args[0]
             if info.coerced_element_type is not None:
+                if to_array:
+                    return joined
                 return joined if info.coerced_element_type == elem else incompatible
             leaves = None
             if isinstance(info.expr, (TpyArrayLiteral, TpyListRepeat)):
                 leaves = [unwrap_own(self.ctx.get_expr_type(x) or info.element_type)
                           for x in info.expr.elements]
             verdict = pin(info.element_type, elem, leaves)
+            if to_array:
+                # An Array target pins the elements itself while it matches
+                # the literal's size (`pending_list_matches_array`); an int
+                # meeting its float is still a mix.
+                return (below(verdict, 0)
+                        if verdict.outcome is JoinOutcome.INT_FLOAT_MIX
+                        else joined)
             if verdict.outcome is JoinOutcome.JOINED:
                 if commit:
                     info.coerced_element_type = elem
