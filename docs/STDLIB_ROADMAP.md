@@ -136,7 +136,7 @@ Examples of the policy in action:
 | [`random`](#random) | P1 | Partial | ~90% | pure | Pure-TPy MT19937 + CPython's distribution suite, byte-identical to CPython on the same seed. Done: `Random` class, `random`, `seed(int32)` (negatives mapped to abs), `seed()` no-arg auto-seed via OS entropy, `getrandbits(k)` for arbitrary k, `randint`, `randrange`, `randbytes`, `choice`, `shuffle`, `uniform`, `triangular`, `gauss`, `normalvariate`, `lognormvariate`, `expovariate`, `paretovariate`, `weibullvariate`, `gammavariate`, `betavariate`, `vonmisesvariate`. Missing: `choices`/`sample`/`SystemRandom`/`binomialvariate`/`getstate` (Tier 3). See module docstring TODOs |
 | [`struct`](#struct) | P1 | Partial | ~60% | macro | unpack/calcsize only; `pack` needs statement-expr or buffer builder |
 | [`bisect`](#bisect) | P1 | Done | 100% | pure | All four functions implemented generically over `Comparable` |
-| [`enum`](#enum) | P1 | Partial | ~50% | macro | Enum/IntEnum/auto; missing functional API, lookup by name/value, iteration |
+| [`enum`](#enum) | P1 | Partial | ~70% | macro | Enum/IntEnum/auto, methods on the body, lookup by name/value, iteration; missing StrEnum/Flag, `len(E)`, functional API |
 | [`dataclasses`](#dataclasses) | P1 | Partial | ~80% | macro | frozen/order/inheritance/asdict/astuple/__post_init__; missing InitVar, replace(), metadata |
 | [`typing`](#typing) | P1 | Partial | ~60% | native | Protocols/Sized/Iterator/TypedDict/Unpack; missing Generic, TypeVar, ParamSpec, ClassVar |
 | [`datetime`](#datetime) | P1 | Partial | ~95% | pure | v1-v4 landed: `timedelta` + `date` + `time`/`datetime` incl. fixed-offset `timezone` AND `ZoneInfo` awareness (closed value union tz slot), PEP 495 fold, strftime/strptime/fromisoformat, timestamp/astimezone (iterative local-inverse), TZ-honoring Hinnant date backend, dt.date()/dt.time() accessors, `timedelta` float operators (`td / number`, `td */` float, round-half-to-even). Deferred: aware `time`, `timedelta` float constructor args (`timedelta(hours=1.5)` -- rejected; use integer components) **Un-importable at `--default-int int64`** (BigInt compiles) -- see BUGS.md "18 stdlib modules fail sema". |
@@ -958,10 +958,11 @@ Current: `lib/tpy/enum.py` -- macro module.
 | `auto()` | Done | |
 | `StrEnum` | Missing | Python 3.11+ |
 | `Flag`, `IntFlag` | Missing | Bitwise semantics |
-| Member iteration (`for m in E`) | Partial | Works at runtime; check exhaustiveness |
-| Lookup by value (`E(1)`) | Missing | |
-| Lookup by name (`E["FOO"]`) | Missing | |
+| Member iteration (`for m in E`) | Done | `len(E)` missing |
+| Lookup by value (`E(1)`) | Done | |
+| Lookup by name (`E["FOO"]`) | Done | |
 | `.name`, `.value` attributes | Done | |
+| Methods on the enum body | Done | instance, `@property`, `@staticmethod`, `@classmethod`, generic, `@error_return` |
 | Functional API (`E = Enum("E", "A B C")`) | Missing | Rarely used |
 | `@unique`, `@verify` decorators | Missing | |
 

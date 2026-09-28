@@ -3084,6 +3084,22 @@ Entries tagged `deferred: MIR` are gated on the THIR/MIR migration (see `docs/IR
   `S.sov("abc")` works across modules. Probes
   `/tmp/agents/ge/file/x/main.py`, `x/qual_str.py`, `x/name_str.py`,
   `x/stat.py`. Found 2026-09-28. Needs `/tpy-fix-bug`.
+- **[MED small] (rejects-valid, located) A generic function instantiated at `T = float` rejects at the call result: `first_of([1.5, 2.5])`.** [`generic-fn-float-instantiation-rejects`]
+  `def first_of[T](xs: list[T]) -> T: return xs[0]` called with a float
+  list stops with *this construct is not yet supported by C++ code
+  generation (stmt.expr_stmt:call.ret_type.other)* (a binding
+  `x = first_of([1.5, 2.5])` rejects at `expr.call:call.ret_type.other`);
+  the same call at
+  `int` and `str` compiles, literal arguments included, and CPython
+  prints `1.5`. Reported as a regression since v0.5.1 by the website's
+  compatibility probes. Repro `/tmp/agents/rel06/gen_float.py`. Found
+  2026-09-28.
+- **[MED small] (rejects-valid, located) A `match` whose subject is an enum MEMBER literal rejects: `match Color.RED:`.** [`match-enum-member-literal-subject-rejects`]
+  Stops with *this construct is not yet supported by C++ code generation
+  (stmt.match)*; the same arms over a variable subject compile, and
+  CPython prints `red`. Reported as a regression since v0.5.1 by the
+  website's compatibility probes. Repro
+  `/tmp/agents/rel06/match_enum_lit.py`. Found 2026-09-28.
 
 ## Safety / borrow checker
 

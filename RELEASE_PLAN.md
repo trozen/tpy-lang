@@ -12,7 +12,7 @@ the date. Trigger: about 200-300 commits or 4-6 weeks since the last tag.
 Readiness gate, run from the commit to be tagged:
 
 - full suite green with `--force-exec`;
-- `examples/` and `tpy-examples` compile and run CPython-identical;
+- the `tpy-examples` corpus compiles and runs CPython-identical;
 - clean-venv install smoke, `_buildinfo` stamp, private-name scan;
 - notes written: a Migration list for breaking changes, known
   limitations as classes.
@@ -29,6 +29,21 @@ Breaking:
   `Float32` -> `float32`, `Float64` -> `float64`, `Char` -> `char`.
 - Body codegen is THIR only; unlowered shapes are compile errors --
   TODO: "The post-cutover fix queue: shapes that are now compile errors".
+- `typing.overload` is CPython's form only; bodied variants use
+  `tpy.dispatch`.
+- `-O` / `--release` removed; optimized by default, `--debug` opts out.
+- Inferred int/float joins and rebinds refused; a declared `float` slot
+  converts.
+- `@error_return` classes derive from `Exception` directly, no
+  subclassing; returned as values.
+- Generators are single aliased objects, bound once; `tpy.copy(g)` and
+  rebinding the name are errors.
+- `bytes` / `bytearray` / `String` / `BytesView` / unions have their own
+  C++ types (`@native` companions see the new spellings).
+- Parent initializer rule: a skipped base initializer warns; a skipped
+  base without a default constructor, or a late base-init call, errors.
+- `binding="C"` signatures take C-representable types only.
+- `examples/` moved to the `tpy-examples` repo.
 
 Shipped: THIR cutover and AST-codegen deletion; methods on enums;
 interop Optional at the `@export` boundary; tuples U1

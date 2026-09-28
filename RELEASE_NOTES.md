@@ -1,5 +1,173 @@
 # Release Notes
 
+## 0.6.0 (2026-09-30)
+
+374 commits since 0.5.1. A breaking release -- read Migration first.
+
+### Migration
+
+- **Scalar type names are lowercase**: `Int8`..`Int64` -> `int8`..`int64`,
+  `UInt8`..`UInt64` -> `uint8`..`uint64`, `Float32` / `Float64` ->
+  `float32` / `float64`, `Char` -> `char`. No aliases. `float64` stays
+  an alias of `float`, `int` stays BigInt, and `String` / `StrView` /
+  `BigInt` and the protocol names keep CapWords. `--default-int` takes
+  `int32` / `int64` / `BigInt`. A bare old name fails with `Unknown
+  type: Int32`; `from tpy import Int32` is accepted at the import and
+  fails at the first use (`BUGS.md#tpy-import-unknown-name-undiagnosed`).
+- **`typing.overload` vs `tpy.dispatch`**: `typing.overload` keeps only
+  CPython's form -- bodyless stubs plus one implementation. Same-named
+  variants that each carry a body (or are `@native` / `@cpp_template`)
+  use `@tpy.dispatch`. The old inferred form ran under CPython only
+  through a `sitecustomize` patch and failed mypy/pyright.
+- **One numeric type per value**: an inferred join of an int and a float
+  -- `a if c else 2.5`, `[1, 2, 2.5]`, a local rebound from int to float,
+  an aug-assign accumulator -- is a compile error with a fix-it (write
+  `2.0`, `float(a)`, or annotate). A declared `float` slot converts.
+  Previously the int was widened to a double (`3.0` where CPython prints
+  `3`) or the float truncated.
+- **Build flags**: `-O` / `--release` are gone. Every build is optimized
+  (`-O3`); `--debug` selects `-g -O0`.
+- **`@error_return` exception classes** derive directly from `Exception`
+  and are not subclassed; they carry only the fields they declare (a
+  `message: str` field gets `__str__`) and are returned as plain values,
+  not thrown objects. `@export` on one is refused.
+- **Generators are single objects**: a second name aliases the generator
+  as in CPython, and a name holding a generator is bound once --
+  `g = gen(); ...; g = gen()` is refused. `tpy.copy(g)` is a compile
+  error; moving a started coroutine is a compile error, moving a started
+  generator a run-time panic.
+- **Parent initializer rule**: a subclass `__init__` that skips a base
+  initializer warns and the base is value-initialized; a skipped base
+  with no default constructor, or a late or nested base-init call, is
+  an error.
+- **C-linkage signatures** (`binding="C"`) accept only C-representable
+  types: `str`, `int` (BigInt), `bytes`, containers, TPy classes, C
+  structs by value and `*args` are rejected at the declaration instead
+  of emitting a signature no C caller can call; `Ptr[T]` and a
+  pointer-form Optional pass.
+- **C++ spellings that `@native` companion code sees**: `bytes`,
+  `bytearray` and `String` are `::tpy::Bytes`, `::tpy::ByteArray` and
+  `::tpy::String` (were `std::vector<uint8_t>` / `std::string`); a
+  `bytes` parameter and `BytesView` are `::tpy::BytesView` (was a
+  `std::span`); unions are `::tpy::Union<...>` (was `std::variant`). A
+  `bytearray` at an owning `bytes` slot is an error asking for
+  `bytes(...)`.
+- **Newly refused, each with a located error**: an `int32` parameter
+  rebound to a wider or float value; an ill-typed or out-of-range
+  parameter or field default (`int8 = 200` used to wrap); a float
+  pattern or out-of-range literal pattern on an int subject. The dev flag
+  `--thir-codegen` is gone.
+- **Body codegen is THIR only**: the AST body emitter is deleted. A shape
+  THIR cannot lower is a located compile error (`not yet supported by
+  C++ code generation (<tag>)`), never a silent fallback. The everyday
+  shapes came back through seven reject batches; the residue is in
+  `BUGS.md`.
+- **`examples/` left the repository**: the programs live in the
+  `tpy-examples` repo, verified against a pinned compiler there.
+
+### Language and compiler
+
+- **Enums**: methods on enum bodies -- instance, `@property`,
+  `@staticmethod`, `@classmethod`, generic and `@error_return` -- called
+  through a member, the type, and across modules.
+- **`@classmethod`** with `cls` bound to the defining class: `cls(...)`
+  as an alternate constructor, `cls.CONST`, `-> Self`.
+- **Value types**: a user `ValueType` record binds, passes, returns,
+  yields and is captured like a scalar at every position; a slot
+  declared before its first value is default-constructed.
+- **Generators and async frames**: one frame emitter for every generator
+  (the single-yield peephole is gone); a frame `for` evaluates its
+  source once and keeps it alive; view params, `*args` packs, `@dynamic`
+  params, constructor defaults and cross-module delegation ride the
+  frame; generator expressions lower to frames; `close()` unwinds like
+  CPython. Faster: unchecked slots, inline `__next__`, `StopIteration`
+  as a plain value -- up to 2x on consumer-heavy loops.
+- **Tuples**: the U1 silent-divergence unit -- unpack borrows a live
+  source, a borrowed element at an owning slot copies and warns, frame
+  temp elements, iterator copies and lending fixed; a tuple-of-references
+  global is pointer slots (`docs/TUPLE_COMPLETION_PLAN.md`).
+- **Unions and buffers**: `::tpy::Union` is one type for the value and
+  storage forms and owns Python's comparison rule, at a borrow too;
+  `String`, `bytes`, `bytearray` and `BytesView` are distinct C++ types.
+- **Binding rules**: sibling `match` arms and `except` handlers join a
+  local's bindings; one definite-assignment rule for loop clauses and
+  heads; loop-body locals read after the loop; `elif`-arm locals,
+  nested-def shadowing and loop-variable reuse; an inferred local's type
+  hints its rebind; a lambda borrow rooted in a body temporary is
+  rejected; parameter and field defaults (including `Literal[...]`
+  slots) are checked against their slot at the `def`.
+- **Liveness**: exception edges, jumps, zero-trip loops and `finally`
+  are modelled, so reads after them keep a value live instead of being
+  moved from; a comprehension or genexpr that grows its source warns; a
+  `for` over a genexpr takes a loan on its source.
+- **Match**: three internal errors and two miscompiles on valid Python
+  fixed; capture rebinds write through; a capture's mutation is credited
+  to the subject.
+- **Lambdas and callables**: the body is typed from its slot; class
+  names as callables; indexed callable fields invoke.
+- **Builtins and syntax**: `input(prompt)`, EOF raises `EOFError`;
+  `repr()` for `bytes`, `bytearray` and `range`; bare `return` is
+  `return None`; a `global`-declared walrus target; `except` / `with` /
+  `match` captures over a same-named class.
+- **Analysis-only MIR**: a bounded MIR over storage regions, holder
+  liveness and retained references, inspectable with `--dump-mir`; no
+  effect on generated code yet.
+- A defaulted parameter before a required keyword-only one
+  (`def f(a, b=10, *, c)`) builds; the default is materialized at the
+  call site.
+
+### Generated C++
+
+Readable by design: with `--emit-source` each definition's Python source
+is echoed as one block above its C++, temporaries are numbered per
+function, member-init lists render one per line, frame structs are
+ordered by what they embed, and same-module free calls are
+namespace-qualified so ADL cannot hijack them.
+
+### CPython extension authoring
+
+`Optional[T]` crosses the `@export` boundary (params, returns and
+value-form fields); defaults, keyword-only and positional-only params
+cross, a defaulted one ahead of a required keyword-only one included;
+docstrings cross as `__doc__` for functions, classes and enums;
+extensions link on macOS.
+
+### Library
+
+- **`zlib` and `gzip`** over a vendored zlib
+  (`--zlib=bundled|system|auto|none`).
+- **`termios` and `tty`**; `os.set_blocking`, `os.get_blocking`,
+  `os.openpty`.
+- **`math`**: `log`, `sqrt` and the other domain-checked functions raise
+  CPython's `ValueError` / `OverflowError` again.
+
+### Tooling and testing
+
+- Build: the precompiled header is stamped and `--rebuild` refreshes
+  it; CLI interrupts are handled.
+- Diagnostics are linted for C++ and internal names.
+- Testing: `pytest-hosts` runs one xdist session over local and remote
+  hosts; ccache is shared across worktrees; worksteal distribution;
+  host-independent collection order.
+- Nightly containers run at low CPU priority; `_buildinfo` is stamped
+  off-tree; sdists walk only packaged directories.
+
+### Known issues
+
+Tracked in `BUGS.md`. The classes that matter most: a value moved at its
+last use while an alias, a closure or a `finally` still reads it, and a
+rebind of a container local that a multi-hop alias or a live `for`
+points into (use-after-free shapes -- retired by the MIR ownership
+checker, not patched piecemeal); an un-narrowed Optional container
+element read can drop its null check; a view can outlive its source (a
+loop element over a temporary, a closure field write, a temporary
+hoisted into a frame); call arguments and operands are evaluated in the
+C++ compiler's order, not left to right; tuple reference elements at
+consuming positions reject; THIR shapes without a lowering arm reject,
+located; a variable-free int constant at a method argument is evaluated
+at run time and can trap; the C-ABI allow-list overshoots; a generic
+function at `float` and a `match` on a literal enum member reject.
+
 ## 0.5.1 (2026-07-24)
 
 Toolchain-preflight patch release.

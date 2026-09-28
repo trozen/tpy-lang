@@ -6411,14 +6411,14 @@ Currently working with a stable surface:
 
 | Module | Notes |
 |---|---|
-| `math` | Partial (~50%). Checked libm bindings + pure TPy helpers |
+| `math` | Done (~99%). Checked libm bindings + pure TPy helpers; tuple as iterable waits on tuple iteration |
 | `time` | Stub (`time()`, `sleep()`). More planned |
 | `sys` | Stub (`argv`, `stdout`, `stderr`, `exit`, `maxsize`, `byteorder`, `maxunicode`). More planned |
 | `random` | Stub (`random()`, `seed()`). Target: pure-TPy Mersenne Twister |
 | `bisect` | Done. Pure TPy over the `Comparable` protocol |
 | `functools` | Partial. 3-arg `reduce(func, a, initial)` only. See STDLIB_ROADMAP.md for blocked items |
 | `struct` | Partial (`unpack`, `unpack_from`, `calcsize`) via compile-time macros |
-| `enum` | Partial (`Enum`, `IntEnum`, `auto()`) via class macro |
+| `enum` | Partial (`Enum`, `IntEnum`, `auto()`, methods on the body, lookup by name/value, iteration) via class macro; missing `StrEnum`/`Flag`, `len(E)`, functional API |
 | `dataclasses` | Partial (~80%; `@dataclass(frozen, order)`, `field()`, `asdict()`, `astuple()`, `__post_init__`) via class macro |
 | `argparse` | Partial (~88%; `ArgumentParser` with `prog=`/`usage=`/`epilog=`/`add_help=`, all 7 actions, all 4 nargs forms, `type=int\|float\|str\|float32` + fixed-width ints + custom records via `@staticmethod from_arg`, `choices`/`required`/`dest`/`help`/`metavar`, scalar + list-literal defaults, `Optional[T]` / `Optional[list[T]]` for absent flags, bare `parse_args()` reads `sys.argv[1:]`, `--help`/`-h` auto-generation with CPython-style 80-col usage wrap, parse errors via stderr + `sys.exit(2)`, subparsers via `add_subparsers()` + `add_parser()` with flat per-sub fields exposed as `Optional[T]` on the top namespace) via builder-trace macro. Open: mutually-exclusive groups, runtime-derived `prog` default, terminal-width-aware help wrap, typed-union escape hatch on subparsers (sema phasing wall lifted by the pre-pass-6 builder-trace move; remaining work is private-record reachability + per-sub forwarder emission, tracked in MACRO_DESIGN.md) |
 | `typing` | Partial (`Protocol`, `Self`, `Sized`, `Iterator`, `Iterable`, `TypedDict`, `Unpack`, etc.) |
@@ -7011,11 +7011,10 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   boundary types can carry a default in the first place, since a default must
   be a constant expression. A dunder still takes none of
   these forms: it crosses as a type slot whose operand CPython supplies
-  directly, so there is no argument tuple to parse. One shape does not build
-  yet -- a defaulted parameter before a *required* keyword-only one
-  (`def f(a, b=10, *, c)`) -- because TPy lowers defaults to C++ positional
-  default arguments, which must be trailing; that limitation is plain-TPy, not
-  boundary-specific, and is tracked in `BUGS.md`.
+  directly, so there is no argument tuple to parse. A defaulted parameter
+  before a *required* keyword-only one (`def f(a, b=10, *, c)`) builds: C++
+  default arguments must be trailing, so that default has no C++ spelling and
+  is materialized at the call site instead.
 - **Working (the fixed-width int types + `int` + `float` + `bool`)**: functions
   taking and returning any fixed-width int (`int8`..`int64` / `uint8`..`uint64`;
   the unpack splits args/kwargs into `PyObject*` slots with `from_py` owning
