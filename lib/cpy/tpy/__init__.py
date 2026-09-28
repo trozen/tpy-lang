@@ -990,6 +990,11 @@ class ReturnException(_Protocol):
     pass
 
 
+# Every CPython exception is a Throwable; the alias keeps
+# `isinstance(e, Throwable)` and `Box[Throwable]` meaningful under CPython.
+Throwable = BaseException
+
+
 class Hashable(_Protocol):
     """Protocol for types supporting hash() via __hash__."""
     def __hash__(self) -> int: ...

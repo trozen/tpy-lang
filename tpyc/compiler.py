@@ -2614,7 +2614,10 @@ class Compiler:
         compilation phase order is legible inline in `_analyze_module`.
         """
         from tpyc.parse.resolve_refs import resolve_refs
-        resolve_refs(compiled.ast)
+        try:
+            resolve_refs(compiled.ast)
+        except ParseError as e:
+            raise CompileError(e.message, compiled.name, compiled.path, lineno=e.lineno)
 
     def _resolve_types_for_module(self, compiled: CompiledModule) -> None:
         """Canonicalize imports and resolve TypeRefNodes for one

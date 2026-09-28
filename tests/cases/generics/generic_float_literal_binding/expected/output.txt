@@ -1,0 +1,37 @@
+free: 1.5
+free: 1.5
+free: 2.5
+free: 1.5
+free: 1.5
+free: 1.5
+free: 1.5
+twin: 1 a
+tuple_t: (1.5, 2)
+tuple_t: (1, 2)
+method: 1.5 2.0
+closure: 3.0
+generator: 1.5
+async: 1.5
+comprehension: [1.5, 1.5]
+try_finally: 1.5
+try_finally: done
+match_arm: 1.5
+lambda_fn_slot: 3.0
+lambda_fn_slot: 3.0
+lambda_fn_slot: (1, 2)
+lambda_fn_slot: (1.5, 2)
+lambda_fn_slot: (1, 2)
+named_fn_slot: (2, 1)
+named_fn_slot: 3
+pending_instance: 1.5
+builtins: 4.0
+builtins: [1.5, 2.5]
+builtins: {1.5}
+builtins: [0.5]
+builtins: [(0, 1.5), (1, 2.5)]
+builtins: [0.5]
+builtins: 1.5
+builtins: [1.5, 2.5]
+float32_dest: 1.5
+float32_dest: 0.25
+global: False True

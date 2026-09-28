@@ -407,8 +407,9 @@ std::string int_float_guard(int32_t a, double g, int32_t k) {
     case 1: {
         if ((a || g)) {
             return "one";
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     default: __match_default_2: {

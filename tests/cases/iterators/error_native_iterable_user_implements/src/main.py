@@ -2,7 +2,8 @@
 # declare it explicitly are rejected at sema -- the C++ NativeIterable
 # concept requires real begin/end, which TPy can only guarantee for
 # built-ins. User types should use Spannable[T] or Iterable[T] instead.
-from tpy import int32, Iterator, NativeIterable, Own
+from typing import Iterator
+from tpy import int32, NativeIterable, Own
 
 
 class CounterIter:

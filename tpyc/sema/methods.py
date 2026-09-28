@@ -1533,10 +1533,10 @@ class MethodAnalyzer:
         for (pname, ptype), arg_type in zip(method.params, arg_types):
             if not contains_type_param(ptype, type_param_names):
                 continue
-            # Resolve IntLiteralType before binding
+            # Resolve a literal marker before binding
             resolved_arg = arg_type
-            if isinstance(resolved_arg, IntLiteralType):
-                resolved_arg = self.ctx.default_int_for_literal(resolved_arg)
+            if isinstance(resolved_arg, (IntLiteralType, FloatLiteralType)):
+                resolved_arg = resolve_int_literals(resolved_arg, self.ctx.default_int_for_literal)
             if not self.type_ops.match_type_with_inference(ptype, resolved_arg, info.inferred):
                 # Check if this is a conflict with an existing binding
                 for tp in info.type_params:
@@ -1553,10 +1553,10 @@ class MethodAnalyzer:
                                 expr,
                             )
 
-        # Resolve IntLiteralType in any newly inferred params
+        # Resolve literal markers in any newly inferred params
         for k, v in list(info.inferred.items()):
-            if isinstance(v, IntLiteralType):
-                info.inferred[k] = self.ctx.default_int_for_literal(v)
+            if isinstance(v, TpyType):
+                info.inferred[k] = resolve_int_literals(v, self.ctx.default_int_for_literal)
 
         # Check if all type params are now resolved
         all_resolved = all(tp in info.inferred for tp in info.type_params)
@@ -1666,10 +1666,10 @@ class MethodAnalyzer:
                         )
             return None
 
-        # Resolve IntLiteralType in any newly inferred params
+        # Resolve literal markers in any newly inferred params
         for k, v in list(info.inferred.items()):
-            if isinstance(v, IntLiteralType):
-                info.inferred[k] = self.ctx.default_int_for_literal(v)
+            if isinstance(v, TpyType):
+                info.inferred[k] = resolve_int_literals(v, self.ctx.default_int_for_literal)
 
         # Check if all type params are now resolved
         if not all(tp in info.inferred for tp in info.type_params):

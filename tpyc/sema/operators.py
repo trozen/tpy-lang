@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType, TypeParamRef,
     ResolvedBinop, ResolvedUnaryop, FunctionInfo, TypeParamKind,
     INT32, FLOAT, PendingListType, make_list, OwnType, unwrap_ref_type,
-    unwrap_readonly,
+    unwrap_readonly, resolve_int_literals,
 )
 from .overloads import type_matches_numeric, type_matches_strict
 from tpyc import modules as builtin_modules
@@ -163,12 +163,14 @@ class OperatorResolver:
             return {}
         arg_params = builtin_modules.extract_type_params(arg_effective)
         for name, typ in list(subst.items()):
-            if isinstance(typ, IntLiteralType):
+            if isinstance(typ, (IntLiteralType, FloatLiteralType)):
                 arg_val = arg_params.get(name)
-                if arg_val is not None and not isinstance(arg_val, IntLiteralType):
+                if arg_val is not None and not isinstance(arg_val, (IntLiteralType, FloatLiteralType)):
                     subst[name] = arg_val
                 else:
-                    subst[name] = self.ctx.default_int_for_literal(typ)
+                    subst[name] = resolve_int_literals(typ, self.ctx.default_int_for_literal)
+            else:
+                subst[name] = resolve_int_literals(typ, self.ctx.default_int_for_literal)
         return subst
 
     def _find_matching_overload(

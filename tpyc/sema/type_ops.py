@@ -20,7 +20,7 @@ from ..typesys import (
     is_callable_type, is_integer_type, is_float_type,
     is_void_like_type,
     is_open_type_param_return, contains_type_param, coro_struct_owner,
-    strip_template_repr,
+    strip_template_repr, resolve_int_literals,
 )
 from ..coercions import resolve_coercion, CoercionContext
 from ..diagnostics import SemanticError, nocopy_container_elem_error
@@ -1543,8 +1543,8 @@ class TypeOperations:
 
         # Resolve pending types for codegen.
         for k, v in list(inferred.items()):
-            if isinstance(v, IntLiteralType):
-                inferred[k] = self.ctx.default_int_for_literal(v)
+            if isinstance(v, (IntLiteralType, FloatLiteralType)):
+                inferred[k] = resolve_int_literals(v, self.ctx.default_int_for_literal)
             elif isinstance(v, VoidType):
                 # A `-> None` conformer method binds VoidType; the explicit
                 # `None` type arg spells NoneType -- canonicalize so both
@@ -1553,8 +1553,8 @@ class TypeOperations:
             elif isinstance(v, PendingListType):
                 # Resolve PendingListType to list
                 elem_type = v.element_type
-                if isinstance(elem_type, IntLiteralType):
-                    elem_type = self.ctx.default_int_for_literal(elem_type)
+                if isinstance(elem_type, (IntLiteralType, FloatLiteralType)):
+                    elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
                 inferred[k] = make_list(elem_type)
 
         # An empty container literal pins T to UnknownElementType but

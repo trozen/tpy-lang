@@ -104,6 +104,8 @@ from .nodes import (
     THIRMethodCall,
     THIRModuleVar,
     THIRDecayCopy,
+    THIROptionalRecvCheck,
+    OptionalCheckSpelling,
     THIRMove,
     THIRName,
     THIRDynNarrowAlias,
@@ -1586,6 +1588,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         sub = _emit_subscript(e, state)
         return (f"::tpy::deref_optional_check({sub})"
                 if e.opt_deref_check else sub)
+    if isinstance(e, THIROptionalRecvCheck):
+        check = ("deref_check" if e.spelling is OptionalCheckSpelling.PTR
+                 else "deref_optional_check")
+        return f"::tpy::{check}({_emit_expr(e.value, state)})"
     if isinstance(e, THIRStrSlice):
         return _emit_str_slice(e, state)
     if isinstance(e, THIRFormConvert):
@@ -3004,10 +3010,10 @@ def _emit_match_switch(out: TextIO, stmt: THIRMatch, indent_level: int,
     # (binding, body one level in) or the guard chain (every entry's
     # binding first, deduped by name, then `if (g) { ... } else if ... }
     # else { ... }` with bodies two levels in; an all-guarded labeled group
-    # falls back via `goto __match_default_N;`). A group closes with
-    # `break;` unless every path through it terminates (still written
-    # after the default goto). The always-match group was placed last at
-    # lowering.
+    # ends the chain with `} else { goto __match_default_N; }`). A group
+    # closes with `break;` unless every path through it terminates (an
+    # all-guarded group keeps it: a taken guard body MAY reach it). The
+    # always-match group was placed last at lowering.
     indent = INDENT * indent_level
     inner = INDENT * (indent_level + 1)
     default_label = None
@@ -3053,10 +3059,13 @@ def _emit_match_switch(out: TextIO, stmt: THIRMatch, indent_level: int,
                 else:
                     out.write(f"{inner}}} else {{\n")
                 _emit_match_arm_body(out, entry, indent_level + 2, state)
-            out.write(f"{inner}}}\n")
+            # The fallback is the chain's last `else`: a statement after the
+            # chain would also run once a taken guard body falls off its end.
             if (not has_unguarded and default_label is not None
                     and arm.labels):
-                out.write(f"{inner}goto {default_label};\n")
+                out.write(f"{inner}}} else {{\n")
+                out.write(f"{inner}{INDENT}goto {default_label};\n")
+            out.write(f"{inner}}}\n")
         # A group whose every path terminates never reaches its `break;`
         # (the unguarded entry, when present, is the chain's last `else`).
         if not (any(e.guard is None for e in arm.entries)

@@ -13,6 +13,7 @@ from .nodes import (
     TpyImport, ParseWarning,
 )
 from ..module_names import public_module_name
+from ..modules.resolver import ModuleResolver
 
 # Implicit stdlib modules -- always compiled by the compiler, so imports from
 # these modules don't need TpyImport nodes for __tpy_init() ordering.
@@ -194,6 +195,27 @@ def route_stdlib_name(name: str) -> 'tuple[str, str] | None':
     return None
 
 
+def get_implicit_module_exports(module_name: str) -> frozenset[str]:
+    """Names exported by an implicit stdlib module (`tpy` / `builtins` /
+    `typing`); empty when the module's stub is missing."""
+    if module_name == "tpy":
+        return get_tpy_exports()
+    if module_name == "builtins":
+        return get_builtins_exports()
+    if module_name == "typing":
+        return get_typing_exports()
+    raise AssertionError(f"not an implicit stdlib module: {module_name!r}")
+
+
+def _is_stdlib_submodule(module_name: str, name: str) -> bool:
+    # Deferred: tpyc.__init__ imports tpyc.parse, so top-level would be circular.
+    from tpyc import get_lib_dir
+    # The resolver's lookup, so a case-insensitive filesystem cannot
+    # resolve `Atomic` to `atomic.py`.
+    return ModuleResolver(get_lib_dir() / "tpy").resolve(
+        f"{module_name}.{name}") is not None
+
+
 def is_parser_keyword(module_name: str, name: str) -> bool:
     """Check if a specific name from a module is a parser keyword.
 
@@ -348,13 +370,7 @@ class ImportProcessor:
             f"{module_name!r}; user-module star imports are expanded "
             f"at compile time, not parse time."
         )
-        if module_name == "tpy":
-            return get_tpy_exports()
-        if module_name == "builtins":
-            return get_builtins_exports()
-        if module_name == "typing":
-            return get_typing_exports()
-        return None
+        return get_implicit_module_exports(module_name)
 
     def _resolve_relative_to_absolute(self, level: int, partial: str | None) -> str | None:
         """Resolve a relative import to an absolute module name.
@@ -391,6 +407,25 @@ class ImportProcessor:
                 if not any(isinstance(s, TpyImport) and s.module_name == module_name for s in top_level_stmts):
                     import_alias = local_name if local_name != module_name else None
                     top_level_stmts.append(TpyImport(module_name=module_name, alias=import_alias, loc=SourceLocation(node.lineno, node.col_offset)))
+
+    def _check_implicit_module_names(self, module_name: str, node: ast.ImportFrom) -> None:
+        """Reject a `from tpy|typing|builtins import X` naming no export.
+
+        Checked here because sema binds these modules' names leniently."""
+        exports = get_implicit_module_exports(module_name)
+        if not exports:
+            return
+        for alias in node.names:
+            name = alias.name
+            if name == "*" or name in exports:
+                continue
+            if _is_stdlib_submodule(module_name, name):
+                raise ParseError(
+                    f"'from {module_name} import {name}' does not bind the "
+                    f"submodule yet; use 'import {module_name}.{name}' or "
+                    f"'from {module_name}.{name} import ...'", alias)
+            raise ParseError(
+                f"'{name}' not found in module '{module_name}'", alias)
 
     def process_import_from(self, node: ast.ImportFrom, imports: dict, user_module_imports: dict,
                             top_level_stmts: list, module_aliases: dict) -> None:
@@ -441,6 +476,9 @@ class ImportProcessor:
         # Skip __future__ imports -- CPython compatibility, no-op for TurboPython
         if module_name == "__future__":
             return
+
+        if module_name in _IMPLICIT_MODULES:
+            self._check_implicit_module_names(module_name, node)
 
         # tpy has special star-import and alias tracking. Cannot collapse
         # into the generic `_IMPLICIT_MODULES` branch below because (a) the

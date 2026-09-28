@@ -7169,6 +7169,9 @@ class StatementAnalyzer:
             if is_span(actual):
                 raise self.ctx.error(
                     "Spans are read-only views; cannot delete span elements", stmt)
+            if isinstance(subscript.index, TpySlice):
+                raise self.ctx.error(
+                    "deleting a slice ('del xs[a:b]') is not yet supported", stmt)
             # Check that the type has __delitem__
             record_info = self.ctx.registry.get_record_for_type(actual)
             if record_info:

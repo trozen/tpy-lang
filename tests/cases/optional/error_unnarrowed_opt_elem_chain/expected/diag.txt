@@ -1,2 +1,2 @@
-main.py:38: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
-main.py:38: error: in function 'first_row': this construct is not yet supported by C++ code generation (stmt.return:subscript.recv.field_chain)
+main.py:36: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:36: error: in function 'bump': this construct is not yet supported by C++ code generation (stmt.aug_assign)

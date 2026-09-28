@@ -4714,6 +4714,9 @@ class ExpressionAnalyzer:
     def _analyze_subscript(self, expr: TpySubscript,
                           obj_type: TpyType | None = None) -> TpyType:
         """Analyze subscript indexing: obj[index] or slicing: obj[start:stop]"""
+        # Decided afresh on every analysis: an overload trial may have analyzed
+        # this node under an Optional receiver type the winner does not have.
+        expr.needs_optional_runtime_check = False
         # Enum name lookup: Color["Red"] -> Color (panics on invalid)
         if isinstance(expr.obj, TpyName) and self.ctx.func.current_ns:
             binding = self.ctx.func.current_ns.lookup(expr.obj.name)

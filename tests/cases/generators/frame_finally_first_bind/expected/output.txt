@@ -1,0 +1,59 @@
+gen_fn y 1
+gen_fn fin 1
+gen_method y 0
+gen_method fin 1
+gen_method n 1
+async_fn fin 6
+async_fn ret 7
+async_method fin 11
+async_method ret 11
+for_in_finally y 1
+for_in_finally fin 0
+for_in_finally fin 2
+if_in_finally y 1
+if_in_finally fin 4
+if_in_finally y 1
+while_in_finally fin 0
+while_in_finally fin 3
+nested_try_finally y 1
+nested_try_finally inner 1
+nested_try_finally outer 2
+read_after_try y 1
+read_after_try y 9
+read_after_try after 9
+unpack_literal y 1
+unpack_literal fin 1 2
+annotated y 1
+annotated fin 2
+return_path y 1
+return_path fin 3
+return_path y 1
+return_path y 2
+return_path fin 3
+break_path y 0
+break_path fin 0
+break_path y 1
+break_path fin 10
+break_path done
+closed_early y 1
+closed_early fin 7
+closed_early after
+exception_path y 1
+exception_path fin 3
+exception_path caught boom
+str_local y a
+str_local fin
+list_local y 1
+list_local fin [1, 2, 3]
+alias y 1
+alias fin 2
+alias after 2
+optional_ref y 1
+optional_ref fin 6
+optional_ref after 6
+with_in_finally y 1
+with_in_finally enter
+with_in_finally fin 8
+with_in_finally exit
+tuple_local y 1
+tuple_local fin 1 a

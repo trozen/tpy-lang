@@ -6,7 +6,7 @@ from ._types import (
     Seekable, Closable,
     # Marker protocols
     NativeIterable, NativeRangeConstructible, ValueType, Copyable, Send, Sync,
-    Default, Covariant, ReturnException,
+    Default, Covariant, ReturnException, Throwable,
     # Fixed-width integer constraint protocols
     AnyFixedInt, AnyFixedSigned, AnyFixedUnsigned,
     # Primitive types

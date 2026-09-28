@@ -1312,6 +1312,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "subscript.narrowed_ptr_opt_recv",  # subscript off a None-narrowed
                                     # ptr-repr Optional[container] name (read
                                     # or write target) -> the `(*recv)` deref
+    "subscript.opt_recv_check_ptr",  # subscript off an UNPROVEN ptr-repr
+                                    # Optional[container] -> deref_check(recv)
+    "subscript.opt_recv_check_optional",  # ... off an UNPROVEN storage
+                                    # optional -> deref_optional_check(recv)
     "subscript.bytearray_recv",     # `b[i]` off a bytearray name/field ->
                                     # the bytes @native dunder bytes_getitem
     "optptr.container_call_temp",   # container-returning rvalue CALL at an

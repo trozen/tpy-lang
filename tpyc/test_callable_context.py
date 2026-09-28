@@ -14,7 +14,8 @@ from .typesys import TypeParamRef
 ])
 def test_owned_callable_preserves_parameter_context(parameter: str) -> None:
     source = f'''from typing import Callable
-from tpy import Own, readonly, Ptr, Span, Box, Rc, int32
+from tpy import Own, readonly, Ptr, Span, int32
+from tplib import Box, Rc
 def accept(f: Own[Callable[[{parameter}], int32]]):
     pass
 def run():

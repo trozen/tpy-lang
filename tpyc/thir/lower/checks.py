@@ -351,7 +351,7 @@ from .predicates import (
     _unown_type_args,
     _str_concat_operand,
     _subscript_container_recv_type,
-    _narrowed_ptr_opt_recv,
+    _ptr_opt_binding_inner,
     _tparam_value,
     _tuple_subscript_container_elem_read,
     _tuple_subscript_value_read,
@@ -3428,7 +3428,7 @@ def _setitem_target_ok(
     recv_t = _subscript_container_recv_type(recv, declared, analyzer,
                                             narrowed_ok=True)
     # The family check below reads the narrowed INNER container.
-    _nptr = _narrowed_ptr_opt_recv(recv, recv_t, pointers)
+    _nptr = _ptr_opt_binding_inner(recv, recv_t, pointers)
     if _nptr is not None:
         recv_t = _nptr
     if recv_t is None:

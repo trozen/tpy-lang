@@ -1,5 +1,5 @@
 from tpy.extern import native
-from tpy import int32, Float, Ptr, Own
+from tpy import int32, Ptr, Own
 
 # @native class — C++ class import (constructor call syntax)
 @native

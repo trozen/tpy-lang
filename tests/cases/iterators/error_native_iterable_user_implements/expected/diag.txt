@@ -1,1 +1,1 @@
-main.py:22: error: Class 'Counter' cannot implement NativeIterable: NativeIterable is reserved for @native types. Use Spannable[T] for span-backed types, or Iterable[T] for general iteration.
+main.py:23: error: Class 'Counter' cannot implement NativeIterable: NativeIterable is reserved for @native types. Use Spannable[T] for span-backed types, or Iterable[T] for general iteration.

@@ -103,6 +103,10 @@ _UNARYOP_TO_STR: dict[type, str] = {
     ast.UAdd: "+", ast.USub: "-", ast.Not: "!", ast.Invert: "~",
 }
 
+# Names, not classes: the Python running the compiler may predate them.
+_TEMPLATE_STRING_NODES = frozenset({"TemplateStr", "Interpolation"})
+_EXCERPT_LIMIT = 40
+
 
 def _validate_fstring_format_spec(spec: str) -> str | None:
     """Validate an f-string format spec against C++ std::format support.
@@ -969,7 +973,7 @@ class Parser:
                 raise ParseError(
                     f"Type alias '{node.name.id}': only simple type "
                     f"parameters are supported in v1; got "
-                    f"{type(tp).__name__}",
+                    f"'{self._source_excerpt(tp)}'",
                     node,
                 )
             if tp.bound is not None:
@@ -1736,7 +1740,7 @@ class Parser:
                     else:
                         type_param_kinds.append(TypeParamKind.TYPE)
                 else:
-                    raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
+                    raise ParseError(self._unsupported_type_param(tp), tp)
 
         # A conditional override conditions the trait on type parameters, so it
         # is meaningless on a non-generic class (it could never fire, silently
@@ -2016,7 +2020,7 @@ class Parser:
                 if isinstance(tp, ast.TypeVar):
                     type_params.append(tp.name)
                 else:
-                    raise ParseError(f"Only simple type parameters supported in protocols, got {type(tp).__name__}", node)
+                    raise ParseError(self._unsupported_type_param(tp), tp)
 
         # Set type param scope for parsing parent protocols and method signatures
         # (all TYPE kind for protocols).
@@ -2035,7 +2039,7 @@ class Parser:
             if not isinstance(ref, TpyTypeRef):
                 raise ParseError(
                     f"Protocol parents must be simple type references "
-                    f"(`Name` or `Name[...]`), got {type(ref).__name__}",
+                    f"(`Name` or `Name[...]`), got '{self._source_excerpt(base)}'",
                     base
                 )
             parent_protocols.append(ref)
@@ -2117,7 +2121,9 @@ class Parser:
                 else:
                     raise ParseError(f"Unexpected expression in protocol '{node.name}'", item)
             else:
-                raise ParseError(f"Unsupported construct in protocol '{node.name}': {type(item).__name__}", item)
+                raise ParseError(
+                    f"Unsupported construct in protocol '{node.name}': "
+                    f"'{self._source_excerpt(item)}'", item)
 
         # Restore the scope
         self._type_param_scope = old_scope
@@ -2627,7 +2633,7 @@ class Parser:
                         # Protocol bound -- resolution + validation deferred to sema.
                         method_type_param_bounds[tp.name] = self._parse_type_ref(tp.bound)
                 else:
-                    raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
+                    raise ParseError(self._unsupported_type_param(tp), tp)
 
         # Early @auto_readonly + method type params guard. Sema catches
         # the self-annotation / per-param paths, but running this at parse
@@ -3031,7 +3037,7 @@ class Parser:
                     else:
                         type_param_kinds.append(TypeParamKind.TYPE)
                 else:
-                    raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
+                    raise ParseError(self._unsupported_type_param(tp), tp)
 
         # Set scope for parsing parameter and return types
         type_param_scope = (
@@ -3800,7 +3806,7 @@ class Parser:
             # Augmented assignment: x += expr
             target = self._parse_expr(node.target)
             value = self._parse_expr(node.value)
-            op = self._binop_to_str(node.op)
+            op = self._binop_to_str(node.op, node)
             return TpyAugAssign(target, op, value, loc=loc)
 
         elif isinstance(node, ast.Expr):
@@ -3917,7 +3923,7 @@ class Parser:
                 f"async def is only allowed at module level", node)
 
         else:
-            raise ParseError(f"Unsupported statement: {type(node).__name__}", node)
+            raise ParseError(self._describe_unsupported_stmt(node), node)
 
     def _parse_raise(self, node: ast.Raise, loc: SourceLocation | None) -> TpyStmt:
         """Parse a raise statement: raise E, raise E(args), or bare raise."""
@@ -4106,16 +4112,17 @@ class Parser:
         attrs: list[TpyFieldAccess] = []
         for target in node.targets:
             if isinstance(target, ast.Subscript):
-                obj = self._parse_expr(target.value)
-                index = self._parse_expr(target.slice)
-                subscripts.append(TpySubscript(obj, index, loc=loc))
+                subscript = self._parse_expr(target)
+                assert isinstance(subscript, TpySubscript)
+                subscripts.append(subscript)
             elif isinstance(target, ast.Name):
                 names.append(target.id)
             elif isinstance(target, ast.Attribute):
                 obj = self._parse_expr(target.value)
                 attrs.append(TpyFieldAccess(obj=obj, field=target.attr, loc=loc))
             else:
-                raise ParseError(f"Unsupported del target: {type(target).__name__}", node)
+                raise ParseError(
+                    f"unsupported 'del' target: '{self._source_excerpt(target)}'", target)
         # Mixing the three kinds in one statement is rare; reject for clarity
         # (matches the existing subscript+name rejection).
         kinds_present = sum(1 for k in (subscripts, names, attrs) if k)
@@ -4211,7 +4218,7 @@ class Parser:
             elif node.value is None:
                 return TpyNoneLiteral(loc=loc)
             else:
-                raise ParseError(f"Unsupported literal type: {type(node.value).__name__}", node)
+                raise ParseError(self._describe_unsupported_expr(node), node)
 
         elif isinstance(node, ast.Name):
             if node.id in self.FORBIDDEN_CONSTRUCTS:
@@ -4229,19 +4236,19 @@ class Parser:
                 return TpyListRepeat(elements, count, loc=loc)
             left = self._parse_expr(node.left)
             right = self._parse_expr(node.right)
-            op = self._binop_to_str(node.op)
+            op = self._binop_to_str(node.op, node)
             return TpyBinOp(left, op, right, loc=loc)
 
         elif isinstance(node, ast.Compare):
             left = self._parse_expr(node.left)
             if len(node.ops) == 1:
                 right = self._parse_expr(node.comparators[0])
-                op = self._cmpop_to_str(node.ops[0])
+                op = self._cmpop_to_str(node.ops[0], node)
                 return TpyBinOp(left, op, right, loc=loc)
             # Chained comparison: a < b < c
             ops = []
             for ast_op in node.ops:
-                op = self._cmpop_to_str(ast_op)
+                op = self._cmpop_to_str(ast_op, node)
                 if op in ("is", "is not", "in", "not in"):
                     raise ParseError(
                         f"'{op}' cannot be used in chained comparisons", node)
@@ -4251,7 +4258,7 @@ class Parser:
 
         elif isinstance(node, ast.UnaryOp):
             operand = self._parse_expr(node.operand)
-            op = self._unaryop_to_str(node.op)
+            op = self._unaryop_to_str(node.op, node)
             return TpyUnaryOp(op, operand, loc=loc)
 
         elif isinstance(node, ast.BoolOp):
@@ -4531,7 +4538,7 @@ class Parser:
             return TpyAwait(value=value, loc=loc)
 
         else:
-            raise ParseError(f"Unsupported expression: {type(node).__name__}", node)
+            raise ParseError(self._describe_unsupported_expr(node), node)
 
     def _parse_fstring(self, node: ast.JoinedStr, loc: SourceLocation) -> TpyFString:
         """Parse an f-string (ast.JoinedStr) into a TpyFString node."""
@@ -4561,28 +4568,75 @@ class Parser:
                         raise ParseError(f"Unsupported f-string format spec: {err}", node)
                 parts.append(TpyFStringValue(expr=expr, conversion=conv, format_spec=fmt_spec))
             else:
-                raise ParseError(f"Unsupported f-string part: {type(val).__name__}", node)
+                raise ParseError(self._describe_unsupported_expr(val), node)
         return TpyFString(parts=parts, loc=loc)
 
-    def _binop_to_str(self, op: ast.operator) -> str:
+    def _source_excerpt(self, node: ast.AST) -> str:
+        """The user's own text for `node`, first line only and clipped,
+        so a diagnostic never names a Python AST class."""
+        text = None
+        if self.source_lines:
+            text = ast.get_source_segment("\n".join(self.source_lines), node)
+        if text is None:
+            text = ast.unparse(node)
+        first, _, rest = text.partition("\n")
+        if rest or len(first) > _EXCERPT_LIMIT:
+            first = first[:_EXCERPT_LIMIT].rstrip() + " ..."
+        return first
+
+    def _describe_unsupported_expr(self, node: ast.expr) -> str:
+        """Plain-words rejection for an expression the parser does not
+        lower. Keyed on the class NAME so nodes of newer Pythons
+        (`TemplateStr` on 3.14) are described on older ones too."""
+        kind = type(node).__name__
+        excerpt = self._source_excerpt(node)
+        if kind == "Starred":
+            return f"unpacking with '*' ('{excerpt}') is not supported here"
+        if kind == "Slice":
+            return (f"a slice ('{excerpt}') is only supported as the whole "
+                    f"subscript ('xs[a:b]')")
+        if kind in _TEMPLATE_STRING_NODES:
+            return 'template strings (t"...") are not supported'
+        return f"this expression is not supported: '{excerpt}'"
+
+    def _describe_unsupported_stmt(self, node: ast.stmt) -> str:
+        kind = type(node).__name__
+        if kind == "ClassDef":
+            return (f"classes are only supported at the top level of a module "
+                    f"('class {node.name}')")
+        if kind in ("Import", "ImportFrom"):
+            return (f"imports are only supported at the top level of a module "
+                    f"('{self._source_excerpt(node)}')")
+        if kind == "TypeAlias":
+            return (f"'type' aliases are only supported at the top level of a "
+                    f"module ('{self._source_excerpt(node)}')")
+        if kind == "TryStar":
+            return "'except*' (exception groups) is not supported"
+        return f"this statement is not supported here: '{self._source_excerpt(node)}'"
+
+    def _unsupported_type_param(self, tp: ast.AST) -> str:
+        return (f"only plain type parameters ('T', 'T: Bound') are supported, "
+                f"got '{self._source_excerpt(tp)}'")
+
+    def _binop_to_str(self, op: ast.operator, node: ast.AST) -> str:
         """Convert binary operator to string."""
         result = _BINOP_TO_STR.get(type(op))
         if result is None:
-            raise ParseError(f"Unsupported binary operator: {type(op).__name__}")
+            raise ParseError(f"operator not supported: '{self._source_excerpt(node)}'", node)
         return result
 
-    def _cmpop_to_str(self, op: ast.cmpop) -> str:
+    def _cmpop_to_str(self, op: ast.cmpop, node: ast.AST) -> str:
         """Convert comparison operator to string."""
         result = _CMPOP_TO_STR.get(type(op))
         if result is None:
-            raise ParseError(f"Unsupported comparison operator: {type(op).__name__}")
+            raise ParseError(f"operator not supported: '{self._source_excerpt(node)}'", node)
         return result
 
-    def _unaryop_to_str(self, op: ast.unaryop) -> str:
+    def _unaryop_to_str(self, op: ast.unaryop, node: ast.AST) -> str:
         """Convert unary operator to string."""
         result = _UNARYOP_TO_STR.get(type(op))
         if result is None:
-            raise ParseError(f"Unsupported unary operator: {type(op).__name__}")
+            raise ParseError(f"operator not supported: '{self._source_excerpt(node)}'", node)
         return result
 
     def _validate_const_default(self, expr: TpyExpr, node: ast.expr) -> None:

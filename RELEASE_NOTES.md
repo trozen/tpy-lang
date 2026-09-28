@@ -11,9 +11,9 @@
   `float32` / `float64`, `Char` -> `char`. No aliases. `float64` stays
   an alias of `float`, `int` stays BigInt, and `String` / `StrView` /
   `BigInt` and the protocol names keep CapWords. `--default-int` takes
-  `int32` / `int64` / `BigInt`. A bare old name fails with `Unknown
-  type: Int32`; `from tpy import Int32` is accepted at the import and
-  fails at the first use (`BUGS.md#tpy-import-unknown-name-undiagnosed`).
+  `int32` / `int64` / `BigInt`. `from tpy import Int32` fails at the
+  import line with `'Int32' not found in module 'tpy'`, and a bare old
+  name fails with `Unknown type: Int32`.
 - **`typing.overload` vs `tpy.dispatch`**: `typing.overload` keeps only
   CPython's form -- bodyless stubs plus one implementation. Same-named
   variants that each carry a body (or are `@native` / `@cpp_template`)
@@ -158,8 +158,7 @@ Tracked in `BUGS.md`. The classes that matter most: a value moved at its
 last use while an alias, a closure or a `finally` still reads it, and a
 rebind of a container local that a multi-hop alias or a live `for`
 points into (use-after-free shapes -- retired by the MIR ownership
-checker, not patched piecemeal); an un-narrowed Optional container
-element read can drop its null check; a view can outlive its source (a
+checker, not patched piecemeal); a view can outlive its source (a
 loop element over a temporary, a closure field write, a temporary
 hoisted into a frame); call arguments and operands are evaluated in the
 C++ compiler's order, not left to right; tuple reference elements at

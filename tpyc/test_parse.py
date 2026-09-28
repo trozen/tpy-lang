@@ -6,7 +6,7 @@ from .parse import RelativeImportKey, Parser, ParseError
 from .parse.imports import (
     get_tpy_exports, scan_star_exports, NonLiteralAllError, read_module_all,
 )
-from .parse.parser import _validate_cpp_template
+from .parse.parser import _TEMPLATE_STRING_NODES, _validate_cpp_template
 
 
 class TestRelativeImportKey:
@@ -383,3 +383,34 @@ class TestValidateCppTemplate:
                 "class K:\n"
                 "    @cpp_template(\"{self} + {self}\")\n"
                 "    def dbl(self) -> int32: ...\n")
+
+
+# The expression node classes `Parser._parse_expr` lowers (FormattedValue
+# only as a JoinedStr part). A node class a newer Python adds is in neither
+# this set nor the describe table and fails the walk below, so its
+# rejection wording is chosen on purpose rather than falling to the default.
+_LOWERED_EXPR_NODES = frozenset({
+    "Attribute", "Await", "BinOp", "BoolOp", "Call", "Compare", "Constant",
+    "Dict", "DictComp", "FormattedValue", "GeneratorExp", "IfExp",
+    "JoinedStr", "Lambda", "List", "ListComp", "Name", "NamedExpr", "Set",
+    "SetComp", "Subscript", "Tuple", "UnaryOp", "Yield", "YieldFrom",
+})
+_DESCRIBED_EXPR_NODES = frozenset({"Starred", "Slice"}) | _TEMPLATE_STRING_NODES
+
+
+class TestUnsupportedExprWording:
+    def test_every_expr_node_is_lowered_or_described(self):
+        names = {cls.__name__ for cls in ast.expr.__subclasses__()}
+        assert names - _LOWERED_EXPR_NODES - _DESCRIBED_EXPR_NODES == set()
+
+    @pytest.mark.parametrize("source, message", [
+        ("ys = [*xs, 3]\n", "unpacking with '*' ('*xs') is not supported here"),
+        ("y = xs[0:1, 1]\n", "a slice ('0:1') is only supported as the whole subscript"),
+        ("x = ...\n", "this expression is not supported: '...'"),
+        ("x = a @ b\n", "operator not supported: 'a @ b'"),
+    ])
+    def test_wording_names_no_ast_class(self, source, message):
+        with pytest.raises(ParseError) as info:
+            Parser().parse(source)
+        assert message in info.value.message
+        assert info.value.lineno == 1

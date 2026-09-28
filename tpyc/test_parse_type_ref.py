@@ -26,7 +26,7 @@ def _make_parser() -> Parser:
         "from tpy import Ptr, Own, readonly, auto_readonly, auto_own, Fn\n"
         "from tpy import (int8, int16, int32, int64, uint8, uint16, uint32, uint64,\n"
         "                 char, float32, String, StrView, BytesView,\n"
-        "                 basic_slice, slice, Array, Span)\n"
+        "                 basic_slice, Array, Span)\n"
         "from typing import Optional, Final, Callable, Literal, Self\n"
         "pass\n",
         module_name="test_module",

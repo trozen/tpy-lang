@@ -116,8 +116,9 @@ std::string mixed(Color c, bool allow) {
     case Color::Green: {
         if (allow) {
             return "guarded-green";
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     default: __match_default_2: {
@@ -143,8 +144,9 @@ std::string or_guard(Color c, bool flag) {
     {
         if (flag) {
             return "warm+flag";
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     default: __match_default_2: {

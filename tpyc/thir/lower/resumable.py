@@ -1967,15 +1967,17 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # decl-site type (`_var_decl_type`) the walk-order registration stored,
     # never the frame's resolved local type, so the frame arm's position-
     # blind decl render is unchanged. Scope setup consumed immediately by
-    # pass 2; admission itself stays inside the lowering arms.
-    for bb_id in sorted(cfg.blocks):
-        bb = cfg.blocks[bb_id]
+    # pass 2; admission itself stays inside the lowering arms. Helper-based
+    # finally bodies are frame code outside cfg.blocks, lowered by the same
+    # leaf arms, so they register too -- after the blocks, keeping a block
+    # decl the first one.
+    def _register_stmts(bb_stmts: list[TpyStmt]) -> None:
         # Nested walk: a branch-nested first decl registers its frame field
         # too (the dispatch's plain_frame_fields arm lowers it; later BBs
         # read it). Pseudo-statements never nest, so including them in the
         # recursive walk is equivalent to the old top-level scan.
-        top_level_ids = frozenset(id(s) for s in bb.stmts)
-        for stmt in _iter_nested_stmts(bb.stmts):
+        top_level_ids = frozenset(id(s) for s in bb_stmts)
+        for stmt in _iter_nested_stmts(bb_stmts):
             if (isinstance(stmt, TpyVarDecl) and stmt.init is not None
                     and stmt.name in frame_fields
                     and stmt.name not in declared):
@@ -2011,6 +2013,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # frame write; reads classify against the sema enter type.
                 _register_frame_hoist(stmt.item.target, stmt.item.enter_type,
                                       declared, lc)
+
+    for bb_id in sorted(cfg.blocks):
+        bb = cfg.blocks[bb_id]
+        _register_stmts(bb.stmts)
         t = bb.terminator
         if isinstance(t, rcfg.Yield) and isinstance(t.payload,
                                                     rcfg.AwaitPayload):
@@ -2049,6 +2055,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     if _value_opt_scalar(declared[lv],
                                          analyzer) is not None:
                         lc.value_opt_bindings[lv] = ValueOptKind.SCALAR
+
+    for _helper_name, helper_stmts in cfg.finally_helpers:
+        _register_stmts(helper_stmts)
 
     leaves: IdentityMap = IdentityMap()
     conds: IdentityMap = IdentityMap()

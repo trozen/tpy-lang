@@ -221,6 +221,8 @@ from ..nodes import (
     THIRValueSelect,
     THIRNarrowedRead,
     THIROptionalPtrArg,
+    THIROptionalRecvCheck,
+    OptionalCheckSpelling,
     THIRSelf,
     THIRStrLiteral,
     THIRStrSlice,
@@ -461,7 +463,7 @@ from .predicates import (
     _subscript_index_and_tuple,
     _subscript_container_recv_type,
     _container_elem_lvalue_subscript,
-    _narrowed_ptr_opt_name,
+    _ptr_opt_binding_name,
     _template_init_call_fi,
     _view_ctor_bare_source,
     _array_literal_ctor_source,
@@ -5412,6 +5414,96 @@ def _method_fi_reject_detail(e: TpyMethodCall, fi, use: _ExprUse) -> str:
     return "expr.storage_ref_getter"
 
 
+def _checked_optional_recv_type(t: 'TpyType | None') -> 'TpyType | None':
+    """The container an Optional receiver type unwraps to, readonly kept: an
+    outer `readonly[...]` (or `Own[...]`) around the Optional moves onto the
+    inner, so the element read keeps the receiver's const-ness."""
+    if t is None:
+        return None
+    u = unwrap_ref_type(unwrap_send_sync(t))
+    ro = isinstance(u, ReadonlyType)
+    u = unwrap_readonly(u)
+    if isinstance(u, OwnType):
+        u = unwrap_readonly(u.wrapped)
+    if not isinstance(u, OptionalType):
+        return None
+    inner = u.inner
+    if ro and not isinstance(inner, ReadonlyType):
+        inner = ReadonlyType(inner)
+    return inner
+
+
+def _lower_optional_container_recv(e: TpySubscript, lc: '_LowerCtx',
+                                   declared: dict[str, TpyType]
+                                   ) -> 'THIROptionalRecvCheck | None':
+    """The receiver of a subscript sema could NOT prove non-None
+    (`needs_optional_runtime_check`, the same site that warns "generated code
+    adds runtime null check"), wrapped in that check -- or None for any other
+    subscript. Every subscript lowering, gated or prechecked, asks here, so
+    the proof is read at one site; the receiver's representation picks only
+    the spelling:
+
+      * a pointer binding (param, pointer local, frame field, global slot)
+        -> `deref_check(recv)` over the RAW `T*` (a frame field / global
+        slot drops the value-position deref its name read carries);
+      * a storage optional (an `Own[... | None]` param, a storage-opt local,
+        a field read) -> `deref_optional_check(recv)` over the whole
+        optional lvalue.
+
+    Any other receiver shape rejects -- there is no unchecked fallback."""
+    if not e.needs_optional_runtime_check:
+        return None
+    analyzer = lc.analyzer
+    recv = e.obj
+    loc = getattr(e, "loc", None)
+    inner = _checked_optional_recv_type(analyzer.get_expr_type(recv))
+    if inner is None:
+        raise ThirUnsupported("subscript.optional_check", detail=True)
+    spelling = None
+    raw: 'THIRExpr | None' = None
+    receiver_use = _ExprUse(result=_ExprResultUse.RECEIVER)
+    if isinstance(recv, TpyName):
+        name = recv.name
+        if (_own_storage_opt_param(declared.get(name), analyzer) is not None
+                or name in lc.storage_opt_locals):
+            spelling = OptionalCheckSpelling.OPTIONAL
+            raw = _lower_expr(recv, lc, declared, use=receiver_use,
+                              allow_whole_optional=True,
+                              allow_unrouted_name=True)
+        elif (name in lc.pointers or name in lc.frame_slots
+              or name in lc.prescan.global_slots):
+            spelling = OptionalCheckSpelling.PTR
+            raw = _lower_expr(recv, lc, declared, use=receiver_use)
+            if isinstance(raw, THIRName) and raw.deref:
+                # A frame field / global slot name reads through its slot
+                # everywhere; the slot itself is the nullable `T*`. Any
+                # other deref is an indirection this spelling cannot see.
+                if (name in lc.frame_slots
+                        or name in lc.prescan.global_slots):
+                    raw = replace(raw, deref=False)
+                else:
+                    raw = None
+            elif not isinstance(raw, THIRName):
+                raw = None
+    elif (isinstance(recv, TpyFieldAccess)
+          and _module_var_access_pair(recv, declared, analyzer) is None
+          and reads_storage_form_optional(analyzer, recv)
+          # The field receiver shapes the container gate admits.
+          and _subscript_container_recv_type(recv, declared,
+                                             analyzer) is not None):
+        spelling = OptionalCheckSpelling.OPTIONAL
+        raw = _lower_expr(recv, lc, declared, use=receiver_use,
+                          allow_whole_optional=True, field_prechecked=True)
+    if raw is None or spelling is None:
+        raise ThirUnsupported("subscript.optional_check", detail=True)
+    _witness("subscript.opt_recv_check_ptr"
+             if spelling is OptionalCheckSpelling.PTR
+             else "subscript.opt_recv_check_optional")
+    return THIROptionalRecvCheck(result_type=inner, value=raw,
+                                 spelling=spelling, form=Form.BORROW,
+                                 loc=loc)
+
+
 def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
                 declared: dict[str, TpyType], *,
                 use: _ExprUse = _ExprUse(),
@@ -6429,13 +6521,16 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 wrap=f"::tpy::EnumUtil<{cpp_type}>::from_name({{0}})",
                 operand=_lower_expr(e.index, lc, declared),
                 loc=loc)
-        if not subscript_prechecked and e.needs_optional_runtime_check:
-            raise ThirUnsupported("subscript.optional_check", detail=True)
+        opt_recv = _lower_optional_container_recv(e, lc, declared)
         # Set by the read gate below for an Own[container] receiver; the
         # prechecked paths skip the gate and never need the pinned name.
         own_recv = False
         record_slice_tpl = None
         if e.slice_function_info is not None:
+            # This arm lowers `e.obj` itself; an unproven Optional receiver
+            # must never reach it (sema rejects it) and render unchecked.
+            if opt_recv is not None:
+                raise ThirUnsupported("subscript.optional_check", loc=loc)
             if not subscript_prechecked:
                 fi = e.slice_function_info
                 # A list/Array/Span slice read yields an owned `list[T]`
@@ -6582,6 +6677,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             )
         tup = _subscript_index_and_tuple(e, analyzer)
         if tup is not None:
+            # Lowers `e.obj` itself, like the slice arm above.
+            if opt_recv is not None:
+                raise ThirUnsupported("subscript.optional_check", loc=loc)
             _gen_elem_ref = False
             _sub_elem_t = None
             if 0 <= tup[1] < len(tup[0].element_types):
@@ -6678,10 +6776,17 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 loc=loc,
             )
         tuple_elem_recv = False
-        rec_key = _record_getitem_key(
-            analyzer.get_expr_type(e.obj), analyzer)
+        # The container type the read indexes: an unproven Optional receiver
+        # is indexed through its check, so it types at the unwrapped inner.
+        idx_obj_type = (opt_recv.result_type if opt_recv is not None
+                        else analyzer.get_expr_type(e.obj))
+        rec_key = _record_getitem_key(idx_obj_type, analyzer)
         if not subscript_prechecked:
             if rec_key is not None:
+                # Lowers `e.obj` itself, like the slice arm above; only
+                # `_record_getitem_idx_recv_ok` would otherwise close it.
+                if opt_recv is not None:
+                    raise ThirUnsupported("subscript.optional_check", loc=loc)
                 # User-record `recv[index]` -> the record's bare operator[].
                 # Value-scalar/char/enum/str/bytes/ptr results only (a
                 # record-returning getitem is a borrow-form seam, not
@@ -6733,8 +6838,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # A None-narrowed pointer-repr `Optional[record]` NAME reads
                 # its deref (`(*g)[i]`), the same shape the container arm's
                 # `_optrecv_deref` row renders one sink over.
-                rec_optrecv = _narrowed_ptr_opt_name(e.obj, declared,
-                                                     lc.pointers)
+                rec_optrecv = _ptr_opt_binding_name(e.obj, declared,
+                                                    lc.pointers)
                 if not (ret_ok and _record_getitem_idx_recv_ok(
                         e, declared, analyzer, lc.pointers,
                         # A pointer-slot GLOBAL receiver derefs
@@ -6783,8 +6888,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # through the `(*recv)` deref (_optrecv_deref below), so the
             # resolver hands back the narrowed INNER the family and element
             # checks key on.
-            recv_t = _chained_subscript_recv_type(
-                e.obj, declared, analyzer, lc.pointers)
+            recv_t = (opt_recv.result_type if opt_recv is not None
+                      else _chained_subscript_recv_type(
+                          e.obj, declared, analyzer, lc.pointers))
             recv_peeled = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 recv_t))) if recv_t is not None else None)
             own_recv = isinstance(recv_peeled, OwnType)
@@ -6799,13 +6905,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # `dict[str, list[T]]`): the checked dunder yields the element's
             # `T&` lvalue. The element read is consumer-blind -- ONE
             # render, bare in every value position -- so admitting it here
-            # replaces the per-sink `subscript_prechecked` bypasses (which
-            # skipped the unproven-Optional receiver guard the gate applies).
+            # replaces the per-sink `subscript_prechecked` bypasses.
             nested_container_elem = (
                 _container_ref_alias_elem(recv_peeled, analyzer)
                 and bool(_witness("subscript.container_elem")))
             index_ok = (
-                _bigint_index_disposition(e.index, analyzer.get_expr_type(e.obj),
+                _bigint_index_disposition(e.index, idx_obj_type,
                                           analyzer, declared) != "reject")
             ret_ok = (
                 nested_container_elem or
@@ -7195,7 +7300,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             _witness("subscript.record_getitem")
             return THIRSubscript(
                 result_type=rtype,
-                receiver=_lower_expr(
+                receiver=opt_recv if opt_recv is not None else _lower_expr(
                     e.obj, lc, declared,
                     # A pointer-slot LOCAL receiver derefs at the name read
                     # (`(*acc)[0].name` -- the rebind-slot read).
@@ -7258,17 +7363,21 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         narrowed_recv_u = (lc.narrow.subject_union.get(e.obj.name)
                            if isinstance(e.obj, TpyName)
                            and e.obj.name in lc.narrow.narrowed else None)
-        idx_obj_type = analyzer.get_expr_type(e.obj)
         if narrowed_recv_u is not None and record_like(rtype, analyzer) and (
                 is_dict(idx_obj_type) or is_list(idx_obj_type)
                 or is_array(idx_obj_type) or is_span(idx_obj_type)):
             form = Form.BORROW
             _witness("subscript.ru_narrowed_recv")
-        _optrecv_deref = _narrowed_ptr_opt_name(e.obj, declared, lc.pointers)
+        _optrecv_deref = (opt_recv is None
+                          and _ptr_opt_binding_name(e.obj, declared,
+                                                    lc.pointers))
         if _optrecv_deref:
             _witness("subscript.narrowed_ptr_opt_recv")
-        _sub_mv = _module_var_access_pair(e.obj, declared, analyzer)
-        if _sub_mv is not None:
+        _sub_mv = (None if opt_recv is not None
+                   else _module_var_access_pair(e.obj, declared, analyzer))
+        if opt_recv is not None:
+            _sub_recv = opt_recv
+        elif _sub_mv is not None:
             # A module-variable container receiver (`sys.argv[1]`): the
             # element template is a PINNED consumer of the `(*slot)` read,
             # like the slice template and the native-slot arg, so the
@@ -10887,9 +10996,9 @@ def _walrus_opt_ptr_source(value: TpyExpr, vtu: TpyType, inner: TpyType,
         # element read is the storage optional, lifted by the same convert the
         # OPTIONAL_TO_PTR decl uses for one. `subscript_prechecked` keeps the
         # ELEMENT's optional whole (its None check belongs to the walrus
-        # target's narrowing, not to the read); the shared predicate is what
-        # rules out an unproven-Optional RECEIVER, whose own deref check the
-        # same flag would suppress.
+        # target's narrowing, not to the read); the shared predicate keeps an
+        # unproven-Optional RECEIVER out, a walrus source this row has no
+        # witness for.
         _witness("walrus.optptr_subscript_src")
         return THIRFormConvert(
             result_type=vtu,
