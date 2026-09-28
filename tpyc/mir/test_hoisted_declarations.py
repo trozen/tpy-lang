@@ -366,7 +366,7 @@ def test_hoist_analysis_uses_typed_facts_not_render_strings(hoists: Hoists) -> N
     functions, _, definitions, _ = hoists
     fn = functions["scalar"]
     stmt, *rest = fn.body
-    changed = replace(stmt, hoist_decls=(("value", "uninterpreted render data"),))
+    changed = replace(stmt, hoist_decls=(th.HoistDecl("value", "uninterpreted render data"),))
     result = lower_function(replace(fn, body=(changed, *rest)), MIRBodyId("facts", "scalar"),
                             kind=MIRBodyKind.FREE_FUNCTION, definitions=definitions)
     assert isinstance(result, MIRFunction) and execute(result, True) == 1

@@ -1,7 +1,5 @@
-# `_field_type_blocks_default_ctor`: a base with a `Resource` field where
-# Resource is @nocopy+__del__. The field's type controls the enclosing
-# default ctor: Resource has __del__ and a required __init__, so Base has
-# no default ctor. Subclass without super() must be rejected.
+# No super(), though an owned value is moved into the inherited field of a
+# base with no default ctor (LANGUAGE_FEATURES "Single class inheritance").
 from tpy import Own, Ptr, int32, nocopy
 from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop
 
@@ -22,14 +20,12 @@ class Resource:
 class Base:
     res: Resource
 
-    def __init__(self, r: Own[Resource]) -> None:
-        self.res = r
-
 
 class Child(Base):
     label: str
 
-    def __init__(self, r: Own[Resource], label: str) -> None:   # tpyc: error(/must call 'super\(\).__init__/)
+    def __init__(self, r: Own[Resource], label: str) -> None:   # tpyc: error(/cannot be constructed without arguments \(field 'res' has type 'Resource'/)
+        self.res = r
         self.label = label
 
 

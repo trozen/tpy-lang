@@ -1,5 +1,21 @@
 # T() default-construction syntax for generic type parameters
-from tpy import int32
+from typing import Final
+from tpy import int32, ValueType
+
+K: Final[int32] = 7
+
+
+class Noisy(ValueType):
+    n: int32
+
+    def __init__(self, n: int32 = K) -> None:
+        print("noisy init", n)
+        self.n = n
+
+
+class NoisyHeir(Noisy, ValueType):
+    pass
+
 
 def make_default[T](x: T = T()) -> T:
     return x
@@ -21,5 +37,9 @@ def main() -> None:
     # T inferred from arg
     e: int32 = make_default(42)
     print(e)
+
+    # a ValueType heir's `T()` runs the inherited `__init__` with its defaults
+    f = make_default[NoisyHeir]()  # tpyc: ok
+    print(f.n)
 
 main()

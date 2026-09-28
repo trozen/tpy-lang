@@ -8,21 +8,28 @@
 namespace tpyapp::main {
 
 struct Parent;
+struct Other;
 struct Child;
 struct Nested;
+struct PassSuper;
+struct PassBase;
+struct PassMulti;
+struct DocPass;
+struct PassBetween;
 
-extern Child* c;
-extern Nested* n;
 inline constexpr std::string_view __name__ = "__main__";
+
+// def main() -> None:
+void main();
 
 // class Parent:
 struct Parent {
-    // value: int
-    ::tpy::BigInt value;
+    // value: int32
+    int32_t value;
 
-    // def __init__(self, value: int) -> None:
+    // def __init__(self, value: int32) -> None:
     Parent() = default;
-    explicit Parent(const ::tpy::BigInt& value);
+    explicit Parent(int32_t value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Parent";
 };
 
@@ -31,14 +38,30 @@ inline std::ostream& operator<<(std::ostream& os, const Parent& obj) {
     return os;
 }
 
+// class Other:
+struct Other {
+    // m: int32
+    int32_t m;
+
+    // def __init__(self, m: int32) -> None:
+    Other() = default;
+    explicit Other(int32_t m);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Other";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
+    ::tpy::print_object_default(os, "Other", obj);
+    return os;
+}
+
 // class Child(Parent):
 struct Child : Parent {
-    // extra: int
-    ::tpy::BigInt extra;
+    // extra: int32
+    int32_t extra;
 
-    // def __init__(self, value: int, extra: int) -> None:
+    // def __init__(self, value: int32, extra: int32) -> None:
     Child() = default;
-    explicit Child(const ::tpy::BigInt& value, const ::tpy::BigInt& extra);
+    explicit Child(int32_t value, int32_t extra);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
@@ -49,12 +72,12 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 // class Nested(Parent):
 struct Nested : Parent {
-    // extra: int
-    ::tpy::BigInt extra;
+    // extra: int32
+    int32_t extra;
 
-    // def __init__(self, value: int, extra: int) -> None:
+    // def __init__(self, value: int32, extra: int32) -> None:
     Nested() = default;
-    explicit Nested(const ::tpy::BigInt& value, const ::tpy::BigInt& extra);
+    explicit Nested(int32_t value, int32_t extra);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Nested";
 };
 
@@ -63,31 +86,148 @@ inline std::ostream& operator<<(std::ostream& os, const Nested& obj) {
     return os;
 }
 
+// class PassSuper(Parent):
+struct PassSuper : Parent {
+    // y: int32
+    int32_t y;
 
-// def __init__(self, value: int) -> None:
-//     self.value = value
-inline Parent::Parent(const ::tpy::BigInt& value) : value(value) {}
+    // def __init__(self) -> None:
+    PassSuper();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.PassSuper";
+};
 
-// def __init__(self, value: int, extra: int) -> None:
-//     """Initialize Child with value and extra."""
-//     super().__init__(value)
-//     self.extra = extra
-inline Child::Child(const ::tpy::BigInt& value, const ::tpy::BigInt& extra) : Parent(value), extra(extra) {
+inline std::ostream& operator<<(std::ostream& os, const PassSuper& obj) {
+    ::tpy::print_object_default(os, "PassSuper", obj);
+    return os;
 }
 
-// def __init__(self, value: int, extra: int) -> None:
+// class PassBase(Parent):
+struct PassBase : Parent {
+
+    // def __init__(self) -> None:
+    PassBase();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.PassBase";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const PassBase& obj) {
+    ::tpy::print_object_default(os, "PassBase", obj);
+    return os;
+}
+
+// class DocPass(Parent):
+struct DocPass : Parent {
+
+    // def __init__(self) -> None:
+    DocPass();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.DocPass";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const DocPass& obj) {
+    ::tpy::print_object_default(os, "DocPass", obj);
+    return os;
+}
+
+// class PassMulti(Parent, Other):
+struct PassMulti : Parent, Other {
+
+    // def __init__(self) -> None:
+    PassMulti();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.PassMulti";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const PassMulti& obj) {
+    ::tpy::print_object_default(os, "PassMulti", obj);
+    return os;
+}
+
+// class PassBetween(Parent, Other):
+struct PassBetween : Parent, Other {
+    // a: int32
+    int32_t a;
+    // b: int32
+    int32_t b;
+
+    // def __init__(self) -> None:
+    PassBetween();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.PassBetween";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const PassBetween& obj) {
+    ::tpy::print_object_default(os, "PassBetween", obj);
+    return os;
+}
+
+
+// def __init__(self, value: int32) -> None:
+//     print("parent init", value)
+//     self.value = value
+inline Parent::Parent(int32_t value) {
+    std::cout << "parent init" << " " << value << "\n";
+    this->value = value;
+}
+
+// def __init__(self, m: int32) -> None:
+//     print("other init", m)
+//     self.m = m
+inline Other::Other(int32_t m) {
+    std::cout << "other init" << " " << m << "\n";
+    this->m = m;
+}
+
+// def __init__(self, value: int32, extra: int32) -> None:
+//     """Initialize Child with value and extra."""
+//     super().__init__(value)  # tpyc: ok
+//     self.extra = extra
+inline Child::Child(int32_t value, int32_t extra) : Parent(value), extra(extra) {
+}
+
+// def __init__(self, value: int32, extra: int32) -> None:
 //     super().__init__(value)
 //
-//     # the call above stays the first statement, so this is accepted
-//     def bonus() -> int:  # tpyc: ok
+//     def bonus() -> int32:  # tpyc: ok
 //         return 5
 //
 //     self.extra = extra + bonus()
-inline Nested::Nested(const ::tpy::BigInt& value, const ::tpy::BigInt& extra) : Parent(value) {
-    auto bonus = []() -> ::tpy::BigInt {
-        return ::tpy::BigInt(5);
+inline Nested::Nested(int32_t value, int32_t extra) : Parent(value) {
+    auto bonus = []() -> int32_t {
+        return 5;
     };
-    this->extra = ((extra) + (bonus()));
+    this->extra = (::tpy::add_check<int32_t>(extra, bonus()));
+}
+
+// def __init__(self) -> None:
+//     pass
+//     super().__init__(1)  # tpyc: ok
+//     self.y = 3
+//     print("pass-super: after", self.value, self.y)
+inline PassSuper::PassSuper() : Parent(1), y(3) {
+    std::cout << "pass-super: after" << " " << this->value << " " << this->y << "\n";
+}
+
+// def __init__(self) -> None:
+//     pass
+//     Parent.__init__(self, 2)  # tpyc: ok
+//     print("pass-base: after", self.value)
+inline PassBase::PassBase() : Parent(2) {
+    std::cout << "pass-base: after" << " " << this->value << "\n";
+}
+
+// def __init__(self) -> None:
+//     """Docstring, then pass, then the parent call."""
+//     pass
+//     super().__init__(5)  # tpyc: ok
+//     print("doc-pass: after", self.value)
+inline DocPass::DocPass() : Parent(5) {
+    std::cout << "doc-pass: after" << " " << this->value << "\n";
+}
+
+// def __init__(self) -> None:
+//     pass
+//     Parent.__init__(self, 3)
+//     Other.__init__(self, 4)  # tpyc: ok
+//     print("pass-multi: after", self.value, self.m)
+inline PassMulti::PassMulti() : Parent(3), Other(4) {
+    std::cout << "pass-multi: after" << " " << this->value << " " << this->m << "\n";
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -206,6 +206,11 @@ _SCALAR_ZERO_CTOR_NAMES = {
 }
 
 
+# A `None` into a structural-protocol parameter, which is a template: the
+# argument names the `T_x = std::nullptr_t` instantiation.
+NULL_PROTOCOL_ARG_CPP = "static_cast<std::nullptr_t*>(nullptr)"
+
+
 def factory_default_to_cpp(field_type: TpyType) -> str:
     """Return the C++ default value for a factory-default field.
 
@@ -1889,11 +1894,14 @@ class FunctionGenerator:
         is_value = var_type.is_value_type() or var_type.needs_wrapper()
         if is_borrow_form_tuple_global(var_type):
             # A tuple of pointer slots, null until module init binds it.
-            out.write(f"{self.types.tuple_borrow_cpp(var_type)} "
-                      f"{stmt.name}{{}};\n")
+            cpp_type = self.types.tuple_borrow_cpp(var_type)
+            init = emit_prims.placeholder_init(var_type, cpp_type) or "{}"
+            out.write(f"{cpp_type} {stmt.name}{init};\n")
         elif is_value:
             # C++ primitives need explicit zero-init; class types (BigInt, string_view) don't
-            init = "{}" if (is_primitive_type(var_type) or isinstance(var_type, PtrType)) else ""
+            init = (emit_prims.placeholder_init(var_type, cpp_type)
+                    or ("{}" if (is_primitive_type(var_type)
+                                 or isinstance(var_type, PtrType)) else ""))
             out.write(f"{cpp_type} {stmt.name}{init};\n")
         else:
             out.write(f"{cpp_type}* {stmt.name}{{}};\n")

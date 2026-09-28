@@ -42,6 +42,7 @@ class Child(Base):
     extra: int32
 
     def __init__(self) -> None:
+        super().__init__()
         self.n = 2
         self.extra = 9
 

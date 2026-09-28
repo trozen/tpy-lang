@@ -38,6 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const NotFound& obj) {
 
 
 // def __init__(self, code: int32) -> None:
+//     super().__init__()
 //     self.code = code
 inline NotFound::NotFound(int32_t code) : code(code) {}
 void __tpy_init();

@@ -19,6 +19,7 @@ class ClickEvent(Event):
     x: int
     y: int
     def __init__(self, x: int, y: int) -> None:
+        super().__init__()
         self.x = x
         self.y = y
     def kind(self) -> str:

@@ -56,6 +56,7 @@ struct Shelter {
     ::tpy::Union<std::monostate, Cat, Dog> pet;
 
     // def __init__(self, pet: Dog | Cat | None) -> None:
+    Shelter() = default;
     explicit Shelter(::tpy::Union<std::monostate, const Cat*, const Dog*> pet);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Shelter";
 };

@@ -53,9 +53,10 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
 inline Animal::Animal(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str) -> None:
+//     super().__init__("")
 //     self.name = name              # inherited; goes to body
 //     self.name_len = int32(len(self.name))  # own; RHS reads self.name -- must demote
-inline Tagged::Tagged(std::string_view name) {
+inline Tagged::Tagged(std::string_view name) : Animal("") {
     this->name = name;
     this->name_len = ::tpy::__len__(this->name);
 }

@@ -77,6 +77,7 @@ struct Blob {
     ::tpy::Bytes data;
 
     // def __init__(self, data: bytes) -> None:
+    Blob() = default;
     explicit Blob(::tpy::BytesView data);
 
     // def __eq__(self, other: bytes) -> bool:

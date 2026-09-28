@@ -21,6 +21,7 @@ class Base:
 
 class Child(Base):
     def __init__(self) -> None:
+        super().__init__()
         self.n = 2
 
 

@@ -26,7 +26,7 @@ class ParseError(ValueError):
 
     def __init__(self, message: str, line: int32, detail: str,
                  payload: bytes, severity: Severity):
-        self.message = message
+        super().__init__(message)
         self.line = line
         self.detail = detail
         self.payload = payload

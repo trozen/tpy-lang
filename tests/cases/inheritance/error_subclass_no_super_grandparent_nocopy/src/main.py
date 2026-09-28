@@ -1,7 +1,5 @@
-# Grandparent-chain coverage for the super-init rule. The deleted default
-# ctor lives on Grand (because of its @nocopy+__del__ field); Mid inherits
-# but its own fields are default-ctor-able, so the predicate must recurse
-# through Mid's ancestor list to reach Grand and reject Leaf.
+# No super(), missing default ctor two `__init__`-less levels up (Grand's
+# @nocopy+__del__ field) (LANGUAGE_FEATURES "Single class inheritance").
 from tpy import Ptr, int32, nocopy
 from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop
 
@@ -22,22 +20,17 @@ class Resource:
 class Grand:
     res: Resource
 
-    def __init__(self, v: int32) -> None:
-        self.res = Resource(v)
-
 
 class Mid(Grand):
     label: str
-
-    def __init__(self, v: int32, label: str) -> None:
-        super().__init__(v)
-        self.label = label
 
 
 class Leaf(Mid):
     extra: int32
 
-    def __init__(self, v: int32, label: str, e: int32) -> None:   # tpyc: error(/must call 'super\(\).__init__/)
+    def __init__(self, v: int32, label: str, e: int32) -> None:   # tpyc: error(/cannot be constructed without arguments \(ancestor 'Grand' \(inherited by 'Mid'\)/)
+        self.res = Resource(v)
+        self.label = label
         self.extra = e
 
 

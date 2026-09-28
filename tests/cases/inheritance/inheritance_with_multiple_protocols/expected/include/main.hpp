@@ -92,14 +92,10 @@ inline std::string Vehicle::get_brand() const {
 }
 
 // def __init__(self, brand: str, year: int32, model: str, car_weight: int32) -> None:
-//     self.brand = brand
-//     self.year = year
+//     super().__init__(brand, year)
 //     self.model = model
 //     self.car_weight = car_weight
-inline Car::Car(std::string_view brand, int32_t year, std::string_view model, int32_t car_weight) : model(model), car_weight(car_weight) {
-    this->brand = brand;
-    this->year = year;
-}
+inline Car::Car(std::string_view brand, int32_t year, std::string_view model, int32_t car_weight) : Vehicle(brand, year), model(model), car_weight(car_weight) {}
 
 // def __str__(self) -> str:
 //     return self.model

@@ -9,7 +9,7 @@ class ParseError(ValueError):
     items: list[int64]  # tpyc: error(/data field 'items' of type list\[int64\] cannot cross/)
 
     def __init__(self, message: str, items: list[int64]):
-        self.message = message
+        super().__init__(message)
         self.items = items
 
 

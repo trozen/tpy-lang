@@ -1,6 +1,5 @@
-# Aggregate (no __init__) inheriting from a parent whose __init__ requires
-# args: zero-arg construction must be sema-rejected, citing the offending
-# parent. Guards _validate_aggregate_zero_arg's parent-walk.
+# An aggregate (a field without a default, so it inherits no `__init__`) over
+# a parent needing arguments: `Child()` is rejected, citing the parent.
 from tpy import int32
 
 
@@ -12,7 +11,7 @@ class Base:
 
 
 class Child(Base):
-    tag: int32 = 0
+    tag: int32
 
 
 def main() -> None:

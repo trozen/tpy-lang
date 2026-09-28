@@ -6,6 +6,7 @@ from tpy import int32
 
 class MyError(Exception):
     def __init__(self, code: int32):
+        super().__init__()
         self.code = code
 
 

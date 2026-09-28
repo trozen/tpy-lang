@@ -1,0 +1,1 @@
+pins the placeholder's extra zero-argument `__init__` run, which CPython does not make

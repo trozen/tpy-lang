@@ -60,6 +60,7 @@ struct H {
     int32_t n;
 
     // def __init__(self, v: Own[A | B]):  # tpyc: warning(/never consumed/)
+    H() = default;
     explicit H(::tpy::Union<A, B>&& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.H";
 };

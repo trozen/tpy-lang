@@ -18,6 +18,7 @@ class Tagged(Animal):
     name_len: int32
 
     def __init__(self, name: str) -> None:
+        super().__init__("")
         self.name = name              # inherited; goes to body
         self.name_len = int32(len(self.name))  # own; RHS reads self.name -- must demote
 

@@ -149,6 +149,7 @@ from . import match as _match
 from ...typesys import polymorphic_source_inner
 from .predicates import (
     _eligible_ptr_value,
+    _value_record_slot,
     _narrow_alias_name,
     _poly_narrow_info,
     _storage_optional_return_type,
@@ -480,12 +481,14 @@ def _res_local_ok(t: 'TpyType | None', analyzer) -> bool:
     Callable local joins the bare-value families: its frame field is the
     `std::function<...>` value itself (`factory = pick();` writes the plain
     frame assign, `factory(7)` reads through the ordinary callable-value
-    call arm)."""
+    call arm). A value-form record local is a bare `Coord c;` field read
+    and written like a scalar's."""
     return bool(_res_value_ok(t, analyzer)
                 or _resolved_str_value(t, analyzer) is not None
                 or _resolved_bytes_value(t, analyzer) is not None
                 or _value_opt_scalar(t, analyzer) is not None
-                or _callable_value(t))
+                or _callable_value(t)
+                or _value_record_slot(t))
 
 
 def _region_reject(region: 'rcfg.Region') -> 'str | None':
@@ -1505,11 +1508,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     for lname, ltype in (func.generator_locals or []):
         kind = frame_layout.bindings[lname].kind
         if kind in (_K.VALUE, _K.OWNED_STR):
-            # Bare value field (R1a: value scalars / str / bytes /
-            # value-opt scalars). An OWNED_STR field is `std::string`, but
-            # its reads/writes are the same sema-resolved str renders the
-            # view field takes. Value types beyond the admitted families
-            # (value records, Ptr, char arrays) have no lowered render.
+            # Bare value field (value scalars / str / bytes / value-opt
+            # scalars / value records). An OWNED_STR field is `std::string`,
+            # but its reads/writes are the same sema-resolved str renders
+            # the view field takes. Value types beyond the admitted families
+            # (char arrays, a value union: BUGS.md#resumable-value-union-local-rejects)
+            # have no lowered render.
             if _res_local_ok(ltype, analyzer):
                 continue
             # A `std::optional<Record>` VALUE frame field (the await-bind
@@ -1707,7 +1711,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # emplace, reads deref the slot -- and the deref'd subject is
             # the VALUE variant, so the narrow arms' value-union treatment
             # (holds_alternative<T>((*t)) / std::get<T>((*t))) applies as
-            # long as the name never registers ptr-variant.
+            # long as the name never registers ptr-variant. A value union
+            # takes the VALUE kind instead, where it has no render yet
+            # (BUGS.md#resumable-value-union-local-rejects).
             if (isinstance(lt, UnionType) and not lt.needs_wrapper()
                     and lt.uses_pointer_repr()):
                 frame_slots.add(lname)
@@ -1873,9 +1879,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # here would move a yielded loop element that must be copied.
     _frame_ptr_locals = (ptr_frame_locals | alias_ptr_locals
                          | unpack_ptr_targets)
+    # A value record copies wherever it lives, as the plain body's decl arm
+    # never promotes one.
     _frame_decl_names = _var_decl_names(list(func.body))
-    for _lname, _ in (func.generator_locals or []):
-        if _lname not in _frame_ptr_locals and _lname in _frame_decl_names:
+    for _lname, _ltype in (func.generator_locals or []):
+        if (_lname not in _frame_ptr_locals and _lname in _frame_decl_names
+                and not _value_record_slot(_ltype)):
             lc.promote_movable(_lname)
     # Frame nested defs are struct members callable from EVERY resume
     # case, so their names register up front (the
@@ -2595,7 +2604,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     raise ThirUnsupported("res.btuple_yield_source")
                 _witness("res.btuple_yield")
                 return
-            if record_like(yt_bare, analyzer):
+            # A value-form record slot is not on this axis: it yields a
+            # copy like a scalar (the value arm below).
+            if (record_like(yt_bare, analyzer)
+                    and not _value_record_slot(yt_bare)):
                 # REFERENCE yield slot (`val_or_ref<T>` in the skeleton's
                 # signature) -- records and containers alike, one ladder over
                 # the whole axis. Both halves emit the same

@@ -106,6 +106,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, code: int) -> None:
+//     super().__init__()
 //     self.code = code
 inline ParseErr::ParseErr(const ::tpy::BigInt& code) : code(code) {}
 

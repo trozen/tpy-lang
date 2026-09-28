@@ -1,6 +1,7 @@
 # The shape adjacent to a container base-init arg: the same container as a
 # CALL rvalue rather than a bare param name. The target-less base-init render
 # is the bare name and can register no temp, so an rvalue keeps its own rung.
+# CPython runs it: BUGS.md#base-init-args-separate-lowering.
 from tpy import int32
 
 

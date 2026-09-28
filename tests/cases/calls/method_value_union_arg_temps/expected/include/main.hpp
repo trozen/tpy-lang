@@ -29,6 +29,7 @@ struct A {
     ::tpy::Union<double, int32_t> u;
 
     // def __init__(self, x: int32) -> None:
+    A() = default;
     explicit A(int32_t x);
 
     // def tag(self, v: int32 | float64) -> int32:
@@ -51,6 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 struct Child : A {
 
     // def __init__(self, x: int32) -> None:
+    Child() = default;
     explicit Child(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };

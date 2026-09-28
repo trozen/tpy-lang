@@ -1183,10 +1183,7 @@ class BoundedSemaphore(Semaphore):
     """
 
     def __init__(self, value: int32 = 1) -> None:
-        if value < 0:
-            raise ValueError("Semaphore initial value must be >= 0")
-        self._value = value
-        self._waiters = []
+        super().__init__(value)
         self._bound = value
 
 

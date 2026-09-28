@@ -55,6 +55,7 @@ struct Inner {
     ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self, pet: Dog | Cat) -> None:
+    Inner() = default;
     explicit Inner(::tpy::Union<const Cat*, const Dog*> pet);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
@@ -70,6 +71,7 @@ struct Zoo {
     Inner inner;
 
     // def __init__(self, inner: Inner) -> None:
+    Zoo() = default;
     explicit Zoo(const Inner& inner);
 
     // @readonly

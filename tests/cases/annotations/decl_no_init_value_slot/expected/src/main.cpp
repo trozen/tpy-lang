@@ -72,7 +72,7 @@ int32_t free_position(bool c) {
     s = "abc";
     Color col;
     col = Color::BLUE;
-    Pt p;
+    Pt p{};
     p = Pt(5);
     int32_t total = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(std::get<0>(t), ::tpy::__len__(s))), p.x));
     if ((col == Color::BLUE)) {

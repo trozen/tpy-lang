@@ -54,6 +54,7 @@ struct UErr : ::tpy::Exception {
     ::tpy::Union<A, B> payload;
 
     // def __init__(self, p: A | B) -> None:
+    UErr() = default;
     explicit UErr(::tpy::Union<const A*, const B*> p);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<UErr>(*this); }

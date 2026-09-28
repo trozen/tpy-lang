@@ -2774,16 +2774,8 @@ class StatementAnalyzer:
 
         # Type-check constructor arguments against __init__ params
         if stmt.args:
-            init_overloads = record.get_method_overloads("__init__")
-            if not init_overloads and record.inherits_init_from is not None:
-                # No own __init__: the emitted struct inherits the parent's
-                # ctors (`using Base::Base`), so an overloaded parent group
-                # (e.g. the OSError builtin stubs) is this record's
-                # constructible surface; the inherited init_params copy only
-                # mirrors the first stub.
-                init_overloads = self.ctx.registry.get_method_overloads_with_parents(
-                    record, "__init__")
-            if init_overloads and len(init_overloads) > 1:
+            init_overloads = self.ctx.registry.ctor_overloads(record)
+            if len(init_overloads) > 1:
                 # Overloaded ctor (builtin-stub @overload groups, e.g. the
                 # OSError (errno, strerror[, filename]) forms): resolve the
                 # winning overload like the expression construction path;

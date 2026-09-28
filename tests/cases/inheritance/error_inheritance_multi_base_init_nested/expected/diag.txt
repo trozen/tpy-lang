@@ -1,1 +1,1 @@
-main.py:22: error: Base __init__ calls must be top-level statements in 'Child.__init__', not nested in control flow; found nested call(s) for: Right.
+main.py:25: error: Right.__init__(self, ...) must be the first statement in __init__

@@ -39,6 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
 
 
 // def __init__(self, line: int32, column: int32, detail: str) -> None:
+//     super().__init__()
 //     self.line = line
 //     self.column = column
 //     self.detail = detail

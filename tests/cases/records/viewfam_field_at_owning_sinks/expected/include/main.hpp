@@ -45,6 +45,7 @@ struct Inner {
 
     // def __init__(self, tag: Own[bytes], name: Own[str], sv: StrView,
     //              n: int32) -> None:
+    Inner() = default;
     explicit Inner(::tpy::Bytes tag, std::string name, std::string_view sv, int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
@@ -60,6 +61,7 @@ struct Outer {
     Inner inner;
 
     // def __init__(self, inner: Own[Inner]) -> None:
+    Outer() = default;
     explicit Outer(Inner&& inner);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
@@ -96,6 +98,7 @@ struct Runner {
     Outer o;
 
     // def __init__(self, o: Own[Outer]) -> None:
+    Runner() = default;
     explicit Runner(Outer&& o);
 
     // def run(self) -> None:

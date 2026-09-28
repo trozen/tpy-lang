@@ -50,6 +50,7 @@ struct Container {
     ::tpy::Union<int32_t, std::string> value;
 
     // def __init__(self, value: str | int32) -> None:
+    Container() = default;
     explicit Container(const ::tpy::Union<int32_t, std::string>& value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
@@ -65,6 +66,7 @@ struct Outer {
     ::tpy::Union<Box<int32_t>, Box<std::string>> item;
 
     // def __init__(self, item: Box[str] | Box[int32]) -> None:
+    Outer() = default;
     explicit Outer(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
@@ -82,6 +84,7 @@ struct Tagged {
     ::tpy::Union<int32_t, std::string> inner;
 
     // def __init__(self, label: str, inner: str | int32) -> None:
+    Tagged() = default;
     explicit Tagged(std::string_view label, const ::tpy::Union<int32_t, std::string>& inner);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };

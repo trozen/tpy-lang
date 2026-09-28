@@ -14,7 +14,7 @@ class IntContainer(Container[int32]):
     extra: int32
 
     def __init__(self, value: int32, extra: int32) -> None:
-        self.value = value
+        super().__init__(value)
         self.extra = extra
 
 

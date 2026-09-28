@@ -1,0 +1,1 @@
+main.py:20: error: in the constructor of 'Child': this construct is not yet supported by C++ code generation (ctor.base_init)

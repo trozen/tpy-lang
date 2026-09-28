@@ -1,1 +1,1 @@
-main.py:13: error: super().__init__() can only be called once
+main.py:13: error: 'Parent' is initialized twice in 'Child.__init__' ('super().__init__()' already initializes it); a base is constructed exactly once

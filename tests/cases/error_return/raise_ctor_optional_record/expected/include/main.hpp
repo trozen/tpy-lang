@@ -58,6 +58,6 @@ inline Node::Node(const ::tpy::BigInt& v) : v(v) {}
 // def __init__(self, n: Node | None) -> None:
 //     super().__init__()
 //     self.node = n
-inline Failed::Failed(const Node* n) : ::tpy::ReturnException(), node(::tpy::ptr_to_optional(n)) {}
+inline Failed::Failed(const Node* n) : node(::tpy::ptr_to_optional(n)) {}
 void __tpy_init();
 } // namespace tpyapp::main

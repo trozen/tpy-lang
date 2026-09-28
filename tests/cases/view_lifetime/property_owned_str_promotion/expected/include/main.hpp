@@ -24,6 +24,7 @@ struct Box {
     std::string label;
 
     // def __init__(self, payload: bytes, label: str) -> None:
+    Box() = default;
     explicit Box(::tpy::BytesView payload, std::string_view label);
 
     // def m_text(self) -> str:          # method, owned return

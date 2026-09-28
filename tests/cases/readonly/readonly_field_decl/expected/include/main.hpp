@@ -22,6 +22,7 @@ struct Config {
     ::tpy::BigInt value;
 
     // def __init__(self, name: str, value: int) -> None:
+    Config() = default;
     explicit Config(std::string_view name, const ::tpy::BigInt& value);
 
     // def inc(self) -> None:

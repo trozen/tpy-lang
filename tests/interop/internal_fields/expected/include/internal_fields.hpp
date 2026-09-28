@@ -136,12 +136,8 @@ inline Entry Vault::snapshot() const {
     return Entry(this->_log.v);
 }
 
-inline OpError::OpError(std::string_view message, int32_t code, int32_t trace) : code(code), _trace(std::vector<int32_t>{trace}) {
-    this->message = message;
-}
+inline OpError::OpError(std::string_view message, int32_t code, int32_t trace) : ::tpy::ValueError(message), code(code), _trace(std::vector<int32_t>{trace}) {}
 
-inline SilentError::SilentError(std::string_view message, int32_t note) : _note(note) {
-    this->message = message;
-}
+inline SilentError::SilentError(std::string_view message, int32_t note) : ::tpy::ValueError(message), _note(note) {}
 void __tpy_init();
 } // namespace tpyapp::internal_fields

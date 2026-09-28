@@ -1,1 +1,1 @@
-main.py:10: error: 'raise <expr>' cannot be used with ReturnException type 'NotFound'; use direct 'raise NotFound' inside an @error_return function instead
+main.py:11: error: 'raise <expr>' cannot be used with ReturnException type 'NotFound'; use direct 'raise NotFound' inside an @error_return function instead

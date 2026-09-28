@@ -14,13 +14,14 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace as dc_replace
 from enum import Enum
-from typing import Any, Callable, Iterable, Iterator, Optional, Sequence, TYPE_CHECKING
+from typing import Any, Callable, Iterable, Iterator, NamedTuple, Optional, Sequence, TYPE_CHECKING
 
 from .module_names import public_module_name
 from .compilation_context import get_current_compiler, require_current_compiler
+from .identity_map import IdentityMap
 
 if TYPE_CHECKING:
-    from .parse.nodes import TpyArrayLiteral, TpyListRepeat, TpyListComprehension, TpyCall, TpyDictLiteral, TpyFunction, TypeRefNode
+    from .parse.nodes import TpyArrayLiteral, TpyListRepeat, TpyListComprehension, TpyCall, TpyDictLiteral, TpyExpr, TpyFunction, TpyMethodCall, TypeRefNode
 
 
 # Toggled (default off) only by qualified_type_str, so diagnostics can render
@@ -1517,15 +1518,28 @@ def _fields_and_parents_under_args(
     `(TypeParamRef(...),)`) and when use-site `type_args` leaves some
     parameters unbound (sema should reject these but this stays robust).
     """
+    for _fld, t in _labeled_fields_and_parents_under_args(record, type_args):
+        yield t
+
+
+def _labeled_fields_and_parents_under_args(
+    record: 'RecordInfo', type_args: tuple, *,
+    skip_initialized: bool = False,
+) -> Iterator[tuple[Optional['FieldInfo'], TpyType]]:
+    """`_fields_and_parents_under_args`, each type paired with its field
+    (None for a parent). `skip_initialized` leaves out the fields with an
+    in-class initializer (`n: int32 = 0`)."""
     subst: dict[str, TpyType] = {}
     if record.type_params and type_args:
         for name, arg in zip(record.type_params, type_args):
             if isinstance(arg, TpyType):
                 subst[name] = arg
     for f in record.fields:
-        yield substitute_type_params_structural(f.type, subst) if subst else f.type
+        if skip_initialized and f.default_expr is not None:
+            continue
+        yield f, substitute_type_params_structural(f.type, subst) if subst else f.type
     for p in record.parents:
-        yield substitute_type_params_structural(p, subst) if subst else p
+        yield None, substitute_type_params_structural(p, subst) if subst else p
 
 
 def _conditional_override_holds(required_traits: tuple[str, ...], type_args: tuple) -> bool:
@@ -5427,6 +5441,7 @@ SLICE = NominalType("slice", (), _module_qname="builtins.slice")
 # override is set on the TypeDef). Anything not in this set returns None --
 # user records, protocols, enums, primitives, etc.
 from tpyc.type_def_registry import TypeCategory as _TypeCategory
+from tpyc.type_def_registry import CppDefaultInit
 _ELEMENT_FROM_FIRST_ARG_CATEGORIES = frozenset({
     _TypeCategory.LIST,
     _TypeCategory.DICT,
@@ -5880,6 +5895,279 @@ def del_suppresses_default_ctor(record_info: 'RecordInfo') -> bool:
     )
 
 
+def cpp_default_init(typ: TpyType) -> CppDefaultInit:
+    """`CppDefaultInit` of `typ`'s STORAGE form (a field, a value slot): "has
+    a default constructor" means exactly "codegen emitted one". A union
+    default-constructs its first alternative (`std::variant`'s rule), a
+    tuple / Array is built from its elements, a record is its own fact --
+    the one codegen decides its `X() = default;` by. Protocols and unknown
+    types have no default constructor."""
+    return _type_fact(typ, set())[0]
+
+
+def placeholder_value_inits(typ: TpyType) -> bool:
+    """Whether a slot of `typ` declared before its first value is written
+    `T x{};`: a ValueType record, reached directly or through a tuple, an
+    array or a union's first alternative. Value-init zeroes the fields a
+    defaulted constructor would leave indeterminate; an `__init__` callable
+    without arguments is the default constructor and runs (LANGUAGE_FEATURES
+    "Placeholders run the default constructor")."""
+    shape = _storage_shape(typ)
+    if shape.parts:
+        return any(placeholder_value_inits(part) for _c, part in shape.parts)
+    rec = shape.record
+    if rec is None:
+        return False
+    return rec.is_value_type and not (
+        rec.is_native and shape.init_override is not None)
+
+
+def emits_default_ctor(rec: 'RecordInfo') -> bool:
+    """Whether codegen gives `rec` a C++ default constructor where it would
+    otherwise have none (its `X() = default;`). A generic template always
+    gets it unless `__del__` suppresses it: C++ deletes it per
+    instantiation, which the fact at the instance answers."""
+    return _record_fact(rec, (), set())[0] is not CppDefaultInit.NONE
+
+
+def cpp_default_init_blocker(typ: TpyType) -> str | None:
+    """The first reason, on the fact's own walk, that `typ` has no default
+    constructor (a one-clause explanation), or None when it has one."""
+    if cpp_default_init(typ) is not CppDefaultInit.NONE:
+        return None
+    shape = _storage_shape(typ)
+    for clause, part in shape.parts:
+        inner = cpp_default_init_blocker(part)
+        if inner is not None:
+            return clause(inner)
+    if shape.record is not None and shape.init_override is None:
+        return record_default_init_blocker(shape.record, shape.type_args)
+    return "the type has no zero-argument constructor"
+
+
+def record_default_init_blocker(rec: 'RecordInfo', type_args: tuple = ()
+                                ) -> str:
+    """`cpp_default_init_blocker` for a record known to answer NONE."""
+    if rec.is_native and rec.has_init:
+        return f"'{rec.name}' has no zero-argument constructor"
+    if del_suppresses_default_ctor(rec):
+        return f"'{rec.name}' has '__del__' and required '__init__' parameters"
+    for fld, t in _default_ctor_parts(rec, tuple(type_args)):
+        inner = cpp_default_init_blocker(t)
+        if inner is None:
+            continue
+        if fld is not None:
+            return f"field '{fld.name}' has type '{t}' ({inner})"
+        return (f"ancestor '{t.name}' (inherited by '{rec.name}') "
+                f"has the same restriction: {inner}")
+    return "a field or ancestor has no zero-argument constructor"
+
+
+def _unwrap_storage(typ: TpyType) -> TpyType:
+    """Peel the wrappers that do not change a slot's C++ storage type. An
+    owned `@dynamic` protocol keeps its `Own`: it is a handle
+    (`std::unique_ptr` / `std::optional<coro>`), not the protocol."""
+    t = typ
+    while True:
+        u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+        if (isinstance(u, OwnType)
+                and not is_dyn_protocol(unwrap_readonly(u.wrapped))):
+            u = u.wrapped
+        if u is t:
+            return t
+        t = u
+
+
+class _Shape(NamedTuple):
+    """One step of the walk over a storage type: a leaf's own fact, a
+    composite's parts (each with the blocker clause that wraps a part's
+    reason), or a record at its type args, whose `init` a TypeDef's own
+    verdict replaces (`init_override`) for a runtime type the compiler
+    cannot introspect."""
+    leaf: 'CppDefaultInit | None' = None
+    parts: tuple = ()
+    record: 'RecordInfo | None' = None
+    type_args: tuple = ()
+    init_override: 'CppDefaultInit | None' = None
+
+
+def _storage_shape(typ: TpyType) -> _Shape:
+    from .type_def_registry import is_array, is_enum_type, type_def_of
+    t = _unwrap_storage(typ)
+    if isinstance(t, TypeParamRef):
+        # Decided where the template is instantiated.
+        return _Shape(leaf=CppDefaultInit.INERT)
+    if is_fn_type(t):
+        # A template-mode callable is the instantiation's closure type.
+        return _Shape(leaf=CppDefaultInit.NONE)
+    if isinstance(t, (OptionalType, PtrType, CallableType, NoneType, AnyType,
+                      OwnType, IntLiteralType, FloatLiteralType, PendingListType,
+                      PendingDictType, PendingSetType, PendingViewType)):
+        return _Shape(leaf=CppDefaultInit.INERT)
+    if isinstance(t, TupleType):
+        return _Shape(parts=tuple(
+            ((lambda r, i=i: f"tuple element {i} ({r})"), e)
+            for i, e in enumerate(t.element_types)))
+    first = _first_alternative(t)
+    if first is not None:
+        if is_void_like_type(first):
+            return _Shape(leaf=CppDefaultInit.INERT)
+        return _Shape(parts=(
+            ((lambda r: f"its first alternative '{first}' ({r})"), first),))
+    if not isinstance(t, NominalType) or t.is_protocol:
+        return _Shape(leaf=CppDefaultInit.NONE)
+    if is_enum_type(t):
+        return _Shape(leaf=CppDefaultInit.INERT)
+    if is_array(t):
+        elem = t.get_element_type()
+        if elem is None:
+            return _Shape(leaf=CppDefaultInit.NONE)
+        return _Shape(parts=(
+            ((lambda r: f"array element type ({r})"), elem),))
+    td = type_def_of(t)
+    if td is None:
+        return _Shape(leaf=CppDefaultInit.NONE)
+    rec = td.record
+    override = td.cpp_default_init
+    if override is None and (rec is None or rec.builtin_type_key):
+        override = CppDefaultInit.NONE
+    return _Shape(record=rec, type_args=tuple(t.type_args),
+                  init_override=override)
+
+
+def _type_fact(typ: TpyType, visiting: set) -> tuple[CppDefaultInit, bool]:
+    """(fact, cyclic): `cyclic` marks a fact that assumed an inert record
+    already on the walk, which is therefore not cached."""
+    shape = _storage_shape(typ)
+    if shape.leaf is not None:
+        return shape.leaf, False
+    if shape.parts:
+        init, cyclic = CppDefaultInit.INERT, False
+        for _clause, part in shape.parts:
+            f, c = _type_fact(part, visiting)
+            init = init.meet(f)
+            cyclic = cyclic or c
+        return init, cyclic
+    if shape.init_override is not None or shape.record is None:
+        return shape.init_override, False
+    return _record_fact(shape.record, shape.type_args, visiting)
+
+
+def _first_alternative(t: TpyType) -> TpyType | None:
+    """The alternative a union's variant (a recursive alias's wrapper
+    included) default-constructs, or None for a non-union."""
+    alts = recursive_union_alternatives(t)
+    if alts is not None:
+        return alts[0] if alts else None
+    if isinstance(t, UnionType):
+        return t.members[0]
+    return None
+
+
+def init_is_default_ctor(rec: 'RecordInfo') -> bool:
+    """Whether the record's OWN `__init__` is its C++ default constructor:
+    it takes no argument, or defaults every one (a structural-protocol
+    parameter only when it is optional -- the ctor template then delegates
+    its zero-argument form)."""
+    if not rec.defines_own_init:
+        return False
+    if any(d is None for _n, _t, d in rec.init_params):
+        return False
+    for _n, pt, _d in rec.init_params:
+        u = unwrap_own(unwrap_readonly(unwrap_ref_type(pt)))
+        if isinstance(u, OptionalType) and _is_static_protocol(u.inner):
+            continue
+        if isinstance(u, UnionType) and is_protocol_union(u):
+            if not protocol_union_has_none(u):
+                return False
+            continue
+        if _is_static_protocol(u):
+            return False
+    return True
+
+
+def _is_static_protocol(t: TpyType) -> bool:
+    from .type_def_registry import protocol_info_of
+    if not is_protocol_type(t):
+        return False
+    info = protocol_info_of(t)
+    return not (info is not None and info.is_dynamic)
+
+
+def _default_ctor_parts(rec: 'RecordInfo', type_args: tuple
+                        ) -> Iterator[tuple[Optional['FieldInfo'], TpyType]]:
+    """What a defaulted default constructor constructs: every field without
+    an in-class initializer, then every base class (a protocol base is no
+    C++ subobject that needs arguments)."""
+    for fld, t in _labeled_fields_and_parents_under_args(rec, type_args):
+        if fld is None and isinstance(t, NominalType) and t.is_protocol:
+            continue
+        if fld is None or fld.default_expr is None:
+            yield fld, t
+
+
+def _default_ctor_memo() -> 'IdentityMap':
+    """The active compilation's per-record fact memo
+    (`Compiler.default_ctor_facts`: record -> {type args: fact}); a
+    throwaway one outside a compilation."""
+    compiler = get_current_compiler()
+    if compiler is None:
+        return IdentityMap()
+    return compiler.default_ctor_facts
+
+
+def _record_fact(rec: 'RecordInfo', type_args: tuple,
+                 visiting: set) -> tuple[CppDefaultInit, bool]:
+    """A record's fact at `type_args`: the user `__init__` when it
+    is the default constructor (USER_INIT), else `X() = default;` over the
+    fields and bases, whose meet it is -- at an OPEN instantiation (a
+    generic definition, or type args that still name a type parameter) the
+    template's own emission: C++ deletes it per instantiation. A `@native`
+    record's stub `__init__` declares its C++ constructors; a stub without
+    one declares an aggregate of its fields."""
+    args = tuple(type_args)
+    memo = _default_ctor_memo()
+    per_rec = memo.get(rec)
+    if per_rec is not None and args in per_rec:
+        return per_rec[args], False
+    key = (rec.qualified_name(), args)
+    if key in visiting:
+        return CppDefaultInit.INERT, True
+    open_inst = bool(rec.type_params) and (
+        not args or any(contains_type_param(a) for a in args
+                        if isinstance(a, TpyType)))
+    cyclic = False
+    if rec.is_native and rec.has_init:
+        # A @native ValueType's default constructor is asserted beside its
+        # declaration.
+        fact = (CppDefaultInit.INERT
+                if rec.is_value_type or all(
+                    d is not None for _n, _t, d in rec.init_params)
+                else CppDefaultInit.NONE)
+    elif del_suppresses_default_ctor(rec):
+        fact = CppDefaultInit.NONE
+    elif init_is_default_ctor(rec):
+        fact = CppDefaultInit.USER_INIT
+    elif open_inst:
+        fact = CppDefaultInit.INERT
+    else:
+        fact = CppDefaultInit.INERT
+        visiting.add(key)
+        try:
+            for _fld, t in _default_ctor_parts(rec, args):
+                f, c = _type_fact(t, visiting)
+                fact = fact.meet(f)
+                cyclic = cyclic or c
+        finally:
+            visiting.discard(key)
+    if not cyclic:
+        if per_rec is None:
+            per_rec = {}
+            memo[rec] = per_rec
+        per_rec[args] = fact
+    return fact, cyclic
+
+
 @dataclass
 class FieldInfo:
     """Information about a record field."""
@@ -5908,6 +6196,40 @@ class PropertyInfo:
         return self.getter.return_type
 
 
+class InitInheritBlock(Enum):
+    """Why an `__init__`-less class does not inherit its parent's
+    constructors."""
+    FIELD_WITHOUT_DEFAULT = "field_without_default"
+    NATIVE = "native"
+    BASE_WITHOUT_INIT = "base_without_init"
+    RETURN_EXCEPTION = "return_exception"
+    BARE_GENERIC_BASE = "bare_generic_base"
+    SEVERAL_INIT_BASES = "several_init_bases"
+
+
+class BaseInitDuty(Enum):
+    """What a child `__init__` owes one direct base (`base_init_duty`)."""
+    # Nothing owed: a protocol or a builtin container base.
+    NONE = "none"
+    # A class in the base's ancestry, TPy or `@native` alike, defines
+    # `__init__`: skipping the call is a warned divergence, since C++ builds
+    # the base with its default constructor (which must exist), running a
+    # zero-argument `__init__` Python never calls or filling fields Python
+    # leaves unset. A return exception's `Exception` base is owed the call
+    # too: it sets the message.
+    CALL = "call"
+    # Skipping the call builds the base with its C++ default constructor,
+    # which must exist.
+    DEFAULT = "default"
+
+
+class InitInheritBlocker(NamedTuple):
+    """The recorded `InitInheritBlock`, for the diagnostic on arguments
+    passed through the class."""
+    kind: InitInheritBlock
+    name: str | None = None   # the offending field or base, for the kinds that have one
+
+
 @dataclass
 class RecordInfo:
     """Information about a user-defined record (class) or builtin type.
@@ -5934,6 +6256,7 @@ class RecordInfo:
     fields: list[FieldInfo]
     has_init: bool = False
     inherits_init_from: 'Optional[NominalType]' = None  # Set when init_params were copied from an MRO ancestor; drives `using Base::Base;` codegen.
+    init_inherit_blocker: Optional[InitInheritBlocker] = None  # Set instead when a class without __init__ could not inherit one.
     init_params: list[tuple[str, TpyType, Optional[str]]] = field(default_factory=list)  # (name, type, default)
     methods: dict[str, list['FunctionInfo']] = field(default_factory=dict)  # method_name -> list of overloads
     properties: dict[str, 'PropertyInfo'] = field(default_factory=dict)  # property_name -> PropertyInfo
@@ -6038,6 +6361,13 @@ class RecordInfo:
         """The name a diagnostic spells: an enum's companion is the enum the
         user wrote, never its internal record name."""
         return self.enum_companion_of or self.name
+
+    @property
+    def defines_own_init(self) -> bool:
+        """Whether this class's own body defines `__init__`: one inherited
+        from a parent (`using Base::Base`) or a TypedDict's field-wise
+        constructor does not count."""
+        return self.has_init and self.inherits_init_from is None and not self.is_typed_dict
 
     @property
     def materializes_defaults(self) -> bool:
@@ -7337,6 +7667,125 @@ class TypeRegistry:
             if rec is parent:
                 return True
         return False
+
+    def init_owner(self, record: RecordInfo) -> RecordInfo | None:
+        """The nearest class in `record`'s MRO, `record` included, that
+        defines `__init__` itself -- the initializer Python runs for
+        `record(...)` and for a `super().__init__(...)` that names `record`."""
+        for anc in (record, *self.iter_ancestor_records(record)):
+            if anc.defines_own_init:
+                return anc
+        return None
+
+    def base_init_duty(self, child: RecordInfo, base: TpyType) -> BaseInitDuty:
+        """What `child`'s `__init__` (a hand-written one, or one a macro
+        synthesized) owes direct base `base` when it does not call the
+        base's initializer -- one rule for single- and multi-base classes."""
+        if not isinstance(base, NominalType) or base.is_protocol:
+            return BaseInitDuty.NONE
+        rec = self.get_record_for_type(base)
+        if rec is None:
+            return BaseInitDuty.NONE
+        if not self.is_struct_base(child, rec):
+            # A return exception's `Exception` base builds no C++ subobject,
+            # but its `__init__` owes the call like any exception subclass's:
+            # the call is what sets the message (`base_init_sets_message`).
+            return BaseInitDuty.CALL
+        # Skipping a builtin container's initializer is no divergence: CPython
+        # has already built the empty container in `__new__`, as C++ does.
+        if rec.builtin_type_key is not None:
+            return BaseInitDuty.NONE
+        if self.init_owner(rec) is not None:
+            return BaseInitDuty.CALL
+        return BaseInitDuty.DEFAULT
+
+    def base_init_sets_message(self, child: RecordInfo,
+                               base: 'TpyType | None') -> bool:
+        """Whether a parent-initializer call from `child` that initializes
+        direct base `base` builds no C++ base and instead initializes the
+        class's own `message` field from its argument: a return exception's
+        call to `Exception.__init__` (see `is_struct_base`)."""
+        if base is None:
+            return False
+        rec = self.get_record_for_type(base)
+        return rec is not None and not self.is_struct_base(child, rec)
+
+    def base_init_message_arg(self, child: RecordInfo,
+                              call: 'TpyMethodCall') -> 'TpyExpr | None':
+        """The argument an analyzed parent-initializer `call` from `child`
+        initializes the class's own `message` field from
+        (`base_init_sets_message`), or None when the call builds a C++ base
+        or passes nothing, leaving the field to its default. A keyword or
+        `**` argument counts as the message, so a caller that cannot render
+        one rejects it rather than dropping it."""
+        if not self.base_init_sets_message(child, call.base_init_direct_base):
+            return None
+        if call.args:
+            return call.args[0]
+        if call.kwargs:
+            return next(iter(call.kwargs.values()))
+        return call.double_star_unpack
+
+    def init_overloads(self, record: RecordInfo) -> list['FunctionInfo']:
+        """The overloads of `init_owner(record)`'s `__init__`; empty when no
+        class in `record`'s MRO defines one."""
+        owner = self.init_owner(record)
+        return owner.get_method_overloads("__init__") if owner is not None else []
+
+    def mro_method_definer(self, record: RecordInfo, method: str) -> 'TpyType | None':
+        """The first ancestor in `record`'s MRO (`record` excluded) whose own
+        method table defines `method` -- the class a multi-base
+        `super().<method>()` dispatches to; inherited methods do not count,
+        matching Python's `__dict__` walk."""
+        for anc_type in record.mro_ancestors:
+            anc = self.get_record_for_type(anc_type)
+            if anc is not None and anc.get_method_overloads(method):
+                return anc_type
+        return None
+
+    def init_direct_base(self, child: RecordInfo, target: RecordInfo) -> 'TpyType | None':
+        """The direct base of `child`, as `child` spells it, whose constructor
+        runs the initializer a parent-initializer call naming `target` runs:
+        `target` itself, or the first base above it whose nearest `__init__`
+        is `target`'s -- C++ cannot construct a non-direct base, and such a
+        base inherits that constructor. None when no direct base does."""
+        owner = self.init_owner(target)
+        for parent in child.parents:
+            if not isinstance(parent, NominalType):
+                continue
+            rec = self.get_record_for_type(parent)
+            if (rec is not None
+                    and (rec is target or self.is_subclass_of_record(rec, target))
+                    and self.init_owner(rec) is owner):
+                return parent
+        return None
+
+    def super_target(self, child: RecordInfo, method: str) -> 'TpyType | None':
+        """The class `super().<method>()` in `child` dispatches to: the sole
+        parent of a single-base class, else the first MRO ancestor whose own
+        method table defines `method` (`mro_method_definer`). None when there
+        is no such class."""
+        if len(child.parents) < 2:
+            return child.parents[0] if child.parents else None
+        return self.mro_method_definer(child, method)
+
+    def super_init_direct_base(self, child: RecordInfo) -> 'TpyType | None':
+        """The direct base a `super().__init__(...)` in `child` initializes."""
+        target_type = self.super_target(child, "__init__")
+        target = (self.get_record_for_type(target_type)
+                  if target_type is not None else None)
+        return self.init_direct_base(child, target) if target is not None else None
+
+    def ctor_overloads(self, record: RecordInfo) -> list['FunctionInfo']:
+        """The `__init__` overloads `record(...)` constructs against: its own,
+        else -- when it inherits its initializer -- the owner's full group.
+        The inherited `init_params` copy mirrors only the owner's FIRST
+        overload, while the emitted struct's `using Base::Base` inherits every
+        base ctor, so construction resolves against the whole group."""
+        own = record.get_method_overloads("__init__")
+        if own or record.inherits_init_from is None:
+            return own
+        return self.init_overloads(record)
 
     def get_method_overloads_with_parents(
         self, record: RecordInfo, method_name: str,

@@ -73,11 +73,13 @@ inline std::ostream& operator<<(std::ostream& os, const Denied& obj) {
 
 
 // def __init__(self, code: int32):
+//     super().__init__()
 //     self.code = code
-inline NotFound::NotFound(int32_t code) : code(code) {}
+inline NotFound::NotFound(int32_t code) : ::tpy::Exception(), code(code) {}
 
 // def __init__(self, code: int32):
+//     super().__init__()
 //     self.code = code
-inline Denied::Denied(int32_t code) : code(code) {}
+inline Denied::Denied(int32_t code) : ::tpy::Exception(), code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

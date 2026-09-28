@@ -12,6 +12,7 @@ class Base:
 
 class Child(Base):
     def __init__(self, x: int32):
+        super().__init__(0)
         self.x = x          # x is Base.x -- reuse the inherited slot, no shadow
 
 def main() -> None:

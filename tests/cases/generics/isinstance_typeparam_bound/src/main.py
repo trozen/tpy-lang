@@ -10,15 +10,15 @@ class Animal:
 
 class Dog(Animal):
     def __init__(self, n: int32):
-        self.n = n
+        super().__init__(n)
 
 class Puppy(Dog):
     def __init__(self, n: int32):
-        self.n = n
+        super().__init__(n)
 
 class Cat(Animal):
     def __init__(self, n: int32):
-        self.n = n
+        super().__init__(n)
 
 def classify[T: Dog](x: T) -> int32:
     code = 0

@@ -4,11 +4,13 @@ from tpy import int32, Own
 class AppError(Exception):
     code: int32
     def __init__(self, code: int32) -> None:
+        super().__init__()
         self.code = code
 
 class OtherError(Exception):
     tag: str
     def __init__(self, tag: str) -> None:
+        super().__init__()
         self.tag = tag
 
 def make_error(code: int32) -> Own[AppError]:

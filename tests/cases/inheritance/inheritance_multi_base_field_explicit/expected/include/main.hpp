@@ -63,7 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
 // def __init__(self, n: int32, label: str) -> None:
 //     Counter.value = n  # tpyc: ok
 //     Tag.value = label  # tpyc: ok
-inline Combined::Combined(int32_t n, std::string_view label) {
+inline Combined::Combined(int32_t n, std::string_view label) : Counter(), Tag() {
     this->Counter::value = n;
     this->Tag::value = label;
 }

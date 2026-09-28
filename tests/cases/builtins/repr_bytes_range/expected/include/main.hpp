@@ -48,6 +48,7 @@ struct Holder {
     ::tpy::Bytes data;
 
     // def __init__(self, data: bytes) -> None:
+    Holder() = default;
     explicit Holder(::tpy::BytesView data);
 
     // def show(self, n: int32) -> str:

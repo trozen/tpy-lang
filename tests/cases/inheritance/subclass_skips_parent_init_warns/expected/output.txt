@@ -1,0 +1,7 @@
+tag: 1
+dog: 2
+native exception: 3
+return exception: 7
+multi-base: 4
+dataclass: 5
+list base: 6 1

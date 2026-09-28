@@ -40,10 +40,8 @@ inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
 
 
 // def __init__(self, message: str, line: int32) -> None:
-//     self.message = message
+//     super().__init__(message)
 //     self.line = line
-inline ParseError::ParseError(std::string_view message, int32_t line) : line(line) {
-    this->message = message;
-}
+inline ParseError::ParseError(std::string_view message, int32_t line) : ::tpy::Exception(message), line(line) {}
 void __tpy_init();
 } // namespace tpyapp::main

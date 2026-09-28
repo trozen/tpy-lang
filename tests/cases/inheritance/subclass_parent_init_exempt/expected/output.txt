@@ -1,0 +1,8 @@
+tagged init t
+multi-base native: 7 t code 7
+protocol bases: 250
+annotation-only: 1 2 3
+counter init 5
+explicit: n 5
+counter init 8
+inherited: 9

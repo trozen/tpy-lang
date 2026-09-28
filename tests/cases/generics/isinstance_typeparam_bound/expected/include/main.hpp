@@ -84,22 +84,16 @@ inline std::ostream& operator<<(std::ostream& os, const Puppy& obj) {
 inline Animal::Animal(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32):
-//     self.n = n
-inline Dog::Dog(int32_t n) {
-    this->n = n;
-}
+//     super().__init__(n)
+inline Dog::Dog(int32_t n) : Animal(n) {}
 
 // def __init__(self, n: int32):
-//     self.n = n
-inline Cat::Cat(int32_t n) {
-    this->n = n;
-}
+//     super().__init__(n)
+inline Cat::Cat(int32_t n) : Animal(n) {}
 
 // def __init__(self, n: int32):
-//     self.n = n
-inline Puppy::Puppy(int32_t n) {
-    this->n = n;
-}
+//     super().__init__(n)
+inline Puppy::Puppy(int32_t n) : Dog(n) {}
 // def classify[T: Dog](x: T) -> int32:
 //     code = 0
 //     if isinstance(x, Animal):  # tpyc: ok

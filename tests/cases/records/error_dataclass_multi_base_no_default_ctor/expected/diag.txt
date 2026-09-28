@@ -1,0 +1,1 @@
+main.py:28: error: the '__init__' synthesized by '@dataclass' for 'Both' does not initialize parent class 'Holder', but 'Holder' cannot be constructed without arguments (field 'h' has type 'Handle' ('Handle' has '__del__' and required '__init__' parameters)). Either give 'Holder' field defaults, or give it an '__init__' and call it from an explicit '__init__' on 'Both'.

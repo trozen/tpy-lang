@@ -711,6 +711,7 @@ class TestPlainSinkShape:
             "value_union_temp",
             "value_union_narrowed_pass",
             "record_rvalue_temp",
+            "value_record_rvalue",
             "str_owned_slot",
             "bytes_owned_slot",
             "own_move",
@@ -891,7 +892,7 @@ class TestPlainSinkShape:
                      _METHOD_ARG_SINK):
             others |= {r.row for r in sink.rows}
         shared = [r.row for r in _PLAIN_ARG_SINK.rows if r.row in others]
-        assert len(shared) == 57
+        assert len(shared) == 58
         assert "lambda" in shared and "own_lvalue" in shared
 
     def test_the_coerce_peel_keeps_its_own_row_name(self):
@@ -1017,7 +1018,7 @@ class TestGenericPlainSinkShape:
         # quietly fill one and call it a transcription. The count is what
         # closes the gap: naming a subset leaves the unnamed absences free
         # to be filled silently.
-        assert len(set(plain) - set(generic)) == 71
+        assert len(set(plain) - set(generic)) == 72
         assert {"callable_field", "value_union_temp", "own_coerce_cast",
                 "container_literal", "covariant_temp", "union_pass_through",
                 "value_opt_pass_through",
@@ -1523,6 +1524,7 @@ class TestRecordCtorSinkShape:
             "async_factory_wrap",
             "callable_value_pass",
             "field_read_ref_ctor",
+            "value_record_field",
             "record_elem_subscript",
             "container_comp",
             "container_literal",
@@ -1704,7 +1706,7 @@ class TestRecordCtorNestedIsNotADirectPrefix:
         # absences free to be filled silently later.
         direct = {r.row for r in _CTOR_ARG_SINK.rows}
         nested = {r.row for r in _CTOR_NESTED_ARG_SINK.rows}
-        assert len(direct - nested) == 49
+        assert len(direct - nested) == 50
         assert {"mutated_container_literal", "str_pass_through",
                 "own_lvalue", "own_bytes_literal",
                 "container_literal", "own_container_literal",
@@ -1751,6 +1753,7 @@ class TestRecordCtorSharedAndNewRows:
             "copy_open_elem",
             "async_factory_wrap",
             "field_read_ref_ctor",
+            "value_record_field",
             "own_container_instantiation",
             "own_container_construct",
             "ru_wrapper_name_no_alias",

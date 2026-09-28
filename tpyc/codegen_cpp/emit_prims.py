@@ -51,7 +51,8 @@ from ..typesys import (
     UnionType, VoidType,
     collapse_tuple_own_elements, error_return_to_cpp, is_dyn_protocol,
     is_own_pointer_repr_optional, is_polymorphic_subclass_fact,
-    is_protocol_type, is_void_like_type, polymorphic_source_inner,
+    is_protocol_type, is_void_like_type, placeholder_value_inits,
+    polymorphic_source_inner,
     polymorphic_subclass_into_optional, resolve_int_literals, unwrap_optional_own,
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
@@ -84,6 +85,16 @@ def nested_def_signature(types: 'TypeResolver',
 
 
 # -- local-form predicates -------------------------------------------------
+
+def placeholder_init(t: TpyType | None, cpp_type: str) -> str:
+    """The declarator suffix of a slot declared before its first value:
+    `{}` (value-initialized, `P p{};`) where `typesys.placeholder_value_inits`
+    asks for it, else "" for the bare `T x;`. Every pre-declared position
+    renders through here."""
+    if isinstance(t, TpyType) and placeholder_value_inits(t):
+        return "{}"
+    return ""
+
 
 def is_plain_nonvalue(ctx: 'CodeGenContext', t: TpyType) -> bool:
     # Recursive-union wrappers are reference types like records: a local
@@ -1478,8 +1489,8 @@ def reject_nondef_ctor_field_in_body(field_name: str, record_name: str,
                                      reason: str,
                                      loc: SourceLocation | None) -> NoReturn:
     """A `self.field = expr` that codegen demoted out of the member
-    initializer list targets an own field whose type has a suppressed default
-    constructor.
+    initializer list targets an own field whose type has no default
+    constructor (`typesys.cpp_default_init`).
 
     Such a field has no default state, so the C++ member initializer list
     would implicitly default-init it to an uncompilable one; the wording

@@ -85,20 +85,12 @@ inline std::ostream& operator<<(std::ostream& os, const ConfigError& obj) {
 }
 
 
-inline NotFound::NotFound(std::string_view message) {
-    this->message = message;
-}
+inline NotFound::NotFound(std::string_view message) : ::tpy::KeyError(message) {}
 
-inline AppError::AppError(std::string_view message) {
-    this->message = message;
-}
+inline AppError::AppError(std::string_view message) : ::tpy::Exception(message) {}
 
-inline FatalError::FatalError(std::string_view message) {
-    this->message = message;
-}
+inline FatalError::FatalError(std::string_view message) : ::tpy::BaseException(message) {}
 
-inline ConfigError::ConfigError(std::string_view message) {
-    this->message = message;
-}
+inline ConfigError::ConfigError(std::string_view message) : AppError(message) {}
 void __tpy_init();
 } // namespace tpyapp::userexc

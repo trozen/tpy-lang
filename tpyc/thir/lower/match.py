@@ -62,6 +62,7 @@ from ...liveness import stmts_terminate
 from ..faces import witness as _witness
 from ..reject import ThirUnsupported, note_detail, stmt_reject_reason
 from ..nodes import (
+    HoistDecl,
     Form,
     THIRFoldedBlock,
     THIRMatchFoldBind,
@@ -1130,14 +1131,6 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
             continue
         if in_branch or in_loop:
             return None
-        if _value_tuple(vtype, analyzer) is not None:
-            # A VALUE tuple predecls through the same plain tail arm
-            # (`std::tuple<...> t;`) and its branch writes are plain assigns.
-            # Scoped to the match hoist rather than widening the shared
-            # `_try_hoist_type_ok`, whose other four call sites (if / try /
-            # with / for) would each need their own re-verification.
-            hoist_declared.append((name, vtype, "value"))
-            continue
         # Pattern captures have strategy-specific writes. Ordinary body
         # assignments use the same storage adapters for every subject kind.
         if not nonvalue_ok and name in captures:
@@ -1540,7 +1533,7 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     if kind != "switch_union":  # the union lowerers witness their route
         _witness(f"match.{kind}")
     predeclared = set(declared)
-    hoist_decls: list[tuple[str, str]] = []
+    hoist_decls: list[HoistDecl] = []
     hoist_slots: list[tuple[str, str]] = []
     hoist_kinds: dict[str, str] = {}
     for name, vtype, hkind in route.hoist_types:
@@ -1559,7 +1552,7 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
             # shared by binds off subjects of differing const-ness, so it
             # takes the const form for either to compile.
             _cq = "const " if hkind == "ptr_const" else ""
-            hoist_decls.append((name, f"{_cq}{lc.render_type(vtype)}*"))
+            hoist_decls.append(HoistDecl(name, f"{_cq}{lc.render_type(vtype)}*"))
             lc.pointers.add(name)
             lc.branch_hoisted.add(name)
             lc.match_ptr_hoists.add(name)
@@ -1570,7 +1563,7 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
             continue
         if hkind == "ptr_slot":
             # Route-gated to the record tiers (ptr_slot_ok).
-            hoist_decls.append((name, f"{lc.render_type(vtype)}*"))
+            hoist_decls.append(HoistDecl(name, f"{lc.render_type(vtype)}*"))
             lc.pointers.add(name)
             lc.promote_movable(name)
             lc.rebind_slot_locals.add(name)
@@ -1587,7 +1580,7 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
             # entry keeps the Optional so body reads classify as the
             # nullable borrow name (deref_check on unproven access).
             hoist_decls.append(
-                (name, f"{lc.render_type(vtype.inner)}*"))
+                HoistDecl(name, f"{lc.render_type(vtype.inner)}*"))
             lc.pointers.add(name)
             lc.branch_hoisted.add(name)
             declared[name] = vtype
@@ -2149,7 +2142,7 @@ def _hook_mode_field_bindings(field_bindings: tuple, lc: _LowerCtx) -> tuple:
 def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                         declared: dict[str, TpyType], loc,
                         pointers: AbstractSet[str],
-                        hoist_decls: 'list[tuple[str, str]]',
+                        hoist_decls: 'list[HoistDecl]',
                         kind: str, *, loop_depth: int = 0,
                         hoist_kinds: 'dict[str, str] | None' = None,
                         hoist_slots: 'tuple[tuple[str, str], ...]' = (),
@@ -2314,7 +2307,7 @@ def _poly_cast_pair(cpp_type: str, narrowed_t, source_inner, depth: int,
 def _lower_match_poly(stmt: TpyMatch, lc: _LowerCtx,
                       declared: dict[str, TpyType], loc,
                       pointers: AbstractSet[str],
-                      hoist_decls: 'list[tuple[str, str]]',
+                      hoist_decls: 'list[HoistDecl]',
                       kind: str, *, loop_depth: int = 0) -> THIRMatch:
     """Lower a polymorphic-dispatch `match` (poly_if_elif / poly_guarded),
     the subject bound once, per class
@@ -2541,7 +2534,7 @@ def _lower_match_optional(stmt: TpyMatch, lc: _LowerCtx,
                           declared: dict[str, TpyType], loc,
                           pointers: AbstractSet[str],
                           predeclared: AbstractSet[str],
-                          hoist_decls: 'list[tuple[str, str]]', *,
+                          hoist_decls: 'list[HoistDecl]', *,
                           loop_depth: int = 0,
                           arm_body_hooks: bool = False) -> THIRMatch:
     """Lower an optional_partition `match` (O1) -- see THIRMatch's
@@ -2652,7 +2645,7 @@ def _lower_match_optional(stmt: TpyMatch, lc: _LowerCtx,
 def _lower_optional_inner_record(
         stmt: TpyMatch, lc: _LowerCtx, declared: dict[str, TpyType], loc,
         pointers: AbstractSet[str],
-        hoist_decls: 'list[tuple[str, str]]', none_cases, inner_cases,
+        hoist_decls: 'list[HoistDecl]', none_cases, inner_cases,
         inner_type, *, loop_depth: int = 0) -> THIRMatch:
     """The optimized-optional record-inner dispatch (pointer-repr
     subjects): the null split, then an if/elif
@@ -2760,7 +2753,7 @@ def _lower_optional_inner_record(
 def _lower_optional_value_dispatch(
         stmt: TpyMatch, lc: _LowerCtx, declared: dict[str, TpyType], loc,
         pointers: AbstractSet[str], predeclared: AbstractSet[str],
-        hoist_decls: 'list[tuple[str, str]]', none_cases, inner_cases, *,
+        hoist_decls: 'list[HoistDecl]', none_cases, inner_cases, *,
         loop_depth: int = 0,
         arm_body_hooks: bool = False) -> THIRMatch:
     """The optimized-optional value-repr form (O2): the has_value
@@ -2903,7 +2896,7 @@ def _optional_class_alt_pieces(alt: TpyClassPattern, inner_type, analyzer,
 def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
                                 declared: dict[str, TpyType], loc,
                                 pointers: AbstractSet[str],
-                                hoist_decls: 'list[tuple[str, str]]',
+                                hoist_decls: 'list[HoistDecl]',
                                 kind: str, *,
                                 loop_depth: int = 0,
                                 hoist_kinds: 'dict[str, str] | None' = None,
@@ -3142,7 +3135,7 @@ def _str_lit_cond_group(strs) -> 'tuple[tuple[bool, tuple], ...]':
 def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
                             declared: dict[str, TpyType], loc,
                             pointers: AbstractSet[str],
-                            hoist_decls: 'list[tuple[str, str]]', *,
+                            hoist_decls: 'list[HoistDecl]', *,
                             loop_depth: int = 0,
                             arm_body_hooks: bool = False,
                             subject_rvalue: bool = False) -> THIRMatch:
@@ -3323,7 +3316,7 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
 def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                        declared: dict[str, TpyType], loc,
                        pointers: AbstractSet[str],
-                       hoist_decls: 'list[tuple[str, str]]', *,
+                       hoist_decls: 'list[HoistDecl]', *,
                        loop_depth: int = 0,
                        arm_body_hooks: bool = False,
                        subject_rvalue: bool = False) -> THIRMatch:
@@ -3500,7 +3493,7 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
 def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
                                declared: dict[str, TpyType], loc,
                                pointers: AbstractSet[str],
-                               hoist_decls: 'list[tuple[str, str]]',
+                               hoist_decls: 'list[HoistDecl]',
                                *, loop_depth: int = 0,
                                arm_body_hooks: bool = False,
                                ) -> THIRMatch:

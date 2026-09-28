@@ -24,6 +24,7 @@ struct W {
     ::tpy::Union<std::monostate, ::tpy::BigInt, std::string> uni;
 
     // def __init__(self, opt: "str | None", uni: "int | str | None") -> None:
+    W() = default;
     explicit W(std::optional<std::string_view> opt, const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& uni);
     static constexpr std::string_view __tpy_class_name__ = "__main__.W";
 };

@@ -412,8 +412,9 @@ inline __gen_Src_gen Src::gen() const {
 inline Node::Node(int32_t v) : v(v) {}
 
 // def __init__(self, msg: str) -> None:
+//     super().__init__()
 //     self.msg = msg
-inline Boom::Boom(std::string_view msg) : msg(msg) {}
+inline Boom::Boom(std::string_view msg) : ::tpy::Exception(), msg(msg) {}
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n

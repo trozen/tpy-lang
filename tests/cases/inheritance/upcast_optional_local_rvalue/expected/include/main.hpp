@@ -161,8 +161,9 @@ inline int32_t Holder::read() const {
 }
 
 // def __init__(self) -> None:
+//     super().__init__()
 //     self.n = 2
-inline Child::Child() {
+inline Child::Child() : Base() {
     this->n = 2;
 }
 void __tpy_init();

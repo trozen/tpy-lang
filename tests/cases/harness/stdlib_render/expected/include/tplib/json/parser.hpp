@@ -51,10 +51,10 @@ inline constexpr std::string_view __name__ = "tplib.json.parser";
 
 // class JsonError(Exception, ReturnException):
 struct JsonError : ::tpy::ReturnException {
-    // self.message = message
-    std::string message;
     // pos: int32
     int32_t pos;
+    // self.message = message
+    std::string message;
 
     // def __init__(self, message: str = "", pos: int32 = -1) -> None:
     explicit JsonError(std::string_view message = "", int32_t pos = -1);
@@ -189,9 +189,13 @@ inline std::ostream& operator<<(std::ostream& os, const JsonReader& obj) {
 
 
 // def __init__(self, message: str = "", pos: int32 = -1) -> None:
-//     self.message = message
+//     super().__init__(message)
 //     self.pos = pos
-inline JsonError::JsonError(std::string_view message, int32_t pos) : message(message), pos(pos) {}
+//     # CPython keeps the message only in `args`; `describe()` reads the attribute.
+//     self.message = message
+inline JsonError::JsonError(std::string_view message, int32_t pos) : pos(pos), message(message) {
+    this->message = message;
+}
 
 // def __init__(self, data: str) -> None:
 //     self._data = data

@@ -234,6 +234,7 @@ struct UnionHolder {
     ::tpy::Union<Cat, Counter> payload;
 
     // def __init__(self, n: int32) -> None:
+    UnionHolder() = default;
     explicit UnionHolder(int32_t n);
 
     // def bump(self, v: int32) -> None:

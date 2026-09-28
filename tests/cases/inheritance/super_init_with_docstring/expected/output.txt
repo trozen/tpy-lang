@@ -1,4 +1,21 @@
-10
-20
-3
-9
+parent init 10
+docstring: 10 20
+parent init 3
+nested-def: 3 9
+parent init 1
+pass-super: after 1 3
+pass-super: 1 3
+parent init 2
+pass-base: after 2
+pass-base: 2
+parent init 3
+other init 4
+pass-multi: after 3 4
+pass-multi: 3 4
+parent init 5
+doc-pass: after 5
+doc-pass: 5
+parent init 6
+other init 7
+pass-between: after 6 7 8 9
+pass-between: 6 7 8 9

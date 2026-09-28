@@ -8,3 +8,4 @@ False
 True
 Base(x=1, y=2)
 True
+multi-base: 5 0 l

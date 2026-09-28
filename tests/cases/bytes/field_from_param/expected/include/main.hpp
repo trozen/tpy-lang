@@ -21,6 +21,7 @@ struct Packet {
     ::tpy::Bytes data;
 
     // def __init__(self, data: bytes) -> None:
+    Packet() = default;
     explicit Packet(::tpy::BytesView data);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Packet";
 };
@@ -38,6 +39,7 @@ struct MultiField {
     ::tpy::Bytes payload;
 
     // def __init__(self, name: str, payload: bytes) -> None:
+    MultiField() = default;
     explicit MultiField(std::string_view name, ::tpy::BytesView payload);
     static constexpr std::string_view __tpy_class_name__ = "__main__.MultiField";
 };

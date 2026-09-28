@@ -64,6 +64,7 @@ struct Holder {
     ::tpy::Union<std::monostate, A, B> u;
 
     // def __init__(self, u: A | B | None) -> None:
+    Holder() = default;
     explicit Holder(::tpy::Union<std::monostate, const A*, const B*> u);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };

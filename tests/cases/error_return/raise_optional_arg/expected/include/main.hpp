@@ -37,6 +37,6 @@ inline std::ostream& operator<<(std::ostream& os, const Failed& obj) {
 // def __init__(self, code: int32 | None) -> None:
 //     super().__init__()
 //     self.code = code
-inline Failed::Failed(std::optional<int32_t> code) : ::tpy::ReturnException(), code(code) {}
+inline Failed::Failed(std::optional<int32_t> code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

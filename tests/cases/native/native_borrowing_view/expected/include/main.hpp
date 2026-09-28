@@ -10,6 +10,7 @@ namespace tpyapp::main {
 } // namespace tpyapp::main
 
 template<> struct tpy::is_value_type<::Cursor> : std::true_type {};
+static_assert(std::is_default_constructible_v<::Cursor>, "@native ValueType 'Cursor' needs a default constructor: a slot declared before its value is built by it");
 
 namespace tpyapp::main {
 

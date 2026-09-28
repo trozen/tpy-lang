@@ -21,6 +21,9 @@ namespace tpyapp::main {
 //     b = Base(1, 2)
 //     print(b)
 //     print(b == Base(1, 2))
+//     t = Tagged(5)
+//     t.label = "l"
+//     print("multi-base:", t.z, t.count, t.label)
 void main() {
     Child c = Child(1, 2, 3);
     std::cout << c.x << "\n";
@@ -35,6 +38,9 @@ void main() {
     Base b = Base(1, 2);
     std::cout << b << "\n";
     std::cout << ::tpy::print_bool(((b) == (Base(1, 2)))) << "\n";
+    Tagged t = Tagged(5);
+    t.label = "l";
+    std::cout << "multi-base:" << " " << t.z << " " << t.count << " " << t.label << "\n";
 }
 
 // # @dataclass inheritance: child includes parent fields in __init__ and __eq__

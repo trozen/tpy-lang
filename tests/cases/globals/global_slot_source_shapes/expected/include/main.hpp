@@ -123,9 +123,10 @@ inline Holder::Holder() : xs(std::vector<int32_t>{1, 2}), inner(Point(3)), value
 inline Base::Base() : n(1) {}
 
 // def __init__(self) -> None:
+//     super().__init__()
 //     self.n = 2
 //     self.extra = 9
-inline Child::Child() : extra(9) {
+inline Child::Child() : Base(), extra(9) {
     this->n = 2;
 }
 void __tpy_init();

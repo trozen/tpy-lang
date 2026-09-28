@@ -1851,7 +1851,9 @@ class FunctionTrackingState:
     pinned_view_aliases: dict[str, set[str]] = field(default_factory=dict)
 
     # --- Control flow ---
-    super_init_call: TpyMethodCall | None = None
+    # Every parent-initializer call in this __init__ (`super().__init__()` and
+    # `Base.__init__(self, ...)`), with the spelling its diagnostic names.
+    base_init_calls: list[tuple[TpyMethodCall, str]] = field(default_factory=list)
     super_del_call: TpyMethodCall | None = None
     pending_loop_vars: dict[str, PendingLocal] = field(default_factory=dict)
     loop_vars: set[str] = field(default_factory=set)

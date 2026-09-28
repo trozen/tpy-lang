@@ -16,7 +16,8 @@ from ..typesys import (
     unwrap_readonly, unwrap_optional_own, unwrap_send_sync, unwrap_qualifiers,
     get_covariant_params, PtrType,
     bare_name, qualify_shadowed_nominals,
-    del_suppresses_default_ctor, type_value_init_indeterminate,
+    emits_default_ctor, init_is_default_ctor,
+    type_value_init_indeterminate,
 )
 from ..parse import (
     TpyRecord, TpyEnum, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -31,19 +32,18 @@ from ..namespace import Namespace
 from ..sema.registration import build_record_self_type, receiver_self_type
 
 from .. import qnames
-from . import emit_prims
 from .context import (
     INDENT, DUNDER_TO_BINARY_OP, DUNDER_TO_REVERSE_BINARY_OP, CodeGenError,
     escape_cpp_name, enum_member_cpp)
 from ..parse import TpyNoneLiteral
-from .functions import default_to_cpp, factory_default_to_cpp
+from .functions import NULL_PROTOCOL_ARG_CPP, factory_default_to_cpp
 from .int_literals import render_int_literal_value
 from .resumable_cfg import ResumableShape
 from ..sema.literal_utils import fixed_int_literal_value_from_expr
 from ..type_def_registry import (
-    is_span_iter, is_array,
+    is_span_iter,
     is_big_int_type, is_bytes_type, int_traits_of,
-    is_enum_type, enum_info_of, protocol_info_of, record_base_cpp,
+    enum_info_of, protocol_info_of, record_base_cpp,
     is_set, is_dict,
 )
 
@@ -453,36 +453,24 @@ class RecordGenerator:
             else:
                 self.ctx.emit_definition_echo(out, record.init_method.loc, INDENT)
             if has_params:
-                init_defaults = record.init_method.defaults if record.init_method.defaults else None
-                has_required_params = not init_defaults or any(d is None for d in init_defaults)
-
-                # Generate parameterized constructor from __init__
-                proto_params = self.functions.protocols.get_all_protocol_params(
-                    record.init_method.params)
-
-                # Default constructor: when all params have defaults and every
-                # protocol param is optional, delegate to the template ctor with
-                # nullptr so the __init__ body executes (else branch runs via
-                # if constexpr). Otherwise use = default.
-                all_protocols_optional = (
-                    proto_params
-                    and not has_required_params
-                    and all(p.has_none for p in proto_params))
-                if has_required_params or proto_params:
-                    if all_protocols_optional:
-                        if record.type_params:
-                            # Templated: the delegated-to template ctor only
-                            # instantiates on use, so inline is safe here.
-                            out.write(f"{INDENT}{cpp_rec_name}() : {cpp_rec_name}(static_cast<std::nullptr_t*>(nullptr)) {{}}\n")
-                        else:
-                            # Plain record: the delegation instantiates the
-                            # template ctor's MIL eagerly -- define it after
-                            # all structs, next to the out-of-line ctors.
-                            out.write(f"{INDENT}{cpp_rec_name}();\n")
-                    elif (record_info is not None
-                          and self._all_fields_default_constructible(record)
-                          and not del_suppresses_default_ctor(record_info)):
-                        out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
+                # Default constructor: delegate to the template ctor with
+                # nullptr so the `__init__` body executes (else branch runs
+                # via if constexpr); an `__init__` that is not the default
+                # ctor leaves `= default` to the record's fact.
+                if self._ctor_all_protocols_optional(record):
+                    if record.type_params:
+                        # Templated: the delegated-to template ctor only
+                        # instantiates on use, so inline is safe here.
+                        out.write(f"{INDENT}{cpp_rec_name}() : {cpp_rec_name}({NULL_PROTOCOL_ARG_CPP}) {{}}\n")
+                    else:
+                        # Plain record: the delegation instantiates the
+                        # template ctor's MIL eagerly -- define it after
+                        # all structs, next to the out-of-line ctors.
+                        out.write(f"{INDENT}{cpp_rec_name}();\n")
+                elif (record_info is not None
+                      and not init_is_default_ctor(record_info)
+                      and emits_default_ctor(record_info)):
+                    out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
                 template_header, cpp_params = self._ctor_cpp_params(
                     record, emit_defaults=True)
                 if template_header:
@@ -504,7 +492,7 @@ class RecordGenerator:
             # No __init__: plain records stay C++ aggregates (no ctor declared).
             # Records with __del__/@nocopy/__copy__ get user-declared copy/move
             # ops, which suppress the implicit default ctor -- restore it with
-            # `= default;` unless `del_suppresses_default_ctor` says otherwise.
+            # `= default;` where the record has one (`emits_default_ctor`).
             if record_info and record_info.inherits_init_from is not None:
                 # `using Foo::Foo` only compiles if both halves match the C++
                 # class name. @native renames let the Python and C++ short
@@ -517,8 +505,9 @@ class RecordGenerator:
                 base_name = record_info.inherits_init_from.to_cpp_base_name()
                 parent_cpp_short = base_name.rsplit("::", 1)[-1]
                 out.write(f"{INDENT}using {parent_cpp}::{parent_cpp_short};\n")
-            if record_info and (record_info.is_nocopy or record_info.has_del or record_info.has_copy):
-                if not del_suppresses_default_ctor(record_info):
+            if record_info and (record_info.is_nocopy or record_info.has_del
+                                or record_info.has_copy):
+                if emits_default_ctor(record_info):
                     out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
 
         # Copy/move ops for @nocopy, __del__, or __copy__ classes. Plain
@@ -866,16 +855,17 @@ class RecordGenerator:
 
     def _ctor_all_protocols_optional(self, record: TpyRecord) -> bool:
         """True when the __init__ ctor's default constructor delegates to the
-        template ctor with nullptr (all params defaulted, every protocol param
-        optional). Shared by the decl and def passes."""
+        template ctor with nullptr: the `__init__` is the default ctor (the
+        record's `init_is_default_ctor` fact) but takes protocol params, and
+        a template ctor never serves as one. Shared by the decl and def
+        passes."""
         init = record.init_method
         if init is None or not init.params:
             return False
-        init_defaults = init.defaults if init.defaults else None
-        has_required_params = not init_defaults or any(d is None for d in init_defaults)
-        proto_params = self.functions.protocols.get_all_protocol_params(init.params)
-        return bool(proto_params and not has_required_params
-                    and all(p.has_none for p in proto_params))
+        record_info = self.ctx.analyzer.registry.get_record(record.name)
+        return bool(record_info is not None
+                    and init_is_default_ctor(record_info)
+                    and self.functions.protocols.get_all_protocol_params(init.params))
 
     def _ctor_cpp_params(self, record: TpyRecord,
                          *, emit_defaults: bool) -> tuple[str, str]:
@@ -969,7 +959,7 @@ class RecordGenerator:
         # trivial one-liner: header partition unless cycle members force .cpp.
         trivial_mode = "def_cpp" if self.ctx.cycle_peers else "def_hpp"
         if self._ctor_all_protocols_optional(record) and mode == trivial_mode:
-            out.write(f"\n{inline_prefix}{q}::{n}() : {n}(static_cast<std::nullptr_t*>(nullptr)) {{}}\n")
+            out.write(f"\n{inline_prefix}{q}::{n}() : {n}({NULL_PROTOCOL_ARG_CPP}) {{}}\n")
         if self.ctor_def_mode(record) != mode:
             return
         out.write("\n")
@@ -1471,87 +1461,6 @@ class RecordGenerator:
             return None
         return enum_member_cpp(enum_type, self.ctx.analyzer.ctx.module_name,
                                expr.field)
-
-    def _all_fields_default_constructible(self, record: TpyRecord) -> bool:
-        """Check if all own fields and the parent (if any) are C++-default-constructible.
-
-        Used to decide whether to emit ClassName() = default;. If any field
-        or the parent class lacks a C++ default constructor, = default would
-        fail to compile.
-
-        For generic records (template classes) we always emit = default: C++ will
-        implicitly delete it at the instantiation point if a type arg is not
-        default-constructible, which is the correct behaviour.
-
-        Uses C++-level constructibility: a user record is C++-default-constructible
-        if it has no __init__ (aggregate) or if all its fields are themselves
-        C++-default-constructible (so it will also emit = default).
-        """
-        # Template classes: C++ handles the constraint at instantiation time.
-        if record.type_params:
-            return True
-        if not all(self._fld_type_cpp_default_constructible(fld.type)
-                   for fld in record.fields if fld.default_expr is None):
-            return False
-        record_info = self.ctx.analyzer.ctx.registry.get_record(record.name)
-        if record_info is not None:
-            for p in record_info.parents:
-                if not self._fld_type_cpp_default_constructible(p):
-                    return False
-        return True
-
-    def _fld_type_cpp_default_constructible(self, typ: TpyType) -> bool:
-        """Check if a TPy type maps to a C++-default-constructible type.
-
-        For non-record types and generic instantiations delegates to the
-        sema-level _is_default_constructible (primitives, containers, Optional,
-        and records-with-all-default-params all return True there).
-
-        For non-generic user records, checks C++-level constructibility
-        recursively: a record with __init__ is C++-default-constructible if
-        all its own fields are too (meaning it will also emit = default).
-        """
-        protocols = self.ctx.analyzer.protocols
-        # Tuple/Array: must check element types with C++-level logic because
-        # std::tuple<T>/std::array<T,N> are default-constructible iff T is.
-        if isinstance(typ, TupleType):
-            return all(self._fld_type_cpp_default_constructible(et) for et in typ.element_types)
-        if is_array(typ):
-            elem = typ.get_element_type()
-            return elem is not None and self._fld_type_cpp_default_constructible(elem)
-        # Enum types map to C++ enum class, which is trivially constructible.
-        if is_enum_type(typ):
-            return True
-        # Raw pointers are trivially constructible (just uninitialized).
-        if isinstance(typ, PtrType):
-            return True
-        if not isinstance(typ, NominalType) or not typ.is_user_record:
-            return protocols._is_default_constructible(typ)
-        # Generic instantiation (e.g. Pair[int32]): the base template class
-        # usually emits = default, so any instantiation is C++-default-constructible.
-        # `del_suppresses_default_ctor` catches the exception (Box/Rc/Weak and
-        # other __del__ shapes) so the cascade through enclosing records stops
-        # at the first non-default-constructible field with a clean diagnostic
-        # rather than a confusing implicit-delete chain (Outer -> Holder -> Rc<T>).
-        if typ.type_args:
-            base_rec = self.ctx.analyzer.ctx.registry.get_record(typ.name)
-            if base_rec is not None and base_rec.type_params:
-                if del_suppresses_default_ctor(base_rec):
-                    return False
-                return True  # generic class emits = default
-            return protocols._is_default_constructible(typ)
-        record_info = self.ctx.analyzer.ctx.registry.get_record(typ.name)
-        if record_info is None:
-            return False
-        if del_suppresses_default_ctor(record_info):
-            return False
-        if not record_info.has_init:
-            return True  # aggregate: always C++ default-constructible
-        # Non-generic record with __init__: default-constructible iff all parents and own fields are
-        for p in record_info.parents:
-            if not self._fld_type_cpp_default_constructible(p):
-                return False
-        return all(self._fld_type_cpp_default_constructible(f.type) for f in record_info.fields)
 
     def _gen_subscript_operators(self, out: TextIO, record: TpyRecord) -> None:
         """Generate operator[] for subscript read syntax.

@@ -164,7 +164,6 @@ def main() -> None:
     free_fn()
     loop_var([Coord(1, 0), Coord(5, 0), Coord(9, 0)])
     subscript([Coord(3, 0), Coord(4, 0)])
-    # Bound first: BUGS.md#valuetype-ctor-temp-argument-rejects.
     p = Coord(6, 0)
     param(p)
     branch(True)

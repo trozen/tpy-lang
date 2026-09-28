@@ -4,11 +4,13 @@
 # independently, with no common base but Exception.
 class AErr(Exception):
     def __init__(self, code: int) -> None:
+        super().__init__()
         self.code = code
 
 
 class BErr(Exception):
     def __init__(self, code: int) -> None:
+        super().__init__()
         self.code = code
 
 

@@ -17,7 +17,7 @@ class Resource:
 class BadError(Exception):  # tpyc: error(/not copy-constructible/)
     handle: Box[Resource]
     def __init__(self, message: str) -> None:
-        self.message = message
+        super().__init__(message)
         self.handle = Box(Resource())
 
 

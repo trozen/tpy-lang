@@ -1,8 +1,6 @@
-# Generic-base branch: a base inherits from a generic record whose
-# base template has `del_suppresses_default_ctor` (Box / Rc / Weak).
-# Even though the instantiation's concrete type args are default-
-# ctorable, the template-level del-suppression still makes Base() = default
-# implicitly deleted. Subclass without super() must be rejected.
+# A `@dataclass` child, which never calls the parent's `__init__`, over a base
+# on ctor-less `Box[int32]` (LANGUAGE_FEATURES "Single class inheritance").
+from dataclasses import dataclass
 from tpy import int32
 from tplib.box import Box
 
@@ -15,15 +13,14 @@ class Base(Box[int32]):
         self.label = label
 
 
-class Child(Base):
+# The synthesized `__eq__` / `__repr__` hide Box's; @dataclass cannot opt out.
+@dataclass
+class Child(Base):  # tpyc: warning(/'Child.__eq__' hides 'Box.__eq__'/) warning(/'Child.__repr__' hides 'Box.__repr__'/) error(/cannot be constructed without arguments \(ancestor 'Box' \(inherited by 'Base'\)/)
     extra: int32
-
-    def __init__(self, v: int32, label: str, e: int32) -> None:   # tpyc: error(/must call 'super\(\).__init__/)
-        self.extra = e
 
 
 def main() -> None:
-    c = Child(42, "x", 7)
+    c = Child(7)
     print(c.extra)
 
 

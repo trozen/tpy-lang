@@ -169,6 +169,7 @@ from ..faces import witness as _witness
 from .arg_table import (_ArgReq, _ArgRow, _ArgSink, arg_ok, register_sink)
 from ...sema.literal_utils import literal_value_from_expr, numeric_literal_truth
 from ...sema.type_ops import signature_may_return_borrow
+from ...codegen_cpp.functions import NULL_PROTOCOL_ARG_CPP
 from ...codegen_cpp.int_literals import render_int_literal_value
 from ..nodes import (
     Form,
@@ -235,6 +236,7 @@ from ..nodes import (
 from ...codegen_cpp.forms import (is_plain_nonvalue, is_ptr_variant_union,
                                   reads_storage_form_optional)
 from .predicates import (
+    _value_record_slot,
     _poly_narrow_info,
     _owned_viewfam_slot,
     _viewfam_return_slots,
@@ -484,7 +486,7 @@ from .predicates import (
     _value_opt_tuple_pass_arg,
     _view_inner_value_opt,
     _value_opt_string_owned,
-    _value_opt_value_record,
+    _value_opt_record,
     _dict_view_call_result,
     _native_iterable_call_arg,
     _native_iterable_source,
@@ -634,10 +636,10 @@ from .checks import (
     _r_value_opt_member,
     _r_value_opt_scalar_value,
     _r_value_record_rvalue,
+    _r_value_record_field,
     _r_value_union_temp,
     _r_value_union_narrowed_pass,
     _r_wide_opt_deref_name,
-    _builtin_value_record,
     _wrapper_union_elem_name_arg,
     _alias_ref_container,
     _container_record_elem_subscript,
@@ -975,17 +977,18 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               # coincide, the call lands bare in its spelled slot.
               or (result is _ExprResultUse.STORAGE
                   and _own_record_tuple(ret, analyzer) is not None)
-              # A BUILTIN value-record result (`_make_waker(...)` ->
+              # A value-form record result (`_make_waker(...)` ->
               # `::tpystd::coro::Waker`): the by-value return lands bare
-              # in its spelled slot -- the return twin of the builtin
-              # value-record decl row, same record-info guard.
+              # in its spelled slot, like the value-record decl row's init.
               or (result is _ExprResultUse.STORAGE
-                  and _builtin_value_record(record, analyzer)
-                  and _witness("call.builtin_value_record_ret"))
-              # A value-repr Optional[scalar] result lands bare in its
-              # value-optional slot (`r = h(true);`); mismatched consumers
-              # reject at their own slot arms.
+                  and _value_record_slot(record)
+                  and _witness("call.value_record_ret"))
+              # A value-repr Optional[scalar] or Optional[value record]
+              # result lands bare in its value-optional slot (`r = h(true);`,
+              # `c = find(3);`); mismatched consumers reject at their own
+              # slot arms.
               or _value_opt_scalar(ret, analyzer) is not None
+              or _value_opt_record(ret) is not None
               # A value-repr Optional[str]/[bytes] result feeding an `is [not]
               # None` test lands bare; `.has_value()` reads the whole optional
               # (the operand never derefs), so the str/bytes view-vs-owned slot
@@ -1921,6 +1924,9 @@ _CTOR_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("callable_value_pass", _r_callable_value_pass),
         _ArgRow("field_read_ref_ctor", _r_field_read_ref_ctor,
                 face="ctor.field_read_ref_arg"),
+        # A value-form record FIELD read at a by-value record slot copies
+        # the bare member read in (`Segment(s.b, a)`).
+        _ArgRow("value_record_field", _r_value_record_field),
         # A checked container-element read at a record ref slot
         # (`Player(things[0])`): the element lvalue binds the slot inline,
         # the free-call family's render.
@@ -3793,8 +3799,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         if (opt_eq_targets is None and e.op in ("==", "!=")
                 and isinstance(e.left, (TpyCall, TpyMethodCall))
                 and isinstance(e.right, (TpyCall, TpyMethodCall))
-                and _value_opt_value_record(lt, analyzer) is not None
-                and _value_opt_value_record(rt, analyzer) is not None):
+                and _value_opt_record(lt) is not None
+                and _value_opt_record(rt) is not None):
             # Both sides value-repr Optional[ValueType record] call rvalues
             # (`fixed.utcoffset() == fixed1.utcoffset()` on
             # `std::optional<timedelta>`): each renders bare into the
@@ -4522,8 +4528,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                                             lc.analyzer) is not None
                           # A value-repr `Optional[ValueType record]`
                           # binding: the same has_value test.
-                          or _value_opt_value_record(declared[operand.name],
-                                                     lc.analyzer) is not None
+                          or _value_opt_record(declared[operand.name]) is not None
                           # A value-repr `Optional[Span[...]]` binding:
                           # the same has_value test over the bare name.
                           or _value_opt_span(declared[operand.name],
@@ -4855,7 +4860,7 @@ def _value_opt_binding_kind(name: str, lc: '_LowerCtx') -> 'ValueOptKind | None'
     """The value-repr `std::optional<T>` binding kind of `name`, or None:
     a registered LOCAL (`lc.value_opt_bindings` -- for-each loop vars,
     chain-optional match captures, owned-view/record decls) or a PARAM of
-    the function being lowered (scalar/view; a param is never RECORD).
+    the function being lowered (scalar / view / value-form record).
     Kind-blind consumers (the None-test / truthiness renders, identical
     for every kind) test `is not None`; the read/move/reassign arms key on
     the kind, whose only difference is the narrowed-deref FORM verdict.
@@ -4871,6 +4876,8 @@ def _value_opt_binding_kind(name: str, lc: '_LowerCtx') -> 'ValueOptKind | None'
             return ValueOptKind.SCALAR
         if _value_opt_view(t, lc.analyzer) is not None:
             return ValueOptKind.VIEW
+        if _value_opt_record(t) is not None:
+            return ValueOptKind.RECORD
     return None
 
 
@@ -5761,8 +5768,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             return THIRName(result_type=rtype, name=e.name, cpp=gcpp,
                             form=Form.STORAGE, loc=loc)
         if (lc.value_opt_bindings.get(e.name) is ValueOptKind.RECORD
-                or _value_opt_value_record(binding_type,
-                                           analyzer) is not None):
+                or _value_opt_record(binding_type) is not None):
             # An owned-optional RECORD local (`std::optional<Rc<T>>`,
             # registered at its call-init decl) or a value-repr
             # `Optional[ValueType record]` binding (`std::optional<Fixed>`).
@@ -5920,6 +5926,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             elif _enum_prop_wrap(e, analyzer) is None:
                 result_ok = (
                     _eligible_scalar(rtype)
+                    # A value-form record field copies out like a scalar
+                    # field (`Coord c = h.c;`).
+                    or _value_record_slot(rtype)
                     or _eligible_char(rtype)
                     or _eligible_enum(rtype, analyzer) is not None
                     or _is_type_param_slot(rtype)
@@ -6102,9 +6111,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         or (isinstance(e.obj, TpyName)
                             and (lc.value_opt_bindings.get(e.obj.name)
                                  is ValueOptKind.RECORD
-                                 or _value_opt_value_record(
-                                     declared.get(e.obj.name),
-                                     analyzer) is not None)
+                                 or _value_opt_record(
+                                     declared.get(e.obj.name)) is not None)
                             and _witness("field.opt_record_recv"))):
                     raise ThirUnsupported("field.receiver_shape", detail=True)
         if _unbound_self_field_ok(e):
@@ -7731,11 +7739,13 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             declared[e.target] = vtu
             lc.walrus_predeclared.add(e.target)
             _witness("expr.walrus_btuple")
+            cpp_type = vtu.to_cpp_return()
             return THIRWalrus(
                 result_type=vtu, name=e.target,
                 cpp_name=escape_cpp_name(e.target),
-                value=lowered_value,
-                cpp_type=vtu.to_cpp_return(), loc=loc)
+                value=lowered_value, cpp_type=cpp_type,
+                placeholder=emit_prims.placeholder_init(vtu, cpp_type),
+                loc=loc)
         if (not resumable
                 and need_predecl
                 and ((is_plain_nonvalue(vtu) and e.target in ever_owned
@@ -7864,6 +7874,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 cpp_name=escape_cpp_name(e.target),
                 value=lowered_value, cpp_type=cpp_type, loc=loc)
         if (not (_eligible_scalar(vtu) or _eligible_char(vtu)
+                 # A value-form record walrus is the scalar shape too.
+                 or _value_record_slot(vtu)
                  # An enum walrus (`(c := pick())`) is the scalar shape: a
                  # plain `Color c;` predecl + the in-place assign; the
                  # predecl spells via render_type like the enum decl arm.
@@ -7887,6 +7899,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             cpp_name=escape_cpp_name(e.target),
             value=lowered_value,
             cpp_type=cpp_type,
+            placeholder=(emit_prims.placeholder_init(vtu, cpp_type)
+                         if cpp_type is not None else ""),
             loc=loc)
     if isinstance(e, TpyIfExpr):
         bytes_rt = _resolved_bytes_value(rtype, analyzer)
@@ -15041,11 +15055,10 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     if (isinstance(a, TpyNoneLiteral)
             and _protocol_union_arg(a, ptype, declared, lc.analyzer)
             == "nullproto"):
-        # None at a nullable STATIC-protocol slot: the typed null
-        # (`static_cast<std::nullptr_t*>(nullptr)` -- selects the
-        # T_x = std::nullptr_t default instantiation).
+        # None at a nullable STATIC-protocol slot: the typed null that
+        # selects the T_x = std::nullptr_t default instantiation.
         _witness("arg.nullproto_none")
-        return THIRModuleVar(cpp="static_cast<std::nullptr_t*>(nullptr)",
+        return THIRModuleVar(cpp=NULL_PROTOCOL_ARG_CPP,
                              result_type=unwrap_send_sync(ptype),
                              form=Form.BORROW,
                              loc=getattr(a, "loc", None))
@@ -18027,7 +18040,10 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         _witness("ifexpr.container_comp_arm")
         return THIRIfExpr(result_type=result_t, cond=cond, then=then,
                           orelse=orelse, form=Form.VALUE, loc=loc)
-    if record_like(rec_t, analyzer):
+    # A value-form record ternary is a value select, the tuple/scalar
+    # twin's generic tail below: each arm copies, so no lvalue/prvalue arm
+    # split arises.
+    if record_like(rec_t, analyzer) and not _value_record_slot(rec_t):
         # A plain reference-axis ternary -- a record or a container, one arm
         # on the same axis: a same-type lvalue ternary is itself an lvalue,
         # so bare NAME arms render with no per-arm conversion (each a plain

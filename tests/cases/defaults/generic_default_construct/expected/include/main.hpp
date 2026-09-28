@@ -7,7 +7,12 @@
 
 namespace tpyapp::main {
 
+struct Noisy;
+struct NoisyHeir;
+
 inline constexpr std::string_view __name__ = "__main__";
+// K: Final[int32] = 7
+inline constexpr int32_t K = 7;
 
 // def make_default[T](x: T = T()) -> T:
 template<typename T>
@@ -15,6 +20,53 @@ template<typename T>
 // def main() -> None:
 void main();
 
+// class Noisy(ValueType):
+struct Noisy {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32 = K) -> None:
+    explicit Noisy(int32_t n = K);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Noisy";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Noisy& obj) {
+    ::tpy::print_object_default(os, "Noisy", obj);
+    return os;
+}
+} // namespace tpyapp::main
+
+template<> struct tpy::is_value_type<::tpyapp::main::Noisy> : std::true_type {};
+
+namespace tpyapp::main {
+
+
+// class NoisyHeir(Noisy, ValueType):
+struct NoisyHeir : Noisy {
+
+    using Noisy::Noisy;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.NoisyHeir";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const NoisyHeir& obj) {
+    ::tpy::print_object_default(os, "NoisyHeir", obj);
+    return os;
+}
+} // namespace tpyapp::main
+
+template<> struct tpy::is_value_type<::tpyapp::main::NoisyHeir> : std::true_type {};
+
+namespace tpyapp::main {
+
+
+
+// def __init__(self, n: int32 = K) -> None:
+//     print("noisy init", n)
+//     self.n = n
+inline Noisy::Noisy(int32_t n) {
+    std::cout << "noisy init" << " " << n << "\n";
+    this->n = n;
+}
 // def make_default[T](x: T = T()) -> T:
 //     return x
 template<typename T>

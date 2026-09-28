@@ -1,0 +1,1 @@
+main.py:19: error: the '__init__' synthesized by '@dataclass' for 'Tally' does not initialize parent class 'Counter', but 'Counter' cannot be constructed without arguments ('Counter' has no zero-argument constructor). Either give 'Counter' a zero-argument form, or write an explicit '__init__' on 'Tally' that calls 'super().__init__(...)'.

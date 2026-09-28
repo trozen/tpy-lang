@@ -18,6 +18,7 @@ def bump() -> int:
 
 class Err(Exception):
     def __init__(self, code: int) -> None:
+        super().__init__()
         self.code = code
 
 

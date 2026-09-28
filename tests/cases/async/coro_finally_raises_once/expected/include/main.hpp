@@ -321,8 +321,9 @@ struct __coro_main {
 
 
 // def __init__(self, code: int) -> None:
+//     super().__init__()
 //     self.code = code
-inline Err::Err(const ::tpy::BigInt& code) : code(code) {}
+inline Err::Err(const ::tpy::BigInt& code) : ::tpy::Exception(), code(code) {}
 
 // def __enter__(self) -> int:
 //     return 1

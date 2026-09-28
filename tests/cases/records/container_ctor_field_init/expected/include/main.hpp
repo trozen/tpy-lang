@@ -40,6 +40,7 @@ struct Seeded {
     ::tpy::ByteArray buf;
 
     // def __init__(self, seed: bytes) -> None:
+    Seeded() = default;
     explicit Seeded(::tpy::BytesView seed);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Seeded";
 };
@@ -55,6 +56,7 @@ struct Sized {
     ::tpy::ByteArray buf;
 
     // def __init__(self, n: int32) -> None:
+    Sized() = default;
     explicit Sized(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sized";
 };
@@ -70,6 +72,7 @@ struct Copied {
     ::tpy::ByteArray buf;
 
     // def __init__(self, data: bytearray) -> None:
+    Copied() = default;
     explicit Copied(const ::tpy::ByteArray& data);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Copied";
 };

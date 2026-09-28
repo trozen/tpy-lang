@@ -767,6 +767,9 @@ class Compiler:
         self.union_display_names: dict[tuple[TpyType, ...], str] = {}
         self.union_wrapper_index: dict[tuple[TpyType, ...], RecursiveUnionInfo] = {}
         self.native_cpp_names: dict[str, str] = {}
+        # `typesys.cpp_default_init` per record, keyed by the instantiation's
+        # type args (`()` for a record's own definition).
+        self.default_ctor_facts: IdentityMap = IdentityMap()
         # Qualified C++ spellings (`::tpyapp::mod::Name`) for LOCAL records/enums,
         # keyed by qname. Consulted only when `_qualify_shadowed_nominals` is set
         # (a record whose member shadows a same-named type -- see typesys), never
@@ -877,6 +880,7 @@ class Compiler:
         self.namespace_map = {}
         self.include_path_map = {}
         self.native_cpp_names = {}
+        self.default_ctor_facts = IdentityMap()
         self.local_qualified_cpp_names = {}
         self.recursive_alias_cpp_names = {}
         self.union_alias_names = {}

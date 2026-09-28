@@ -416,6 +416,7 @@ struct TimerEntry {
     ::tpystd::coro::Waker waker;
 
     // def __init__(self, deadline: float, waker: Waker) -> None:
+    TimerEntry() = default;
     explicit TimerEntry(double deadline, ::tpystd::coro::Waker waker);
 
     // def __lt__(self, other: 'TimerEntry') -> bool:

@@ -10,11 +10,48 @@ namespace tpyapp::main {
 //
 //     b = TaggedBox(42)
 //     print(b.value)
+//
+//     # a defaulted own field does not stop the inheritance
+//     lb = LabeledBox(9)
+//     print("defaulted field:", lb.value, lb.label)
+//     d = Doubled(4)
+//     print("through fields:", d.value, d.label)
+//     ng = NamedGrand(10)
+//     print("named grandparent:", ng.value, ng.label)
+//     print("named pass class:", NamedMid(10).value)
+//     print("through pass:", OptLeaf().level, OptMid().level)
+//     vs = ViaSuper([1, 2])
+//     vn = ViaName([3])
+//     print("generic ancestor:", vs.item, vn.item)
+//     try:
+//         raise SubError(3)
+//     except SubError as e:
+//         print("native grandparent:", str(e), e.code)
 void main() {
     IntBox a = IntBox(7);
     std::cout << a.get() << "\n";
     TaggedBox b = TaggedBox(42);
     std::cout << b.value << "\n";
+    LabeledBox lb = LabeledBox(9);
+    std::cout << "defaulted field:" << " " << lb.value << " " << lb.label << "\n";
+    Doubled d = Doubled(4);
+    std::cout << "through fields:" << " " << d.value << " " << d.label << "\n";
+    NamedGrand ng = NamedGrand(10);
+    std::cout << "named grandparent:" << " " << ng.value << " " << ng.label << "\n";
+    std::cout << "named pass class:" << " " << NamedMid(10).value << "\n";
+    std::cout << "through pass:" << " " << OptLeaf().level << " " << OptMid().level << "\n";
+    std::vector<int32_t> __tmp_1 = {1, 2};
+    ViaSuper vs = ViaSuper(__tmp_1);
+    std::vector<int32_t> __tmp_2 = {3};
+    ViaName vn = ViaName(__tmp_2);
+    std::cout << "generic ancestor:" << " " << ::tpy::ListPrinter(vs.item) << " " << ::tpy::ListPrinter(vn.item) << "\n";
+    {
+        try {
+            throw SubError(3);
+        } catch (const SubError& e) {
+            std::cout << "native grandparent:" << " " << std::string(::tpy::__str__(e)) << " " << e.code << "\n";
+        }
+    }
 }
 
 // main()

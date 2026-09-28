@@ -431,9 +431,9 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
     # the statement that owns it.
     pad = "  " * depth
     slots = dict(getattr(stmt, "hoist_slots", ()))
-    lines = [f"{pad}hoist %{name}: {cpp}"
-             + (f" [slot {slots[name]}]" if name in slots else "")
-             for name, cpp in getattr(stmt, "hoist_decls", ())]
+    lines = [f"{pad}hoist %{h.name}: {h.cpp_type}"
+             + (f" [slot {slots[h.name]}]" if h.name in slots else "")
+             for h in getattr(stmt, "hoist_decls", ())]
     return lines + _stmt_body_lines(stmt, depth)
 
 

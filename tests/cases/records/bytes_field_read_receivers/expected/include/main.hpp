@@ -77,6 +77,7 @@ struct Inner {
     std::string name;
 
     // def __init__(self, tag: Own[bytes], name: Own[str]) -> None:
+    Inner() = default;
     explicit Inner(::tpy::Bytes tag, std::string name);
 
     // def rename(self) -> None:
@@ -95,6 +96,7 @@ struct Mid {
     Inner inner;
 
     // def __init__(self, inner: Own[Inner]) -> None:
+    Mid() = default;
     explicit Mid(Inner&& inner);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Mid";
 };
@@ -112,6 +114,7 @@ struct Outer {
     Mid mid;
 
     // def __init__(self, inner: Own[Inner], mid: Own[Mid]) -> None:
+    Outer() = default;
     explicit Outer(Inner&& inner, Mid&& mid);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
@@ -127,6 +130,7 @@ struct Hidden {
     Inner _inner;
 
     // def __init__(self, inner: Own[Inner]) -> None:
+    Hidden() = default;
     explicit Hidden(Inner&& inner);
 
     // @property
@@ -150,6 +154,7 @@ struct Runner {
     Outer o;
 
     // def __init__(self, o: Own[Outer]) -> None:
+    Runner() = default;
     explicit Runner(Outer&& o);
 
     // def run(self) -> bytes:

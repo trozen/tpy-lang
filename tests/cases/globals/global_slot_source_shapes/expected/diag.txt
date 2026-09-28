@@ -1,1 +1,1 @@
-main.py:56: warning: upcast narrows 'Child' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:57: warning: upcast narrows 'Child' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol

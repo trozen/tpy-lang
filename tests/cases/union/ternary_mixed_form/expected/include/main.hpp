@@ -56,6 +56,7 @@ struct Holder {
     ::tpy::Union<A, B> pet;
 
     // def __init__(self, p: A | B) -> None:
+    Holder() = default;
     explicit Holder(::tpy::Union<const A*, const B*> p);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };

@@ -10,22 +10,22 @@ from tpy.extern import export
 
 class NotFound(KeyError):
     def __init__(self, message: str):
-        self.message = message
+        super().__init__(message)
 
 
 class AppError(Exception):
     def __init__(self, message: str):
-        self.message = message
+        super().__init__(message)
 
 
 class ConfigError(AppError):
     def __init__(self, message: str):
-        self.message = message
+        super().__init__(message)
 
 
 class FatalError(BaseException):  # direct BaseException base -> NOT an Exception
     def __init__(self, message: str):
-        self.message = message
+        super().__init__(message)
 
 
 @export

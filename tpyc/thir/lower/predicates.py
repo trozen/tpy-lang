@@ -763,13 +763,34 @@ def _builtin_value_member(m: 'TpyType') -> bool:
             and td.category not in (TypeCategory.STR, TypeCategory.BYTES))
 
 def _value_record_slot(t: 'TpyType | None') -> bool:
-    """A user VALUE-record DECL slot -- `_value_record_member` widened to
-    generic instantiations (`Pair<int32_t> q = p;`). The union-member
-    predicate excludes those because a variant member's spelling recurses
-    through the type args; a decl spells its slot through `render_type`,
-    which already renders the instantiation."""
-    return (isinstance(t, NominalType) and t.is_user_record
-            and t.is_value_type())
+    """A value-form record -- a user record or a RECORD-category builtin
+    (`Waker`) whose `value_form()` is VALUE: it binds, passes, returns and
+    is captured like a scalar; only its field access, construction and
+    printing take the record rows."""
+    if not isinstance(t, TpyType):
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not (isinstance(t, NominalType) and not t.is_protocol
+            and t.value_form() is ValueForm.VALUE):
+        return False
+    if t.is_user_record:
+        return True
+    td = type_def_of(t)
+    return (td is not None and td.category is TypeCategory.RECORD
+            and not td.is_compile_time_only)
+
+
+def _value_opt_record(t: 'TpyType | None') -> 'OptionalType | None':
+    """A value-repr `Optional` of a value-form record (`Coord | None` ->
+    `std::optional<Coord>`), or None: the whole optional copies like the
+    value-opt scalar's, its None test reads `has_value()` over the bare
+    binding and a narrowed member read derefs (`(*c).a`)."""
+    u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+         if isinstance(t, TpyType) else None)
+    if (isinstance(u, OptionalType) and not u.uses_pointer_repr()
+            and _value_record_slot(u.inner)):
+        return u
+    return None
 
 
 def _native_iter_value_slot(t: 'TpyType | None', analyzer) -> bool:
@@ -2314,7 +2335,7 @@ def _readonly_global_type(gt: TpyType | None, analyzer) -> TpyType | None:
     # slot, so reads render the bare (same-module) or qualified (imported)
     # name with no indirection. The F1 slice pins the type spelling;
     # non-value records take the pointer-slot branch.
-    if gt.is_value_type() and record_like(gt, analyzer):
+    if _value_record_slot(gt):
         return gt
     # A WRAPPER-union global (`g: Expr = [...]` -> `Expr g;`): the wrapper
     # struct is a direct-storage namespace-scope object -- the generator's
@@ -2735,7 +2756,7 @@ def _global_record_recv(obj: TpyExpr, declared: dict[str, TpyType],
     if gt is None:
         return None
     gt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(gt)))
-    if gt.is_value_type() or not record_like(gt, analyzer):
+    if _value_record_slot(gt) or not record_like(gt, analyzer):
         return None
     return gt
 
@@ -3713,11 +3734,14 @@ def _record_borrow_return(t: TpyType | None, analyzer) -> 'NominalType | None':
     One slot for the whole reference axis: the return ladder's source arms
     render the same C++ for a record and for a container (bare name, field
     read, element lvalue, borrow-returning call), so a second container-only
-    slot would only decide which of two identical renders fires."""
+    slot would only decide which of two identical renders fires.
+
+    A value-form record is not on that axis: `-> Coord` returns by value,
+    so it takes the scalar's generic return tail (`ret_supported`)."""
     if t is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if isinstance(t, OwnType):
+    if isinstance(t, OwnType) or _value_record_slot(t):
         return None
     if isinstance(t, RecursiveAliasInstanceType):
         # A bare generic-instance slot (`-> Tree[int32]`) is the same
@@ -4380,8 +4404,9 @@ def _storage_optional_return_wide(t: TpyType | None,
     though bare `Optional[W]` is ptr-repr). The pointee is on the reference
     axis: a container inner renders the same `std::optional<T>` slot a record
     inner does, with `render_type` spelling the payload either way. Scalar
-    inners stay with the value-opt facts; tparam/dyn inners have no
-    storage-opt witness and stay out."""
+    inners stay with the value-opt facts, and so does a value-form record
+    inner (`-> Coord | None` copies like a scalar's optional); tparam/dyn
+    inners have no storage-opt witness and stay out."""
     def _sp(inner) -> bool:
         iu = unwrap_readonly(inner)
         return bool(record_like(iu, analyzer)
@@ -4395,7 +4420,8 @@ def _storage_optional_return_wide(t: TpyType | None,
         if isinstance(ow, OptionalType) and _sp(_unwrap_own(ow.inner)):
             return ow
         return None
-    if not isinstance(u, OptionalType) or u.uses_pointer_repr():
+    if (not isinstance(u, OptionalType) or u.uses_pointer_repr()
+            or _value_opt_record(u) is not None):
         return None
     return u if _sp(_unwrap_own(u.inner)) else None
 
@@ -4542,29 +4568,6 @@ def _value_opt_tuple(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     return t if _value_tuple(unwrap_readonly(t.inner),
                              analyzer) is not None else None
 
-
-def _value_opt_value_record(t: 'TpyType | None',
-                            analyzer) -> 'OptionalType | None':
-    """The value-repr `Optional[ValueType record]` binding type
-    (`tz: Fixed | None` on a ValueType record -> `std::optional<Fixed>` by
-    value), or None. The None test reads has_value over the bare binding
-    and a narrowed member read derefs (`(*tz).off`) -- the registered
-    RECORD-kind locals' renders, reachable as a plain param/local because
-    the inner is a VALUE type (a non-value record optional is pointer-repr
-    at these bindings instead)."""
-    if not isinstance(t, TpyType):
-        return None
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if not (isinstance(t, OptionalType) and not t.uses_pointer_repr()):
-        return None
-    inner = unwrap_readonly(t.inner)
-    # USER records only: builtin value nominals (int32, str, ...) carry
-    # record info too but belong to the scalar/view/callable rows.
-    if not (isinstance(inner, NominalType) and inner.is_user_record
-            and inner.is_value_type()):
-        return None
-    rec = analyzer.registry.get_record_for_type(inner)
-    return t if rec is not None else None
 
 def _value_opt_call_ret_arg(a: TpyExpr, ptype: 'TpyType | None',
                             analyzer) -> bool:
@@ -4968,7 +4971,7 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer, *,
                 or _value_opt_callable(u, analyzer) is not None
                 # A value-repr Optional[ValueType record] binding routes its
                 # has_value None test and narrowed member reads (`(*tz).off`).
-                or _value_opt_value_record(u, analyzer) is not None
+                or _value_opt_record(u) is not None
                 # A value-repr Optional[Span] binding routes its has_value
                 # None test only; narrowed and unproven whole reads are
                 # guarded per-use at name lowering (the callable structure).
@@ -5160,11 +5163,13 @@ def _is_borrow_form_name(t: TpyType | None) -> bool:
     return isinstance(inner, TupleType) and inner.has_pointer_repr_element()
 
 def _value_tuple_element_ok(e: TpyType, analyzer) -> bool:
-    """The narrow value-tuple element: a scalar, callable, owned-str
-    slot, or an `Any` cell. All read bare in every sink (a str element is an
-    owned `std::string` lvalue, an Any element a `const ::tpy::Any&`), so a
+    """The narrow value-tuple element: a scalar, value-form record,
+    callable, owned-str slot, or an `Any` cell. All read bare in every sink
+    (a str element is an owned `std::string` lvalue, an Any element a
+    `const ::tpy::Any&`, a value record a copy like a scalar's), so a
     subscript read of such an element needs no lift."""
     return (_eligible_scalar(e) or _owned_str_slot(e, analyzer)
+            or _value_record_slot(e)
             or _callable_value(e)
             # The owned-BYTES element (`tuple[bytes, bytes]` --
             # `std::vector<uint8_t>` storage) reads bare like the owned-str
@@ -5188,17 +5193,18 @@ def _value_tuple_element_ok(e: TpyType, analyzer) -> bool:
                 unwrap_send_sync(e))), AnyType))
 
 def _value_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
-    """The value tuple of scalar / owned-str elements (`tuple[int, bool]` /
-    `tuple[str, int]`), or None: a value type rendered `std::tuple<...>`
-    where borrow and storage forms coincide at the tuple level, so a
-    subscript read of any element needs no lift (a str element is an owned
-    `std::string` inside the tuple storage; its read is an owned lvalue --
-    bare in every sink). Admitted at the param slot (`const std::tuple<...>&`,
-    spelled by the signature emitter), the return slot (a by-value
-    `std::tuple<...>`), and the subscript-read gate. A view (`StrView`) /
-    char / record / nested-tuple element keeps the tuple outside this
-    family: views make the literal render pin static storage, non-value
-    elements make it pointer-repr (the `_f1_tuple` family)."""
+    """The value tuple, every element `_value_tuple_element_ok`
+    (`tuple[int, bool]`, `tuple[str, Coord]`), or None: a value type
+    rendered `std::tuple<...>` where borrow and storage forms coincide at
+    the tuple level, so a subscript read of any element needs no lift (a
+    str element is an owned `std::string` inside the tuple storage; its
+    read is an owned lvalue -- bare in every sink). Admitted at the param
+    slot (`const std::tuple<...>&`, spelled by the signature emitter), the
+    return slot (a by-value `std::tuple<...>`), and the subscript-read
+    gate. A view (`StrView`) / char / reference-record / nested-tuple
+    element keeps the tuple outside this family: views make the literal
+    render pin static storage, reference elements make it pointer-repr
+    (the `_f1_tuple` family)."""
     if t is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
@@ -6261,13 +6267,15 @@ def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
     el = recv_t.element_types[idx]
     # An owned-str element reads as an owned lvalue (`std::get<N>(t)` yields
     # `const std::string&`) -- bare in every sink, so it rides
-    # the same value-read arm as a scalar element. A nested value-tuple element
+    # the same value-read arm as a scalar element. A value-form record
+    # element copies out like a scalar. A nested value-tuple element
     # reads bare as a whole `std::tuple<...>` value (recursively value-tuple),
     # consumed by print / decl-init / a further subscript. A value-repr
     # Optional[scalar] element reads bare as `std::optional<T>` STORAGE
     # (None-tests / unwraps gate at the value-opt consumers); pointer-repr
     # Optionals stay on the borrow paths.
     return (idx if (_eligible_scalar(el) or _owned_str_slot(el, analyzer)
+                    or _value_record_slot(el)
                     or _callable_value(el)
                     or _value_opt_scalar(el, analyzer) is not None
                     or _value_tuple_nested(el, analyzer) is not None
@@ -9246,8 +9254,7 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
             # A value-repr `Optional[ValueType record]` binding
             # (`std::optional<Fixed>`): the same has_value test.
             and not (isinstance(operand, TpyName)
-                     and _value_opt_value_record(locals_.get(operand.name),
-                                                 analyzer) is not None)
+                     and _value_opt_record(locals_.get(operand.name)) is not None)
             # A value-repr `Optional[Span[...]]` binding
             # (`std::optional<std::span<const T>>`): the same has_value test.
             and not (isinstance(operand, TpyName)

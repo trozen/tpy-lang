@@ -1,2 +1,9 @@
 7
 42
+defaulted field: 9 box
+through fields: 8 box
+named grandparent: 11 box
+named pass class: 12
+through pass: 5 1
+generic ancestor: [1, 2] [3]
+native grandparent: sub 3 3

@@ -57,7 +57,8 @@ def _populated() -> FunctionTrackingState:
         current_function=func,
         body_root=func,
         compound_stack=[stmt],
-        super_init_call=N.TpyMethodCall(N.TpyName("super"), "__init__", []),
+        base_init_calls=[(N.TpyMethodCall(N.TpyName("Base"), "__init__", []),
+                          "Base.__init__(self, ...)")],
         super_del_call=N.TpyMethodCall(N.TpyName("super"), "__del__", []),
         pending_loop_vars={'i': PendingLocal(INT32, (stmt,), stmt2,
                                              head_first=True)},
@@ -111,7 +112,8 @@ def _namespace_with_function() -> Namespace:
 # The equality below turns a new field that could hold one into a test
 # failure, so it cannot start being cloned unnoticed.
 _FIXTURE_FIELDS = {
-    'current_function', 'body_root', 'compound_stack', 'super_init_call',
+    'current_function', 'body_root', 'compound_stack',
+    'base_init_calls',
     'super_del_call', 'pending_loop_vars', 'write_history', 'nested_def_nodes',
     'nested_def_block_defs', 'pending_yield_root_checks',
     'pending_generic_yield_sources', 'pending_view_storage_checks',

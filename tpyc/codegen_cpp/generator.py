@@ -1413,6 +1413,14 @@ class CodeGenerator:
             hpp.write(f"template<{tparams_decl}> struct tpy::is_value_type<{base_cpp_name}<{tparams_use}>> : std::true_type {{}};\n")
         else:
             hpp.write(f"template<> struct tpy::is_value_type<{base_cpp_name}> : std::true_type {{}};\n")
+            if record_info.is_native:
+                # A slot declared before its first value is built by the
+                # C++ default constructor, so its absence is reported here.
+                hpp.write(
+                    f"static_assert(std::is_default_constructible_v<{base_cpp_name}>, "
+                    f"\"@native ValueType '{record.name}' needs a default "
+                    f"constructor: a slot declared before its value is "
+                    f"built by it\");\n")
         hpp.write(f"\nnamespace {ns} {{\n\n")
 
     def _emit_nested_value_type_specs(self, hpp: TextIO, record: 'TpyRecord') -> None:

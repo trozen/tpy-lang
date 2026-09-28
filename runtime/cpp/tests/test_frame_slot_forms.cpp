@@ -11,12 +11,16 @@
  *      wrong pick is a compile error or a visible behaviour change here rather
  *      than a silent copy (mutation lost) or a dangling pointer in generated
  *      code.
+ *   3. `emplace` builds the new value before destroying the old one, so a
+ *      rebind whose argument reads the payload being replaced sees a live
+ *      payload.
  *
  * Exits non-zero on failure; the harness treats output as the assertion.
  */
 #include <cstdio>
 #include <expected>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
@@ -315,6 +319,27 @@ void loop_slot_forms() {
           "ref loop slot aliases and moves like frame_slot");
 }
 
+void slot_build_before_destroy() {
+    // Long enough to leave the small-string buffer, so a read after the old
+    // payload is destroyed would touch freed heap memory.
+    const std::string first = "the payload lives on the heap, well past any SSO buffer";
+
+    tpy::frame_slot<std::string> slot;
+    slot.emplace(first);
+
+    // The argument is the payload itself.
+    slot.emplace(*slot);
+    check(*slot == first, "frame_slot: emplace(*slot) keeps the value");
+
+    // The argument is a view into the payload's own buffer.
+    slot.emplace(std::string_view(*slot).substr(4));
+    check(*slot == first.substr(4), "frame_slot: emplace(view of payload) reads a live buffer");
+
+    // Several arguments, one of them reading the payload.
+    slot.emplace(std::string_view(*slot).data(), std::size_t{7});
+    check(*slot == first.substr(4, 7), "frame_slot: emplace(ptr into payload, n)");
+}
+
 } // namespace
 
 int main() {
@@ -322,6 +347,7 @@ int main() {
     slot_ref_form();
     iteration_forms();
     loop_slot_forms();
+    slot_build_before_destroy();
     if (failures != 0) {
         std::printf("%d frame_slot form check(s) failed\n", failures);
         return 1;

@@ -54,6 +54,7 @@ struct W {
     ::tpy::Union<A, B> f;
 
     // def __init__(self, f: A | B) -> None:
+    W() = default;
     explicit W(::tpy::Union<const A*, const B*> f);
 
     // def get_label(self) -> str:

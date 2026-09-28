@@ -72,13 +72,9 @@ inline std::string Entity::get_name() const {
 }
 
 // def __init__(self, name: str, id: int32, age: int32) -> None:
-//     self.name = name
-//     self.id = id
+//     super().__init__(name, id)
 //     self.age = age
-inline Person::Person(std::string_view name, int32_t id, int32_t age) : age(age) {
-    this->name = name;
-    this->id = id;
-}
+inline Person::Person(std::string_view name, int32_t id, int32_t age) : Entity(name, id), age(age) {}
 
 // def __str__(self) -> str:
 //     return self.name

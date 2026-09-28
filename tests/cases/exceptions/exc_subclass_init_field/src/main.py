@@ -2,6 +2,7 @@
 # then raises, catches, and reads it.
 class AppError(Exception):
     def __init__(self, code: int):
+        super().__init__()
         self.code = code
 
 def main() -> None:

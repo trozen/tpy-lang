@@ -59,7 +59,7 @@ def test_native_source_and_binding_capabilities(functions) -> None:
         else:
             assert isinstance(element, THIRBorrowedRecord) and element.readonly is readonly
     loop = next(st for st in functions["range_hoist"].body if isinstance(st, THIRForRange))
-    assert tuple(b.name for b in loop.hoisted_bindings) == tuple(n for n, _ in loop.hoist_decls)
+    assert tuple(b.name for b in loop.hoisted_bindings) == tuple(d.name for d in loop.hoist_decls)
     assert "result" in {b.name for b in loop.hoisted_bindings}
 
 

@@ -219,6 +219,7 @@ struct Crate {
     ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self, pet: Pet) -> None:
+    Crate() = default;
     explicit Crate(::tpy::Union<const Cat*, const Dog*> pet);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Crate";
 };

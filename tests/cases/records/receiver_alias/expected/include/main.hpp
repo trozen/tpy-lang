@@ -423,6 +423,6 @@ inline void Base::narrowed() {
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
-inline Derived::Derived(int32_t n) : n(n) {}
+inline Derived::Derived(int32_t n) : Base(), n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

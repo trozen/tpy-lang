@@ -1,9 +1,5 @@
-# TupleType branch coverage for the super-init rule. The base's field
-# is a tuple whose element type is a @nocopy+__del__ record; the
-# predicate's TupleType arm in `_field_type_blocks_default_ctor` recurses
-# into the element type to determine that the tuple cannot default-init,
-# so Base() = default is implicitly deleted, and Child without super()
-# must be rejected.
+# No super() over an `__init__`-less base with a tuple of @nocopy+__del__
+# (no default ctor) is rejected (LANGUAGE_FEATURES "Single class inheritance").
 from tpy import Ptr, int32, nocopy
 from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop
 
@@ -24,14 +20,12 @@ class Resource:
 class Base:
     pair: tuple[Resource, Resource]
 
-    def __init__(self, a: int32, b: int32) -> None:
-        self.pair = (Resource(a), Resource(b))
-
 
 class Child(Base):
     label: str
 
-    def __init__(self, a: int32, b: int32, label: str) -> None:   # tpyc: error(/must call 'super\(\).__init__/)
+    def __init__(self, a: int32, b: int32, label: str) -> None:   # tpyc: error(/cannot be constructed without arguments \(field 'pair' .*tuple element 0/)
+        self.pair = (Resource(a), Resource(b))
         self.label = label
 
 

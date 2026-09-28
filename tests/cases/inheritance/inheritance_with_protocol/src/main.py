@@ -25,8 +25,7 @@ class Person(Entity, Printable):
     age: int32
 
     def __init__(self, name: str, id: int32, age: int32) -> None:
-        self.name = name
-        self.id = id
+        super().__init__(name, id)
         self.age = age
 
     def __str__(self) -> str:

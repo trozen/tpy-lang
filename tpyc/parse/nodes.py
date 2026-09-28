@@ -413,6 +413,12 @@ class TpyMethodCall(TpyExpr):
     static_call_owner: Optional['RecordInfo'] = None
     super_parent_type: Optional[TpyType] = None  # Set by sema for super().method() calls
     unbound_self_parent_type: Optional[TpyType] = None  # Set by sema for BaseN.method(self, ...) calls on an ancestor
+    # Set by sema on a parent-initializer call (`super().__init__(...)` /
+    # `Base.__init__(self, ...)`): the direct base, as the child spells it in
+    # its bases, whose C++ constructor runs the named `__init__` -- None when
+    # no direct base does. The named class may sit past an `__init__`-less
+    # direct base, which inherits the constructor.
+    base_init_direct_base: Optional[TpyType] = None
     user_module_call: Optional[str] = None  # Set by sema for module.func() calls to user modules
     builtin_module_call: Optional[str] = None  # Set by sema for builtin module.func() calls (canonical module name)
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
@@ -2051,6 +2057,24 @@ def is_base_init_call(stmt: TpyStmt) -> bool:
             return (expr.super_parent_type is not None
                     or expr.unbound_self_parent_type is not None)
     return False
+
+
+def is_init_trivia(stmt: TpyStmt) -> bool:
+    """A docstring or `pass` in `__init__`: it runs nothing, so it neither
+    displaces a parent-initializer call from the leading run nor closes the
+    init section."""
+    return is_docstring(stmt) or isinstance(stmt, TpyPassStmt)
+
+
+def init_leading_run_end(body: list[TpyStmt]) -> int:
+    """Index of the first `__init__` statement that is neither trivia nor a
+    parent-initializer call. Only the calls before it keep their CPython
+    meaning when C++ runs them from the member initializer list, ahead of
+    every body statement."""
+    for i, stmt in enumerate(body):
+        if not (is_init_trivia(stmt) or is_base_init_call(stmt)):
+            return i
+    return len(body)
 
 
 def collect_name_refs(expr: TpyExpr, *, into_lambdas: bool = False) -> set[str]:

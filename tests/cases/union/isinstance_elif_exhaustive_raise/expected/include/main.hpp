@@ -80,7 +80,8 @@ inline Dog::Dog(const ::tpy::BigInt& n) : n(n) {}
 inline Cat::Cat(const ::tpy::BigInt& n) : n(n) {}
 
 // def __init__(self, code: int):
+//     super().__init__()
 //     self.code = code
-inline PetError::PetError(const ::tpy::BigInt& code) : code(code) {}
+inline PetError::PetError(const ::tpy::BigInt& code) : ::tpy::Exception(), code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -157,6 +157,8 @@ class SockAddrIn:
 
 Field reads and writes emit the renamed C/C++ member (`v.x` -> `v.m_x`, `a.port` -> `a.sin_port`). The rename is inherited: accessing the field through a TPy-level subclass of the `@native` class resolves it too (e.g. a user subclass of `OSError` reads `.errno` -> `error_number`); a subclass redeclaring the same field name shadows the rename and binds its own plain member (sema warns). Constructor calls are positional (aggregate init for C structs, constructor args for C++ classes) so the rename does not affect construction. `native_field` is rejected on non-`@native` classes and requires exactly one positional string literal argument.
 
+**`@native` ValueType placeholders.** A slot declared before its first value (a name first assigned in both branches of an `if`, a generator frame local, a module global, ...) is built as `::MyHandle h{};`: value-initialized by the type's C++ default constructor (an aggregate's fields come out zero). The type must have one, and it may run where the program never constructs a value -- keep it cheap and free of observable side effects (no printing, no global state), the same contract a TPy-defined `ValueType`'s zero-argument `__init__` carries (LANGUAGE_FEATURES "Placeholders run the default constructor"). A module global's placeholder is a namespace-scope object, so that constructor runs during C++ static initialization, before `main` and before the module's other globals are bound -- it must not depend on them (BUGS.md#valuetype-global-default-ctor-static-init). Codegen emits `static_assert(std::is_default_constructible_v<::MyHandle>, "@native ValueType 'Handle' needs a default constructor: ...")` beside the type's `tpy::is_value_type` specialization, so a type without one fails the C++ build at that line rather than inside some later use. A generic `@native` `ValueType` is checked per instantiation by C++ itself.
+
 ### Global variables
 
 ```python
@@ -283,10 +285,6 @@ arguments: `return Cursor(xs)` with `xs` a parameter is rejected as if it
 borrowed a temporary. Return a view from a method (`buf.cursor()`) instead;
 the constructor rule is tracked in TODO.md ("View constructors borrow their
 arguments; a view root is durable by its emitted storage").
-The yield half is not reachable for a user `@native` value type today: a
-generator cannot yield one at all, the frame stops at `res.yield_type`
-(`BUGS.md#resumable-valuetype-yield-rejects`), so only the return check
-applies to it.
 
 The kwarg describes a TYPE whose every value borrows. A handle that borrows
 only for some producing calls must not declare it: `copy_iter()`'s `CopyIter`

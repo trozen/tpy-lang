@@ -449,27 +449,15 @@ struct __coro_main_coro {
 
 
 // def __init__(self, v: int32) -> None:
-//     self.v = v
-inline IntBox::IntBox(int32_t v) {
-    this->v = v;
-}
+//     super().__init__(v)
+inline IntBox::IntBox(int32_t v) : Box<int32_t>(v) {}
 
 // def __init__(self, val: int32) -> None:
-//     self.val = val
-//     self.entered = 0
-inline IntGuard::IntGuard(int32_t val) {
-    this->val = val;
-    this->entered = 0;
-}
+//     super().__init__(val)
+inline IntGuard::IntGuard(int32_t val) : Guard<int32_t>(val) {}
 
 // def __init__(self, limit: int32, seed: int32) -> None:
-//     self.cur = 0
-//     self.limit = limit
-//     self.seed = seed
-inline IntCounter::IntCounter(int32_t limit, int32_t seed) {
-    this->cur = 0;
-    this->limit = limit;
-    this->seed = seed;
-}
+//     super().__init__(limit, seed)
+inline IntCounter::IntCounter(int32_t limit, int32_t seed) : Counter<int32_t>(limit, seed) {}
 void __tpy_init();
 } // namespace tpyapp::main

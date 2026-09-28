@@ -70,6 +70,7 @@ struct Zoo {
     std::string tag;
 
     // def __init__(self, pet: Dog | Cat, tag: str) -> None:
+    Zoo() = default;
     explicit Zoo(::tpy::Union<const Cat*, const Dog*> pet, std::string_view tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Zoo";
 };

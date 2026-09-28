@@ -9,7 +9,7 @@ class Animal:
 class Box[T](Animal):
     value: T
     def __init__(self, name: str, value: T) -> None:
-        self.name = name
+        super().__init__(name)
         self.value = value
     def get(self) -> T:
         return self.value
@@ -25,7 +25,7 @@ class Container[T]:
 class Wrapper[U](Container[int32]):
     extra: U
     def __init__(self, value: int32, extra: U) -> None:
-        self.value = value
+        super().__init__(value)
         self.extra = extra
 
 # Test Case 1: Generic child of non-generic parent

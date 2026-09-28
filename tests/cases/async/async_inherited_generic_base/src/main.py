@@ -21,7 +21,7 @@ class Box[T]:
 
 class IntBox(Box[int32]):
     def __init__(self, v: int32) -> None:
-        self.v = v
+        super().__init__(v)
 
 
 class Guard[T]:
@@ -43,8 +43,7 @@ class Guard[T]:
 
 class IntGuard(Guard[int32]):
     def __init__(self, val: int32) -> None:
-        self.val = val
-        self.entered = 0
+        super().__init__(val)
 
 
 class Counter[T]:
@@ -70,9 +69,7 @@ class Counter[T]:
 
 class IntCounter(Counter[int32]):
     def __init__(self, limit: int32, seed: int32) -> None:
-        self.cur = 0
-        self.limit = limit
-        self.seed = seed
+        super().__init__(limit, seed)
 
 
 async def main_coro() -> None:

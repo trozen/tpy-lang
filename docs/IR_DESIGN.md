@@ -2326,6 +2326,21 @@ where a variable goes out of scope or is moved. The C++ backend skips this becau
 C++ RAII handles it implicitly. For LLVM, drops are explicit `Call` instructions to
 destructor functions.
 
+The same pass removes **placeholders**. C++ must declare a local, frame field or global
+before Python first assigns it, and a C++ declaration constructs; that is why the C++
+backend builds such a slot with the type's default constructor, value-initialized
+(`P p{};`), which runs a `ValueType`'s zero-argument `__init__` once more than CPython
+does (the documented contract asks it to be side-effect free). With explicit lifetimes the
+slot is plain storage: definite-initialization analysis proves every read follows a write,
+construction happens at the first assignment, and the drop runs unconditionally where
+every path initializes the slot and under a one-bit drop flag where only some do (Rust's
+drop elaboration; unwinding reads the same flags). The placeholder's default construction
+goes away with it: a variable without a value runs no constructor, so the extra
+`__init__` run and the side-effect-free contract are dropped, as is the static-initialization
+hazard of a module global's placeholder (its constructor runs before the module's other
+globals are bound, BUGS.md#valuetype-global-default-ctor-static-init), and a `@native` `ValueType` no longer needs a C++
+default constructor.
+
 ### C++ Interop Without Generating C++
 
 Interop is an **ABI contract**, not a source-level dependency. LLVM-generated machine

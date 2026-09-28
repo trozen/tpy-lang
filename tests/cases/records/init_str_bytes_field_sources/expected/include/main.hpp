@@ -47,6 +47,7 @@ struct Buf {
     ::tpy::Bytes empty;
 
     // def __init__(self, data: bytes):
+    Buf() = default;
     explicit Buf(::tpy::BytesView data);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buf";
 };

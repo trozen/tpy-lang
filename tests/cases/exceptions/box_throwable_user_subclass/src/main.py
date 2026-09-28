@@ -13,7 +13,7 @@ from tpy import Throwable, int32
 class ParseError(Exception):
     line: int32
     def __init__(self, message: str, line: int32) -> None:
-        self.message = message
+        super().__init__(message)
         self.line = line
 
 

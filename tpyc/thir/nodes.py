@@ -17,7 +17,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from ..identity_map import IdentityMap, IdentitySet
 from ..temp_schedule import banks_in_region
@@ -327,6 +327,8 @@ class THIRWalrus(THIRExpr):
     global_binding: THIRGlobalBinding | None = field(default=None, kw_only=True)
     cpp_type: 'str | None' = None
     init: 'str | None' = None
+    # The pre-decl's placeholder suffix (`emit_prims.placeholder_init`).
+    placeholder: str = ""
     tail: 'str | None' = None
     addr_of: bool = False
     # REASSIGNED borrow-tuple walrus (`(t := make_pair(9))` later rebound):
@@ -1816,6 +1818,15 @@ class THIRWrapperDefault:
     value: bool | int | None
 
 
+class HoistDecl(NamedTuple):
+    """A hoisted predeclaration line `cpp_type name<init>;`. `init` is the
+    placeholder suffix (`emit_prims.placeholder_init`), empty for a bare
+    `T x;`."""
+    name: str
+    cpp_type: str
+    init: str = ""
+
+
 @dataclass(frozen=True)
 class THIRHoistedBinding:
     """An emitted predeclaration does not make the source binding available."""
@@ -2591,7 +2602,7 @@ class THIRIf(THIRStmt):
     then_body: tuple[THIRStmt, ...]
     else_body: tuple[THIRStmt, ...] = ()
     else_is_nested: bool = False
-    hoist_decls: tuple[tuple[str, str], ...] = ()
+    hoist_decls: tuple[HoistDecl, ...] = ()
     hoist_slots: tuple[tuple[str, str], ...] = ()
     hoisted_bindings: tuple[THIRHoistedBinding, ...] = ()
     # A protocol-isinstance condition compiles to a CONCEPT test: the
@@ -2613,7 +2624,7 @@ class THIRWhile(THIRStmt):
     condition: THIRExpr
     body: tuple[THIRStmt, ...]
     orelse: tuple[THIRStmt, ...] = ()
-    hoist_decls: tuple[tuple[str, str], ...] = ()
+    hoist_decls: tuple[HoistDecl, ...] = ()
     hoisted_bindings: tuple[THIRHoistedBinding, ...] = ()
 
 
@@ -2701,7 +2712,7 @@ class THIRForRange(THIRStmt):
     # Branch-first-declared value locals used after the loop (sema's
     # `if_branch_decls`): `{cpp_type} {name};` predecls before the loop.
     # Includes the loop var itself when `hoist_loop_var`.
-    hoist_decls: tuple[tuple[str, str], ...] = ()
+    hoist_decls: tuple[HoistDecl, ...] = ()
     hoisted_bindings: tuple[THIRHoistedBinding, ...] = ()
 
 
@@ -2911,7 +2922,7 @@ class THIRForEach(THIRStmt):
     # hoisted_tuple_lift_cpp arm).
     hoisted_tuple_lift_cpp: 'str | None' = None
     # Branch-first-declared value locals used after the loop (see THIRForRange).
-    hoist_decls: tuple[tuple[str, str], ...] = ()
+    hoist_decls: tuple[HoistDecl, ...] = ()
     # hoist_decls names whose pointer predecl null-initializes
     # (`std::vector<int32_t>* v = nullptr;` -- the hoisted container
     # unpack-target flavor; the with-family pointer hoist stays bare).
@@ -3068,7 +3079,7 @@ class THIRWith(THIRStmt):
     items: tuple[THIRWithItem, ...] = ()
     body: tuple[THIRStmt, ...] = ()
     body_terminates: bool = False
-    hoist_decls: tuple[tuple[str, str], ...] = ()
+    hoist_decls: tuple[HoistDecl, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -3140,7 +3151,7 @@ class THIRTry(THIRStmt):
     handlers: tuple[THIRExceptHandler, ...] = ()
     else_body: tuple[THIRStmt, ...] = ()
     finally_body: tuple[THIRStmt, ...] = ()
-    hoist_decls: tuple[tuple[str, str], ...] = ()
+    hoist_decls: tuple[HoistDecl, ...] = ()
     body_terminates: bool = False
     finally_terminates: bool = False
     err_opt_cpp: 'str | None' = None
@@ -3218,6 +3229,9 @@ class THIRErrorReturnBind(THIRStmt):
     name: str
     call: THIRExpr
     decl_cpp: 'str | None' = None
+    # The predecl's value type, whose placeholder it takes
+    # (`emit_prims.placeholder_init`); None for a pointer predecl.
+    decl_type: 'TpyType | None' = None
     ptr_rebind: bool = False
     # With `ptr_rebind`: the reseat's storage verdict and OWN slot pointee
     # spelling (see THIRAssign.rebind_storage).
@@ -3417,7 +3431,7 @@ class THIRMatch(THIRStmt):
     subject: 'THIRExpr | None' = None
     subject_ref: bool = True          # auto& (lvalue subject) vs auto
     arms: tuple[THIRMatchArm, ...] = ()
-    hoist_decls: tuple[tuple[str, str], ...] = ()
+    hoist_decls: tuple[HoistDecl, ...] = ()
     # Hoists that reserve a slot beside their predecl (THIRIf.hoist_slots);
     # no match hoist does today.
     hoist_slots: tuple[tuple[str, str], ...] = ()

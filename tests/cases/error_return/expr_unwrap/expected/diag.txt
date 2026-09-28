@@ -1,1 +1,1 @@
-main.py:66: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:67: warning: copies Point into owned storage; use copy() to make this explicit

@@ -9,6 +9,9 @@ namespace tpyapp::main {
 
 struct Base;
 struct Child;
+struct Label;
+struct Numbered;
+struct Fixed;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -23,6 +26,7 @@ struct Base {
     std::vector<int32_t> xs;
 
     // def __init__(self, b: bytearray, xs: list[int32]) -> None:
+    Base() = default;
     explicit Base(const ::tpy::ByteArray& b, const std::vector<int32_t>& xs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
@@ -32,12 +36,29 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
     return os;
 }
 
+// class Label:
+struct Label {
+    // s: str
+    std::string s;
+
+    // def __init__(self, s: StrView) -> None:
+    Label() = default;
+    explicit Label(std::string_view s);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Label";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Label& obj) {
+    ::tpy::print_object_default(os, "Label", obj);
+    return os;
+}
+
 // class Child(Base):
 struct Child : Base {
     // n: int32
     int32_t n;
 
     // def __init__(self, b: bytearray, xs: list[int32]) -> None:
+    Child() = default;
     explicit Child(const ::tpy::ByteArray& b, const std::vector<int32_t>& xs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
@@ -47,15 +68,56 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+// class Numbered(Label):
+struct Numbered : Label {
+
+    // def __init__(self, n: int32) -> None:
+    Numbered() = default;
+    explicit Numbered(int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Numbered";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Numbered& obj) {
+    ::tpy::print_object_default(os, "Numbered", obj);
+    return os;
+}
+
+// class Fixed(Label):
+struct Fixed : Label {
+
+    // def __init__(self) -> None:
+    Fixed();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Fixed";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Fixed& obj) {
+    ::tpy::print_object_default(os, "Fixed", obj);
+    return os;
+}
+
 
 // def __init__(self, b: bytearray, xs: list[int32]) -> None:
 //     self.buf = b  # tpyc: warning(/copies bytearray into field/)
 //     self.xs = xs  # tpyc: warning(/copies list\[int32\] into field/)
 inline Base::Base(const ::tpy::ByteArray& b, const std::vector<int32_t>& xs) : buf(b), xs(xs) {}
 
+// def __init__(self, s: StrView) -> None:
+//     self.s = str(s)
+inline Label::Label(std::string_view s) : s(std::string(s)) {}
+
 // def __init__(self, b: bytearray, xs: list[int32]) -> None:
 //     super().__init__(b, xs)  # tpyc: ok
 //     self.n = 1
 inline Child::Child(const ::tpy::ByteArray& b, const std::vector<int32_t>& xs) : Base(b, xs), n(1) {}
+
+// def __init__(self, n: int32) -> None:
+//     # a conversion at a `StrView` base parameter
+//     super().__init__(str(n))  # tpyc: ok
+inline Numbered::Numbered(int32_t n) : Label(::tpy::fixed_to_str<int32_t>(n)) {}
+
+// def __init__(self) -> None:
+//     # a str literal at a `StrView` base parameter
+//     super().__init__("abc")  # tpyc: ok
+inline Fixed::Fixed() : Label("abc") {}
 void __tpy_init();
 } // namespace tpyapp::main

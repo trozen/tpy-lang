@@ -15,12 +15,12 @@ from ..typesys import (
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
     PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type, unwrap_qualifiers, unwrap_send_sync, is_any_int_type,
     unwrap_own, ConcreteCoroType,
-    RecordInfo,
+    RecordInfo, InitInheritBlock, InitInheritBlocker,
     contains_type_param,
     FloatLiteralType, resolve_int_literals,
 )
 from ..parse import (
-    TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
+    TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyStrLiteral, TpyStmt,
     TpyStarUnpack,
     is_docstring,
     TpyFString, TpyExpr, TpyCoerce, TpySubscript,
@@ -455,19 +455,20 @@ class MethodAnalyzer:
     def _resolve_super_parent_type(self, expr: TpyMethodCall, super_type: SuperType) -> TpyType:
         """Pick which ancestor super().<method>() dispatches to.
 
-        Single-base uses super_type.parent_type directly. Multi-base (D22 v2.3)
-        walks the child's C3 MRO and returns the first ancestor whose own method
-        table defines `method` (matching Python's __dict__ walk -- inherited
-        methods don't count). super().__del__() is rejected; C++ invokes each
+        `registry.super_target` decides: the sole parent of a single-base
+        class; for multi-base (D22 v2.3) the first ancestor in the child's C3
+        MRO whose own method table defines `method` (matching Python's
+        __dict__ walk -- inherited methods don't count). A multi-base
+        super().__del__() is rejected; C++ invokes each
         base's destructor automatically. Single-hop only; see LANGUAGE_FEATURES
         "Limitation: single-hop super()" for why TPy can't replicate Python's
         full cooperative chain under static dispatch.
         """
         child_rec = self.ctx.registry.get_record(super_type.child_record_name)
-        if child_rec is None or len(child_rec.parents) < 2:
+        if child_rec is None:
             return super_type.parent_type
 
-        if expr.method == "__del__":
+        if expr.method == "__del__" and len(child_rec.parents) >= 2:
             raise self.ctx.error(
                 f"super().__del__() is not allowed in multi-base class "
                 f"'{super_type.child_record_name}'. C++ invokes each base's destructor "
@@ -475,12 +476,9 @@ class MethodAnalyzer:
                 expr
             )
 
-        for anc_type in child_rec.mro_ancestors:
-            anc_info = self.ctx.registry.get_record_for_type(anc_type)
-            if anc_info is None:
-                continue
-            if anc_info.get_method_overloads(expr.method):
-                return anc_type
+        target = self.ctx.registry.super_target(child_rec, expr.method)
+        if target is not None:
+            return target
 
         raise self.ctx.error(
             f"No base of '{super_type.child_record_name}' defines method "
@@ -1000,13 +998,20 @@ class MethodAnalyzer:
             # across modules).
             record_info = binding.record_info
         elif binding and binding.kind == BindingKind.IMPORTED_NAME:
-            import_info = self.ctx.imported_names.get(expr.obj.name)
+            # A builtin class (`Exception`) is bound in builtins_ns without
+            # an imported_names entry; its binding carries the source.
+            import_info = (self.ctx.imported_names.get(expr.obj.name)
+                           or binding.import_source)
             if import_info:
                 record_info = self.ctx.registry.find_record_by_qname(
                     f"{import_info[0]}.{import_info[1]}")
         elif binding and binding.kind == BindingKind.ENUM:
             # `Color.m()` / `cls.m()`: the enum's methods are its companion's.
             record_info = self.ctx.registry.receiver_record(binding.enum_type)
+        elif binding is None:
+            # The builtin classes outside builtins_ns (`ValueError`) resolve
+            # without a binding, as their constructors do.
+            record_info = self.calls._record_for_local_name(expr.obj.name)
 
         if record_info is None:
             return None
@@ -1191,6 +1196,16 @@ class MethodAnalyzer:
 
         parent_type, type_subst = self.protocols.resolve_ancestor_instantiation(
             current_rec, record_info)
+        method_owner = record_info
+        if method_name == "__init__":
+            expr.base_init_direct_base = self.ctx.registry.init_direct_base(
+                current_rec, record_info)
+            init_owner, init_overloads, init_subst = self._parent_init_target(
+                expr, current_rec, record_info,
+                has_args=len(expr.args) > 1 or bool(expr.kwargs))
+            if init_owner is not None:
+                method_owner, overloads, type_subst = (
+                    init_owner, init_overloads, init_subst)
 
         # Rebind to instance-method machinery via a temp TpyMethodCall with
         # obj=self and self dropped from args. _resolve_and_check_args mutates
@@ -1217,7 +1232,7 @@ class MethodAnalyzer:
                     f"Overloaded generic methods are not supported for '{method_name}'",
                     expr)
             return_type = self._analyze_generic_method_call(
-                fake_expr, method_info, record_info, type_subst)
+                fake_expr, method_info, method_owner, type_subst)
         else:
             return_type = self._resolve_and_check_args(
                 fake_expr, overloads, type_subst)
@@ -1242,6 +1257,10 @@ class MethodAnalyzer:
         expr.inferred_type_args = fake_expr.inferred_type_args
         expr.representational_subst_params = fake_expr.representational_subst_params
         expr.unbound_self_parent_type = parent_type
+        if method_name == "__init__":
+            self._check_message_base_init(expr, current_rec)
+            self.ctx.func.base_init_calls.append(
+                (expr, f"{parent_name}.__init__(self, ...)"))
         return return_type
 
     def _analyze_generic_static_method_call(
@@ -2177,34 +2196,23 @@ class MethodAnalyzer:
                     "super().__init__() can only be called inside __init__",
                     expr
                 )
-            # Check for duplicate super().__init__() calls
-            if self.ctx.func.super_init_call is not None:
-                raise self.ctx.error(
-                    "super().__init__() can only be called once",
-                    expr
-                )
-            # Track this call for later validation (must be first statement)
-            self.ctx.func.super_init_call = expr
+            self.ctx.func.base_init_calls.append((expr, "super().__init__()"))
 
             child_rec = self.ctx.registry.get_record(super_type.child_record_name)
-            if (child_rec is not None
-                    and not self.ctx.registry.is_struct_base(child_rec, parent_info)):
-                # The C++ struct derives from the empty value base, not from
-                # the thrown exception `super()` names, so there is no
-                # Exception(message) constructor behind this call.
-                if expr.args:
-                    raise self.ctx.error(
-                        f"'{child_rec.name}' is a return-only exception "
-                        f"(ReturnException): it carries only the fields it "
-                        f"declares and has no Exception(message) constructor to "
-                        f"call; store the message in a declared 'message: str' "
-                        f"field instead", expr)
-                expr.super_parent_type = parent_type
-                return VOID
+            assert child_rec is not None, (
+                f"registry missing RecordInfo for '{super_type.child_record_name}' "
+                f"while analyzing its methods"
+            )
+            expr.base_init_direct_base = self.ctx.registry.init_direct_base(
+                child_rec, parent_info)
+            self._check_message_base_init(expr, child_rec)
 
-            init_overloads = parent_info.get_method_overloads("__init__")
+            init_owner, init_overloads, init_subst = self._parent_init_target(
+                expr, child_rec, parent_info,
+                has_args=bool(expr.args or expr.kwargs))
             if not init_overloads:
-                # Parent has no __init__, allow with no arguments
+                # No __init__ anywhere in the parent's ancestry: allow with no
+                # arguments
                 if expr.args:
                     raise self.ctx.error(
                         f"Parent class '{parent_type}' has no __init__, "
@@ -2263,7 +2271,10 @@ class MethodAnalyzer:
             )
 
         # Build type substitution for generic parent (e.g., Container[int32] -> {"T": int32})
-        type_subst = self.protocols.get_parent_type_subst(parent_type, parent_info)
+        if expr.method == "__init__":
+            type_subst = init_subst
+        else:
+            type_subst = self.protocols.get_parent_type_subst(parent_type, parent_info)
 
         # Must be set before arg resolution: mutation-call-edge recording
         # treats super() receivers as self for self-mutation propagation.
@@ -2276,7 +2287,9 @@ class MethodAnalyzer:
                 raise self.ctx.error(
                     f"Overloaded generic methods are not supported for '{expr.method}'", expr)
             return_type = self._analyze_generic_method_call(
-                expr, method_info, parent_info, type_subst)
+                expr, method_info,
+                init_owner if expr.method == "__init__" else parent_info,
+                type_subst)
         else:
             return_type = self._resolve_and_check_args(expr, overloads, type_subst)
         if is_readonly_context and not expr.resolved_function_info.is_readonly:
@@ -2285,28 +2298,110 @@ class MethodAnalyzer:
                 expr)
         return return_type
 
+    def _check_message_base_init(self, expr: TpyMethodCall,
+                                 child_rec: RecordInfo) -> None:
+        """A return exception's parent-initializer call initializes the
+        class's declared `message` field from its argument (its C++ struct
+        has no thrown base to hold one), so a message argument needs that
+        field."""
+        if (self.ctx.registry.base_init_message_arg(child_rec, expr) is None
+                or any(f.name == qnames.EXCEPTION_MESSAGE_FIELD
+                       for f in child_rec.fields)):
+            return
+        raise self.ctx.error(
+            f"'{child_rec.name}' is a return-only exception (ReturnException): "
+            f"it carries only the fields it declares, and its parent "
+            f"initializer stores a message argument in a declared "
+            f"'{qnames.EXCEPTION_MESSAGE_FIELD}: str' field, which "
+            f"'{child_rec.name}' does not declare", expr)
+
+    def _check_init_forwarding(
+        self, expr: TpyMethodCall, parent_info: RecordInfo,
+        init_owner: RecordInfo, *, has_args: bool,
+    ) -> None:
+        """Reject arguments to an ancestor's `__init__` reached through a
+        direct base whose C++ struct cannot forward them: a base with no own
+        `__init__` that did not inherit its ancestor's constructors
+        (`using A::A;`) is built by its default constructor alone. Why it did
+        not is recorded by `_find_unique_init_parent`.
+
+        The C++ constructor call goes to the direct base the call initializes
+        (`expr.base_init_direct_base`), not to the class it names, so that
+        base is the one checked; the named class stands in only when no
+        direct base leads to it, which the leading-run check rejects later."""
+        base_type = expr.base_init_direct_base
+        base_info = (self.ctx.registry.get_record_for_type(base_type)
+                     if base_type is not None else None) or parent_info
+        if not has_args or base_info.has_init:
+            return
+        reason, alternative = self._init_inherit_blocker_prose(
+            base_info.init_inherit_blocker)
+        raise self.ctx.error(
+            f"'{base_info.name}' has no '__init__' and {reason}, so "
+            f"it cannot pass arguments on to '{init_owner.name}.__init__'; give "
+            f"'{base_info.name}' an '__init__'"
+            + (f" or {alternative}" if alternative else ""),
+            expr)
+
     @staticmethod
-    def stmt_contains_super_init(stmt: TpyStmt, super_init: TpyMethodCall) -> bool:
-        """Check if a statement contains the given super().__init__() call.
+    def _init_inherit_blocker_prose(
+        blocker: InitInheritBlocker | None,
+    ) -> tuple[str, str | None]:
+        """The reason clause and the fix besides writing `__init__` (None when
+        there is no other) for a recorded `InitInheritBlocker`."""
+        if blocker is None:
+            return "does not inherit its base's constructors", None
+        name = blocker.name
+        match blocker.kind:
+            case InitInheritBlock.FIELD_WITHOUT_DEFAULT:
+                return (f"its field '{name}' has no default",
+                        f"a default for '{name}'")
+            case InitInheritBlock.NATIVE:
+                return "it is a '@native' class", None
+            case InitInheritBlock.BASE_WITHOUT_INIT:
+                return f"its base '{name}' has no '__init__' either", None
+            case InitInheritBlock.RETURN_EXCEPTION:
+                return "it is a return-only exception", None
+            case InitInheritBlock.BARE_GENERIC_BASE:
+                return (f"its base '{name}' is generic with no type arguments",
+                        f"type arguments on '{name}'")
+            case InitInheritBlock.SEVERAL_INIT_BASES:
+                return "more than one of its bases defines '__init__'", None
+        return "does not inherit its base's constructors", None
 
-        Used to validate that super().__init__() is the first statement.
-        """
-        # Direct expression statement containing the super().__init__() call
-        if isinstance(stmt, TpyExprStmt):
-            return stmt.expr is super_init
-        return False
-
-    @staticmethod
-    def find_first_non_docstring_stmt(stmts: list[TpyStmt]) -> TpyStmt | None:
-        """Find the first non-docstring statement in a list.
-
-        Returns None if all statements are docstrings or list is empty.
-        """
-        for stmt in stmts:
-            if is_docstring(stmt):
-                continue
-            return stmt
-        return None
+    def _parent_init_target(
+        self, expr: TpyMethodCall, current_rec: RecordInfo,
+        parent_info: RecordInfo, *, has_args: bool,
+    ) -> tuple[RecordInfo | None, list[FunctionInfo], dict[str, TpyType | int]]:
+        """The `__init__` a parent-initializer call -- `super().__init__(...)`
+        or `Parent.__init__(self, ...)` from `current_rec` -- runs: its owner
+        (the nearest class in the parent's MRO that defines one), the owner's
+        overloads, and their type substitution as `current_rec` instantiates
+        the owner. `(None, [], {})` when no class in the parent's ancestry
+        defines `__init__`."""
+        init_owner = self.ctx.registry.init_owner(parent_info)
+        if init_owner is None:
+            return None, [], {}
+        self._check_init_forwarding(expr, parent_info, init_owner,
+                                    has_args=has_args)
+        _parent_type, parent_subst = self.protocols.resolve_ancestor_instantiation(
+            current_rec, parent_info)
+        if init_owner is parent_info:
+            subst = parent_subst
+        else:
+            # An MRO entry keeps the spelling of the class that names it as a
+            # direct base (`B[T](A[list[T]])` records `A[list[T]]`, and every
+            # subclass's MRO copies that entry), so the parent's arguments
+            # substitute it only when the owner is the parent's direct base;
+            # a deeper owner is spelled in an intermediate class's params
+            # (BUGS.md#parent-call-generic-subst-one-level).
+            _owner_type, owner_subst = self.protocols.resolve_ancestor_instantiation(
+                parent_info, init_owner)
+            # An `N: int` param's binding is a plain int -- nothing to substitute.
+            subst = {k: (self.type_ops.substitute_type_params(v, parent_subst)
+                         if isinstance(v, TpyType) and parent_subst else v)
+                     for k, v in owner_subst.items()}
+        return init_owner, self.ctx.registry.init_overloads(init_owner), subst
 
     @staticmethod
     def find_last_non_docstring_stmt(stmts: list[TpyStmt]) -> TpyStmt | None:
