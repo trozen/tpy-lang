@@ -103,7 +103,6 @@ struct __coro_main {
     bool __cancel_pending;
     ::tpy::frame_slot<Node> n;
     Node* r = nullptr;
-    std::string __coro_arg_0;
     std::string s;
     std::optional<__coro_identity<Node>> __sub_0;
     std::optional<__coro_identity<std::string>> __sub_1;

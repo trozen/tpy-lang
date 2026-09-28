@@ -4,7 +4,7 @@ import json
 
 
 def main() -> None:
-    print(json.dumps([-4294967296]))  # tpyc: error(/method.qualcall.arg.union/)
+    print(json.dumps([-4294967296]))  # tpyc: error(/call\.arg_shape\.union/)
 
 
 main()

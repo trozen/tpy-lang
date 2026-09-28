@@ -51,10 +51,8 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = "t1";
-        t1.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::doubler(5, __coro_arg_0))));
-        __coro_arg_1 = "t2";
-        t2.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::doubler(7, __coro_arg_1))));
+        t1.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::doubler(5, "t1"))));
+        t2.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::doubler(7, "t2"))));
         __sub_0 = &((*t1));
         __state = S_RESUME_0;
         continue;

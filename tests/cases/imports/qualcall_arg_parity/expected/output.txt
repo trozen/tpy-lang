@@ -1,0 +1,25 @@
+module_const 4
+module_mut 2
+static 2
+classmethod 3
+super 104
+list_repeat 3
+literal_const 2 1
+literal_mut 3
+readonly_literal 6
+generator [6]
+async 7
+cond 0 3
+call_rvalue 3
+tuple_literal 12
+bytes_own Rc(b'xy')
+dispatch 3 3
+generic_dispatch 3
+order_free 1
+order_free 2
+order_free 3
+order_qualified 1
+order_qualified 2
+order_qualified 3
+literal_frame ['ab1', 'ab2'] ['cd1', 'cd2'] [3] [4]
+nested_readonly_literal 6

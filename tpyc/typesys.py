@@ -5987,6 +5987,14 @@ class RecordInfo:
         return f"{self.module or '__main__'}.{self.name}"
 
 
+def mark_overload_group(infos: list["FunctionInfo"]) -> None:
+    """Stamp `FunctionInfo.overloaded` on every member of a group that binds
+    more than one signature under one name."""
+    if len(infos) > 1:
+        for fi in infos:
+            fi.root._overloaded = True
+
+
 class FunctionLinkage(Enum):
     """Linkage mode for functions."""
     DEFAULT = "default"
@@ -6185,6 +6193,14 @@ class FunctionInfo:
     # pair: flipping it to is_readonly=True would merge it with the const
     # sibling and break overload resolution.
     is_auto_readonly_mutable_clone: bool = False
+    # One of SEVERAL callable signatures bound under one name (a @dispatch /
+    # @overload group, a method's auto_readonly pair), set where the group
+    # is formed. A `str` literal argument then has to be pinned to its view
+    # slot, or the `const char[N]` conversions bind a competing overload --
+    # a fact every call spelling reads here rather than re-finding the group
+    # by name. Stored on the RAW fi and read through `root` (the `overloaded`
+    # property), so a substituted / rebuilt fi cannot lose it.
+    _overloaded: bool = field(default=False, compare=False)
     # Synthesized for a call through a callable VALUE (an Fn/Callable-typed
     # param, local or field). The signature comes from the Fn type, not from
     # a declaration the compiler has checked, so nothing about the callee's
@@ -6241,6 +6257,10 @@ class FunctionInfo:
     @property
     def root(self) -> 'FunctionInfo':
         return self.canonical_fi or self
+
+    @property
+    def overloaded(self) -> bool:
+        return self.root._overloaded
 
     @property
     def const_borrow_params(self) -> Optional[frozenset[int]]:
@@ -6719,6 +6739,7 @@ class TypeRegistry:
 
     def register_function_group(self, name: str, infos: list[FunctionInfo]) -> None:
         """Register a function group (single or @overload)."""
+        mark_overload_group(infos)
         self.functions[name] = infos
 
     def get_function(self, name: str) -> list[FunctionInfo] | None:

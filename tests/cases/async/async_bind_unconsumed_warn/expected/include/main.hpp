@@ -48,9 +48,6 @@ struct __coro_note {
 struct __coro_main_coro {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::string __coro_arg_0;
-    std::string __coro_arg_1;
-    std::string __coro_arg_2;
     std::optional<__coro_note> c;
     std::optional<__coro_note> d;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;

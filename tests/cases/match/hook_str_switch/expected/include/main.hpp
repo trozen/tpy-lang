@@ -57,11 +57,8 @@ struct __coro_acoro {
 struct __coro_amain {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::string __coro_arg_0;
     std::string __await_lift_0;
-    std::string __coro_arg_1;
     std::string __await_lift_1;
-    std::string __coro_arg_2;
     std::string __await_lift_2;
     std::optional<__coro_acoro> __sub_0;
     std::optional<__coro_acoro> __sub_1;

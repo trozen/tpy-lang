@@ -177,10 +177,9 @@ struct __coro_main {
     std::string __await_lift_3;
     std::string __await_lift_4;
     std::string __await_lift_5;
-    std::string __coro_arg_4;
-    ::tpy::frame_slot<Dog> __coro_arg_5;
+    ::tpy::frame_slot<Dog> __coro_arg_4;
     std::string __await_lift_6;
-    ::tpy::frame_slot<Dog> __coro_arg_6;
+    ::tpy::frame_slot<Dog> __coro_arg_5;
     std::string __await_lift_7;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
     ::tpy::frame_loop_slot<int32_t> __for_stop_0;

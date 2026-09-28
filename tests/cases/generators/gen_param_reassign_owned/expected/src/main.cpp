@@ -43,8 +43,7 @@ __gen_gstr gstr(::tpy::String s, int32_t n) {
 //         print("walk", u)
 void main() {
     {
-        std::string __tmp_1 = "a";
-        auto __src_0 = ::tpyapp::main::gs(__tmp_1, 2);
+        auto __src_0 = ::tpyapp::main::gs("a", 2);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -54,8 +53,7 @@ void main() {
         }
     }
     {
-        ::tpy::Bytes __tmp_2 = ::tpy::bytes_literal_owned("ab", 2);
-        auto __src_2 = ::tpyapp::main::gb(__tmp_2, 2);
+        auto __src_2 = ::tpyapp::main::gb(::tpy::bytes_literal("ab", 2), 2);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -75,8 +73,8 @@ void main() {
         }
     }
     {
-        ::tpy::String __tmp_3 = ::tpy::String("x");
-        auto __src_6 = ::tpyapp::main::gstr(__tmp_3, 2);
+        ::tpy::String __tmp_1 = ::tpy::String("x");
+        auto __src_6 = ::tpyapp::main::gstr(__tmp_1, 2);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -87,8 +85,7 @@ void main() {
     }
     Box b = Box("T");
     {
-        std::string __tmp_4 = "m";
-        auto __src_8 = b.walk(__tmp_4, 2);
+        auto __src_8 = b.walk("m", 2);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();

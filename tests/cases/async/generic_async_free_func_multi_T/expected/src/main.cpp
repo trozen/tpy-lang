@@ -14,8 +14,7 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = "x";
-        __sub_0.emplace(7, __coro_arg_0);
+        __sub_0.emplace(7, "x");
         __state = S_RESUME_0;
         continue;
     }

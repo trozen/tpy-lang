@@ -52,8 +52,6 @@ struct __coro_drive {
     bool __cancel_pending;
     int32_t brk;
     int32_t i;
-    std::string __coro_arg_0;
-    std::string __coro_arg_1;
     std::optional<__coro_tick> __sub_0;
     std::optional<__coro_tick> __sub_1;
 

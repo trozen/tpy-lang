@@ -51,7 +51,7 @@ void main() {
     std::cout << (*::tpystd::os::_environ::environ)["TPY_ENV_A"] << "\n";
     std::cout << ::tpy::print_bool(((*::tpystd::os::_environ::environ).__contains__("TPY_ENV_A"))) << "\n";
     std::cout << ::tpy::print_bool(((*::tpystd::os::_environ::environ).__contains__("TPY_ENV_MISSING"))) << "\n";
-    std::cout << ::tpy::print_optional_val(::tpystd::os::getenv("TPY_ENV_A")) << "\n";
+    std::cout << ::tpy::print_optional_val(::tpystd::os::getenv(std::string_view("TPY_ENV_A"))) << "\n";
     std::cout << ::tpy::print_optional_val((*::tpystd::os::_environ::environ).get("TPY_ENV_A")) << "\n";
     std::cout << ::tpy::print_optional_val((*::tpystd::os::_environ::environ).get("TPY_ENV_MISSING")) << "\n";
     std::cout << ::tpy::print_optional_val((*::tpystd::os::_environ::environ).get("TPY_ENV_MISSING", "d")) << "\n";
@@ -60,10 +60,10 @@ void main() {
     std::cout << (*::tpystd::os::_environ::environ)["TPY_ENV_A"] << "\n";
     ::tpy::__delitem__((*::tpystd::os::_environ::environ), "TPY_ENV_A");
     std::cout << ::tpy::print_bool(((*::tpystd::os::_environ::environ).__contains__("TPY_ENV_A"))) << "\n";
-    std::cout << ::tpystd::os::getenv("TPY_ENV_A", "gone") << "\n";
+    std::cout << ::tpystd::os::getenv(std::string_view("TPY_ENV_A"), std::string_view("gone")) << "\n";
     ::tpystd::os::putenv("TPY_ENV_B", "2");
     std::cout << ::tpy::print_bool(((*::tpystd::os::_environ::environ).__contains__("TPY_ENV_B"))) << "\n";
-    std::cout << ::tpy::print_bool((!::tpystd::os::getenv("TPY_ENV_B").has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!::tpystd::os::getenv(std::string_view("TPY_ENV_B")).has_value())) << "\n";
     ::tpy::__setitem__((*::tpystd::os::_environ::environ), "TPY_ENV_C", "3");
     ::tpystd::os::unsetenv("TPY_ENV_C");
     std::cout << ::tpy::print_bool(((*::tpystd::os::_environ::environ).__contains__("TPY_ENV_C"))) << "\n";

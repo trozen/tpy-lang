@@ -19,8 +19,7 @@ __gen_byte_vals byte_vals(::tpy::BytesView data) {
 void main() {
     int32_t total = 0;
     {
-        ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("ABC", 3);
-        auto __src_0 = ::tpyapp::main::byte_vals(__tmp_1);
+        auto __src_0 = ::tpyapp::main::byte_vals(::tpy::bytes_literal("ABC", 3));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

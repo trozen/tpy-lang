@@ -74,7 +74,6 @@ __coro_make_pair<K, V> make_pair(::tpy::param_val_or_ref_t<K> k, ::tpy::param_va
 struct __coro_main_coro {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::string __coro_arg_0;
     std::tuple<int32_t, std::string> p;
     std::optional<__coro_make_pair<int32_t, std::string>> __sub_0;
 

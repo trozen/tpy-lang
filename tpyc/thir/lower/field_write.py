@@ -430,13 +430,18 @@ def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan, lc: _LowerCtx,
     # beside the arms that DO hand out a verdict.
     if plan.render is _ValueRender.STR:
         _witness("field_write.str")
+        # A field-read source (`self.f = o.name`) is the bare member read
+        # the assign copies from -- the ctor member-init's sink flag.
         return THIRAssign(
             target=_lower_field_write_target(stmt, lc, declared),
             value=_lower_expr(stmt.value, lc, declared,
-                              use=_ExprUse(pos=SinkPos.FIELD_WRITE, forms=_NO_FORMS)), loc=loc)
+                              use=_ExprUse(pos=SinkPos.FIELD_WRITE, forms=_NO_FORMS),
+                              field_owned_str_ok=True), loc=loc)
     if plan.render is _ValueRender.BYTES:
         _witness("field_write.bytes")
-        bval = _lower_expr(stmt.value, lc, declared, use=_ExprUse(pos=SinkPos.FIELD_WRITE, forms=_NO_FORMS))
+        bval = _lower_expr(stmt.value, lc, declared,
+                           use=_ExprUse(pos=SinkPos.FIELD_WRITE, forms=_NO_FORMS),
+                           field_owned_str_ok=True)
         if bval.form is Form.BORROW:
             bval = THIRFormConvert(result_type=plan.bytes_ft, value=bval,
                                    form=Form.STORAGE, move=False, loc=loc)

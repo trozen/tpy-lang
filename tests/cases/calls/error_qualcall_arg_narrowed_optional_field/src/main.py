@@ -15,7 +15,7 @@ class Holder:
     def fix(self) -> None:
         if self.maybe is not None:
             # The argument is a narrowed optional field.
-            heapq.heapify(self.maybe)  # tpyc: error(/expr\.method_call:method\.qualcall\.arg\.other\.expr\.field_access/)
+            heapq.heapify(self.maybe)  # tpyc: error(/expr\.call:call\.arg_shape\.container/)
 
 
 def main() -> None:

@@ -68,7 +68,7 @@ from .nodes import (
     THIRNode, THIRName, THIRInplaceContainerOp, THIRWhile, THIRModuleVar, THIRWalrus, THIRGlobalBinding,
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
     THIRFinallyDeferredReturn, DeferredPartKind,
-    THIRSubscript,
+    THIRSubscript, THIRTupleUnpack,
     THIRFrameSlotWrite,
     THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf, PtrSlotKind,
     THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
@@ -810,8 +810,8 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
           argtemp_ok: bool = False, eager_only: bool = False,
           via_transparent: bool = False) -> None:
     """`argtemp_ok` marks the value expression of a flushable statement
-    (expr stmt / var-decl init / assign value / return value / print arg)
-    -- the only
+    (expr stmt / var-decl init / assign value / return value / print arg /
+    tuple-unpack source) -- the only
     region where a THIRArgTemp may appear, and there only under call-arg
     nesting (the flush right rides through call-shaped args / receivers /
     operands). If and while CONDITIONS are also flushable: the emit places
@@ -880,6 +880,13 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         return
     if isinstance(node, THIRExprStmt):
         _walk(owner, node.expr, return_type, argtemp_ok=True)
+        return
+    if isinstance(node, THIRTupleUnpack):
+        # Every holder form that renders an expression source flushes its
+        # temps before the `__tup_N` line, so the source is a flushable
+        # value position.
+        if node.source_expr is not None:
+            _walk(owner, node.source_expr, return_type, argtemp_ok=True)
         return
     if isinstance(node, (THIRIf, THIRWhile)):
         # Conditions are flushable: _emit_if flushes before the `if (` /

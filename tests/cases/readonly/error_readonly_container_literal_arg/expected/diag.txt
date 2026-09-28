@@ -1,1 +1,0 @@
-main.py:19: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.expr_stmt:call.arg_shape.container)

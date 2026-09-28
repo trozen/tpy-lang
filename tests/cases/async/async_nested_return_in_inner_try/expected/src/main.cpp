@@ -76,8 +76,7 @@ __coro_sub sub(std::string_view label) {
         ::tpy::tpy_panic("async def fell through without returning a value");
     }
     case S_JOIN_1: {
-        __coro_arg_1 = "outer";
-        __sub_1.emplace(__coro_arg_1);
+        __sub_1.emplace("outer");
         __state = S_RESUME_1;
         continue;
     }
@@ -127,16 +126,9 @@ __coro_sub sub(std::string_view label) {
         }
     }
     case S_JOIN_5: {
-        try {
-            __coro_arg_0 = "inner";
-            __sub_0.emplace(__coro_arg_0);
-            __state = S_RESUME_0;
-            continue;
-        } catch (...) {
-            this->__finally_exc_0 = std::current_exception();
-            __state = S_JOIN_1;
-            continue;
-        }
+        __sub_0.emplace("inner");
+        __state = S_RESUME_0;
+        continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

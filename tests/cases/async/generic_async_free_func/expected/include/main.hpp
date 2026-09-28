@@ -175,7 +175,6 @@ struct __coro_main_coro {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     int32_t result;
-    std::string __coro_arg_0;
     std::string s;
     ::tpy::frame_slot<Bin> b;
     int32_t __await_lift_0;

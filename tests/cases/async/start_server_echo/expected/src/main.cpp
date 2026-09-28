@@ -63,8 +63,7 @@ __coro_handle handle(::tpystd::asyncio::StreamReader reader, ::tpystd::asyncio::
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = "127.0.0.1";
-        __sub_0.emplace(__coro_arg_0, port);
+        __sub_0.emplace("127.0.0.1", port);
         __state = S_RESUME_0;
         continue;
     }
@@ -135,8 +134,7 @@ __coro_client client(int32_t port, std::string_view msg) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = "127.0.0.1";
-        __sub_0.emplace([](::tpystd::asyncio::StreamReader&& __a0, ::tpystd::asyncio::StreamWriter&& __a1) -> std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::handle(std::move(__a0), std::move(__a1))); }, __coro_arg_0, 0);
+        __sub_0.emplace([](::tpystd::asyncio::StreamReader&& __a0, ::tpystd::asyncio::StreamWriter&& __a1) -> std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::handle(std::move(__a0), std::move(__a1))); }, "127.0.0.1", 0);
         __state = S_RESUME_0;
         continue;
     }
@@ -146,10 +144,8 @@ __coro_client client(int32_t port, std::string_view msg) {
         server.emplace(std::move(__r0).value());
         __sub_0.reset();
         port = std::get<1>((*server).sockets[0].getsockname());
-        __coro_arg_1 = "hello";
-        a.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::client(port, __coro_arg_1))));
-        __coro_arg_2 = "world";
-        b.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::client(port, __coro_arg_2))));
+        a.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::client(port, "hello"))));
+        b.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::client(port, "world"))));
         __sub_1 = &((*a));
         __state = S_RESUME_1;
         continue;

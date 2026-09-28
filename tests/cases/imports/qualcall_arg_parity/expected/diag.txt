@@ -1,0 +1,2 @@
+main.py:19: warning: Method 'Sub.code' hides 'Base.code' -- any 'Base' reference will call 'Base.code', not 'Sub.code' (differs from Python's dynamic dispatch); make 'Base' a @dynamic protocol for runtime dispatch
+main.py:27: warning: may copy T into field if not a value type; use copy() to make this explicit

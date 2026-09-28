@@ -253,7 +253,6 @@ from .predicates import (
     _BIGINT_NARROW,
     _eligible_ptr_union,
     _union_elem_tuple,
-    _open_slot_match,
     _own_opt_storage_binding,
     _eligible_ptr_union_wide,
     _eligible_wrapper_union,
@@ -341,12 +340,10 @@ from .predicates import (
     _tuple_literal_has_ref_elements,
     _tuple_elem_slots_ptr_optional,
     _tuple_elem_slots_record_lvalue,
-    _mixed_own_borrow_tuple,
     _mixed_own_storage_source,
     _renders_own_borrow_tuple,
     _mixed_own_btuple_call,
     _wrapper_ref_tuple_return,
-    _ptr_optional_tuple,
     _unbound_self_field_ok,
     _ptr_value_field_recv_ok,
     _subscript_field_recv_ok,
@@ -480,8 +477,6 @@ from .predicates import (
     _callable_value,
     _value_opt_callable,
     _value_opt_view_whole_arg,
-    _value_opt_call_ret_arg,
-    _value_opt_member_arg,
     _value_opt_scalar,
     _value_opt_span,
     _value_opt_tuple,
@@ -580,8 +575,16 @@ _MEMBERSHIP_RECV = _ExprUse(pos=SinkPos.RECEIVER,
 
 
 from .checks import (
+    _btuple_pass_arg,
+    _own_movable_tuple_pass_arg,
+    _own_move_source_slice_facts,
+    _r_own_move_source_slice,
+    _r_generic_open_slot_elem,
+    _own_tuple_shape_match_facts,
+    _own_tuple_move_arg_facts,
+    _own_tuple_borrow_lift_arg_facts,
+    _own_tuple_decay_copy_arg_facts,
     builds_named_frame,
-    declared_name_copy,
     own_btuple_borrow_name_arg,
     _enum_receiver,
     _is_move_source_facts,
@@ -682,8 +685,6 @@ from .checks import (
     _borrow_tuple_local_type,
     _borrow_tuple_storage_name_arg,
     _mixed_own_tuple_name_arg,
-    _borrow_tuple_name_arg,
-    _union_elem_tuple_name_arg,
     _container_comp_arg,
     _record_borrow_call_arg,
     _recursive_union_borrow_call_arg,
@@ -707,7 +708,6 @@ from .checks import (
     _field_over_container_subscript_ok,
     _chained_subscript_recv_type,
     _func_ref_routable,
-    _copy_own_arg,
     _copy_open_elem_arg,
     _lambda_reject_reason,
     _subscript_over_container_subscript_ok,
@@ -777,9 +777,7 @@ from .checks import (
     _own_bytes_literal_arg,
     _own_str_literal_arg,
     _str_pass_through_arg,
-    _strlit_method_pin_arg,
-    _strlit_overload_pin_arg,
-    _strlit_overload_pin_fires,
+    _strlit_pin_slot,
     _subscript_elem_reject,
     _subscript_recv_reject,
     _str_aug_append_ok,
@@ -1449,90 +1447,38 @@ def _protocol_union_iter_temp_arg(arg: TpyExpr, ptype: 'TpyType | None',
 def _own_tuple_shape_match(a: TpyExpr, ptype: 'TpyType | None',
                            lc: '_LowerCtx',
                            declared: dict[str, TpyType]) -> 'TupleType | None':
-    """The shared shape half of the Own-element tuple NAME arg arms: a
-    non-self, non-narrowed in-scope NAME whose declared tuple matches the
-    slot per-element modulo-Own (`tuple[Box, int32]` vs `tuple[Own[Box],
-    int32]` -- both spell std::tuple<Box, int32_t>), with at least one Own
-    element on the slot side. Returns the BINDING's tuple type (whose form
-    the caller keys its verdict on), or None."""
-    if not isinstance(a, TpyName) or a.name == "self":
-        return None
-    if (a.name in lc.narrow.narrowed or a.name in lc.inline_narrowed
-            or a.name not in declared):
-        return None
-    pu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-          if isinstance(ptype, TpyType) else None)
-    au = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        declared[a.name])))
-    if not (isinstance(pu, TupleType) and isinstance(au, TupleType)
-            and len(au.element_types) == len(pu.element_types)
-            and all(_unwrap_own(unwrap_readonly(ae))
-                    == _unwrap_own(unwrap_readonly(pe))
-                    for ae, pe in zip(au.element_types, pu.element_types))):
-        return None
-    if not any(isinstance(unwrap_readonly(et), OwnType)
-               for et in pu.element_types):
-        return None
-    if pu.is_mixed_own():
-        # A MIXED slot is a const& of the mixed render -- it binds the
-        # hybrid verbatim, never through the storage move/lift/decay rows
-        # (the lift row wrapped `show((*p))` in tuple_to_storage).
-        return None
-    return au
+    """`_own_tuple_shape_match_facts` over the lowering context."""
+    return _own_tuple_shape_match_facts(a, ptype, declared,
+                                        lc.narrow.narrowed, lc.inline_narrowed)
+
 
 def _own_tuple_move_arg(a: TpyExpr, ptype: 'TpyType | None',
                         lc: '_LowerCtx',
                         declared: dict[str, TpyType]) -> bool:
-    """A storage OWN-element tuple NAME at the matching rvalue tuple slot
-    (`consume(std::move(t))` on `tuple[Own[A], Own[A]]` -> the
-    `std::tuple<A, A>&&` param): the movable binding is consumed whole at
-    its last use. `_is_move_source` carries the movable/last-use
-    verdict; a name whose element copy sema declared holds borrows, which
-    no move can hand over (a resumable frame's slot is movable all the
-    same)."""
-    if _own_tuple_shape_match(a, ptype, lc, declared) is None:
-        return False
-    if a in lc.analyzer.ctx.own_element_copies:
-        return False
-    return _is_move_source(a, lc)
+    """`_own_tuple_move_arg_facts` over the lowering context."""
+    return _own_tuple_move_arg_facts(
+        a, ptype, declared, lc.narrow.narrowed, lc.inline_narrowed,
+        lc.movable_locals, lc.analyzer, getattr(lc.func, "name", None))
+
 
 def _own_tuple_borrow_lift_arg(a: TpyExpr, ptype: 'TpyType | None',
                                lc: '_LowerCtx',
                                declared: dict[str, TpyType]) -> bool:
-    """A BORROW-form Own-element tuple NAME at the `std::tuple<...>&&`
-    slot whose copy sema declared: the F3 `tuple_to_storage` lift copies the
-    referents in (the warned copy). STORAGE-form bindings stay out -- a
-    movable last use rides `_own_tuple_move_arg`, and a still-live storage
-    binding needs the `auto(p)` decay-copy instead."""
-    au = _own_tuple_shape_match(a, ptype, lc, declared)
-    if au is None or not declared_name_copy(a, lc.analyzer):
-        return False
-    if (a.name in lc.pointers or a.name in lc.storage_tuple_locals
-            or _is_own_param(a.name, lc)):
-        return False
-    # BORROW form only: the binding's tuple must carry a pointer-repr
-    # element (the `std::tuple<Box*, ...>` local); an all-storage binding
-    # would need the decay-copy.
-    return au.has_pointer_repr_element()
+    """`_own_tuple_borrow_lift_arg_facts` over the lowering context."""
+    return _own_tuple_borrow_lift_arg_facts(
+        a, ptype, declared, lc.narrow.narrowed, lc.inline_narrowed,
+        lc.analyzer, lc.pointers, lc.storage_tuple_locals,
+        _own_param_names(lc))
+
 
 def _own_tuple_decay_copy_arg(a: TpyExpr, ptype: 'TpyType | None',
                               lc: '_LowerCtx',
                               declared: dict[str, TpyType]) -> bool:
-    """A STORAGE-form Own-element tuple NAME still live at the
-    `std::tuple<...>&&` slot: the render decay-copies (`sink(auto(p))` --
-    the warned copy; sema rejected the @nocopy case). A movable last use
-    rides `_own_tuple_move_arg`, a borrow-form binding the
-    `tuple_to_storage` lift."""
-    au = _own_tuple_shape_match(a, ptype, lc, declared)
-    if au is None or _is_move_source(a, lc):
-        return False
-    if a.name in lc.pointers or au.has_pointer_repr_element():
-        return False
-    # The auto() gate keys on is_owned_movable (ALL non-value
-    # elements Own) -- a MIXED slot is a const& of the mixed render,
-    # never a && slot, so it must stay out.
-    pu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-    return isinstance(pu, TupleType) and pu.is_owned_movable()
+    """`_own_tuple_decay_copy_arg_facts` over the lowering context."""
+    return _own_tuple_decay_copy_arg_facts(
+        a, ptype, declared, lc.narrow.narrowed, lc.inline_narrowed,
+        lc.movable_locals, lc.analyzer, getattr(lc.func, "name", None),
+        lc.pointers)
 
 
 def _own_move_source_slice(a: TpyExpr, ptype: 'TpyType | None',
@@ -1550,40 +1496,6 @@ def _own_move_source_slice(a: TpyExpr, ptype: 'TpyType | None',
         a, ptype, lc.analyzer, declared, lc.prescan.param_names,
         lc.narrow.narrowed, lc.inline_narrowed, lc.movable_locals,
         getattr(lc.func, "name", None))
-
-
-def _own_move_source_slice_facts(
-        a: TpyExpr, ptype: 'TpyType | None', analyzer,
-        declared: dict[str, TpyType],
-        param_names: 'set[str] | frozenset[str]',
-        narrowed: 'set[str] | frozenset[str]',
-        inline_narrowed,
-        movable_locals: 'set[str] | frozenset[str]',
-        func_name: 'str | None') -> bool:
-    """`_own_move_source_slice` over the discrete facts -- see
-    `_is_move_source_facts` for why the split exists."""
-    if (_own_lvalue_temp_slot(a, ptype, analyzer, declared,
-                              param_names) is None
-            and _own_bytes_identity_move_slot(
-                a, ptype, analyzer, locals_=declared,
-                param_names=param_names) is None):
-        return False
-    # Coerces are peeled before the last-use check, so an
-    # all-identity chain over a movable name moves the same way the bare
-    # name does.
-    bare = _peel_coerce(a)
-    if not isinstance(bare, TpyName) or bare.name == "self":
-        return False
-    if (bare.name in narrowed or bare.name in inline_narrowed
-            or bare.name not in declared):
-        return False
-    # No value-type filter: movability alone decides, because the working set
-    # only ever holds names an arm actually promoted. A sync scalar is never
-    # promoted (the tier-1 arm's own value filter), while a frame-promoted or
-    # await-bound scalar IS, and moves here. Filtering by payload
-    # type instead of trusting the set is what made `asyncio_queue`'s
-    # `out.append(x)` render bare where it must be `std::move(x)`.
-    return _is_move_source_facts(a, movable_locals, analyzer, func_name)
 
 
 def _template_arg_unreferenced(kind: 'tuple[str, str] | None',
@@ -1746,12 +1658,6 @@ def _r_tparam_name_pass(req: _ArgReq) -> bool:
     return _tparam_name_pass_arg(req.a, req.ptype, req.locals_)
 
 
-def _r_own_move_source_slice(req: _ArgReq) -> bool:
-    return _own_move_source_slice_facts(
-        req.a, req.ptype, req.analyzer, req.locals_, req.param_names,
-        req.narrowed, req.inline_narrowed, req.movable_locals, req.func_name)
-
-
 def _r_opt_own_container_name(req: _ArgReq) -> bool:
     return _opt_own_container_name_arg(req.a, req.ptype, req.locals_,
                                        req.analyzer) is not None
@@ -1759,11 +1665,6 @@ def _r_opt_own_container_name(req: _ArgReq) -> bool:
 
 def _r_copy_open_elem(req: _ArgReq) -> bool:
     return _copy_open_elem_arg(req.a, req.ptype, req.analyzer) is not None
-
-
-def _r_generic_open_slot_elem(req: _ArgReq) -> bool:
-    return (isinstance(req.a, TpySubscript)
-            and _open_slot_match(req.analyzer.get_expr_type(req.a), req.ptype))
 
 
 def _r_async_factory_wrap(req: _ArgReq) -> bool:
@@ -1933,7 +1834,7 @@ _CTOR_ARG_SINK = register_sink(_ArgSink(
         # ... and the non-literal member sources at the same slot -- a
         # non-optional NAME, an enum member, a member-typed rvalue
         # (`timezone(off, tz_intern.name_at(id))` at `str | None`). The
-        # marker ladder's row: the optional's converting ctor absorbs the
+        # plain ladder's row: the optional's converting ctor absorbs the
         # bare member render wherever the arg loop puts it.
         _ArgRow("value_opt_member", _r_value_opt_member),
         _ArgRow("none_value_opt", _r_none_value_opt),
@@ -1986,7 +1887,7 @@ _CTOR_ARG_SINK = register_sink(_ArgSink(
         # A record NAME moved into an `Optional[Own[T]]` ctor slot
         # (`Wrapper(p, tag)` at `Own[Point] | None` -- the by-value
         # `std::optional<Point>` param absorbs the bare `std::move(p)`): the
-        # free/marker ladders' row; the shared lowering arm enforces the
+        # free ladder's row; the shared lowering arm enforces the
         # move verdict and rejects the copy shape.
         _ArgRow("opt_own_record_name", _r_opt_own_record_name),
         # ... and its CONTAINER twin (`DictReader(buf, fn)` at
@@ -2262,7 +2163,7 @@ def _record_ctor_arg_supported(
 def _require_method_call_arg(
         e: TpyMethodCall, a: TpyExpr, ptype: 'TpyType | None', index: int,
         lc: '_LowerCtx', declared: dict[str, TpyType], *,
-        temp_args: bool, error_return_ok: bool = False) -> None:
+        temp_args: bool) -> None:
     # The temp-free last-use MOVE at an Own slot fires before every other
     # arg consideration, so the gate admits the slice up front -- the
     # render arm picks THIRMove on the same shared verdict. Covers the
@@ -2275,53 +2176,9 @@ def _require_method_call_arg(
             temps_ok=temp_args, narrowed=frozenset(lc.narrow.narrowed),
             param_names=lc.prescan.param_names,
             tparam_bounds=lc.tparam_bounds,
-            error_return_ok=error_return_ok,
             movable_locals=lc.movable_locals,
             func_name=getattr(lc.func, "name", None)):
         raise ThirUnsupported(call_reject_reason("expr.method_call"))
-
-
-def _btuple_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
-                     analyzer) -> bool:
-    """A borrow-tuple-returning call whose result EXACTLY matches a
-    borrow-form ptr-Optional tuple param -- or the mixed own/borrow F1
-    flavor (`take_mixed(make_mixed(b))` at `tuple[Own[Box], Box]`) -- the
-    bare-bind admission shared by the free-call ladder and its render arm
-    (call.btuple_pass). Element-blind render, so both shape keys bind the
-    same way. A `copy()` call is excluded: its result is a fresh STORAGE
-    tuple, which the borrow-form slot cannot bind."""
-    if (not isinstance(a, (TpyCall, TpyMethodCall))
-            or copy_call_arg(a, analyzer) is not None):
-        return False
-    pt = _ptr_optional_tuple(ptype)
-    if pt is None:
-        pt = _mixed_own_borrow_tuple(ptype, analyzer)
-    if pt is None:
-        return False
-    at = analyzer.get_expr_type(a)
-    ab = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-          if at is not None else None)
-    return ab == pt
-
-
-def _own_movable_tuple_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
-                                analyzer) -> bool:
-    """An owned-movable tuple call RVALUE at the matching `&&` slot
-    (`take_owned(make_owned())` at `std::tuple<Box, Box>&&`): the prvalue
-    binds the rvalue-ref slot bare -- no move wrap (only NAME sources take
-    the std::move / auto() decay pair)."""
-    if not isinstance(a, (TpyCall, TpyMethodCall)):
-        return False
-    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-          if isinstance(ptype, TpyType) else None)
-    if not (isinstance(pt, TupleType) and pt.is_owned_movable()):
-        return False
-    if not is_rvalue_source(analyzer, a):
-        return False
-    at = analyzer.get_expr_type(a)
-    ab = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-          if at is not None else None)
-    return ab == pt
 
 
 def _protocol_spelled_container_cpp(atu: 'TpyType',
@@ -2345,14 +2202,15 @@ def _protocol_spelled_container_cpp(atu: 'TpyType',
 def _lower_marker_method_arg(
         e: TpyMethodCall, a: TpyExpr, ptype: 'TpyType | None', index: int,
         lc: '_LowerCtx', declared: dict[str, TpyType], *,
-        temp_args: bool, error_return_ok: bool = False,
-        protocol_hoist: bool = False) -> THIRExpr:
-    if isinstance(a, TpyVarargPack):
-        # A `*args` pack into a variadic module function (math.hypot(3, 4)):
-        # the qualcall arg loop forwards the pack unchanged, rendered via the
-        # same pack render as a free call. The pack's own lowering
-        # validates the element shapes and raises otherwise.
-        return _lower_vararg_pack(a, ptype, lc, declared, temp_args=temp_args)
+        kind: 'tuple[str, str]', temp_args: bool,
+        protocol_hoist: bool = False,
+        member_shaped: bool = False) -> THIRExpr:
+    """One argument of a receiver-less marker call (module-qualified,
+    static, classmethod, super, unbound base) or of a deref-chain method
+    call, lowered as a free call's argument of `kind`: the callers pass the
+    `@cpp_template` kind for a template callee and the plain kind for every
+    other, a `@native` one included. `member_shaped` says a receiver outlives
+    the call."""
     if protocol_hoist:
         # The qualcall loop's protocol hoist (a PLAIN module callee only --
         # native/template callees skip that loop's first pass): a temporary
@@ -2438,28 +2296,15 @@ def _lower_marker_method_arg(
         return THIRArgTemp(result_type=lc.analyzer.get_expr_type(a),
                            cpp_type=None, init=init, form=Form.BORROW,
                            loc=getattr(a, "loc", None))
-    _require_method_call_arg(
-        e, a, ptype, index, lc, declared, temp_args=temp_args,
-        error_return_ok=error_return_ok)
-    # The callee's const-borrow verdict spells its union slot with const
-    # pointees; the lift built here has to name that same variant.
+    # Everything else is the free call's argument: one admission table and
+    # one render per slot shape, whichever way the callee was spelled. The
+    # callee's const-borrow verdict picks the const-pointee union lift.
     mfi = e.resolved_function_info
     dcbp = mfi.root.const_borrow_params if mfi is not None else None
-    if (temp_args and dcbp is not None and index not in dcbp
-            and _container_literal_arg(a, ptype, lc.analyzer)):
-        # The method loop's row (`K.s_mutating([1, 2])` -- a static method is
-        # a qualified call): a slot the callee's own verdict says is mutable
-        # cannot bind the in-place brace, so the literal hoists. A callee
-        # with no verdict at all (`dcbp is None` -- every @native /
-        # @cpp_template marker) keeps the inline render its C++ expects.
-        return _container_literal_argtemp(
-            a, ptype, lc, declared,
-            "container-literal qualified arg on the make path")
-    return _lower_call_arg(
-        a, ptype, lc, declared, temp_args=temp_args, marker_arg=True,
+    return _lower_free_call_arg(
+        e, a, ptype, kind, lc, declared, temp_args=temp_args,
         readonly_target=dcbp is not None and index in dcbp,
-        callee_fi=measured_arg_callee(mfi),
-        arg_index=index)
+        arg_index=index, member_shaped=member_shaped)
 
 
 def _slice_bound_supported(b: 'TpyExpr | None', analyzer) -> bool:
@@ -2833,6 +2678,14 @@ def _is_own_param(name: str, lc: '_LowerCtx') -> bool:
             return (isinstance(t, TpyType)
                     and unwrap_optional_own(unwrap_readonly(t)) is not None)
     return False
+
+
+def _own_param_names(lc: '_LowerCtx') -> 'frozenset[str]':
+    """Every param `_is_own_param` answers True for, as the discrete fact the
+    arg table reads."""
+    return frozenset(n for n, t in lc.params
+                     if isinstance(t, TpyType)
+                     and unwrap_optional_own(unwrap_readonly(t)) is not None)
 
 
 def _unproven_opt_scalar_inner(e: TpyExpr, lc: '_LowerCtx',
@@ -5617,7 +5470,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
     # fact would reach deeper positions than it should
     # (`_LowerCtx.in_container_elem` rejects those positions instead).
     # `allow_temps` admits the arg-temp rows for THIS expression's args only
-    # when it is a free call: set by the five flushable statement positions
+    # when it is a free call: set by the flushable statement positions
     # over their direct value, never propagated into subexpressions (each of
     # those positions is where the single pre-statement flush point
     # places the `__tmp_N` decls).
@@ -9854,7 +9707,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     args=tuple(
                         _lower_marker_method_arg(
                             e, a, pfi.params[i].type, i, lc, declared,
-                            temp_args=temp_args)
+                            kind=("plain", ""), temp_args=temp_args,
+                            member_shaped=True)
                         for i, a in enumerate(e.args)),
                     is_arrow=mc_arrow,
                     deref_check=mc_deref,
@@ -9894,7 +9748,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     args=tuple(
                         _lower_marker_method_arg(
                             e, a, dfi.params[i].type, i, lc, declared,
-                            temp_args=temp_args)
+                            kind=("plain", ""), temp_args=temp_args,
+                            member_shaped=True)
                         for i, a in enumerate(e.args)),
                     is_arrow=_name_recv_is_arrow(e.obj, lc),
                     deref_chain=e.deref_depth,
@@ -9963,10 +9818,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # classifier selected it through _marker_call_kind, so the same
             # classification names the emit arm -- the pre-rendered
             # qualified spelling on callee_cpp or the @native symbol on
-            # native_name, both existing THIRCall arms. Args lower against
-            # their param slots like a free call's, but dcbp-BLIND
-            # (readonly_target stays False): the method-call arg loop
-            # lowers union args without the deep-const verdict.
+            # native_name, both existing THIRCall arms. Args lower through
+            # the free call's argument path against their param slots,
+            # reading the callee's deep-const verdict like the from-import
+            # spelling does.
             # `float("nan"/"inf"/...)` spelled through the builtins-module
             # marker (`builtins.float(...)` resolves as a module-qualified
             # ctor): the same fold as the free-call arm, ahead of the marker
@@ -10063,8 +9918,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 args=tuple(
                     _lower_marker_method_arg(
                         e, a, mfi.params[i].type, i, lc, declared,
+                        kind=(mk if mk[0] == "template"
+                              else ("plain", "")),
                         temp_args=temp_args,
-                        error_return_ok=error_return_raw,
+                        member_shaped=(e.super_parent_type is not None
+                                       or e.unbound_self_parent_type
+                                       is not None),
                         # GENERIC module callees run the same first-pass
                         # hoist (`auto __tmp_N = {literal};` before
                         # `cycle<int32_t>(__tmp_N)`); only
@@ -10385,8 +10244,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                           temp_args=temp_args)
             _require_method_call_arg(
                 e, a, ptype, index, lc, declared, temp_args=temp_args)
-            pin_slot = _strlit_method_pin_arg(
-                e, e.resolved_function_info, a, ptype, lc.analyzer)
+            pin_slot = _strlit_pin_slot(a, ptype, e.resolved_function_info)
             if pin_slot is not None:
                 # The method-side twin of the free call's str-literal pin: an
                 # overloaded callee would bind a competing overload through
@@ -13515,6 +13373,35 @@ def _iterator_protocol_result(e: TpyExpr, analyzer) -> bool:
             and rt.name == "Iterator")
 
 
+def _subclass_result_at_slot(a: TpyExpr, ptype: 'TpyType | None',
+                             analyzer) -> bool:
+    """Whether `a`'s record type differs from its record slot's -- the
+    subclass upcast the exact-type borrow-call row leaves open."""
+    at = analyzer.get_expr_type(a)
+    return (isinstance(ptype, TpyType) and at is not None
+            and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+            != unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype))))
+
+
+def _free_arg_body_facts(lc: '_LowerCtx',
+                         declared: dict[str, TpyType]) -> dict:
+    """The enclosing body's name sets both free-call arg families read,
+    lifted off the lowering context as the discrete facts `_ArgReq` carries
+    (`arg_table` never sees the context itself)."""
+    return dict(
+        param_names=lc.prescan.param_names,
+        narrowed=frozenset(lc.narrow.narrowed),
+        storage_tuple_locals=lc.storage_tuple_locals,
+        inline_narrowed=lc.inline_narrowed,
+        movable_locals=lc.movable_locals,
+        pointers=lc.pointers,
+        func_name=getattr(lc.func, "name", None),
+        own_borrow_tuple_locals=lc.own_borrow_tuple_locals,
+        own_param_names=_own_param_names(lc),
+        frame_local_names=lc.frame_local_types,
+        bare_tuple_names=lambda: _borrow_tuple_bare_names(lc, declared))
+
+
 def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                          ptype: 'TpyType | None', kind: 'tuple[str, str] | None',
                          lc: '_LowerCtx', declared: dict[str, TpyType], *,
@@ -13564,6 +13451,7 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
         return _lower_vararg_pack(a, ptype, lc, declared, temp_args=temp_args)
     len_call = _is_len_call(e, declared, analyzer, lc.pointers)
     if not len_call:
+        body_facts = _free_arg_body_facts(lc, declared)
         if kind is not None and kind[0] in ("native", "native_c", "template"):
             if _template_arg_unreferenced(kind, arg_index):
                 # A @cpp_template that never spells `{i}` DISCARDS this
@@ -13574,9 +13462,8 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                 return THIRLiteral(result_type=analyzer.get_expr_type(a),
                                    value=None, form=Form.VALUE,
                                    loc=getattr(a, "loc", None))
-            ok = _native_call_arg_ok(
-                a, ptype, declared, analyzer,
-                storage_tuple_locals=lc.storage_tuple_locals)
+            ok = _native_call_arg_ok(a, ptype, declared, analyzer,
+                                     **body_facts)
             _sit = (_separate_iterator_temp_arg(a, ptype, _callee_fi,
                                                 analyzer)
                     if ok and temp_args else None)
@@ -13596,131 +13483,13 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
         else:
             ok = _plain_call_arg_ok(
                 a, ptype, declared, analyzer, temps_ok=temp_args,
-                narrowed=frozenset(lc.narrow.narrowed),
-                param_names=lc.prescan.param_names,
                 self_capturable=_self_capture_cpp(lc) is not None,
                 index=arg_index, overload=_lend_fi,
-                movable_locals=lc.movable_locals,
-                func_name=getattr(lc.func, "name", None))
-            if not ok and _borrow_tuple_name_arg(
-                    a, ptype, declared, _borrow_tuple_bare_names(lc, declared),
-                    analyzer):
-                ok = True  # witnessed inside the predicate (arg.btuple_name)
-            if not ok and _borrow_tuple_storage_name_arg(
-                    a, ptype, declared, lc.storage_tuple_locals,
-                    analyzer) is not None:
-                ok = True  # witnessed at the lift arm (arg.btuple_storage_name)
-            if not ok and _union_elem_tuple_name_arg(
-                    a, ptype, declared, lc.prescan.param_names, analyzer):
-                ok = True  # witnessed inside (call.union_elem_tuple_arg)
-            if not ok and temp_args and isinstance(a, TpyListRepeat):
-                # Admission for the list-repeat ref-param hoist; rendered
-                # (and witnessed) at the argtemp.list_repeat arm below.
-                _lr_slot = unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(ptype)))
-                ok = isinstance(_lr_slot, NominalType) and (
-                    is_list(_lr_slot) or is_array(_lr_slot))
-            if (not ok and temp_args and frame_capturing
-                    and isinstance(a, TpyArrayLiteral)):
-                # The frame-capturing readonly-slot LIST literal: hoists
-                # like a mutable one (the plain ladder's row declines
-                # readonly without the frame fact). ArrayLiteral ONLY --
-                # the dict/set render arm is not frame-aware, so admitting
-                # those here would fall through to the inline bind the
-                # frame borrows past, which dangles.
-                # witnessed at the ArgTemp arm (argtemp.container_literal)
-                ok = _container_literal_arg(a, ptype, analyzer,
-                                            frame_capturing=True)
-            if not ok and _value_opt_member_arg(a, ptype, declared, analyzer):
-                ok = _witness("call.optval_member")
-            if not ok and _value_opt_call_ret_arg(a, ptype, analyzer):
-                # A value-opt-returning call rvalue at the same value-opt
-                # slot binds bare (`unwrap_or(first_positive(xs), 0)`).
-                ok = _witness("call.optval_ret_pass")
-            if not ok and _own_union_storage_name_arg(
-                    a, ptype, declared, analyzer,
-                    readonly_target=readonly_target) is not None:
-                # witnessed at the arm (arg.own_union_storage_name)
-                ok = True
-            if not ok and temp_args and _union_ctor_temp_arg(
-                    a, ptype, analyzer):
-                ok = True  # witnessed at the lowering arm (unionlift.ctor_temp)
-            if not ok and temp_args and _union_bytes_literal_temp_arg(
-                    a, ptype, analyzer) is not None:
-                # witnessed at the arm (unionlift.bytes_literal_temp)
-                ok = True
-            if not ok and temp_args and _union_dict_literal_temp_arg(
-                    a, ptype, analyzer) is not None:
-                # witnessed at the arm (unionlift.dict_literal_temp)
-                ok = True
-            if not ok and isinstance(a, TpyName) and a.name != "self":
-                # A NAME bound to the still-open slot type -- the callable
-                # -param invocation inside a generic body (`f(init)` at a
-                # synthetic `U` slot): binds bare, the free-call sibling of
-                # the generic gate's composite open-slot rule.
-                if _open_slot_match(declared.get(a.name), ptype):
-                    ok = _witness("call.generic_open_slot_name")
-            if not ok and isinstance(a, TpySubscript):
-                # A container-element subscript at the still-open slot
-                # (`f(xs[i])` at `T` inside a generic body): the element
-                # read renders itself and binds the ref slot bare -- the
-                # subscript arm gates the read (bounds, receiver family).
-                if _open_slot_match(analyzer.get_expr_type(a), ptype):
-                    ok = _witness("call.generic_open_slot_elem")
-            if not ok and _mixed_own_tuple_name_arg(
-                    a, ptype, declared, lc.own_borrow_tuple_locals,
-                    analyzer) is not None:
-                ok = True  # witnessed at the arm (arg.btuple_mixed_name)
-            if not ok and _btuple_pass_arg(a, ptype, analyzer):
-                # A borrow-tuple-returning call at a MATCHING borrow-form
-                # tuple param (ptr-Optional or mixed own/borrow elements) --
-                # the SAME predicate the render arm keys on, so gate and
-                # render cannot drift.
-                ok = True  # witnessed at the arm (call.btuple_pass)
-            if not ok and _own_movable_tuple_pass_arg(a, ptype, analyzer):
-                # An owned-movable tuple call rvalue binds the `&&` slot
-                # bare -- same-predicate render arm below.
-                ok = True  # witnessed at the arm (call.own_tuple_pass)
-        if not ok and _own_move_source_slice(a, ptype, lc, declared):
-            # The temp-free MOVE half of the Own-slot cascade, kind-blind
-            # and position-independent (`std::move(<name read>)` -- native
-            # `unsafe_store(p, 0, pt)`, plain flushless `take(p)` at a
-            # resumable return alike); the COPY half stays temps_ok-gated
-            # inside the kind branches (it hoists a temp).
-            ok = True  # witnessed at the arm (move.own_last_use)
-        if not ok and _copy_own_arg(a, ptype, analyzer):
-            # `copy(name)` into a same-nominal Own slot: the copy-construct
-            # rvalue (`consume(Box(b))`), rendered by _lower_call_arg's
-            # copy intercept -- no temp, no move.
-            ok = True  # witnessed at the row (own.copy_construct)
-        if not ok and _own_tuple_move_arg(a, ptype, lc, declared):
-            # An OWN-element tuple name moves whole at its last use
-            # (`consume(std::move(t))`), rendered by _lower_call_arg's
-            # tuple-move arm.
-            ok = True  # witnessed at the arm (move.own_tuple)
-        if not ok and _own_tuple_borrow_lift_arg(a, ptype, lc, declared):
-            # A BORROW-form Own-element tuple name lifts via
-            # tuple_to_storage, rendered by _lower_call_arg's arm.
-            ok = True  # witnessed at the arm (arg.own_tuple_borrow_lift)
-        if not ok and _own_tuple_decay_copy_arg(a, ptype, lc, declared):
-            # A still-live STORAGE-form Own-tuple name decay-copies
-            # (`sink(auto(p))`), rendered by _lower_call_arg's arm.
-            ok = True  # witnessed at the arm (arg.own_tuple_decay_copy)
-        if (not ok and isinstance(a, TpyNamedExpr)
-                and a.target in lc.frame_local_types):
-            # A walrus arg whose target is a resumable FRAME FIELD writes
-            # the field in place, position-blind (`value_of((m = pick(
-            # nodes, i)))` / `::tpy::__len__(xs.emplace(...))`); the
-            # frame-walrus dispatch validates the leg and rejects the
-            # un-landed ones itself. Kind-blind: the native and plain arg
-            # loops render the walrus the same way.
-            ok = True  # witnessed at the frame-walrus legs (expr.walrus_frame_*)
+                frame_capturing=frame_capturing,
+                readonly_target=readonly_target, **body_facts)
         if not ok:
             raise ThirUnsupported(call_reject_reason("expr.call"))
-    pin_slot = (_strlit_overload_pin_arg(
-        e, _callee_fi, a, ptype, analyzer)
-        if isinstance(e, TpyCall) and isinstance(e.func, TpyName)
-        else None)
+    pin_slot = _strlit_pin_slot(a, ptype, _callee_fi)
     if pin_slot is not None:
         # A bare str literal is `const char[N]`, whose array-to-pointer /
         # boolean conversions outrank the user-defined string_view one, so an
@@ -13919,10 +13688,15 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                        if plain_kind else False)
     _elem_sub = (_record_elem_subscript_arg(a, ptype, analyzer)
                  if plain_kind else False)
-    if (plain_kind
-            and (_ru_borrow_call
-                 or _record_borrow_call_arg(a, ptype, analyzer)
-                 or _elem_sub)):
+    _rec_borrow = plain_kind and _record_borrow_call_arg(a, ptype, analyzer)
+    # ... and a `T&`-returning call of a SUBCLASS record at the base slot,
+    # which the exact-type row above does not take; its predicate witnesses
+    # its own face.
+    _sub_borrow = (plain_kind
+                   and not (_ru_borrow_call or _rec_borrow or _elem_sub)
+                   and _subclass_result_at_slot(a, ptype, analyzer)
+                   and _borrow_ret_record_marker_arg(a, ptype, analyzer))
+    if _ru_borrow_call or _rec_borrow or _elem_sub or _sub_borrow:
         # The T&-returning call / checked record-element read binds the
         # record ref slot inline (`bump(find_first(pts))` /
         # `add_a(::tpy::__getitem__(a.bs, 0), ..)`); BORROW_BIND admits
@@ -13930,9 +13704,10 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
         # recursive-union WRAPPER slot binds the same way -- same render,
         # separate face so the boundary stays measurable; the element read
         # carries the face every other family witnesses it under.
-        _witness("arg.recursive_union_borrow_call" if _ru_borrow_call
-                 else "arg.record_elem_subscript" if _elem_sub
-                 else "arg.record_borrow_call")
+        if not _sub_borrow:
+            _witness("arg.recursive_union_borrow_call" if _ru_borrow_call
+                     else "arg.record_elem_subscript" if _elem_sub
+                     else "arg.record_borrow_call")
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
                                         allow_temps=temp_args))
@@ -14001,13 +13776,14 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
             callee_fi=_lend_fi, arg_index=arg_index)
     if (isinstance(a, TpyArrayLiteral) and temp_args
             and (kind is None or kind[0] not in ("native", "native_c", "template"))
-            and _container_literal_arg(a, ptype, analyzer,
-                                       frame_capturing=frame_capturing)):
+            and _container_literal_arg(a, ptype, analyzer, hoisted=True)):
         # A list literal into a plain free call's concrete container ref
         # param hoists a `__tmp_N` ref-param temp
         # (`std::vector<T> __tmp_N = {..}; f(__tmp_N)`) rather than the
         # ctor's bare in-place brace, so route the hoisted temp here before
-        # `_lower_call_arg`'s in-place container-literal arm can fire.
+        # `_lower_call_arg`'s in-place container-literal arm can fire. Const
+        # and declared-readonly slots hoist too: the temp outlives a callee
+        # that lends the argument back.
         return _container_literal_argtemp(
             a, ptype, lc, declared,
             "container-literal free arg on the make_vector path")
@@ -14544,7 +14320,6 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     method_arg_stub: bool = False,
                     protocol_slots: bool = False,
                     frame_capturing: bool = False,
-                    marker_arg: bool = False,
                     inline_template: bool = False,
                     kind: CallArgKind = CallArgKind.UNSPECIFIED,
                     union_divergent_ok: bool = False,
@@ -14865,8 +14640,9 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             # the tuple_value_to_borrow source-tuple path (the arg is a full
             # expression, so the source's lifetime covers a SYNC call). Element
             # shapes outside the builder's slice raise.
-            # Shared with the user-record METHOD arg loop (`h.set((x, y))`);
-            # the native / marker arg gates still have no tuple-literal row.
+            # Shared with the user-record METHOD arg loop (`h.set((x, y))`)
+            # and the qualified call; the native arg gate admits a tuple
+            # literal only at a protocol slot.
             # A frame-capturing callee keeps the tuple past the full
             # expression, so every temporary element it borrows is owed a
             # named local (the element half of the frame-temp rule).
@@ -15647,10 +15423,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             # ctor rvalue (`read_rc(Rc.new(Counter(3)))`, `use(xs.copy())`)
             # -- the slot predicate already said the slot is a mutable ref
             # (or a frame-capturing const one), where only a named temp
-            # binds. Not at a marker/qualified callee's argument: that loop
-            # has no temp machinery, so the hoist is a FREE-call-position
-            # row only.
-            if marker_arg or not is_rvalue_source(lc.analyzer, a):
+            # binds.
+            if not is_rvalue_source(lc.analyzer, a):
                 rec_pt = None
         if rec_pt is not None:
             _witness("argtemp.record_rvalue")
@@ -16175,15 +15949,15 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
                                         allow_temps=temp_args))
-    if ((marker_arg or (method_arg and not method_arg_stub))
+    if (method_arg and not method_arg_stub
             and isinstance(a, (TpyCall, TpyMethodCall))
             and _borrow_ret_record_marker_arg(a, ptype, lc.analyzer)):
-        # The BORROW-returning twin of the row above (`log_dispatch(
-        # svc.get_logger(), ...)`, `loop.sock_recv(self._sock.get(), n)`):
-        # the `T&` result binds the `T&` slot bare, so it needs the same
-        # BORROW_BIND result use -- the plain method gate's `record_ret` is
-        # off at VALUE / NESTED_ARG. The user-record method position is the
-        # other family carrying this row; a stub receiver's family does not.
+        # The BORROW-returning twin of the row above
+        # (`loop.sock_recv(self._sock.get(), n)`): the `T&` result binds the
+        # `T&` slot bare, so it needs the same BORROW_BIND result use -- the
+        # plain method gate's `record_ret` is off at VALUE / NESTED_ARG. The
+        # free call renders the same row in `_lower_free_call_arg`; a stub
+        # receiver's family does not carry it.
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
                                         allow_temps=temp_args))
@@ -16690,6 +16464,28 @@ def _flush_witness(pos: str, value: THIRExpr) -> THIRExpr:
             and any(isinstance(x, THIRArgTemp) for x in v.args)):
         _witness(pos)
     return value
+
+
+def _hoists_arg_temp(node: THIRNode) -> bool:
+    """Whether a lowered expression holds an arg temp or a temp-bearing
+    union lift anywhere inside it: that object lives only as long as the
+    block the statement sits in. Other temp-declaring nodes (a `*args` pack,
+    a slot emplace) are not recognized:
+    BUGS.md#tuple-literal-arg-unpack-borrow-dangles."""
+    if isinstance(node, THIRArgTemp):
+        return True
+    if isinstance(node, THIRUnionArgLift) and node.temp_cpp is not None:
+        return True
+    for f in dataclass_fields(node):
+        v = getattr(node, f.name)
+        if isinstance(v, THIRNode):
+            if _hoists_arg_temp(v):
+                return True
+        elif isinstance(v, tuple):
+            if any(isinstance(item, THIRNode) and _hoists_arg_temp(item)
+                   for item in v):
+                return True
+    return False
 
 
 def _constructs_value(value: THIRExpr) -> bool:

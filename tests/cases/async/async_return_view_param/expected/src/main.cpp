@@ -160,8 +160,7 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = "a";
-        __sub_0.emplace(__coro_arg_0);
+        __sub_0.emplace("a");
         __state = S_RESUME_0;
         continue;
     }
@@ -171,8 +170,7 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
         std::cout << __await_lift_0 << "\n";
-        __coro_arg_1 = "b";
-        __sub_1.emplace(__coro_arg_1);
+        __sub_1.emplace("b");
         __state = S_RESUME_1;
         continue;
     }
@@ -182,8 +180,7 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
         std::cout << __await_lift_1 << "\n";
-        __coro_arg_2 = "c";
-        __sub_2.emplace(__coro_arg_2);
+        __sub_2.emplace("c");
         __state = S_RESUME_2;
         continue;
     }
@@ -193,8 +190,8 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
         std::cout << __await_lift_2 << "\n";
-        __coro_arg_3 = "d";
-        __sub_3.emplace(__coro_arg_3);
+        __coro_arg_0 = "d";
+        __sub_3.emplace(__coro_arg_0);
         __state = S_RESUME_3;
         continue;
     }

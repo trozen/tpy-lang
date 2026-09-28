@@ -51,8 +51,6 @@ struct __coro_main_coro {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<::tpystd::asyncio::_executor::Task<int32_t>>> tasks;
-    std::string __coro_arg_0;
-    std::string __coro_arg_1;
     std::exception_ptr __finally_exc_0;
     std::optional<::tpystd::asyncio::__coro_gather_list<int32_t>> __sub_0;
 

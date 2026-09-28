@@ -145,7 +145,7 @@ from ...codegen_cpp.context import (
 from ...compilation_context import get_current_compiler
 from ... import qnames
 from ..faces import witness as _witness
-from ..reject import expr_kind_tag, note_detail
+from ..reject import note_detail
 from .arg_table import (_ArgReq, _ArgRow, _ArgSink, arg_ok, register_sink)
 from .generics import expand_fi_template
 from ..nodes import (
@@ -162,6 +162,12 @@ from ..nodes import (
     THIRStrSlice,
 )
 from .predicates import (
+    _value_opt_call_ret_arg,
+    _union_dict_literal_temp_arg,
+    _ptr_optional_tuple,
+    _mixed_own_borrow_tuple,
+    _own_bytes_identity_move_slot,
+    _open_slot_match,
     _enum_prop_wrap,
     _rvalue_ref_init,
     _select_node,
@@ -2957,32 +2963,63 @@ def _container_prvalue_field_write_ok(stmt: TpyAssign,
     return _f1_container_ref(vt)
 
 
+def _owned_viewfam_source_ok(value: TpyExpr, slot: TpyType,
+                             analyzer) -> bool:
+    """Whether a non-NAME source may land in an OWNING str-family (`str`,
+    `String`) or `bytes` slot -- a ctor member-init or a field write. Any
+    source whose resolved type is in the slot's family is admitted: the slot
+    builds its own buffer from whatever the source renders (an owned prvalue
+    lands bare, a view is copied by `std::string`'s ctor / `operator=` or by
+    the bytes family's STORAGE convert), so the source's SHAPE is not the
+    gate's business -- the argument the scalar arm makes for any source.
+
+    A view slot (`StrView` / `BytesView`) is out: it would keep a view of a
+    fresh value that dies with the statement. A NAME source stays with the
+    callers' declared-type rows: a `str | None` name narrowed to `str`
+    renders a deref that moves at a last use, which the bare slot render
+    does not spell."""
+    if is_str_type(slot) or is_string_type(slot):
+        family = _resolved_str_value
+    elif is_bytes_type(slot):
+        family = _resolved_bytes_value
+    else:
+        return False
+    if isinstance(_peel_coerce(value), TpyName):
+        return False
+    return family(analyzer.get_expr_type(value), analyzer) is not None
+
+
+def _keeps_str_view(value: TpyExpr, analyzer) -> bool:
+    """Whether a str-family value is itself a VIEW (`StrView` -- or a str
+    `Literal`, whose values are static), so a `StrView` slot may keep it. An
+    owned `str` / `String` value is fresh: a view slot would dangle."""
+    t = _resolved_str_value(analyzer.get_expr_type(value), analyzer)
+    return t is not None and is_str_view_type(t)
+
+
 def _str_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
                         analyzer,
                         pointers: 'AbstractSet[str]' = frozenset()) -> bool:
-    """A str-family field write `recv.field = <str literal | str name>` at a
-    shared field-write receiver: the default field assign renders the value BARE
-    (`recv.field = s;` / `= "lit";`) -- `std::string::operator=(string_view)`
-    absorbs a view source into an owned field, so unlike a decl init there is
-    NO view->owned `std::string(...)` construction, and str names are never in
-    codegen's movable set (value-typed decl arms don't register), so no move
-    wrap either. A str-typed BINOP value (`self.buf = self.buf + s`) also
-    assigns its concat render bare, and a same-family COERCE wrap peels
-    transparently before the rows (so a coerce-wrapped literal / name /
-    binop admits like its bare form -- the wrap does not change the
-    assign render). Two further value shapes ride the same bare assign: a
-    str-family SLICE subscript (`self.s = x[1:3]` -- the sema coerce node
-    carries its own `std::string(::tpy::str_slice(...))` materialization,
-    which is why the render must keep lowering the UNPEELED value) and a
-    zero-arg `str()` ctor call. A `builds_fresh_value` coerce (`self.tag =
-    CHARS[i]`) is the same argument stated as the FACT rather than as a
-    source shape: its wrap is the construction, so whatever sits under it
-    assigns bare. A NAME declared `str | None` and narrowed to
-    `str` stays OUT: the deref moves at a last use
-    (`this->s = std::move((*s));`) and this arm renders it bare. A str-typed
-    call or method call of any other shape rides the same bare assign as
-    well; `String`-typed fields/sources keep their own emit shapes (excluded
-    by `_resolved_str_value`).
+    """A str-family field write `recv.field = <value>` at a shared field-write
+    receiver: the default field assign renders the value BARE (`recv.field =
+    s;` / `= "lit";`) -- `std::string::operator=(string_view)` absorbs a view
+    source into an owned field, so unlike a decl init there is NO view->owned
+    `std::string(...)` construction, and str names are never in codegen's
+    movable set (value-typed decl arms don't register), so no move wrap
+    either.
+
+    An OWNING slot (`str` / `String`) takes any non-name str-family source
+    (`_owned_viewfam_source_ok`, shared with the ctor member-init). The shape
+    rows after it are what a `StrView` slot admits -- sources that are a
+    view of storage the write does not own: a literal, a SLICE (a view into
+    its base; a fresh base rejects at the slice's own lowering) and a call
+    returning a view (`_keeps_str_view`). A fresh value -- a concat, an
+    owned-str call, `str(x)`, a `builds_fresh_value` coerce -- has no row:
+    the view would dangle as soon as the statement ends. A same-family
+    COERCE wrap peels transparently before those rows. A NAME
+    declared `str | None` and narrowed to `str` stays OUT: the deref moves
+    at a last use (`this->s = std::move((*s));`) and this arm renders it
+    bare.
 
     The RECEIVER is the shared ladder's business, not this row's: a nested
     or element receiver (`o.inner.name = "b"`, `rows[0].name = "b"`) renders
@@ -2993,36 +3030,26 @@ def _str_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     if not _viewfam_field_write_receiver_ok(stmt.target, declared, analyzer,
                                             pointers):
         return False
-    if _resolved_str_value(analyzer.get_expr_type(stmt.target),
-                           analyzer) is None:
+    slot = _resolved_str_value(analyzer.get_expr_type(stmt.target), analyzer)
+    if slot is None:
         return False
+    # An owning slot takes any str-family source, the ctor member-init's rule;
+    # the rows below are what a StrView slot (and a name) still admits.
+    if _owned_viewfam_source_ok(stmt.value, slot, analyzer):
+        return True
     v = stmt.value
-    # A str-typed BINOP value assigns its concat render bare; the str-ness
-    # reads off the OUTER (possibly coerce-wrapped) type -- the raw binop
-    # node can carry an unresolved in-place type.
+    if isinstance(v, TpyCoerce) and v.coercion.builds_fresh_value:
+        return False
     outer_str = _resolved_str_value(analyzer.get_expr_type(v), analyzer)
     if isinstance(v, TpyCoerce):
         v = v.expr
-    # A fresh-value coerce (`self.tag = CHARS[i]`) carries its own
-    # `std::string(::tpy::char_to_str(...))` construction, so the UNPEELED
-    # value assigns bare -- the str_slice row's argument, keyed on the fact
-    # rather than on the source shape under the wrap.
-    if (isinstance(stmt.value, TpyCoerce)
-            and stmt.value.coercion.builds_fresh_value
-            and outer_str is not None):
-        return _witness("field_write.fresh_value_coerce")
     if isinstance(v, TpyStrLiteral):
-        return True
-    if isinstance(v, TpyBinOp) and outer_str is not None:
         return True
     if (isinstance(v, TpySubscript) and isinstance(v.index, TpySlice)
             and outer_str is not None):
         return _witness("field_write.str_slice")
-    if (isinstance(v, TpyCall) and isinstance(v.func, TpyName)
-            and v.func.name == "str" and not v.args and not v.kwargs):
-        return _witness("field_write.str_ctor")
-    if isinstance(v, (TpyCall, TpyMethodCall)) and outer_str is not None:
-        return _witness("field_write.str_call")
+    if isinstance(v, (TpyCall, TpyMethodCall)) and _keeps_str_view(v, analyzer):
+        return _witness("field_write.str_view_call")
     return (isinstance(v, TpyName) and v.name in declared
             and _resolved_str_value(declared[v.name], analyzer) is not None)
 
@@ -3045,11 +3072,11 @@ def _bytes_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     no materialization for bytes, so the view-form slice takes this family's
     ordinary `Bytes(x)` STORAGE convert.
 
-    A bytes BINOP (`self.buf = self.buf + chunk`) and a bytes-returning CALL
-    both land on the same rule as every other source here: the family's
-    verdict is read off the lowered source's FORM, so an owned concat rvalue
-    assigns bare and a view-returning call takes the `Bytes(x)` convert. The
-    two shapes need no row of their own beyond admission.
+    Every non-name source is the shared owning-slot rule
+    (`_owned_viewfam_source_ok`): the family's verdict is read off the
+    lowered source's FORM, so an owned rvalue (literal, concat, `bytes(x)`)
+    assigns bare and a view (a slice, a view-returning call) takes the
+    `Bytes(x)` convert -- no shape needs a row of its own beyond admission.
 
     The RECEIVER is the str twin's view-family gate, for the reason given
     there: which lvalue the store lands in decides nothing about the
@@ -3061,22 +3088,11 @@ def _bytes_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     ft = _resolved_bytes_value(analyzer.get_expr_type(stmt.target), analyzer)
     if ft is None or not is_bytes_type(ft):
         return False
-    v = stmt.value
-    if isinstance(v, TpyBytesLiteral):
+    if _owned_viewfam_source_ok(stmt.value, ft, analyzer):
         return True
-    # The shape rows below peel the sema coerce and type off the OUTER
-    # (possibly coerce-wrapped) node; the literal/name rows key the RAW node,
-    # since widening them to coerce-wrapped sources would admit shapes no
+    # The name rows key the RAW node: a coerce-wrapped name is a shape no
     # render row was measured against.
-    sliced = v.expr if isinstance(v, TpyCoerce) else v
-    outer = _resolved_bytes_value(analyzer.get_expr_type(v), analyzer)
-    outer_bytes = outer is not None and is_bytes_type(outer)
-    if isinstance(sliced, TpySubscript) and isinstance(sliced.index, TpySlice):
-        return outer_bytes and _witness("field_write.bytes_slice")
-    if isinstance(sliced, TpyBinOp):
-        return outer_bytes and _witness("field_write.bytes_binop")
-    if isinstance(sliced, (TpyCall, TpyMethodCall)):
-        return outer_bytes and _witness("field_write.bytes_call")
+    v = stmt.value
     if not (isinstance(v, TpyName) and v.name in declared):
         return False
     dt = declared[v.name]
@@ -4413,10 +4429,10 @@ def _rvalue_free_call_shape(e: 'TpyCall', analyzer) -> bool:
     if (fi is None or fi.is_constructor or not _call_arity_ok(e, fi)
             or not _plain_free_callee_ok(e, analyzer)):
         return False
-    if any(isinstance(_peel_coerce(a), TpyStrLiteral) for a in e.args):
-        overloads = analyzer.registry.get_function(e.func_name)
-        if overloads is not None and len(overloads) > 1:
-            return False
+    if (fi.overloaded
+            and any(isinstance(_peel_coerce(a), TpyStrLiteral)
+                    for a in e.args)):
+        return False
     return True
 
 
@@ -4439,79 +4455,44 @@ def _call_arity_ok(e: 'TpyCall | TpyMethodCall', fi) -> bool:
     return True
 
 
-def _strlit_overload_pin_fires(e: 'TpyCall', fi, analyzer) -> bool:
+def _strlit_overload_pin_fires(e: 'TpyCall', fi) -> bool:
     """Whether a str-literal arg to this call takes the overloaded
     pin (`param_view_t("...")`): a MULTI-overload, non-generic callee, plus
     the per-arg firing test (the
     pin fires only when the str literal's param slot renders `str`/`StrView`).
     A str literal into any OTHER slot -- a `char`, a `Literal[...]` mode
     selector, an owned `String` -- renders through its own arm, so only a
-    str/StrView slot takes the pin. Used to keep
-    the plain / native / record-rvalue free-call faces from over-rejecting a
-    str-literal overloaded call whose pin never actually fires."""
-    if fi is None or fi.is_generic():
-        return False
-    overloads = analyzer.registry.get_function(e.func_name)
-    if overloads is None or len(overloads) <= 1:
+    str/StrView slot takes the pin. Used to keep the native
+    context-manager face from over-rejecting a str-literal overloaded call
+    whose pin never actually fires."""
+    if fi is None:
         return False
     params = fi.params
-    for i, a in enumerate(e.args):
-        if not isinstance(_peel_coerce(a), TpyStrLiteral):
-            continue
-        if i >= len(params):
-            continue
-        slot = unwrap_readonly(unwrap_ref_type(params[i].type))
-        if is_str_type(slot) or is_str_view_type(slot):
-            return True
-    return False
+    return any(i < len(params)
+               and _strlit_pin_slot(a, params[i].type, fi) is not None
+               for i, a in enumerate(e.args))
 
 
-def _strlit_pin_slot(a: TpyExpr, ptype: 'TpyType | None', fi,
-                     overload_count: int) -> 'TpyType | None':
+def _strlit_pin_slot(a: TpyExpr, ptype: 'TpyType | None',
+                     fi) -> 'TpyType | None':
     """The param slot ONE str-literal arg must be pinned to
-    (`std::string_view("x")`), or None when this arg takes no pin -- the
-    per-arg half of `_strlit_overload_pin_fires`: the overloaded-call
-    condition (a multi-overload, non-generic callee) plus
-    the per-arg str/StrView slot test."""
+    (`std::string_view("x")`), or None when this arg takes no pin: the
+    callee is one of an overload set (`FunctionInfo.overloaded`) emitted from
+    TPy -- not generic, and not a @native / @cpp_template stub, whose C++ is
+    written against its own spelling and expands through the native arm --
+    and the arg's slot renders `str`/`StrView`. Every call loop asks this
+    with the callee it resolved, whichever way it was spelled."""
     if not isinstance(_peel_coerce(a), TpyStrLiteral):
         return None
-    if fi is None or fi.is_generic() or overload_count <= 1:
+    if (fi is None or fi.is_generic() or not fi.overloaded
+            or fi.cpp_template is not None or fi.native_function
+            or fi.native_name):
         return None
     slot = (unwrap_readonly(unwrap_ref_type(ptype))
             if isinstance(ptype, TpyType) else None)
     if slot is not None and (is_str_type(slot) or is_str_view_type(slot)):
         return slot
     return None
-
-
-def _strlit_overload_pin_arg(e: 'TpyCall', fi, a: TpyExpr,
-                             ptype: 'TpyType | None',
-                             analyzer) -> 'TpyType | None':
-    """`_strlit_pin_slot` over a FREE callee's overload set."""
-    overloads = analyzer.registry.get_function(e.func_name)
-    return _strlit_pin_slot(a, ptype, fi,
-                            len(overloads) if overloads else 0)
-
-
-def _strlit_method_pin_arg(e: 'TpyMethodCall', fi, a: TpyExpr,
-                           ptype: 'TpyType | None',
-                           analyzer) -> 'TpyType | None':
-    """`_strlit_pin_slot` over a METHOD's overload set -- counted with
-    `record_info.get_method_overloads` (own methods only, no
-    parents)."""
-    if fi is None or fi.cpp_template is not None or fi.native_function \
-            or fi.native_name:
-        # Builtin / @native methods emit through the native/template arm,
-        # which never applies the pin -- it is the USER-record arm's.
-        return None
-    recv_t = analyzer.get_expr_type(e.obj)
-    ri = (analyzer.registry.get_record_for_type(
-        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_t))))
-        if recv_t is not None else None)
-    if ri is None:
-        return None
-    return _strlit_pin_slot(a, ptype, fi,
-                            len(ri.get_method_overloads(e.method)))
 
 
 def _native_ctx_manager_ok(e: TpyExpr, analyzer) -> bool:
@@ -4536,7 +4517,7 @@ def _native_ctx_manager_ok(e: TpyExpr, analyzer) -> bool:
     k = _free_callee_kind(e, analyzer)
     if k is None or k[0] != "native":
         return False
-    return not _strlit_overload_pin_fires(e, fi, analyzer)
+    return not _strlit_overload_pin_fires(e, fi)
 
 
 def _native_record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
@@ -4767,13 +4748,14 @@ def _native_own_scalar_lvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
 
 
 def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
-                        locals_: dict[str, TpyType], analyzer, *,
-                        storage_tuple_locals: 'AbstractSet[str]') -> bool:
+                        locals_: dict[str, TpyType], analyzer,
+                        **body_facts) -> bool:
     """The native / native_c / @cpp_template free-callee family's arg rows.
-    Rows: `_NATIVE_ARG_SINK`."""
+    Rows: `_NATIVE_ARG_SINK`. `body_facts` are the enclosing body's name
+    sets (`_ArgReq`), which only the shared free-call tail reads here; the
+    family threads no flush position."""
     return arg_ok(_NATIVE_ARG_SINK, a, ptype, locals_, analyzer,
-                  param_names=frozenset(), narrowed=frozenset(),
-                  temps_ok=False, storage_tuple_locals=storage_tuple_locals)
+                  temps_ok=False, **body_facts)
 
 
 def _readonly_container_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -4788,10 +4770,9 @@ def _readonly_container_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
     inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
     if not (is_list(inner) or is_dict(inner) or is_set(inner)):
         return None
-    # EMPTY only. A non-empty literal would bind inline too, but whether that
-    # is safe depends on the callee not lending the parameter back, and that
-    # fact is not recorded for every callee
-    # (BUGS.md#readonly-container-literal-arg-rejected).
+    # EMPTY only: a non-empty literal has elements to evaluate, and at a free
+    # call it hoists (the `readonly_container_literal` row) to keep them
+    # ahead of the later arguments, as CPython does.
     if isinstance(a, TpyArrayLiteral) and not a.elements and is_list(inner):
         return inner
     if isinstance(a, TpySetLiteral) and not a.elements and is_set(inner):
@@ -5143,25 +5124,24 @@ def _callable_object_arg(a: TpyExpr, ptype: 'TpyType | None',
 def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                        locals_: dict[str, TpyType], analyzer, *,
                        temps_ok: bool,
-                       narrowed: 'set[str] | frozenset[str]',
-                       param_names: 'set[str] | frozenset[str]' = frozenset(),
                        self_capturable: bool = False,
                        index: int = -1,
                        overload=None,
-                       movable_locals: 'set[str] | frozenset[str]' = frozenset(),
-                       func_name: 'str | None' = None) -> bool:
-    """The plain (non-native, non-marker) free-callee family's arg rows --
-    the reference ladder the other families were copied from.
-    Rows: `_PLAIN_ARG_SINK`.
+                       frame_capturing: bool = False,
+                       readonly_target: bool = False,
+                       **body_facts) -> bool:
+    """The plain (non-native) free-callee family's arg rows -- the reference
+    ladder the other families were copied from. Rows: `_PLAIN_ARG_SINK`;
+    `body_facts` are the enclosing body's name sets (`_ArgReq`).
 
     `overload` is the callee the RETENTION question may name -- the same one
     the render side hands `arg_lend_ok`, so the in-place cell and the render
     cannot answer it differently."""
     return arg_ok(_PLAIN_ARG_SINK, a, ptype, locals_, analyzer,
-                  param_names=param_names, narrowed=narrowed,
                   temps_ok=temps_ok, self_capturable=self_capturable,
                   index=index, overload=overload,
-                  movable_locals=movable_locals, func_name=func_name)
+                  frame_capturing=frame_capturing,
+                  readonly_target=readonly_target, **body_facts)
 
 
 def _record_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -5621,7 +5601,7 @@ def _generic_plain_arg_ok(a: TpyExpr, ptype: 'TpyType | None', subst,
 
 
 def _container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
-                           analyzer, *, frame_capturing: bool = False) -> bool:
+                           analyzer, *, hoisted: bool = False) -> bool:
     """A LIST literal into a same-family NON-mutated list slot at a CTOR call
     (`Numbers([1, 2, 3])` -> `Numbers({1, 2, 3});`): the bare
     brace-init renders in place (scalar, str, and record-rvalue
@@ -5636,15 +5616,16 @@ def _container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
     A MUTATED ctor slot rejects (a prvalue into a
     non-const `T&`). Element shapes are pre-checked so admission tracks
     lowerability; the make_vector element path is rejected at lowering (its
-    ctor-arg render is unverified). A DECLARED-readonly slot binds the
-    literal INLINE (`take_ro({1, 2, 3})`),
-    so it must not ride the temp arms -- only the empty rvalue is admitted
-    (`_readonly_container_rvalue_arg`); non-empty rejects. EXCEPT for a
-    FRAME-CAPTURING callee (`frame_capturing`): there the statement-scoped
-    inline `const T&` bind would dangle, so the readonly
-    slot's literal hoists like a mutable one (`_record_rvalue_temp_slot`'s
-    rule)."""
-    if (not frame_capturing and isinstance(ptype, TpyType) and isinstance(
+    ctor-arg render is unverified). A DECLARED-readonly slot would bind the
+    literal INLINE (`take_ro({1, 2, 3})`), so it is admitted only where the
+    position HOISTS the literal into a named temp (`hoisted`: the free and
+    qualified call, whose temp outlives a callee that lends the argument back
+    and a frame that borrows it -- an inline brace dies with the statement);
+    elsewhere only the empty rvalue is admitted
+    (`_readonly_container_rvalue_arg`). Hoisting runs the literal's elements
+    before every other argument, whatever its position: that is the
+    postponed evaluation-order class, BUGS.md#subexpression-right-to-left-eval."""
+    if (not hoisted and isinstance(ptype, TpyType) and isinstance(
             unwrap_ref_type(unwrap_send_sync(ptype)), ReadonlyType)):
         return False
     pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
@@ -5689,11 +5670,8 @@ def _ref_param_dictset_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
     ({{..}});` -- the literal renders target-typed, then the
     ref-param cascade hoists it). Flush positions only (the arm is
     temps_ok-gated); the list-literal sibling rides `_container_literal_arg`.
-    DECLARED-readonly slots bind inline -- excluded like the
-    list sibling."""
-    if isinstance(ptype, TpyType) and isinstance(
-            unwrap_ref_type(unwrap_send_sync(ptype)), ReadonlyType):
-        return False
+    A DECLARED-readonly slot hoists the same way: the temp outlives a callee
+    that lends the argument back."""
     pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
           if ptype is not None else None)
     if pt is None or isinstance(pt, (OwnType, OptionalType)):
@@ -7128,6 +7106,198 @@ def _r_opt_own_ptr_opt_name_move(req: _ArgReq) -> bool:
                                       req.analyzer) is not None
             and _is_move_source_facts(req.a, req.movable_locals, req.analyzer,
                                       req.func_name))
+
+
+def _own_tuple_shape_match_facts(
+        a: TpyExpr, ptype: 'TpyType | None', locals_: dict[str, TpyType],
+        narrowed: 'AbstractSet[str]',
+        inline_narrowed) -> 'TupleType | None':
+    """The shared shape half of the Own-element tuple NAME arg arms: a
+    non-self, non-narrowed in-scope NAME whose declared tuple matches the
+    slot per-element modulo-Own (`tuple[Box, int32]` vs `tuple[Own[Box],
+    int32]` -- both spell std::tuple<Box, int32_t>), with at least one Own
+    element on the slot side. Returns the BINDING's tuple type (whose form
+    the caller keys its verdict on), or None."""
+    if not isinstance(a, TpyName) or a.name == "self":
+        return None
+    if (a.name in narrowed or a.name in inline_narrowed
+            or a.name not in locals_):
+        return None
+    pu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if isinstance(ptype, TpyType) else None)
+    au = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        locals_[a.name])))
+    if not (isinstance(pu, TupleType) and isinstance(au, TupleType)
+            and len(au.element_types) == len(pu.element_types)
+            and all(_unwrap_own(unwrap_readonly(ae))
+                    == _unwrap_own(unwrap_readonly(pe))
+                    for ae, pe in zip(au.element_types, pu.element_types))):
+        return None
+    if not any(isinstance(unwrap_readonly(et), OwnType)
+               for et in pu.element_types):
+        return None
+    if pu.is_mixed_own():
+        # A MIXED slot is a const& of the mixed render -- it binds the
+        # hybrid verbatim, never through the storage move/lift/decay rows
+        # (the lift row wrapped `show((*p))` in tuple_to_storage).
+        return None
+    return au
+
+
+def _own_tuple_move_arg_facts(
+        a: TpyExpr, ptype: 'TpyType | None', locals_: dict[str, TpyType],
+        narrowed: 'AbstractSet[str]', inline_narrowed,
+        movable_locals: 'AbstractSet[str]', analyzer,
+        func_name: 'str | None') -> bool:
+    """A storage OWN-element tuple NAME at the matching rvalue tuple slot
+    (`consume(std::move(t))` on `tuple[Own[A], Own[A]]` -> the
+    `std::tuple<A, A>&&` param): the movable binding is consumed whole at
+    its last use. `_is_move_source_facts` carries the movable/last-use
+    verdict; a name whose element copy sema declared holds borrows, which
+    no move can hand over (a resumable frame's slot is movable all the
+    same)."""
+    if _own_tuple_shape_match_facts(a, ptype, locals_, narrowed,
+                                    inline_narrowed) is None:
+        return False
+    if a in analyzer.ctx.own_element_copies:
+        return False
+    return _is_move_source_facts(a, movable_locals, analyzer, func_name)
+
+
+def _own_tuple_borrow_lift_arg_facts(
+        a: TpyExpr, ptype: 'TpyType | None', locals_: dict[str, TpyType],
+        narrowed: 'AbstractSet[str]', inline_narrowed, analyzer,
+        pointers: 'AbstractSet[str]',
+        storage_tuple_locals: 'AbstractSet[str]',
+        own_param_names: 'AbstractSet[str]') -> bool:
+    """A BORROW-form Own-element tuple NAME at the `std::tuple<...>&&`
+    slot whose copy sema declared: the F3 `tuple_to_storage` lift copies the
+    referents in (the warned copy). STORAGE-form bindings stay out -- a
+    movable last use rides `_own_tuple_move_arg_facts`, and a still-live
+    storage binding needs the `auto(p)` decay-copy instead."""
+    au = _own_tuple_shape_match_facts(a, ptype, locals_, narrowed,
+                                      inline_narrowed)
+    if au is None or not declared_name_copy(a, analyzer):
+        return False
+    if (a.name in pointers or a.name in storage_tuple_locals
+            or a.name in own_param_names):
+        return False
+    # BORROW form only: the binding's tuple must carry a pointer-repr
+    # element (the `std::tuple<Box*, ...>` local); an all-storage binding
+    # would need the decay-copy.
+    return au.has_pointer_repr_element()
+
+
+def _own_tuple_decay_copy_arg_facts(
+        a: TpyExpr, ptype: 'TpyType | None', locals_: dict[str, TpyType],
+        narrowed: 'AbstractSet[str]', inline_narrowed,
+        movable_locals: 'AbstractSet[str]', analyzer,
+        func_name: 'str | None', pointers: 'AbstractSet[str]') -> bool:
+    """A STORAGE-form Own-element tuple NAME still live at the
+    `std::tuple<...>&&` slot: the render decay-copies (`sink(auto(p))` --
+    the warned copy; sema rejected the @nocopy case). A movable last use
+    rides `_own_tuple_move_arg_facts`, a borrow-form binding the
+    `tuple_to_storage` lift."""
+    au = _own_tuple_shape_match_facts(a, ptype, locals_, narrowed,
+                                      inline_narrowed)
+    if au is None or _is_move_source_facts(a, movable_locals, analyzer,
+                                           func_name):
+        return False
+    if a.name in pointers or au.has_pointer_repr_element():
+        return False
+    # The auto() gate keys on is_owned_movable (ALL non-value
+    # elements Own) -- a MIXED slot is a const& of the mixed render,
+    # never a && slot, so it must stay out.
+    pu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+    return isinstance(pu, TupleType) and pu.is_owned_movable()
+
+
+def _btuple_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
+                     analyzer) -> bool:
+    """A borrow-tuple-returning call whose result EXACTLY matches a
+    borrow-form ptr-Optional tuple param -- or the mixed own/borrow F1
+    flavor (`take_mixed(make_mixed(b))` at `tuple[Own[Box], Box]`) -- the
+    bare-bind admission shared by the free-call ladder and its render arm
+    (call.btuple_pass). Element-blind render, so both shape keys bind the
+    same way. A `copy()` call is excluded: its result is a fresh STORAGE
+    tuple, which the borrow-form slot cannot bind."""
+    if (not isinstance(a, (TpyCall, TpyMethodCall))
+            or copy_call_arg(a, analyzer) is not None):
+        return False
+    pt = _ptr_optional_tuple(ptype)
+    if pt is None:
+        pt = _mixed_own_borrow_tuple(ptype, analyzer)
+    if pt is None:
+        return False
+    at = analyzer.get_expr_type(a)
+    ab = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+          if at is not None else None)
+    return ab == pt
+
+
+def _own_movable_tuple_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
+                                analyzer) -> bool:
+    """An owned-movable tuple call RVALUE at the matching `&&` slot
+    (`take_owned(make_owned())` at `std::tuple<Box, Box>&&`): the prvalue
+    binds the rvalue-ref slot bare -- no move wrap (only NAME sources take
+    the std::move / auto() decay pair)."""
+    if not isinstance(a, (TpyCall, TpyMethodCall)):
+        return False
+    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if isinstance(ptype, TpyType) else None)
+    if not (isinstance(pt, TupleType) and pt.is_owned_movable()):
+        return False
+    if not is_rvalue_source(analyzer, a):
+        return False
+    at = analyzer.get_expr_type(a)
+    ab = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+          if at is not None else None)
+    return ab == pt
+
+
+def _own_move_source_slice_facts(
+        a: TpyExpr, ptype: 'TpyType | None', analyzer,
+        declared: dict[str, TpyType],
+        param_names: 'set[str] | frozenset[str]',
+        narrowed: 'set[str] | frozenset[str]',
+        inline_narrowed,
+        movable_locals: 'set[str] | frozenset[str]',
+        func_name: 'str | None') -> bool:
+    """`_own_move_source_slice` over the discrete facts -- see
+    `_is_move_source_facts` for why the split exists."""
+    if (_own_lvalue_temp_slot(a, ptype, analyzer, declared,
+                              param_names) is None
+            and _own_bytes_identity_move_slot(
+                a, ptype, analyzer, locals_=declared,
+                param_names=param_names) is None):
+        return False
+    # Coerces are peeled before the last-use check, so an
+    # all-identity chain over a movable name moves the same way the bare
+    # name does.
+    bare = _peel_coerce(a)
+    if not isinstance(bare, TpyName) or bare.name == "self":
+        return False
+    if (bare.name in narrowed or bare.name in inline_narrowed
+            or bare.name not in declared):
+        return False
+    # No value-type filter: movability alone decides, because the working set
+    # only ever holds names an arm actually promoted. A sync scalar is never
+    # promoted (the tier-1 arm's own value filter), while a frame-promoted or
+    # await-bound scalar IS, and moves here. Filtering by payload
+    # type instead of trusting the set is what made `asyncio_queue`'s
+    # `out.append(x)` render bare where it must be `std::move(x)`.
+    return _is_move_source_facts(a, movable_locals, analyzer, func_name)
+
+
+def _r_own_move_source_slice(req: _ArgReq) -> bool:
+    return _own_move_source_slice_facts(
+        req.a, req.ptype, req.analyzer, req.locals_, req.param_names,
+        req.narrowed, req.inline_narrowed, req.movable_locals, req.func_name)
+
+
+def _r_generic_open_slot_elem(req: _ArgReq) -> bool:
+    return (isinstance(req.a, TpySubscript)
+            and _open_slot_match(req.analyzer.get_expr_type(req.a), req.ptype))
 
 
 def _copy_own_arg(a: TpyExpr, ptype: TpyType | None,
@@ -9374,15 +9544,10 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
                           value_opt_ret_ok: bool = False,
                           coro_factory_ok: bool = False,
                           iterable_ret_ok: bool = False) -> bool:
-    """Result/arg checks for a `_marker_call_kind`-classified receiver-less
-    call. Mirrors free-call lowering's value-position result set and its arg
-    rows MINUS the free-loop-only ref-temp hoist (`_record_rvalue_temp_arg`:
-    the method-call loop's hoist condition is protocol/TypeParamRef only, so
-    a record rvalue into a concrete ref slot renders differently) -- and,
-    for the "native" kind, minus the Own rows (`inline_template` skips the
-    copy-temp for a non-last-use lvalue). Union lifts are admitted dcbp-BLIND:
-    the method-call loop takes no deep-const verdict, so lowering passes
-    readonly_target=False to match."""
+    """Arity and result checks for a `_marker_call_kind`-classified
+    receiver-less call -- the free call's value-position result set. Its
+    arguments are the free call's (`_lower_marker_method_arg`), admitted and
+    rendered there."""
     fi = e.resolved_function_info
     if not _call_arity_ok(e, fi):
         # Omitted trailing defaults ride the C++ signature's defaults
@@ -9625,32 +9790,11 @@ def _value_tuple_field_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
                 and _witness("arg.value_tuple_field"))
 
 
-def _btuple_literal_marker_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
-    """A tuple LITERAL at a marker callee's pointer-repr tuple slot
-    (`::mylog::log_dispatch(h, fmt, (defer_str(tag), i))` at
-    `tuple[Ref[DeferredStr], int32]`): the borrow builder renders it --
-    lvalue elements lift `&(...)`, rvalue elements ride the
-    `tuple_value_to_borrow` source tuple, whose full-expression lifetime
-    covers the call. Element SHAPES are the builder's own verdict:
-    anything outside its slice raises and falls the body back. The plain /
-    method arg loops already carry this row; only the marker gate lacked
-    it."""
-    if not isinstance(a, TpyTupleLiteral):
-        return False
-    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-          if isinstance(ptype, TpyType) else None)
-    if not (isinstance(pt, TupleType) and pt.has_pointer_repr_element()):
-        return False
-    if len(a.elements) != len(pt.element_types):
-        return False
-    return _witness("arg.btuple_literal_marker")
-
-
 def _borrow_ret_record_marker_arg(a: TpyExpr, ptype: 'TpyType | None',
                                   analyzer) -> bool:
-    """A BORROW-returning (`T&`) F1-record call at a marker callee's plain
-    record ref slot (`::mylog::log_dispatch(svc.get_logger(), ...)`): the
-    qualcall arg loop renders the call bare in place and its `T&` result
+    """A BORROW-returning (`T&`) F1-record call at a plain record ref slot
+    (`::mylog::log_dispatch(svc.get_logger(), ...)`): the arg loop renders
+    the call bare in place and its `T&` result
     binds the `T&` slot directly -- no temp, no copy. An RVALUE source
     takes `_native_record_call_arg`'s row instead, and an `Own[T]` slot
     copies the result through a `__tmp_N` (excluded, as
@@ -9706,54 +9850,6 @@ def _own_tparam_call_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
                 and is_rvalue_source(analyzer, a)
                 and _own_declared_call_ret(a)
                 and _witness("arg.own_tparam_call_rvalue"))
-
-
-# The marker kinds whose arg loop carries Own slots. The `native` kind
-# renders through the same loop with `inline_template` set, which skips the
-# Own copy temp, and `template` expands over the builtins loop instead --
-# neither has an Own render, so neither carries those rows.
-_MARKER_OWN_SLOT_KINDS = ("qualified", "generic_qualified", "generic_static",
-                          "generic_module_static", "super_generic")
-
-
-def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
-                        kind: 'tuple[str, str]',
-                        locals_: dict[str, TpyType], analyzer, *,
-                        temps_ok: bool,
-                        narrowed: 'set[str] | frozenset[str]',
-                        param_names: 'AbstractSet[str]'
-                        = frozenset(),
-                        index: int = -1,
-                        overload=None,
-                        movable_locals: 'set[str] | frozenset[str]' = frozenset(),
-                        func_name: 'str | None' = None) -> bool:
-    """The receiver-less marker-call families' arg rows.
-
-    THREE families, not one, and `kind[0]` picks which: a `template` callee
-    expands over the builtins arg loop and admits only the shared
-    pass-through set; a `native` callee runs the qualcall loop with
-    `inline_template` set and so carries every row except the Own-slot ones;
-    a qualified callee (plain, generic, module-static or super) carries all
-    of them. Rows: `_MARKER_TEMPLATE_ARG_SINK` / `_MARKER_NATIVE_ARG_SINK` /
-    `_MARKER_QUALIFIED_ARG_SINK`.
-    """
-    if kind[0] == "template":
-        sink = _MARKER_TEMPLATE_ARG_SINK
-    elif kind[0] in _MARKER_OWN_SLOT_KINDS:
-        sink = _MARKER_QUALIFIED_ARG_SINK
-    else:
-        sink = _MARKER_NATIVE_ARG_SINK
-    # The signature-reading cells see a callee only on the QUALIFIED kind:
-    # that is the one whose callee is TPy code, so its per-parameter const
-    # facts exist. A @native / @cpp_template callee has none, and handing one
-    # in would turn "unknown" into a decline for the cells that read them.
-    qualified = sink is _MARKER_QUALIFIED_ARG_SINK
-    return arg_ok(sink, a, ptype, locals_, analyzer,
-                  param_names=param_names, narrowed=narrowed,
-                  temps_ok=temps_ok, movable_locals=movable_locals,
-                  index=index if qualified else -1,
-                  overload=overload if qualified else None,
-                  func_name=func_name)
 
 
 def _dyn_own_handle_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -10049,29 +10145,6 @@ def _qualcall_ret_reject(ret: 'TpyType | None', analyzer) -> str:
                 if _f1_record(t, analyzer)
                 else "method.qualcall.ret.record")
     return "method.qualcall.ret.other"
-
-def _qualcall_arg_reject(a: TpyExpr, ptype: 'TpyType | None', analyzer) -> str:
-    """Drilldown label for a marker-call arg that fails every admitted row --
-    names the param-slot family (and the arg's kind for plain slots), like
-    `_native_arg_reject` for the native/template loop."""
-    t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-         if ptype is not None else None)
-    if isinstance(t, OwnType):
-        return "method.qualcall.arg.own"
-    if isinstance(t, OptionalType):
-        return "method.qualcall.arg.optional"
-    if isinstance(t, UnionType):
-        return "method.qualcall.arg.union"
-    if isinstance(a, (TpyCall, TpyMethodCall)):
-        return "method.qualcall.arg.call_rvalue"
-    at = analyzer.get_expr_type(a)
-    at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-          if at is not None else None)
-    if isinstance(at, NominalType) and at.is_user_record:
-        return ("method.qualcall.arg.record_f1"
-                if _f1_record(at, analyzer)
-                else "method.qualcall.arg.record_nonf1")
-    return f"method.qualcall.arg.other.{expr_kind_tag(a)}"
 
 def _ptr_deref_method_call(e: TpyMethodCall, analyzer) -> bool:
     """A single-level Deref method call THROUGH a `Ptr[T]` receiver
@@ -10766,7 +10839,6 @@ def _method_call_arg_ok(
         narrowed: 'set[str] | frozenset[str]',
         param_names: 'set[str] | frozenset[str]',
         tparam_bounds: 'dict | None' = None,
-        error_return_ok: bool = False,
         movable_locals: 'set[str] | frozenset[str]' = frozenset(),
         func_name: 'str | None' = None) -> bool:
     if isinstance(a, TpyGeneratorExpression):
@@ -10776,28 +10848,9 @@ def _method_call_arg_ok(
         # shapes, so a bad shape still rejects.
         return True
     if not _plain_member_call_markers_ok(e, targs_ok=True):
-        # generator_ok/coro_factory_ok unconditionally: the call-level gate
-        # already decided whether the generator/async fi is admitted
-        # (iterable / adapter-wrap position only) -- this arg-side
-        # re-derivation only picks the arg rows, which are the same for a
-        # generator or coro factory as for any qualified call.
-        # A USER-deref chain (`r.__deref__().m(args)`) is the other marker
-        # whose args ride the same `_args()` first-pass loop; its lowering arm
-        # has already validated the call shape before reaching this gate, so
-        # the deref marker alone identifies it. `_marker_call_kind` cannot:
-        # it rejects every deref-marked call by construction.
-        kind = (("qualified", "")
-                if (_ptr_deref_method_call(e, analyzer) or e.deref_depth)
-                else _marker_call_kind(e, analyzer, generator_ok=True,
-                                       coro_factory_ok=True,
-                                       error_return_ok=error_return_ok))
-        return (kind is not None
-                and _marker_call_arg_ok(
-                    a, ptype, kind, locals_, analyzer,
-                    temps_ok=temps_ok, narrowed=narrowed,
-                    param_names=param_names,
-                    index=index, overload=e.resolved_function_info,
-                    movable_locals=movable_locals, func_name=func_name))
+        # A marker call's arguments take the free call's path
+        # (`_lower_marker_method_arg`); none reaches the receiver families.
+        return False
 
     recv_type = _method_receiver_type(e.obj, locals_, analyzer)
     fam = _method_recv_family(recv_type, analyzer, tparam_bounds, e.method)
@@ -11129,9 +11182,20 @@ def _x_arg_not_lent(req: _ArgReq) -> bool:
 
 
 def _x_inline_container_literal(req: _ArgReq) -> bool:
-    """The method / qualified families' in-place container-literal cell: the
-    slot must be a const borrow AND the callee must not lend it back."""
+    """The method family's in-place container-literal cell: the slot must be
+    a const borrow AND the callee must not lend it back."""
     return _x_comp_slot_const(req) and _x_arg_not_lent(req)
+
+
+def _x_bare_record_rvalue(req: _ArgReq) -> bool:
+    """Where a record call rvalue binds its slot bare: a by-value
+    (value-type) record slot, or one the callee's verdict makes a const
+    borrow -- and in both only when the callee does not lend the argument
+    back, since the prvalue dies with the full expression."""
+    slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(req.ptype)))
+            if isinstance(req.ptype, TpyType) else None)
+    by_value = slot is not None and slot.is_value_type()
+    return (by_value or req.readonly_target) and _x_arg_not_lent(req)
 
 
 def _r_scalar_at_template_slot(req: _ArgReq) -> bool:
@@ -11590,7 +11654,7 @@ def _r_ptr_addr_of_elem(req: _ArgReq) -> bool:
     return _ptr_addr_of_elem_arg(req.a, req.ptype, req.analyzer)
 
 
-# --- the marker families' rows -----------------------------------------
+# --- rows shared by the free-call and method families --------------------
 
 def _r_value_opt_callable_pass(req: _ArgReq) -> bool:
     return _value_opt_callable_pass_arg(req.a, req.ptype, req.locals_,
@@ -11684,28 +11748,6 @@ def _r_value_tuple_field_pass(req: _ArgReq) -> bool:
 
 def _r_borrow_ret_record_marker(req: _ArgReq) -> bool:
     return _borrow_ret_record_marker_arg(req.a, req.ptype, req.analyzer)
-
-
-def _r_btuple_literal_marker(req: _ArgReq) -> bool:
-    return _btuple_literal_marker_arg(req.a, req.ptype)
-
-
-def _r_same_tparam_name(req: _ArgReq) -> bool:
-    """A NAME bound to the SAME bare type param as the slot
-    (`super().transform(other)` at `other: U`): the form-neutral slot binds
-    the name bare -- the generic free lane's same-T rule
-    (`inner_len<T>(x)`)."""
-    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(req.ptype)))
-          if isinstance(req.ptype, TpyType) else None)
-    if not isinstance(pt, TypeParamRef):
-        return False
-    a = req.a
-    if not (isinstance(a, TpyName) and a.name != "self"):
-        return False
-    at = req.locals_.get(a.name)
-    au = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-          if isinstance(at, TpyType) else None)
-    return isinstance(au, TypeParamRef) and au.name == pt.name
 
 
 # --- the plain free-call family's own rows -----------------------------
@@ -12534,6 +12576,114 @@ _PROTOCOL_ARG_SINK = register_sink(_ArgSink(
     )))
 
 
+def _r_btuple_name(req: _ArgReq) -> bool:
+    # The shape and slot are checked before the name set is derived, so the
+    # thunk runs only for a name at a borrow-tuple slot.
+    if (req.bare_tuple_names is None or not isinstance(req.a, TpyName)
+            or _borrow_tuple_slot(req.ptype, req.analyzer) is None):
+        return False
+    return _borrow_tuple_name_arg(req.a, req.ptype, req.locals_,
+                                  req.bare_tuple_names(), req.analyzer)
+
+
+def _r_union_elem_tuple_name(req: _ArgReq) -> bool:
+    return _union_elem_tuple_name_arg(req.a, req.ptype, req.locals_,
+                                      req.param_names, req.analyzer)
+
+
+def _r_list_repeat_ref_slot(req: _ArgReq) -> bool:
+    if not isinstance(req.a, TpyListRepeat):
+        return False
+    slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(req.ptype)))
+    return isinstance(slot, NominalType) and (is_list(slot) or is_array(slot))
+
+
+def _r_readonly_container_literal(req: _ArgReq) -> bool:
+    # ArrayLiteral ONLY: a dict / set literal hoists through its own
+    # `ref_param_dictset_literal` row, readonly slot or not.
+    return (isinstance(req.a, TpyArrayLiteral)
+            and _container_literal_arg(req.a, req.ptype, req.analyzer,
+                                       hoisted=True))
+
+
+def _r_value_opt_call_ret(req: _ArgReq) -> bool:
+    return _value_opt_call_ret_arg(req.a, req.ptype, req.analyzer)
+
+
+def _r_own_union_storage_name(req: _ArgReq) -> bool:
+    return _own_union_storage_name_arg(
+        req.a, req.ptype, req.locals_, req.analyzer,
+        readonly_target=req.readonly_target) is not None
+
+
+def _r_union_dict_literal_temp(req: _ArgReq) -> bool:
+    return _union_dict_literal_temp_arg(req.a, req.ptype,
+                                        req.analyzer) is not None
+
+
+def _r_generic_open_slot_name(req: _ArgReq) -> bool:
+    # A NAME bound to the still-open slot type -- the callable-param
+    # invocation inside a generic body (`f(init)` at a synthetic `U` slot).
+    return (isinstance(req.a, TpyName) and req.a.name != "self"
+            and _open_slot_match(req.locals_.get(req.a.name), req.ptype))
+
+
+def _r_mixed_own_tuple_name(req: _ArgReq) -> bool:
+    return _mixed_own_tuple_name_arg(req.a, req.ptype, req.locals_,
+                                     req.own_borrow_tuple_locals,
+                                     req.analyzer) is not None
+
+
+def _r_btuple_pass(req: _ArgReq) -> bool:
+    return _btuple_pass_arg(req.a, req.ptype, req.analyzer)
+
+
+def _r_own_movable_tuple_pass(req: _ArgReq) -> bool:
+    return _own_movable_tuple_pass_arg(req.a, req.ptype, req.analyzer)
+
+
+def _r_own_tuple_move(req: _ArgReq) -> bool:
+    return _own_tuple_move_arg_facts(
+        req.a, req.ptype, req.locals_, req.narrowed, req.inline_narrowed,
+        req.movable_locals, req.analyzer, req.func_name)
+
+
+def _r_own_tuple_borrow_lift(req: _ArgReq) -> bool:
+    return _own_tuple_borrow_lift_arg_facts(
+        req.a, req.ptype, req.locals_, req.narrowed, req.inline_narrowed,
+        req.analyzer, req.pointers, req.storage_tuple_locals,
+        req.own_param_names)
+
+
+def _r_own_tuple_decay_copy(req: _ArgReq) -> bool:
+    return _own_tuple_decay_copy_arg_facts(
+        req.a, req.ptype, req.locals_, req.narrowed, req.inline_narrowed,
+        req.movable_locals, req.analyzer, req.func_name, req.pointers)
+
+
+def _r_walrus_frame_field(req: _ArgReq) -> bool:
+    # A walrus whose target is a resumable FRAME FIELD writes the field in
+    # place, position-blind; the frame-walrus dispatch validates the leg and
+    # rejects the un-landed ones itself.
+    return (isinstance(req.a, TpyNamedExpr)
+            and req.a.target in req.frame_local_names)
+
+
+# The cells both free-call families (plain and native) end on, below every
+# row of their own: none renders through a callee-shaped decoration and all
+# are temp-free -- a move, a copy-construct, an Own-tuple move / lift /
+# decay-copy, an in-place frame-field write -- so a native and a plain callee
+# decide them alike.
+_FREE_CALL_TAIL_ROWS: 'tuple[_ArgRow, ...]' = (
+    _ArgRow("own_move_source_slice", _r_own_move_source_slice),
+    _ArgRow("copy_own", _r_copy_own),
+    _ArgRow("own_tuple_move", _r_own_tuple_move),
+    _ArgRow("own_tuple_borrow_lift", _r_own_tuple_borrow_lift),
+    _ArgRow("own_tuple_decay_copy", _r_own_tuple_decay_copy),
+    _ArgRow("walrus_frame_field", _r_walrus_frame_field),
+)
+
+
 _NATIVE_ARG_SINK = register_sink(_ArgSink(
     family="native",
     # Ranked by SLOT SHAPE rather than one opaque bucket -- the drilldown
@@ -12558,7 +12708,7 @@ _NATIVE_ARG_SINK = register_sink(_ArgSink(
         # A container FIELD read binding a plain container ref slot
         # (`bytes(self.buffer)` -> `::tpy::Bytes(this->buffer)`): the
         # member read binds the slot bare, exactly as the bare-NAME twin
-        # already in the shared row. Same cell the marker families carry.
+        # already in the shared row. Same cell the plain family carries.
         _ArgRow("container_field_pass", _r_container_field_pass),
         # A list/Span-yielding SLICE subscript (`len(items[1:1])` ->
         # `__len__(::tpy::list_slice(items, BasicSlice{1, 1}))`): the
@@ -12618,6 +12768,7 @@ _NATIVE_ARG_SINK = register_sink(_ArgSink(
         # like the concrete value-tuple rows.
         _ArgRow("open_value_tuple_name", _r_open_value_tuple_name,
                 face="arg.open_value_tuple_name"),
+        *_FREE_CALL_TAIL_ROWS,
     )))
 
 
@@ -12932,7 +13083,7 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # A record NAME moved into an `Optional[Own[T]]` method slot
         # (`c.take(p)` at `Own[Point] | None` -- bare `std::move(p)`
         # into the by-value `std::optional<Point>` param): the
-        # free/marker ladders' row; the shared lowering arm enforces
+        # free ladder's row; the shared lowering arm enforces
         # the move verdict and rejects the copy shape.
         _ArgRow("opt_own_record_name", _r_opt_own_record_name),
         # The `Own[record | None]` method slot (`h.store(P(42))` bare
@@ -13056,224 +13207,12 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # A BORROW-returning (`T&`) record call at a plain record ref slot
         # (`loop.sock_recv(self._sock.get(), n)`): the result binds the slot
         # directly, no temp and no copy -- the CALL sibling of the bare-NAME
-        # and FIELD rows above, and the same cell the marker family carries.
+        # and FIELD rows above, and the same cell the plain family carries.
         _ArgRow("borrow_ret_record_marker", _r_borrow_ret_record_marker),
         # A narrowed wide ptr-opt NAME at its POINTEE slot: the plain
         # ladder's row, temp-free and position-blind.
         _ArgRow("wide_opt_deref_name", _r_wide_opt_deref_name),
     )))
-
-
-# The marker-call families' shared row listing. Written ONCE, in ladder
-# order; the Own-slot cells are named in `_MARKER_OWN_ROWS` and spliced out
-# for the family that has no Own slots, which is the whole content of the
-# `own_ok and` prefix the ladder re-typed on every Own row. Keeping one
-# listing is also the proof that the split changed no row's position: the two
-# non-template families are filters of this tuple, not re-typings of it.
-_MARKER_ROWS: 'tuple[_ArgRow, ...]' = (
-    _ArgRow("shared_pass_through", _r_shared_pass_through),
-    # A named function passed as a value (`os.walk(missing,
-    # onerror=boom)`): the plain function-ref render, identical
-    # in the qualcall arg loop and the free-call loop -- the free-call
-    # ladder's slot-blind row.
-    _ArgRow("func_ref", _r_func_ref),
-    # A lambda at a qualcall Fn slot (`itertools.takewhile(
-    # lambda n: n < 3, nums)`): the inline closure render is
-    # loop-blind -- the native ladder's row, same shapes.
-    _ArgRow("lambda", _r_lambda),
-    # A whole value-repr Optional[Callable] name into a matching
-    # value-opt slot passes bare (`os.walk(top, onerror=cb)`).
-    _ArgRow("value_opt_callable_pass", _r_value_opt_callable_pass),
-    # ... and the SCALAR twin (`requests.request(.., timeout, ..)` at
-    # `timeout: float | None`): the un-narrowed binding IS the
-    # `std::optional<double>` the slot takes, so it passes bare.
-    _ArgRow("value_opt_pass_through", _r_value_opt_pass_through),
-    # ... and the value-TUPLE twin (`requests.request(.., auth, ..)` at
-    # `auth: tuple[str, str] | None`): a value tuple is a value type, so the
-    # whole optional binds the by-value slot bare -- the free-call and
-    # record-method families' row, rendered by the same position-blind arm.
-    _ArgRow("value_opt_tuple_pass", _r_value_opt_tuple_pass),
-    _ArgRow("none_unit", _r_none_unit),
-    _ArgRow("value_union_temp", _r_value_union_temp, extra=_x_temps_ok),
-    _ArgRow("value_union_narrowed_pass", _r_value_union_narrowed_pass),
-    _ArgRow("own_record_rvalue", _r_own_record_rvalue),
-    # An Own[T]-returning call rvalue at an OPEN `Own[T]` slot reached
-    # through a qualified receiver (`self._state._push(self._value.take())`
-    # -- the Rc deref): the prvalue binds the `T&&` slot bare, the same
-    # render the record-method family carries at the same slot, and the
-    # qualcall arg loop hoists no temp around it.
-    _ArgRow("own_tparam_call_rvalue", _r_own_tparam_call_rvalue),
-    # `Factory.consume(copy(p))` -- the static-method face of the
-    # copy-construct rvalue row.
-    _ArgRow("copy_own", _r_copy_own),
-    # The S1 view->owned convert at an `Own[str]` slot
-    # (`Rc.new(inner)` on a `str` param -> `std::string(inner)`), the
-    # free ladder's row. AHEAD of the Own cascade below for the same
-    # reason it is there: the view->owned convert runs before
-    # the move/copy-temp cascade, so a VIEW-form str name must be
-    # absorbed here rather than reach `own_lvalue`.
-    _ArgRow("str_owned_slot", _r_str_owned_slot),
-    _ArgRow("own_move", _r_own_move),
-    _ArgRow("own_lvalue", _r_own_lvalue, extra=_x_temps_ok),
-    _ArgRow("optional_ptr", _r_optional_ptr),
-    # A record name moved into an Optional[Own[T]] slot
-    # (`_urlopen(..., conn)` -> bare `std::move(conn)`); the
-    # lowering enforces the move verdict.
-    _ArgRow("opt_own_record_name", _r_opt_own_record_name),
-    # A pointer-repr Optional NAME (may be null) at an `Own[record | None]`
-    # slot and at the `Optional[Own[record]]` spelling: the null-safe
-    # rebuild moved in at its last use -- the ctor/method/free rows.
-    _ArgRow("own_opt_ptr_name_move", _r_own_opt_ptr_name_move),
-    _ArgRow("opt_own_ptr_opt_name_move", _r_opt_own_ptr_opt_name_move),
-    _ArgRow("readonly_record_ctor", _r_readonly_record_ctor),
-    _ArgRow("union_pass_through", _r_union_pass_through),
-    _ArgRow("union_member_lift", _r_union_member_lift),
-    _ArgRow("union_coerced_literal", _r_union_coerced_literal),
-    # A member-typed arg into a VALUE-repr Optional slot
-    # (`socket.create_connection(addr, 2.0)` at `float | None`,
-    # `io.BytesIO(b"xyz")` at `bytes | None`): there is no
-    # value-optional arg arm at all, so the arg falls to the generic tail
-    # and the optional's converting ctor absorbs the bare member
-    # render -- position-blind, which is what `_lower_call_arg`'s own tail
-    # spells. The free-call ladder's row.
-    _ArgRow("value_opt_member", _r_value_opt_member),
-    # ... and the WHOLE value-opt FIELD read at an exactly-matching slot
-    # (`socket.create_connection(addr, self.timeout)` at `float | None`):
-    # the optional is a value passed by value, so the bare member read
-    # binds it -- the NAME pass-through rows' field twin.
-    _ArgRow("value_opt_field_pass", _r_value_opt_field_pass),
-    # A bare `None` into a value-repr Optional slot renders
-    # `std::nullopt` whatever the inner -- the sema-filled default at
-    # a kwargs call site arrives exactly this way (`os.walk(root,
-    # followlinks=f)` fills `onerror=None` at the
-    # `Optional[Callable]` slot). The ctor/record-method ladders' row.
-    _ArgRow("none_value_opt", _r_none_value_opt),
-    # A list/dict LITERAL into a recursive-union wrapper slot
-    # (`json.dumps([1, 2, 3])`): the union-arg value branch
-    # hoists `JsonValue __tmp_N = <literal>;` -- flush-gated like
-    # the value-union temp row.
-    _ArgRow("ru_container_literal", _r_ru_container_literal,
-            extra=_x_temps_ok),
-    # A wrapper-union NAME at a same-wrapper slot (`json.dumps(v)`
-    # on `v: JsonValue`): the binding is already the wrapper struct
-    # -- passes bare like a same-union name.
-    _ArgRow("ru_wrapper_name", _r_ru_wrapper_name),
-    # ... and its FIELD twin (`pkg_v.kind(h.value)`): the member
-    # read binds the borrow slot bare, temp-free.
-    _ArgRow("ru_wrapper_field", _r_ru_wrapper_field),
-    _ArgRow("own_union_ctor", _r_own_union_ctor),
-    _ArgRow("dyn_own_coro_factory", _r_dyn_own_coro_factory),
-    _ArgRow("dyn_own_handle", _r_dyn_own_handle),
-    # An Own[P]-returning call rvalue at the Own[@dynamic P] slot
-    # (`create_task(factory(7))` through a std::function binding):
-    # the unique_ptr result forwards bare -- the free ladder's row.
-    _ArgRow("dyn_own_forward_call", _r_dyn_own_forward_call),
-    # A container LITERAL into a matching builtin-container slot: a
-    # qualified module function (os.path.commonprefix([...])) renders
-    # the spelled container inline, like the stub-method arg loop -- no
-    # ref-param temp hoist (a FREE call would hoist, but the qualcall
-    # arg loop emits it in place).
-    # ... under the method family's guard (const slot, and a callee that does
-    # not lend the argument back), for the same reason: only the QUALIFIED
-    # kind threads a resolved overload, so a @native / @cpp_template marker
-    # (whose fi carries no per-parameter facts) keeps the inline render its
-    # hand-written C++ expects.
-    _ArgRow("container_literal_method", _r_container_literal_method,
-            extra=_x_inline_container_literal),
-    # ... and the hoisting sibling, the method family's cell.
-    _ArgRow("container_literal", _r_container_literal, extra=_x_temps_ok),
-    # A container FIELD read binding a plain container ref slot
-    # (`heapq.heappush(self.heap, ...)` -> bare `this->heap`; the
-    # Own[T] item slot arrives SUBSTITUTED from sema, so the ctor
-    # rvalue beside it rides the existing own.record_rvalue row).
-    _ArgRow("container_field_pass", _r_container_field_pass),
-    # ... and its RECORD twin (`log_dispatch(mod._logger, ...)`):
-    # the member read binds the `T&` slot bare -- the same cell the
-    # record-method family carries.
-    _ArgRow("record_field_marker", _r_record_field_marker),
-    # ... and its ELEMENT twin (`Bag.peek(things[0])`): the checked
-    # element lvalue binds the record ref slot inline.
-    _ArgRow("record_elem_subscript", _r_record_elem_subscript),
-    # ... and its VALUE-TUPLE twin (`self._sock.connect(self._addr)`):
-    # borrow and storage forms coincide, so the member read binds the
-    # `const std::tuple<..>&` slot bare.
-    _ArgRow("value_tuple_field_pass", _r_value_tuple_field_pass),
-    # A borrow-returning record call at the same slot
-    # (`log_dispatch(svc.get_logger(), ...)`): the `T&` result
-    # binds the `T&` slot in place.
-    _ArgRow("borrow_ret_record_marker", _r_borrow_ret_record_marker),
-    # A tuple LITERAL at a pointer-repr tuple slot: the borrow
-    # builder renders it (the plain/method loops' existing row).
-    _ArgRow("btuple_literal_marker", _r_btuple_literal_marker),
-    _ArgRow("same_tparam_name", _r_same_tparam_name,
-            face="arg.same_tparam_name"),
-    _ArgRow("own_container_literal", _r_own_container_literal),
-    _ArgRow("own_container_comp", _r_own_container_comp),
-    # An F1-record call rvalue into a plain record slot
-    # (`os.path.samestat(s, os.stat(d))` -- the nested marker call
-    # renders bare in place, the qualcall twin of the native row).
-    _ArgRow("native_record_call", _r_native_record_call),
-    # A protocol slot's temp-free NAME / flushable temp faces
-    # (`math.dist([0.0, 0.0], [3.0, 4.0])` -- the structural
-    # rvalue's `auto __tmp_N =` hoist), the plain-loop row.
-    _ArgRow("protocol_slot", _r_protocol_slot),
-    # A narrowed wide ptr-opt NAME at its POINTEE slot: the plain
-    # ladder's row, temp-free and position-blind.
-    _ArgRow("wide_opt_deref_name", _r_wide_opt_deref_name),
-    # A comprehension at a container slot, BEHIND the inline-render
-    # `container_literal_method` cell above so the shapes that family
-    # already decides keep their cell: the free-call ladder's row, which
-    # hoists the slot-typed ArgTemp and is flush-gated for it. The
-    # container LITERAL beside it needs no cell here -- the inline-render
-    # sibling above already decides it.
-    _ArgRow("container_comp", _r_container_comp, extra=_x_temps_ok),
-)
-
-# The cells the `native` marker family does NOT carry: its arg loop sets
-# `inline_template`, which skips the Own copy temp, so an Own slot has no
-# render there. Exactly the rows the ladder prefixed with
-# `own_ok and`.
-_MARKER_OWN_ROWS = frozenset({
-    "own_record_rvalue", "own_tparam_call_rvalue", "copy_own",
-    "str_owned_slot", "own_move", "own_lvalue", "own_union_ctor",
-    "dyn_own_coro_factory", "dyn_own_handle", "dyn_own_forward_call",
-    "own_container_literal", "own_container_comp",
-    "own_opt_ptr_name_move", "opt_own_ptr_opt_name_move",
-})
-
-assert _MARKER_OWN_ROWS <= {r.row for r in _MARKER_ROWS}
-
-
-def _marker_rows(own_slots: bool) -> 'tuple[_ArgRow, ...]':
-    """`_MARKER_ROWS`, minus the Own cells for a family without Own slots.
-    A filter, so every surviving row keeps its position -- the face census
-    is order-sensitive and the two families must interleave exactly as the
-    one ladder did."""
-    if own_slots:
-        return _MARKER_ROWS
-    return tuple(r for r in _MARKER_ROWS if r.row not in _MARKER_OWN_ROWS)
-
-
-_MARKER_TEMPLATE_ARG_SINK = register_sink(_ArgSink(
-    family="marker_template",
-    # Same slot-shape drilldown the native free-call family spells: a
-    # @cpp_template callee expands over the SAME builtins arg loop.
-    note=lambda req: _native_arg_reject(req.a, req.ptype, req.analyzer),
-    rows=(
-        _ArgRow("shared_pass_through", _r_shared_pass_through),
-    )))
-
-_MARKER_NATIVE_ARG_SINK = register_sink(_ArgSink(
-    family="marker_native",
-    note=lambda req: _qualcall_arg_reject(req.a, req.ptype, req.analyzer),
-    rows=_marker_rows(own_slots=False),
-    ))
-
-_MARKER_QUALIFIED_ARG_SINK = register_sink(_ArgSink(
-    family="marker_qualified",
-    note=lambda req: _qualcall_arg_reject(req.a, req.ptype, req.analyzer),
-    rows=_marker_rows(own_slots=True),
-    ))
 
 
 _PLAIN_ARG_SINK = register_sink(_ArgSink(
@@ -13363,8 +13302,8 @@ _PLAIN_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("ru_wrapper_own_call", _r_ru_wrapper_own_call,
                 extra=_x_temps_ok),
         # ... and the container-LITERAL sibling (`eval_expr([1,
-        # "two", [3]])` hoists `Expr __tmp_N = <literal>;`) -- the
-        # marker ladder's row, same flush gating (the predicate peels
+        # "two", [3]])` hoists `Expr __tmp_N = <literal>;`), flush-gated like
+        # its wrapper-slot siblings (the predicate peels
         # the literal->wrapper coerce internally).
         _ArgRow("ru_container_literal", _r_ru_container_literal,
                 extra=_x_temps_ok),
@@ -13469,6 +13408,57 @@ _PLAIN_ARG_SINK = register_sink(_ArgSink(
         # slot-typed wrapper-`__deref__()` copy temp (flush-gated).
         _ArgRow("deref_coerce", _r_deref_coerce),
         _ArgRow("readonly_container_rvalue", _r_readonly_container_rvalue),
+        # A borrow-form tuple NAME at the same borrow-tuple slot binds bare;
+        # a storage-form one takes the `tuple_to_pointer` lift.
+        _ArgRow("btuple_name", _r_btuple_name),
+        _ArgRow("borrow_tuple_storage_name", _r_borrow_tuple_storage_name),
+        _ArgRow("union_elem_tuple_name", _r_union_elem_tuple_name),
+        # A list REPEAT at a concrete list/Array ref slot hoists the
+        # ref-param temp over the repeat render.
+        _ArgRow("list_repeat_ref_slot", _r_list_repeat_ref_slot,
+                extra=_x_temps_ok),
+        # A declared-readonly slot's LIST literal hoists like a mutable one:
+        # the temp outlives a callee that lends it back and a frame that
+        # borrows it past the statement.
+        _ArgRow("readonly_container_literal", _r_readonly_container_literal,
+                extra=_x_temps_ok),
+        _ArgRow("value_opt_member", _r_value_opt_member,
+                face="call.optval_member"),
+        # A value-opt-returning call rvalue at the same value-opt slot
+        # binds bare (`unwrap_or(first_positive(xs), 0)`).
+        _ArgRow("value_opt_call_ret", _r_value_opt_call_ret,
+                face="call.optval_ret_pass"),
+        _ArgRow("own_union_storage_name", _r_own_union_storage_name),
+        _ArgRow("union_ctor_temp", _r_union_ctor_temp, extra=_x_temps_ok),
+        _ArgRow("union_bytes_literal_temp", _r_union_bytes_literal_temp,
+                extra=_x_temps_ok),
+        _ArgRow("union_dict_literal_temp", _r_union_dict_literal_temp,
+                extra=_x_temps_ok),
+        # A name / container element at a still-open slot inside a generic
+        # body binds bare -- the free-call sibling of the generic gate's
+        # composite open-slot rule.
+        _ArgRow("generic_open_slot_name", _r_generic_open_slot_name,
+                face="call.generic_open_slot_name"),
+        _ArgRow("generic_open_slot_elem", _r_generic_open_slot_elem,
+                face="call.generic_open_slot_elem"),
+        _ArgRow("mixed_own_tuple_name", _r_mixed_own_tuple_name),
+        _ArgRow("btuple_pass", _r_btuple_pass),
+        _ArgRow("own_movable_tuple_pass", _r_own_movable_tuple_pass),
+        # Member reads that bind their slot bare: a whole value-opt field and
+        # a value-tuple field -- borrow and storage forms coincide for each.
+        _ArgRow("value_opt_field_pass", _r_value_opt_field_pass),
+        _ArgRow("value_tuple_field_pass", _r_value_tuple_field_pass),
+        # A `T&`-returning record call (or its subclass) binds the record
+        # ref slot in place.
+        _ArgRow("borrow_ret_record_marker", _r_borrow_ret_record_marker),
+        # Rvalues a slot takes bare: a record rvalue moving into `Own[T]`, a
+        # T-returning call at an open `Own[T]`, a record call rvalue at a
+        # by-value or const record slot.
+        _ArgRow("own_record_rvalue", _r_own_record_rvalue),
+        _ArgRow("own_tparam_call_rvalue", _r_own_tparam_call_rvalue),
+        _ArgRow("native_record_call", _r_native_record_call,
+                extra=_x_bare_record_rvalue),
+        *_FREE_CALL_TAIL_ROWS,
     )))
 
 

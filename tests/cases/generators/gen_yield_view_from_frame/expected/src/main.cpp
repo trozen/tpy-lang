@@ -147,8 +147,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_1 = "borrowed";
-        auto __src_4 = ::tpyapp::main::explicit_view_local(__tmp_1);
+        auto __src_4 = ::tpyapp::main::explicit_view_local("borrowed");
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -158,8 +157,8 @@ void main() {
         }
     }
     {
-        Holder __tmp_2 = Holder("managed");
-        auto __src_6 = ::tpyapp::main::with_view_target(__tmp_2);
+        Holder __tmp_1 = Holder("managed");
+        auto __src_6 = ::tpyapp::main::with_view_target(__tmp_1);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -179,8 +178,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_3 = "kept";
-        auto __src_10 = ::tpyapp::main::owned_param_stays_bare(__tmp_3);
+        auto __src_10 = ::tpyapp::main::owned_param_stays_bare("kept");
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();

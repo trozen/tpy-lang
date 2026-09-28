@@ -73,7 +73,6 @@ __coro_ident<T> ident(::tpy::param_val_or_ref_t<T> x) {
 struct __coro_main_coro {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::string __coro_arg_0;
     int32_t __await_lift_0;
     std::string __await_lift_1;
     std::optional<__coro_ident<int32_t>> c;

@@ -2122,8 +2122,7 @@ void main() {
     }
     int32_t slice_total = 0;
     {
-        std::string __tmp_1 = "a source long enough that a dangling view shows";
-        auto __src_8 = ::tpyapp::main::gen_slice_view(__tmp_1);
+        auto __src_8 = ::tpyapp::main::gen_slice_view("a source long enough that a dangling view shows");
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
@@ -2134,8 +2133,8 @@ void main() {
     }
     std::cout << "gen_slice_view" << " " << slice_total << "\n";
     ::tpyapp::main::nested_def_section();
-    std::vector<Pic> __tmp_2 = {Pic(0), Pic(1)};
-    ::tpyapp::main::nested_def_in_loop(__tmp_2);
+    std::vector<Pic> __tmp_1 = {Pic(0), Pic(1)};
+    ::tpyapp::main::nested_def_in_loop(__tmp_1);
     ::tpyapp::main::nested_def_after_loop();
     ::tpyapp::main::with_section();
     ::tpyapp::main::try_section();

@@ -1,0 +1,11 @@
+ctor: q! p3 q-3 q none  qq Q! n q!?
+ctor2: z m changed
+method: w+-1 z changed
+bytes: b'ab!' b'ab' b'd'
+bytes method: b'changed?'
+walrus: k! 5 k4
+String: s!
+StrView method: 0 lit
+StrView method: 1 view
+StrView method: 2 iew
+StrView method: 3 view

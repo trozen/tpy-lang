@@ -5,7 +5,7 @@ Whether an argument expression is admitted at a parameter slot is decided by
 `tpyc/thir/lower/arg_table.py`, and every callee family carries its OWN
 ordered row list (`_PLAIN_ARG_SINK`, `_GENERIC_PLAIN_ARG_SINK`,
 `_METHOD_ARG_SINK`, `_CTOR_ARG_SINK`, `_CTOR_NESTED_ARG_SINK`,
-`_PROTOCOL_ARG_SINK`, `_MARKER_QUALIFIED_ARG_SINK`). A row present in one
+`_PROTOCOL_ARG_SINK`). A row present in one
 family and absent in another means the same argument at the same-shaped slot
 compiles for one kind of callee and is refused for another. Some of those
 differences are stated rules; the rest is drift. Nothing else in the tree
@@ -48,11 +48,10 @@ NOT AN ARM PIN. The house rule is that a THIR lowering arm is pinned by a case
 under `tests/cases/`; this is a measurement over a generated corpus, like
 `container_gates.py` and `inventory_sites.py` in the same directory.
 
-TWO COLUMNS ARE NOT THE SINK THEIR NAME SUGGESTS, measured rather than
-assumed (see `--routes`):
+ONE COLUMN IS NOT THE SINK ITS NAME SUGGESTS, measured rather than
+assumed (see `--routes`); the `static` column reaches the plain free-call
+family, as every receiver-less spelling does:
 
-  * `static` -- a `@staticmethod` call routes to the MARKER-QUALIFIED family,
-    not to the plain free-call family its source spelling resembles.
   * `nested` -- a constructor whose argument is itself a constructor argument
     (`Outer(Inner(x))`) routes to the DIRECT ctor family. The restricted
     `_CTOR_NESTED_ARG_SINK` serves only flush-LESS nested positions, which are

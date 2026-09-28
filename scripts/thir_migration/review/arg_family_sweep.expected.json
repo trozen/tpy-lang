@@ -35,9 +35,9 @@
   ""
  ],
  "array_i__mut__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(%b, v_m, [])])"
  ],
  "array_i__mut__closure_capture__ctor": [
   "ok",
@@ -115,9 +115,9 @@
   ""
  ],
  "array_i__mut__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::array<int32_t, 2>){call(copy [template 'std::array<int32_t, 2>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "array_i__mut__global_name__ctor": [
   "ok",
@@ -195,9 +195,9 @@
   ""
  ],
  "array_i__mut__literal__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.array_literal",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::array<int32_t, 2>){container_literal[Array]([lit(3), lit(4)])}])"
  ],
  "array_i__mut__local__ctor": [
   "ok",
@@ -395,7 +395,7 @@
   ""
  ],
  "array_i__mut__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -475,9 +475,9 @@
   ""
  ],
  "array_i__mut__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::array<int32_t, 2>){call(mk, [])}])"
  ],
  "array_i__mut__param__ctor": [
   "ok",
@@ -555,9 +555,9 @@
   ""
  ],
  "array_i__mut__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::array<int32_t, 2>){method_call(%b, v_own, [])}])"
  ],
  "array_i__mut__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -595,9 +595,9 @@
   ""
  ],
  "array_i__mut__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(%b, v, [])])"
  ],
  "array_i__mut__temp_accessor__ctor": [
   "reject:expr.method_call:unspecified.lends_from_temporary",
@@ -635,7 +635,7 @@
   ""
  ],
  "array_i__mut__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -675,7 +675,7 @@
   ""
  ],
  "array_i__mut__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -715,7 +715,7 @@
   ""
  ],
  "array_i__mut__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -755,9 +755,9 @@
   ""
  ],
  "array_i__ro__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(%b, v_m, [])])"
  ],
  "array_i__ro__closure_capture__ctor": [
   "ok",
@@ -835,9 +835,9 @@
   ""
  ],
  "array_i__ro__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::array<int32_t, 2>){call(copy [template 'std::array<int32_t, 2>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "array_i__ro__global_name__ctor": [
   "ok",
@@ -915,9 +915,9 @@
   ""
  ],
  "array_i__ro__literal__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.array_literal",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::array<int32_t, 2>){container_literal[Array]([lit(3), lit(4)])}])"
  ],
  "array_i__ro__local__ctor": [
   "ok",
@@ -1115,7 +1115,7 @@
   ""
  ],
  "array_i__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -1195,9 +1195,9 @@
   ""
  ],
  "array_i__ro__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::array<int32_t, 2>){call(mk, [])}])"
  ],
  "array_i__ro__param__ctor": [
   "ok",
@@ -1275,9 +1275,9 @@
   ""
  ],
  "array_i__ro__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::array<int32_t, 2>){method_call(%b, v_own, [])}])"
  ],
  "array_i__ro__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -1315,9 +1315,9 @@
   ""
  ],
  "array_i__ro__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(%b, v, [])])"
  ],
  "array_i__ro__temp_accessor__ctor": [
   "ok",
@@ -1355,7 +1355,7 @@
   ""
  ],
  "array_i__ro__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -1395,7 +1395,7 @@
   ""
  ],
  "array_i__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -1435,7 +1435,7 @@
   ""
  ],
  "array_i__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -2395,7 +2395,7 @@
   ""
  ],
  "bytearray__mut__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
@@ -2475,9 +2475,9 @@
   ""
  ],
  "bytearray__mut__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ByteArray){call(copy [template '::tpy::ByteArray({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "bytearray__mut__ctor_rvalue__ctor": [
   "ok",
@@ -2515,9 +2515,9 @@
   ""
  ],
  "bytearray__mut__ctor_rvalue__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]])}])"
  ],
  "bytearray__mut__dict_items_value__ctor": [
   "reject:expr.container_literal",
@@ -2635,9 +2635,9 @@
   ""
  ],
  "bytearray__mut__empty_literal__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray()'], [])}])"
  ],
  "bytearray__mut__global_name__ctor": [
   "ok",
@@ -2915,7 +2915,7 @@
   ""
  ],
  "bytearray__mut__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
@@ -2995,9 +2995,9 @@
   ""
  ],
  "bytearray__mut__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ByteArray){call(mk, [])}])"
  ],
  "bytearray__mut__param__ctor": [
   "ok",
@@ -3075,9 +3075,9 @@
   ""
  ],
  "bytearray__mut__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ByteArray){method_call(%b, v_own, [])}])"
  ],
  "bytearray__mut__prop_ref__ctor": [
   "reject:expr.method_call:method.ret_type",
@@ -3115,7 +3115,7 @@
   ""
  ],
  "bytearray__mut__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
@@ -3155,7 +3155,7 @@
   ""
  ],
  "bytearray__mut__slice_expr__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.coerce",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
@@ -3235,7 +3235,7 @@
   ""
  ],
  "bytearray__mut__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -3275,7 +3275,7 @@
   ""
  ],
  "bytearray__mut__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
@@ -3315,7 +3315,7 @@
   ""
  ],
  "bytearray__mut__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
@@ -3355,7 +3355,7 @@
   ""
  ],
  "bytearray__mut__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
@@ -3395,7 +3395,7 @@
   ""
  ],
  "bytearray__ro__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
@@ -3475,9 +3475,9 @@
   ""
  ],
  "bytearray__ro__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ByteArray){call(copy [template '::tpy::ByteArray({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "bytearray__ro__ctor_rvalue__ctor": [
   "ok",
@@ -3515,9 +3515,9 @@
   ""
  ],
  "bytearray__ro__ctor_rvalue__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]])}])"
  ],
  "bytearray__ro__dict_items_value__ctor": [
   "reject:expr.container_literal",
@@ -3635,9 +3635,9 @@
   ""
  ],
  "bytearray__ro__empty_literal__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ByteArray){call(bytearray [template '::tpy::ByteArray()'], [])}])"
  ],
  "bytearray__ro__global_name__ctor": [
   "ok",
@@ -3915,7 +3915,7 @@
   ""
  ],
  "bytearray__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
@@ -3995,9 +3995,9 @@
   ""
  ],
  "bytearray__ro__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ByteArray){call(mk, [])}])"
  ],
  "bytearray__ro__param__ctor": [
   "ok",
@@ -4075,9 +4075,9 @@
   ""
  ],
  "bytearray__ro__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ByteArray){method_call(%b, v_own, [])}])"
  ],
  "bytearray__ro__prop_ref__ctor": [
   "reject:expr.method_call:method.ret_type",
@@ -4115,7 +4115,7 @@
   ""
  ],
  "bytearray__ro__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
@@ -4155,7 +4155,7 @@
   ""
  ],
  "bytearray__ro__slice_expr__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.coerce",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
@@ -4235,7 +4235,7 @@
   ""
  ],
  "bytearray__ro__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -4275,7 +4275,7 @@
   ""
  ],
  "bytearray__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
@@ -4315,7 +4315,7 @@
   ""
  ],
  "bytearray__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
@@ -4355,7 +4355,7 @@
   ""
  ],
  "bytearray__ro__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
@@ -5395,7 +5395,7 @@
   ""
  ],
  "callable__ro__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.other_callabletype",
   "",
   ""
  ],
@@ -5435,7 +5435,7 @@
   ""
  ],
  "callable__ro__global_name__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.name",
+  "reject:stmt.expr_stmt:name.global_read",
   "",
   ""
  ],
@@ -5515,7 +5515,7 @@
   ""
  ],
  "callable__ro__narrowed_opt__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.name",
+  "reject:expr.call:call.arg_shape.other_callabletype",
   "",
   ""
  ],
@@ -5555,7 +5555,7 @@
   ""
  ],
  "callable__ro__narrowed_opt_param__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.name",
+  "reject:expr.call:call.arg_shape.other_callabletype",
   "",
   ""
  ],
@@ -5595,7 +5595,7 @@
   ""
  ],
  "callable__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.other_callabletype",
   "",
   ""
  ],
@@ -5635,9 +5635,9 @@
   ""
  ],
  "callable__ro__obj_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%b._v])"
  ],
  "callable__ro__own_call__ctor": [
   "reject:expr.call:call.ctor_arg.other_callabletype",
@@ -5675,7 +5675,7 @@
   ""
  ],
  "callable__ro__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.other_callabletype",
   "",
   ""
  ],
@@ -5715,9 +5715,9 @@
   "method_call(%pp, CALLEE, [%pv])"
  ],
  "callable__ro__param__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.name",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%pv])"
  ],
  "callable__ro__prop_own__ctor": [
   "reject:expr.call:call.ctor_arg.other_callabletype",
@@ -5755,7 +5755,7 @@
   ""
  ],
  "callable__ro__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.other_callabletype",
   "",
   ""
  ],
@@ -5795,7 +5795,7 @@
   ""
  ],
  "callable__ro__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.other_callabletype",
   "",
   ""
  ],
@@ -5835,7 +5835,7 @@
   ""
  ],
  "callable__ro__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.other_callabletype",
   "",
   ""
  ],
@@ -5875,7 +5875,7 @@
   ""
  ],
  "callable__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.other_callabletype",
   "",
   ""
  ],
@@ -5915,7 +5915,7 @@
   ""
  ],
  "callable__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.other_callabletype",
   "",
   ""
  ],
@@ -6035,9 +6035,9 @@
   ""
  ],
  "deref_list__mut__copy_call__static": [
-  "reject:expr.method_call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(DL){copy[DL](%s0)}]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0])]) [raw])"
  ],
  "deref_list__mut__ctor_rvalue__ctor": [
   "ok",
@@ -6435,7 +6435,7 @@
   ""
  ],
  "deref_list__mut__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -6597,7 +6597,7 @@
  "deref_list__mut__prop_own__static": [
   "ok",
   "",
-  "call(CALLEE, [method_call(%b, v_own, [])])"
+  "call(CALLEE, [%argtmp(DL){method_call(%b, v_own, [])}])"
  ],
  "deref_list__mut__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -6715,7 +6715,7 @@
   ""
  ],
  "deref_list__mut__temp_accessor__static": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -6755,7 +6755,7 @@
   ""
  ],
  "deref_list__mut__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -6795,7 +6795,7 @@
   ""
  ],
  "deref_list__mut__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -6835,7 +6835,7 @@
   ""
  ],
  "deref_list__mut__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -6955,9 +6955,9 @@
   ""
  ],
  "deref_list__ro__copy_call__static": [
-  "reject:expr.method_call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(DL){copy[DL](%s0)}]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0])]) [raw])"
  ],
  "deref_list__ro__ctor_rvalue__ctor": [
   "ok",
@@ -7355,7 +7355,7 @@
   ""
  ],
  "deref_list__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -7517,7 +7517,7 @@
  "deref_list__ro__prop_own__static": [
   "ok",
   "",
-  "call(CALLEE, [method_call(%b, v_own, [])])"
+  "call(CALLEE, [%argtmp(DL){method_call(%b, v_own, [])}])"
  ],
  "deref_list__ro__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -7635,7 +7635,7 @@
   ""
  ],
  "deref_list__ro__temp_accessor__static": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -7675,7 +7675,7 @@
   ""
  ],
  "deref_list__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -7715,7 +7715,7 @@
   ""
  ],
  "deref_list__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -7755,7 +7755,7 @@
   ""
  ],
  "deref_list__ro__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -7875,9 +7875,9 @@
   ""
  ],
  "deref_rec__mut__copy_call__static": [
-  "reject:expr.method_call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(DR){copy[DR](%s0)}]) print(%s0.x [raw])"
  ],
  "deref_rec__mut__ctor_rvalue__ctor": [
   "ok",
@@ -8275,7 +8275,7 @@
   ""
  ],
  "deref_rec__mut__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -8437,7 +8437,7 @@
  "deref_rec__mut__prop_own__static": [
   "ok",
   "",
-  "call(CALLEE, [method_call(%b, v_own, [])])"
+  "call(CALLEE, [%argtmp(DR){method_call(%b, v_own, [])}])"
  ],
  "deref_rec__mut__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -8555,7 +8555,7 @@
   ""
  ],
  "deref_rec__mut__temp_accessor__static": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -8595,7 +8595,7 @@
   ""
  ],
  "deref_rec__mut__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -8635,7 +8635,7 @@
   ""
  ],
  "deref_rec__mut__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -8675,7 +8675,7 @@
   ""
  ],
  "deref_rec__mut__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -8795,9 +8795,9 @@
   ""
  ],
  "deref_rec__ro__copy_call__static": [
-  "reject:expr.method_call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(DR){copy[DR](%s0)}]) print(%s0.x [raw])"
  ],
  "deref_rec__ro__ctor_rvalue__ctor": [
   "ok",
@@ -9195,7 +9195,7 @@
   ""
  ],
  "deref_rec__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -9357,7 +9357,7 @@
  "deref_rec__ro__prop_own__static": [
   "ok",
   "",
-  "call(CALLEE, [method_call(%b, v_own, [])])"
+  "call(CALLEE, [%argtmp(DR){method_call(%b, v_own, [])}])"
  ],
  "deref_rec__ro__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -9475,7 +9475,7 @@
   ""
  ],
  "deref_rec__ro__temp_accessor__static": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -9515,7 +9515,7 @@
   ""
  ],
  "deref_rec__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -9555,7 +9555,7 @@
   ""
  ],
  "deref_rec__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -9595,7 +9595,7 @@
   ""
  ],
  "deref_rec__ro__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -9635,7 +9635,7 @@
   ""
  ],
  "dict_si__mut__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -9755,9 +9755,9 @@
   ""
  ],
  "dict_si__mut__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){call(copy [template '::tpy::ordered_map<std::string, int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__mut__empty_literal__ctor": [
   "ok",
@@ -10115,7 +10115,7 @@
   ""
  ],
  "dict_si__mut__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -10195,9 +10195,9 @@
   ""
  ],
  "dict_si__mut__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){call(mk, [])}])"
  ],
  "dict_si__mut__param__ctor": [
   "ok",
@@ -10275,9 +10275,9 @@
   ""
  ],
  "dict_si__mut__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){method_call(%b, v_own, [])}])"
  ],
  "dict_si__mut__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -10315,7 +10315,7 @@
   ""
  ],
  "dict_si__mut__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -10395,7 +10395,7 @@
   ""
  ],
  "dict_si__mut__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -10435,7 +10435,7 @@
   ""
  ],
  "dict_si__mut__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -10475,7 +10475,7 @@
   ""
  ],
  "dict_si__mut__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -10515,7 +10515,7 @@
   ""
  ],
  "dict_si__mut__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -10555,7 +10555,7 @@
   ""
  ],
  "dict_si__ro__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -10675,9 +10675,9 @@
   ""
  ],
  "dict_si__ro__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){call(copy [template '::tpy::ordered_map<std::string, int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__ro__empty_literal__ctor": [
   "ok",
@@ -10717,7 +10717,7 @@
  "dict_si__ro__empty_literal__static": [
   "ok",
   "",
-  "call(CALLEE, [container_literal[dict]([])])"
+  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){container_literal[dict]([])}])"
  ],
  "dict_si__ro__global_name__ctor": [
   "ok",
@@ -10797,7 +10797,7 @@
  "dict_si__ro__literal__static": [
   "ok",
   "",
-  "call(CALLEE, [container_literal[dict]({str('b'): lit(2)})])"
+  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){container_literal[dict]({str('b'): lit(2)})}])"
  ],
  "dict_si__ro__local__ctor": [
   "ok",
@@ -11035,7 +11035,7 @@
   ""
  ],
  "dict_si__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -11115,9 +11115,9 @@
   ""
  ],
  "dict_si__ro__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){call(mk, [])}])"
  ],
  "dict_si__ro__param__ctor": [
   "ok",
@@ -11195,9 +11195,9 @@
   ""
  ],
  "dict_si__ro__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){method_call(%b, v_own, [])}])"
  ],
  "dict_si__ro__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -11235,7 +11235,7 @@
   ""
  ],
  "dict_si__ro__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -11315,7 +11315,7 @@
   ""
  ],
  "dict_si__ro__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -11355,7 +11355,7 @@
   ""
  ],
  "dict_si__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -11395,7 +11395,7 @@
   ""
  ],
  "dict_si__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -11435,7 +11435,7 @@
   ""
  ],
  "dict_si__ro__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -11835,7 +11835,7 @@
   ""
  ],
  "gen_rec__mut__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -11997,7 +11997,7 @@
  "gen_rec__mut__prop_own__static": [
   "ok",
   "",
-  "call(CALLEE, [method_call(%b, v_own, [])])"
+  "call(CALLEE, [%argtmp(::tpystd::tplib::box::Box<R>){method_call(%b, v_own, [])}])"
  ],
  "gen_rec__mut__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -12115,7 +12115,7 @@
   ""
  ],
  "gen_rec__mut__temp_accessor__static": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -12155,7 +12155,7 @@
   ""
  ],
  "gen_rec__mut__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -12195,7 +12195,7 @@
   ""
  ],
  "gen_rec__mut__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -12235,7 +12235,7 @@
   ""
  ],
  "gen_rec__mut__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -12635,7 +12635,7 @@
   ""
  ],
  "gen_rec__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -12797,7 +12797,7 @@
  "gen_rec__ro__prop_own__static": [
   "ok",
   "",
-  "call(CALLEE, [method_call(%b, v_own, [])])"
+  "call(CALLEE, [%argtmp(::tpystd::tplib::box::Box<R>){method_call(%b, v_own, [])}])"
  ],
  "gen_rec__ro__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -12915,7 +12915,7 @@
   ""
  ],
  "gen_rec__ro__temp_accessor__static": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -12955,7 +12955,7 @@
   ""
  ],
  "gen_rec__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -12995,7 +12995,7 @@
   ""
  ],
  "gen_rec__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -13035,7 +13035,7 @@
   ""
  ],
  "gen_rec__ro__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -13995,7 +13995,7 @@
   ""
  ],
  "list_i__mut__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -14115,7 +14115,7 @@
   ""
  ],
  "list_i__mut__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -14195,7 +14195,7 @@
   ""
  ],
  "list_i__mut__dict_subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.subscript",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -14555,7 +14555,7 @@
   ""
  ],
  "list_i__mut__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -14635,9 +14635,9 @@
   ""
  ],
  "list_i__mut__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){call(mk, [])}])"
  ],
  "list_i__mut__param__ctor": [
   "ok",
@@ -14715,9 +14715,9 @@
   ""
  ],
  "list_i__mut__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){method_call(%b, v_own, [])}])"
  ],
  "list_i__mut__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -14755,7 +14755,7 @@
   ""
  ],
  "list_i__mut__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -14795,7 +14795,7 @@
   ""
  ],
  "list_i__mut__subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.subscript",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -14835,7 +14835,7 @@
   ""
  ],
  "list_i__mut__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -14875,7 +14875,7 @@
   ""
  ],
  "list_i__mut__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -14915,7 +14915,7 @@
   ""
  ],
  "list_i__mut__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -14955,7 +14955,7 @@
   ""
  ],
  "list_i__mut__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -14995,7 +14995,7 @@
   ""
  ],
  "list_i__ro__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -15115,7 +15115,7 @@
   ""
  ],
  "list_i__ro__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -15195,7 +15195,7 @@
   ""
  ],
  "list_i__ro__dict_subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.subscript",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -15237,7 +15237,7 @@
  "list_i__ro__empty_literal__static": [
   "ok",
   "",
-  "call(CALLEE, [container_literal[list]([])])"
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){container_literal[list]([])}])"
  ],
  "list_i__ro__global_name__ctor": [
   "ok",
@@ -15317,7 +15317,7 @@
  "list_i__ro__literal__static": [
   "ok",
   "",
-  "call(CALLEE, [container_literal[list]([lit(3), lit(4)])])"
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){container_literal[list]([lit(3), lit(4)])}])"
  ],
  "list_i__ro__local__ctor": [
   "ok",
@@ -15555,7 +15555,7 @@
   ""
  ],
  "list_i__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -15635,9 +15635,9 @@
   ""
  ],
  "list_i__ro__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){call(mk, [])}])"
  ],
  "list_i__ro__param__ctor": [
   "ok",
@@ -15715,9 +15715,9 @@
   ""
  ],
  "list_i__ro__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){method_call(%b, v_own, [])}])"
  ],
  "list_i__ro__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -15755,7 +15755,7 @@
   ""
  ],
  "list_i__ro__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -15795,7 +15795,7 @@
   ""
  ],
  "list_i__ro__subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.subscript",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -15835,7 +15835,7 @@
   ""
  ],
  "list_i__ro__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -15875,7 +15875,7 @@
   ""
  ],
  "list_i__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -15915,7 +15915,7 @@
   ""
  ],
  "list_i__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -15955,7 +15955,7 @@
   ""
  ],
  "list_i__ro__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -15995,7 +15995,7 @@
   ""
  ],
  "list_i_own__mut__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -16035,7 +16035,7 @@
   ""
  ],
  "list_i_own__mut__closure_capture__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -16115,7 +16115,7 @@
   ""
  ],
  "list_i_own__mut__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -16195,7 +16195,7 @@
   ""
  ],
  "list_i_own__mut__dict_subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -16435,7 +16435,7 @@
   ""
  ],
  "list_i_own__mut__loop_var__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -16755,7 +16755,7 @@
   ""
  ],
  "list_i_own__mut__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -16795,7 +16795,7 @@
   ""
  ],
  "list_i_own__mut__subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -16995,7 +16995,7 @@
   ""
  ],
  "list_i_own__ro__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -17035,7 +17035,7 @@
   ""
  ],
  "list_i_own__ro__closure_capture__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -17115,7 +17115,7 @@
   ""
  ],
  "list_i_own__ro__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -17195,7 +17195,7 @@
   ""
  ],
  "list_i_own__ro__dict_subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -17435,7 +17435,7 @@
   ""
  ],
  "list_i_own__ro__loop_var__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -17755,7 +17755,7 @@
   ""
  ],
  "list_i_own__ro__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -17795,7 +17795,7 @@
   ""
  ],
  "list_i_own__ro__subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -17995,7 +17995,7 @@
   ""
  ],
  "list_i_ro__ro__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -18115,7 +18115,7 @@
   ""
  ],
  "list_i_ro__ro__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -18195,7 +18195,7 @@
   ""
  ],
  "list_i_ro__ro__dict_subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.subscript",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -18285,9 +18285,9 @@
   ""
  ],
  "list_i_ro__ro__literal__fn": [
-  "reject:expr.call:call.arg_shape.container",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){container_literal[list]([lit(3), lit(4)])}])"
  ],
  "list_i_ro__ro__literal__gen": [
   "reject:expr.call:call.generic_arg_shape",
@@ -18317,7 +18317,7 @@
  "list_i_ro__ro__literal__static": [
   "ok",
   "",
-  "call(CALLEE, [container_literal[list]([lit(3), lit(4)])])"
+  "call(CALLEE, [%argtmp(std::vector<int32_t>){container_literal[list]([lit(3), lit(4)])}])"
  ],
  "list_i_ro__ro__local__ctor": [
   "ok",
@@ -18555,7 +18555,7 @@
   ""
  ],
  "list_i_ro__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -18635,7 +18635,7 @@
   ""
  ],
  "list_i_ro__ro__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -18715,7 +18715,7 @@
   ""
  ],
  "list_i_ro__ro__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -18755,7 +18755,7 @@
   ""
  ],
  "list_i_ro__ro__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -18795,7 +18795,7 @@
   ""
  ],
  "list_i_ro__ro__subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.subscript",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -18835,7 +18835,7 @@
   ""
  ],
  "list_i_ro__ro__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -18875,7 +18875,7 @@
   ""
  ],
  "list_i_ro__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -18915,7 +18915,7 @@
   ""
  ],
  "list_i_ro__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -18955,7 +18955,7 @@
   ""
  ],
  "list_i_ro__ro__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -18995,7 +18995,7 @@
   ""
  ],
  "list_r__mut__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -19115,7 +19115,7 @@
   ""
  ],
  "list_r__mut__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -19195,7 +19195,7 @@
   ""
  ],
  "list_r__mut__dict_subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.subscript",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -19515,7 +19515,7 @@
   ""
  ],
  "list_r__mut__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -19595,9 +19595,9 @@
   ""
  ],
  "list_r__mut__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<R>){call(mk, [])}])"
  ],
  "list_r__mut__param__ctor": [
   "ok",
@@ -19675,9 +19675,9 @@
   ""
  ],
  "list_r__mut__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<R>){method_call(%b, v_own, [])}])"
  ],
  "list_r__mut__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -19715,7 +19715,7 @@
   ""
  ],
  "list_r__mut__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -19755,7 +19755,7 @@
   ""
  ],
  "list_r__mut__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -19795,7 +19795,7 @@
   ""
  ],
  "list_r__mut__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -19835,7 +19835,7 @@
   ""
  ],
  "list_r__mut__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -19875,7 +19875,7 @@
   ""
  ],
  "list_r__mut__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -19915,7 +19915,7 @@
   ""
  ],
  "list_r__ro__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -20035,7 +20035,7 @@
   ""
  ],
  "list_r__ro__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -20115,7 +20115,7 @@
   ""
  ],
  "list_r__ro__dict_subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.subscript",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -20157,7 +20157,7 @@
  "list_r__ro__empty_literal__static": [
   "ok",
   "",
-  "call(CALLEE, [container_literal[list]([])])"
+  "call(CALLEE, [%argtmp(std::vector<R>){container_literal[list]([])}])"
  ],
  "list_r__ro__global_name__ctor": [
   "ok",
@@ -20237,7 +20237,7 @@
  "list_r__ro__literal__static": [
   "ok",
   "",
-  "call(CALLEE, [container_literal[list]([ctor(R, [coerce(lit(5) -> int32)])])])"
+  "call(CALLEE, [%argtmp(std::vector<R>){container_literal[list]([ctor(R, [coerce(lit(5) -> int32)])])}])"
  ],
  "list_r__ro__local__ctor": [
   "ok",
@@ -20435,7 +20435,7 @@
   ""
  ],
  "list_r__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -20515,9 +20515,9 @@
   ""
  ],
  "list_r__ro__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<R>){call(mk, [])}])"
  ],
  "list_r__ro__param__ctor": [
   "ok",
@@ -20595,9 +20595,9 @@
   ""
  ],
  "list_r__ro__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<R>){method_call(%b, v_own, [])}])"
  ],
  "list_r__ro__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -20635,7 +20635,7 @@
   ""
  ],
  "list_r__ro__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -20675,7 +20675,7 @@
   ""
  ],
  "list_r__ro__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -20715,7 +20715,7 @@
   ""
  ],
  "list_r__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -20755,7 +20755,7 @@
   ""
  ],
  "list_r__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -20795,7 +20795,7 @@
   ""
  ],
  "list_r__ro__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -21085,7 +21085,7 @@
   ""
  ],
  "proto_p__ro__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.protocol.static",
   "",
   ""
  ],
@@ -21285,9 +21285,9 @@
   ""
  ],
  "proto_p__ro__dict_subscript__static": [
-  "reject:stmt.expr_stmt:subscript.elem.record",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(auto){%d[str('k')] [borrow]}])"
  ],
  "proto_p__ro__global_name__ctor": [
   "ok",
@@ -21765,7 +21765,7 @@
   ""
  ],
  "proto_p__ro__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.protocol.static",
   "",
   ""
  ],
@@ -21805,7 +21805,7 @@
   ""
  ],
  "proto_p__ro__subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.protocol.static",
   "",
   ""
  ],
@@ -21885,7 +21885,7 @@
   ""
  ],
  "proto_p__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.protocol.static",
   "",
   ""
  ],
@@ -21925,7 +21925,7 @@
   ""
  ],
  "proto_p__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.protocol.static",
   "",
   ""
  ],
@@ -21965,7 +21965,7 @@
   ""
  ],
  "proto_p__ro__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.protocol.static",
   "",
   ""
  ],
@@ -22085,9 +22085,9 @@
   ""
  ],
  "rec__mut__copy_call__static": [
-  "reject:expr.method_call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(R){copy[R](%s0)}]) print(%s0.x [raw])"
  ],
  "rec__mut__ctor_rvalue__ctor": [
   "ok",
@@ -22485,7 +22485,7 @@
   ""
  ],
  "rec__mut__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -22647,7 +22647,7 @@
  "rec__mut__prop_own__static": [
   "ok",
   "",
-  "call(CALLEE, [method_call(%b, v_own, [])])"
+  "call(CALLEE, [%argtmp(R){method_call(%b, v_own, [])}])"
  ],
  "rec__mut__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -22805,7 +22805,7 @@
   ""
  ],
  "rec__mut__temp_accessor__static": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -22845,7 +22845,7 @@
   ""
  ],
  "rec__mut__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -22885,7 +22885,7 @@
   ""
  ],
  "rec__mut__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -22925,7 +22925,7 @@
   ""
  ],
  "rec__mut__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -23045,9 +23045,9 @@
   ""
  ],
  "rec__ro__copy_call__static": [
-  "reject:expr.method_call:call.builtin_special",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(R){copy[R](%s0)}]) print(%s0.x [raw])"
  ],
  "rec__ro__ctor_rvalue__ctor": [
   "ok",
@@ -23445,7 +23445,7 @@
   ""
  ],
  "rec__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -23607,7 +23607,7 @@
  "rec__ro__prop_own__static": [
   "ok",
   "",
-  "call(CALLEE, [method_call(%b, v_own, [])])"
+  "call(CALLEE, [%argtmp(R){method_call(%b, v_own, [])}])"
  ],
  "rec__ro__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -23765,7 +23765,7 @@
   ""
  ],
  "rec__ro__temp_accessor__static": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -23805,7 +23805,7 @@
   ""
  ],
  "rec__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -23845,7 +23845,7 @@
   ""
  ],
  "rec__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -23885,7 +23885,7 @@
   ""
  ],
  "rec__ro__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -23925,7 +23925,7 @@
   ""
  ],
  "rec_opt__ro__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.optional",
+  "reject:expr.call:call.arg_shape.optional",
   "",
   ""
  ],
@@ -24205,7 +24205,7 @@
   ""
  ],
  "rec_opt__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.optional",
+  "reject:expr.call:call.arg_shape.optional",
   "",
   ""
  ],
@@ -24325,7 +24325,7 @@
   ""
  ],
  "rec_opt__ro__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.optional",
+  "reject:expr.call:call.arg_shape.optional",
   "",
   ""
  ],
@@ -24405,7 +24405,7 @@
   ""
  ],
  "rec_opt__ro__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.optional",
+  "reject:expr.call:call.arg_shape.optional",
   "",
   ""
  ],
@@ -24445,7 +24445,7 @@
   ""
  ],
  "rec_opt__ro__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.optional",
+  "reject:expr.call:call.arg_shape.optional",
   "",
   ""
  ],
@@ -24485,7 +24485,7 @@
   ""
  ],
  "rec_opt__ro__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.optional",
+  "reject:expr.call:call.arg_shape.optional",
   "",
   ""
  ],
@@ -24525,7 +24525,7 @@
   ""
  ],
  "rec_opt__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.optional",
+  "reject:expr.call:call.arg_shape.optional",
   "",
   ""
  ],
@@ -24845,7 +24845,7 @@
   ""
  ],
  "rec_own__mut__dict_subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_record_f1",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -25365,7 +25365,7 @@
   ""
  ],
  "rec_own__mut__subclass_local__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_record_f1",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -25405,7 +25405,7 @@
   ""
  ],
  "rec_own__mut__subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_record_f1",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -25805,7 +25805,7 @@
   ""
  ],
  "rec_own__ro__dict_subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_record_f1",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -26325,7 +26325,7 @@
   ""
  ],
  "rec_own__ro__subclass_local__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_record_f1",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -26365,7 +26365,7 @@
   ""
  ],
  "rec_own__ro__subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_record_f1",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -26615,7 +26615,7 @@
   ""
  ],
  "rec_ro__ro__copy_call__fn": [
-  "reject:expr.call:call.arg_shape.record_f1",
+  "reject:expr.call:call.builtin_special",
   "",
   ""
  ],
@@ -26645,7 +26645,7 @@
   ""
  ],
  "rec_ro__ro__copy_call__static": [
-  "reject:expr.method_call:call.builtin_special",
+  "reject:expr.call:call.builtin_special",
   "",
   ""
  ],
@@ -27045,7 +27045,7 @@
   ""
  ],
  "rec_ro__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -27095,9 +27095,9 @@
   ""
  ],
  "rec_ro__ro__own_call__fn": [
-  "reject:expr.call:call.arg_shape.record_f1",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [call(mk, [])])"
  ],
  "rec_ro__ro__own_call__gen": [
   "reject:expr.call:call.generic_arg_shape",
@@ -27175,9 +27175,9 @@
   ""
  ],
  "rec_ro__ro__prop_own__fn": [
-  "reject:expr.call:call.arg_shape.record_f1",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(%b, v_own, [])])"
  ],
  "rec_ro__ro__prop_own__gen": [
   "reject:expr.call:call.generic_arg_shape",
@@ -27335,7 +27335,7 @@
   ""
  ],
  "rec_ro__ro__temp_accessor__fn": [
-  "reject:expr.call:call.arg_shape.record_f1",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "",
   ""
  ],
@@ -27405,7 +27405,7 @@
   ""
  ],
  "rec_ro__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -27445,7 +27445,7 @@
   ""
  ],
  "rec_ro__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -27485,7 +27485,7 @@
   ""
  ],
  "rec_ro__ro__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.record_f1",
+  "reject:expr.call:call.arg_shape.record_f1",
   "",
   ""
  ],
@@ -27565,7 +27565,7 @@
   ""
  ],
  "ru_wrap__ro__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.copy_source.union",
   "",
   ""
  ],
@@ -27685,7 +27685,7 @@
   ""
  ],
  "ru_wrap__ro__none_lit__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.arg_shape.union",
   "",
   ""
  ],
@@ -27765,7 +27765,7 @@
   ""
  ],
  "ru_wrap__ro__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.arg_shape.union",
   "",
   ""
  ],
@@ -27805,7 +27805,7 @@
   ""
  ],
  "set_i__mut__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -27925,9 +27925,9 @@
   ""
  ],
  "set_i__mut__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){call(copy [template '::tpy::ordered_set<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__mut__dict_items_value__ctor": [
   "ok",
@@ -28325,7 +28325,7 @@
   ""
  ],
  "set_i__mut__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -28405,9 +28405,9 @@
   ""
  ],
  "set_i__mut__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){call(mk, [])}])"
  ],
  "set_i__mut__param__ctor": [
   "ok",
@@ -28485,9 +28485,9 @@
   ""
  ],
  "set_i__mut__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){method_call(%b, v_own, [])}])"
  ],
  "set_i__mut__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -28525,7 +28525,7 @@
   ""
  ],
  "set_i__mut__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -28605,7 +28605,7 @@
   ""
  ],
  "set_i__mut__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -28645,7 +28645,7 @@
   ""
  ],
  "set_i__mut__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -28685,7 +28685,7 @@
   ""
  ],
  "set_i__mut__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -28725,7 +28725,7 @@
   ""
  ],
  "set_i__mut__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -28765,7 +28765,7 @@
   ""
  ],
  "set_i__ro__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -28885,9 +28885,9 @@
   ""
  ],
  "set_i__ro__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){call(copy [template '::tpy::ordered_set<int32_t>({0})'], [%s0])}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__ro__dict_items_value__ctor": [
   "ok",
@@ -29047,7 +29047,7 @@
  "set_i__ro__literal__static": [
   "ok",
   "",
-  "call(CALLEE, [container_literal[set]([lit(3), lit(4)])])"
+  "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){container_literal[set]([lit(3), lit(4)])}])"
  ],
  "set_i__ro__local__ctor": [
   "ok",
@@ -29285,7 +29285,7 @@
   ""
  ],
  "set_i__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -29365,9 +29365,9 @@
   ""
  ],
  "set_i__ro__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){call(mk, [])}])"
  ],
  "set_i__ro__param__ctor": [
   "ok",
@@ -29445,9 +29445,9 @@
   ""
  ],
  "set_i__ro__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%argtmp(::tpy::ordered_set<int32_t>){method_call(%b, v_own, [])}])"
  ],
  "set_i__ro__prop_ref__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -29485,7 +29485,7 @@
   ""
  ],
  "set_i__ro__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -29565,7 +29565,7 @@
   ""
  ],
  "set_i__ro__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.method_call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -29605,7 +29605,7 @@
   ""
  ],
  "set_i__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -29645,7 +29645,7 @@
   ""
  ],
  "set_i__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -29685,7 +29685,7 @@
   ""
  ],
  "set_i__ro__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -33205,7 +33205,7 @@
   ""
  ],
  "str_own__ro__narrowed_opt__static": [
-  "reject:expr.method_call:method.qualcall.arg.own",
+  "reject:expr.call:call.arg_shape.own_str",
   "",
   ""
  ],
@@ -35045,7 +35045,7 @@
   ""
  ],
  "tup_is__ro__dict_subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.subscript",
+  "reject:expr.call:call.arg_shape.tuple",
   "",
   ""
  ],
@@ -35365,7 +35365,7 @@
   ""
  ],
  "tup_is__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.tuple",
   "",
   ""
  ],
@@ -35375,9 +35375,9 @@
   ""
  ],
  "tup_is__ro__obj_field__fn": [
-  "reject:expr.call:call.arg_shape.tuple",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%b._v])"
  ],
  "tup_is__ro__obj_field__gen": [
   "reject:expr.call:call.generic_arg_shape",
@@ -35605,7 +35605,7 @@
   ""
  ],
  "tup_is__ro__subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.subscript",
+  "reject:expr.call:call.arg_shape.tuple",
   "",
   ""
  ],
@@ -35685,7 +35685,7 @@
   ""
  ],
  "tup_is__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "reject:expr.call:call.arg_shape.tuple",
   "",
   ""
  ],
@@ -35725,7 +35725,7 @@
   ""
  ],
  "tup_is__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.tuple",
   "",
   ""
  ],
@@ -35765,7 +35765,7 @@
   ""
  ],
  "tup_is__ro__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.tuple",
   "",
   ""
  ],
@@ -35775,7 +35775,7 @@
   ""
  ],
  "tup_ri__ro__borrow_method__fn": [
-  "reject:expr.method_call:call.arg_shape.tuple",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
@@ -35805,7 +35805,7 @@
   ""
  ],
  "tup_ri__ro__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
@@ -35845,9 +35845,9 @@
   ""
  ],
  "tup_ri__ro__closure_capture__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.name",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [form_convert[const borrow](%s0)]) call(inner, [])"
  ],
  "tup_ri__ro__copy_call__ctor": [
   "reject:expr.call:call.ctor_arg.tuple",
@@ -35885,7 +35885,7 @@
   ""
  ],
  "tup_ri__ro__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.call:call.arg_shape.tuple",
   "",
   ""
  ],
@@ -35965,9 +35965,9 @@
   ""
  ],
  "tup_ri__ro__dict_subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.subscript",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [form_convert[const borrow](%d[str('k')])])"
  ],
  "tup_ri__ro__global_name__ctor": [
   "reject:expr.call:call.ctor_arg.tuple",
@@ -36005,9 +36005,9 @@
   ""
  ],
  "tup_ri__ro__global_name__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.name",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [form_convert[const borrow](%G)])"
  ],
  "tup_ri__ro__literal__ctor": [
   "ok",
@@ -36085,9 +36085,9 @@
   ""
  ],
  "tup_ri__ro__local__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.name",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [form_convert[const borrow](%s0)]) print(%s0[1] [raw])"
  ],
  "tup_ri__ro__local_last__ctor": [
   "reject:expr.call:call.ctor_arg.tuple",
@@ -36125,9 +36125,9 @@
   ""
  ],
  "tup_ri__ro__local_last__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.name",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [form_convert[const borrow](%s0)])"
  ],
  "tup_ri__ro__loop_var__ctor": [
   "reject:expr.call:call.ctor_arg.tuple",
@@ -36165,9 +36165,9 @@
   ""
  ],
  "tup_ri__ro__loop_var__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.name",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [form_convert[const borrow](%s0)])"
  ],
  "tup_ri__ro__narrowed_opt__ctor": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
@@ -36285,9 +36285,9 @@
   ""
  ],
  "tup_ri__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [form_convert[const borrow](%w.inner._v)])"
  ],
  "tup_ri__ro__obj_field__ctor": [
   "reject:expr.call:call.ctor_arg.tuple",
@@ -36325,9 +36325,9 @@
   ""
  ],
  "tup_ri__ro__obj_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [form_convert[const borrow](%b._v)])"
  ],
  "tup_ri__ro__own_call__ctor": [
   "reject:expr.call:call.ctor_arg.tuple",
@@ -36365,9 +36365,9 @@
   ""
  ],
  "tup_ri__ro__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [call(mk, [])])"
  ],
  "tup_ri__ro__param__ctor": [
   "reject:expr.call:call.ctor_arg.tuple",
@@ -36405,9 +36405,9 @@
   ""
  ],
  "tup_ri__ro__param__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.name",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%pv])"
  ],
  "tup_ri__ro__prop_own__ctor": [
   "reject:expr.call:call.ctor_arg.tuple",
@@ -36415,7 +36415,7 @@
   ""
  ],
  "tup_ri__ro__prop_own__fn": [
-  "reject:expr.method_call:call.arg_shape.tuple",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
@@ -36445,7 +36445,7 @@
   ""
  ],
  "tup_ri__ro__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
@@ -36455,7 +36455,7 @@
   ""
  ],
  "tup_ri__ro__prop_ref__fn": [
-  "reject:expr.method_call:call.arg_shape.tuple",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
@@ -36485,7 +36485,7 @@
   ""
  ],
  "tup_ri__ro__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
@@ -36525,7 +36525,7 @@
   ""
  ],
  "tup_ri__ro__subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.subscript",
+  "reject:expr.call:call.arg_shape.tuple",
   "",
   ""
  ],
@@ -36535,7 +36535,7 @@
   ""
  ],
  "tup_ri__ro__temp_accessor__fn": [
-  "reject:expr.method_call:call.arg_shape.tuple",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
@@ -36565,7 +36565,7 @@
   ""
  ],
  "tup_ri__ro__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.call_rvalue",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
@@ -36605,9 +36605,9 @@
   ""
  ],
  "tup_ri__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.field_access",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [form_convert[const borrow](call(mk_b, [])._v)])"
  ],
  "tup_ri__ro__ternary_calls__ctor": [
   "reject:expr.call:call.ctor_arg.tuple",
@@ -36645,7 +36645,7 @@
   ""
  ],
  "tup_ri__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.tuple",
   "",
   ""
  ],
@@ -36685,7 +36685,7 @@
   ""
  ],
  "tup_ri__ro__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.other.expr.if_expr",
+  "reject:expr.call:call.arg_shape.tuple",
   "",
   ""
  ],
@@ -36725,7 +36725,7 @@
   ""
  ],
  "uni_rec__ro__borrow_method__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.arg_shape.union",
   "",
   ""
  ],
@@ -36805,7 +36805,7 @@
   ""
  ],
  "uni_rec__ro__copy_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.arg_shape.union",
   "",
   ""
  ],
@@ -36845,9 +36845,9 @@
   ""
  ],
  "uni_rec__ro__ctor_rvalue__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [union_lift[::tpy::Union<const Other*, const R*>]{&(ctor(R, [coerce(lit(6) -> int32)]))}])"
  ],
  "uni_rec__ro__dict_items_value__ctor": [
   "ok",
@@ -36925,7 +36925,7 @@
   ""
  ],
  "uni_rec__ro__dict_subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.arg_shape.union",
   "",
   ""
  ],
@@ -36965,7 +36965,7 @@
   ""
  ],
  "uni_rec__ro__global_name__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.arg_shape.union",
   "",
   ""
  ],
@@ -37205,7 +37205,7 @@
   ""
  ],
  "uni_rec__ro__nested_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.arg_shape.union",
   "",
   ""
  ],
@@ -37245,7 +37245,7 @@
   ""
  ],
  "uni_rec__ro__obj_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.arg_shape.union",
   "",
   ""
  ],
@@ -37285,7 +37285,7 @@
   ""
  ],
  "uni_rec__ro__own_call__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.arg_shape.union",
   "",
   ""
  ],
@@ -37365,7 +37365,7 @@
   ""
  ],
  "uni_rec__ro__prop_own__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.arg_shape.union",
   "",
   ""
  ],
@@ -37405,7 +37405,7 @@
   ""
  ],
  "uni_rec__ro__prop_ref__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.arg_shape.union",
   "",
   ""
  ],
@@ -37445,7 +37445,7 @@
   ""
  ],
  "uni_rec__ro__subscript__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.arg_shape.union",
   "",
   ""
  ],
@@ -37485,7 +37485,7 @@
   ""
  ],
  "uni_rec__ro__temp_accessor__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.arg_shape.union",
   "",
   ""
  ],
@@ -37525,7 +37525,7 @@
   ""
  ],
  "uni_rec__ro__temp_field__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.arg_shape.union",
   "",
   ""
  ],
@@ -37565,7 +37565,7 @@
   ""
  ],
  "uni_rec__ro__ternary_calls__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.arg_shape.union",
   "",
   ""
  ],
@@ -37605,7 +37605,7 @@
   ""
  ],
  "uni_rec__ro__ternary_names__static": [
-  "reject:expr.method_call:method.qualcall.arg.union",
+  "reject:expr.call:call.arg_shape.union",
   "",
   ""
  ],

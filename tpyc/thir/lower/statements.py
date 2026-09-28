@@ -580,6 +580,7 @@ from .expressions import (
     _container_slice_recv_ok,
     _constructs_value,
     _flush_witness,
+    _hoists_arg_temp,
     _own_tuple_shape_match,
     _own_tuple_borrow_lift_arg,
     _ptr_read_derefs,
@@ -7679,11 +7680,17 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
                         if src_ref and src_name in lc.pointers else None),
             loc=loc)
     if value is None:
-        value = _lower_expr(
+        value = _flush_witness("flush.unpack_source", _lower_expr(
             stmt.value, lc, declared,
             use=_ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True,
                          pos=SinkPos.UNPACK_SOURCE),
-            field_prechecked=isinstance(stmt.value, TpyFieldAccess))
+            field_prechecked=isinstance(stmt.value, TpyFieldAccess)))
+        if (any(b in ("frame_ptr_elem", "frame_ptr_addr") for b in binds)
+                and _hoists_arg_temp(value)):
+            # An alias frame field outlives the case block the temp is
+            # declared in, and the borrow-tuple result may point into it.
+            note_detail("unpack.alias_temp_arg")
+            raise ThirUnsupported("res.unpack")
     _witness("res.frame_unpack")
     # Same lvalue-select rule as the sync arm: the frame's own fields outlive
     # the case block the holder lives in, so the const-ref bind is the strictly
@@ -16143,13 +16150,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             target_cpps=tuple(target_cpps), binds=tuple(bind_tags),
             source_bind=(TupleSourceBind.NAME_CREF if lvalue_select
                          else TupleSourceBind.RVALUE),
-            source_expr=_lower_expr(
+            source_expr=_flush_witness("flush.unpack_source", _lower_expr(
                 stmt.value, lc, declared,
                 use=_ExprUse(
                     result=_ExprResultUse.STORAGE,
                     allow_temps=True,
                     pos=SinkPos.UNPACK_SOURCE),
-                field_prechecked=isinstance(stmt.value, TpyFieldAccess)),
+                field_prechecked=isinstance(stmt.value, TpyFieldAccess))),
             loc=loc)
     if isinstance(stmt, TpyForEach):
         route = _select_for_each_route(

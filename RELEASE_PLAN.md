@@ -39,12 +39,10 @@ unless marked otherwise. Batched by likely shared cause; each batch is one
   - `optional-list-elem-decl-drops-deref-check`
   - `unnarrowed-optional-elem-field-read`
 - **E -- lowering rejects and crashes** (mostly THIR lowering arms):
-  - `ctor-str-concat-field-rejects` -- `self.full = a + "!"` in `__init__`
-  - `thir-validator-escapes-unpack-temp` (crash)
   - `tuple-ref-element-container-field-read`
-  - `qualcall-union-arg-missing-const-wrap` (the rvalue-argument face)
-  - `thir-int-methodarg-shift-not-folded` (the fix is parked on
-    `thir-fold-wip`)
+  - `thir-int-methodarg-shift-not-folded` (needs one spelling rule for
+    integer literals first -- TODO: "One spelling rule for integer
+    literals")
 - **A -- generators** (frame-local declaration and narrowing):
   - `gen-finally-local-assign-internal-error` (crash)
   - `generator-optional-match-arm-not-narrowed`

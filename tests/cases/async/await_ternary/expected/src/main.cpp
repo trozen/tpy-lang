@@ -98,13 +98,11 @@ __coro_pick pick(std::string_view tag, bool b) {
         __state = S_DONE;  // until a yield sets where to resume
         cond = true;
         if (cond) {
-            __coro_arg_0 = "then-run";
-            __sub_0.emplace(__coro_arg_0);
+            __sub_0.emplace("then-run");
             __state = S_RESUME_0;
             continue;
         } else {
-            __coro_arg_1 = "else-skipped";
-            __sub_1.emplace(__coro_arg_1);
+            __sub_1.emplace("else-skipped");
             __state = S_RESUME_1;
             continue;
         }
@@ -147,13 +145,11 @@ __coro_pick pick(std::string_view tag, bool b) {
         __await_lift_0 = std::move(__r4).value();
         __sub_4.reset();
         if (__await_lift_0) {
-            __coro_arg_5 = "z-then-skip";
-            __sub_5.emplace(__coro_arg_5);
+            __sub_5.emplace("z-then-skip");
             __state = S_RESUME_5;
             continue;
         } else {
-            __coro_arg_6 = "z-else-run";
-            __sub_6.emplace(__coro_arg_6);
+            __sub_6.emplace("z-else-run");
             __state = S_RESUME_6;
             continue;
         }
@@ -189,13 +185,11 @@ __coro_pick pick(std::string_view tag, bool b) {
         std::cout << "x" << " " << x << "\n";
         cond2 = false;
         if (cond2) {
-            __coro_arg_2 = "then-skipped";
-            __sub_2.emplace(__coro_arg_2);
+            __sub_2.emplace("then-skipped");
             __state = S_RESUME_2;
             continue;
         } else {
-            __coro_arg_3 = "else-run";
-            __sub_3.emplace(__coro_arg_3);
+            __sub_3.emplace("else-run");
             __state = S_RESUME_3;
             continue;
         }
@@ -203,16 +197,14 @@ __coro_pick pick(std::string_view tag, bool b) {
     case S_JOIN_1: {
         y = __await_ternary_1;
         std::cout << "y" << " " << y << "\n";
-        __coro_arg_4 = "z-cond";
-        __sub_4.emplace(__coro_arg_4, false);
+        __sub_4.emplace("z-cond", false);
         __state = S_RESUME_4;
         continue;
     }
     case S_JOIN_2: {
         z = __await_ternary_2;
         std::cout << "z" << " " << z << "\n";
-        __coro_arg_7 = "w-cond";
-        __sub_7.emplace(__coro_arg_7, true);
+        __sub_7.emplace("w-cond", true);
         __state = S_RESUME_7;
         continue;
     }

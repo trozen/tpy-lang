@@ -47,8 +47,6 @@ struct __coro_sub {
 struct __coro_caller {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::string __coro_arg_0;
-    std::string __coro_arg_1;
     std::exception_ptr __finally_exc_0;
     std::exception_ptr __finally_exc_1;
     std::optional<__coro_sub> __sub_0;

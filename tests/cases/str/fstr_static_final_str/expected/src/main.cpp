@@ -13,7 +13,8 @@ namespace tpyapp::main {
 //     label(f"hello {NAME} v{VERSION} ({dynamic})")
 void main() {
     std::string_view dynamic = "world";
-    ::tpyapp::label_infra::emit("hello {} v{} ({})", {::tpyapp::label_infra::tag("static", NAME), ::tpyapp::label_infra::tag("static", ::tpyapp::const_mod::VERSION), ::tpyapp::label_infra::tag("dynamic", dynamic)});
+    std::vector<std::string> __tmp_1 = {::tpyapp::label_infra::tag("static", NAME), ::tpyapp::label_infra::tag("static", ::tpyapp::const_mod::VERSION), ::tpyapp::label_infra::tag("dynamic", dynamic)};
+    ::tpyapp::label_infra::emit("hello {} v{} ({})", __tmp_1);
 }
 
 // from label_macro import label

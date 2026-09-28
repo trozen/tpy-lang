@@ -53,9 +53,7 @@ struct __coro_doubler {
 struct __coro_main_coro {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::string __coro_arg_0;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t1;
-    std::string __coro_arg_1;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t2;
     int32_t a;
     int32_t b;

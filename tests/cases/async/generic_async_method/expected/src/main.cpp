@@ -30,8 +30,7 @@ namespace tpyapp::main {
         a = std::move(__r0).value();
         __sub_0.reset();
         std::cout << a << "\n";
-        __coro_arg_0 = "world";
-        __sub_1.emplace((*c), __coro_arg_0);
+        __sub_1.emplace((*c), "world");
         __state = S_RESUME_1;
         continue;
     }

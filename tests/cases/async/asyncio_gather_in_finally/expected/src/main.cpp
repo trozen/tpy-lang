@@ -119,10 +119,8 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
     case S_JOIN_4: {
         try {
             tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
-            __coro_arg_0 = "a";
-            (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::cleanup_task(__coro_arg_0))));
-            __coro_arg_1 = "b";
-            (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::cleanup_task(__coro_arg_1))));
+            (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::cleanup_task("a"))));
+            (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::cleanup_task("b"))));
             __sub_0.emplace((*tasks));
             __state = S_RESUME_0;
             continue;
