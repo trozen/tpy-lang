@@ -4164,6 +4164,9 @@ class ExpressionAnalyzer:
                 self.ctx.set_expr_type(read, captured)
             func.params.append((read.name, captured))
         func.capture_params = tuple(captures)
+        for name in captures:
+            self.ctx.func.capture_sites.setdefault(
+                name, (loc.line if loc else None, "a generator expression"))
         # The frame iterates the source through its own param while the body
         # may name the same container itself -- a capture, or a module global
         # it reads directly; the loop's loan on the param alone would not see
@@ -5206,6 +5209,9 @@ class ExpressionAnalyzer:
         free_names = collect_name_refs(expr.body)
         captured = sorted((free_names - param_set) & outer_locals)
         expr.captured_names = captured
+        for name in captured:
+            self.ctx.func.capture_sites.setdefault(
+                name, (expr.loc.line if expr.loc else None, "a lambda"))
         # Callable context: captures must be by value (std::function can escape).
         # Fn (template) stays inline; captures by reference are safe.
         if isinstance(fn_type, CallableType) and not fn_type.is_template:

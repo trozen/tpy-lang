@@ -53,6 +53,8 @@ void test_hint_generic_call(std::vector<double>& xs);
 void test_hint_nested_empty();
 // def test_float_seed(c: bool) -> None:
 void test_float_seed(bool c);
+// def test_captured_none_seed() -> None:
+void test_captured_none_seed();
 
 // def empty_list[T](n: int) -> Own[list[T]]:
 //     out: list[T] = []

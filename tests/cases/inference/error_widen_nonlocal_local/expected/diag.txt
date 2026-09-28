@@ -1,0 +1,1 @@
+main.py:11: error: 'x' has type int32 in the enclosing function, and this 'nonlocal' binding would make it int64; annotate its first binding there: x: int64

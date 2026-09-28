@@ -133,6 +133,16 @@ def test_float_seed(c: bool) -> None:
         total = 9.5  # tpyc: ok
     print("float_seed", total)
 
+def test_captured_none_seed() -> None:
+    # a nested def read the None-seeded local while it was None; the value
+    # binding still makes it `int32 | None`, which the def reads as before
+    x = None
+    def g() -> None:
+        print("captured_none_seed", x)
+    g()
+    x = 5  # tpyc: ok
+    g()
+
 test_int_widen()
 test_float_widen()
 test_float_stays_float()
@@ -151,3 +161,4 @@ test_hint_lambda()
 test_hint_generic_call([1.5])
 test_hint_nested_empty()
 test_float_seed(False)
+test_captured_none_seed()

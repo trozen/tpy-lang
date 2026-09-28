@@ -1,0 +1,1 @@
+main.py:10: error: 'y' is bound to int at line 8 and to float here, and CPython keeps each value's own type; write 3.0 instead of 3, or annotate y: float

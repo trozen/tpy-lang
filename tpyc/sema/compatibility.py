@@ -2059,6 +2059,13 @@ class TypeCompatibility:
         existing_raw = (info.element_type if info is not None
                         else existing_pl.element_type)
         new_elem_raw = self._list_like_element(value_type)
+        if (new_elem_raw is None and isinstance(value_type, RefType)
+                and self._list_like_element(value_type.wrapped) is not None):
+            return CompatError(
+                f"Type mismatch in {context}: it holds a "
+                f"list[{self._default_resolve_element(existing_raw)}] of its "
+                f"own and cannot be rebound to share an existing "
+                f"{value_type.wrapped}", loc)
         if new_elem_raw is None:
             return CompatError(
                 f"Type mismatch in {context}: expected "
