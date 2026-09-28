@@ -622,6 +622,9 @@ class MatchAnalyzer:
         predecl -= set(capture_bind_types) - agreeing
         predecl |= ((hoistable & set(self.ctx.func.current_scope.bindings))
                     - self.ctx.func.global_declarations)
+        if not self.ctx.func.init_terminated:
+            predecl -= self.stmts._frame_block_keeps(
+                arm_new, predecl, "'match' statement", keepable=arm_new)
         if predecl:
             self.ctx.record_branch_decls(stmt, {
                 name: self.ctx.func.current_scope.lookup(name)

@@ -1224,6 +1224,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # `{ auto __del_sink = std::move([*]name); }` block per sunk name --
     # skip-only dels stay on the no-code THIRNoOpStmt face).
     "stmt.del_var_sink",
+    # `del` of a generator or coroutine local: `name.reset();` in place
+    # (lowering).
+    "stmt.close_local",
+    # A plain function's generator or coroutine local some `del` closes:
+    # declared as an empty optional, the binding engaging it (lowering).
+    "decl.closed_frame_optional",
     "stmt.del_item_multi",          # multi-target del: one __delitem__ line per target
     "stmt.del_attr_multi",          # multi-target del: one __delattr__ line per target
     # Rebound container-literal local (lowering; the F2d rebind-slot

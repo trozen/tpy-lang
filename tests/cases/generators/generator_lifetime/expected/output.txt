@@ -1,0 +1,143 @@
+plain_branch 10
+items finally 2 10
+plain_branch 1
+items finally 2 1
+plain_branch_param 1
+plain_branch_param after
+items finally 2 1
+ctx enter
+plain_with 20
+ctx exit
+plain_with_exit 1
+plain_with_exit after 7
+plain_with_param 3
+tally exit 1
+plain_with_param after 4
+items finally 2 3
+plain_finally 0
+mutating finally
+plain_finally after 9
+plain_block_then_grow 1
+plain_block_then_grow end 102
+plain_block_then_grow log 1
+plain_refill 1
+items finally 2 1
+plain_refill 3
+items finally 2 3
+plain_refill after
+plain_refill_del 1
+items finally 2 1
+plain_refill_del 3
+items finally 2 3
+plain_refill_del after
+plain_param_after_loop 0 5
+items finally 2 5
+plain_param_after_loop 1 5
+plain_param_after_loop after 6
+items finally 2 5
+plain_loop_var 0
+cell finally 0
+plain_loop_var 10
+cell finally 10
+plain_loop_var after
+plain_alias 1 2
+items finally 3 1
+plain_del 0
+mutating finally
+plain_del after 9
+plain_abandon 1
+items finally 2 1
+plain_abandon 3
+items finally 2 3
+plain_abandon after
+plain_refill_holder 2
+noisy del 1
+plain_refill_holder 6
+noisy del 3
+plain_refill_holder after
+gen_branch 30
+gen_branch 31
+items finally 2 30
+gen_branch abandoned at 1
+items finally 2 1
+gen_finally 0
+gen_finally 0
+mutating finally
+gen_finally abandoned at 0
+mutating finally
+gen_rows pass 1
+gen_rows 1
+gen_rows 2
+gen_rows pass 3
+items finally 2 1
+gen_rows 3
+gen_rows 4
+items finally 2 3
+gen_span_arg 1
+gen_span_arg 1
+gen_rows pass 1
+gen_rows abandoned at 1
+items finally 2 1
+gen_refill_del 1
+gen_refill_del 2
+items finally 2 1
+gen_refill_del 3
+gen_refill_del 4
+items finally 2 3
+gen_refill_del abandoned at 1
+items finally 2 1
+gen_loop_var_del 0
+cell finally 0
+gen_loop_var_del 10
+cell finally 10
+gen_loop_var_del abandoned at 0
+cell finally 0
+gen_rebuild 1
+watched finally 1
+gen_rebuild 1
+watched finally 2
+gen_rebuild abandoned at 1
+watched finally 1
+gen_with_scalar_exit 3
+tally exit 1
+gen_with_scalar_exit 4
+items finally 2 3
+gen_user_read 4
+gen_user_read 2
+items finally 2 4
+gen_user_read 4
+gen_user_read 3
+items finally 2 4
+gen_user_read 4
+items finally 2 4
+gen_del 0
+mutating finally
+gen_del 9
+gen_del abandoned at 0
+mutating finally
+method 5
+method 6
+items finally 2 5
+method 7
+method 8
+items finally 2 7
+method abandoned at 5
+items finally 2 5
+method_plain 5
+method_plain 6
+method_plain 7
+method_plain 8
+method seen 2
+method_count 5
+method_count 6
+method_count 5
+method_count 6
+method_count seen 6
+work finally 1
+async_loop 1
+work finally 3
+async_loop 3
+async_gen_refill 1
+items finally 2 1
+async_gen_refill 3
+items finally 2 3

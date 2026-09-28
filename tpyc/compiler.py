@@ -675,6 +675,13 @@ class Compiler:
         self._ext_glue_cpp_paths: list[Path] = []
         # Count of bodies lowered through THIR, reported by the test harness.
         self._thir_routed_bodies = 0
+        # Each registered method's source bodies by (owning type, name), for
+        # a statement-level question its mutation facts do not answer.
+        self.method_bodies: dict[tuple[str | None, str], list] = {}
+        # The dunder calls each node makes without spelling them
+        # (sema/receiver_calls.py record_implicit_call), read across modules
+        # by the frame rules.
+        self.implicit_calls: IdentityMap = IdentityMap()
         # Per-face witness counts (thir/faces.py) for the harness's
         # zero-witness report.
         self._thir_face_witnesses: dict[str, int] = {}

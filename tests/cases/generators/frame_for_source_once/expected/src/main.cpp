@@ -668,6 +668,7 @@ __coro_async_zip async_zip(const std::vector<int32_t>& xs, const std::vector<int
 //         await asyncio.sleep(0)                      # -> S_RESUME_0
 //     return total
 ::tpystd::tpy::Poll<int32_t> __coro_async_genexpr::__poll__(::tpystd::coro::Waker waker) {
+    try {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
@@ -688,9 +689,10 @@ __coro_async_zip async_zip(const std::vector<int32_t>& xs, const std::vector<int
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, (*__for_src_0)));
         if (!(*__for_r_0).has_value()) {
-            __state = S_DONE;
-            int32_t __tpy_async_ret = total;
-            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+            __for_itr_0.reset();
+            __for_src_0.reset();
+            __state = S_JOIN_1;
+            continue;
         }
         v = ::tpy::unwrap_ref(*(*__for_r_0));
         total = ::tpy::add_check<int32_t>(total, v);
@@ -698,7 +700,16 @@ __coro_async_zip async_zip(const std::vector<int32_t>& xs, const std::vector<int
         __state = S_RESUME_0;
         continue;
     }
+    case S_JOIN_1: {
+        __state = S_DONE;
+        int32_t __tpy_async_ret = total;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
     }
     __builtin_unreachable();
 }

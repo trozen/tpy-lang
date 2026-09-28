@@ -197,24 +197,25 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_lines_of::__next__() {
     }
     case S_RESUME_0:  // after: yield line
     case S_JOIN_0: {
-        bool __fin_ran_4 = false;
         try {
-            __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, (*f)));
-            if (!(*__for_r_0).has_value()) {
-                __fin_ran_4 = true;
-                (*__with_ctx_0).__exit__({}, nullptr, {});
-                __state = S_JOIN_1;
-                continue;
+            try {
+                __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, (*f)));
+                if (!(*__for_r_0).has_value()) {
+                    __for_itr_0.reset();
+                    __state = S_JOIN_3;
+                    continue;
+                }
+                line = ::tpy::unwrap_ref(*(*__for_r_0));
+                __state = S_RESUME_0;
+                return line;
+            } catch (...) {
+                __for_itr_0.reset();
+                throw;
             }
-            line = ::tpy::unwrap_ref(*(*__for_r_0));
-            __state = S_RESUME_0;
-            return line;
         } catch (::tpy::BaseException& __exc_0) {
-            if (__fin_ran_4) throw;
             (*__with_ctx_0).__exit__({}, &__exc_0, {});
             throw;
         } catch (...) {
-            if (__fin_ran_4) throw;
             (*__with_ctx_0).__exit__({}, nullptr, {});
             throw;
         }
@@ -232,6 +233,23 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_lines_of::__next__() {
             (*__with_ctx_0).__exit__({}, &__exc_0, {});
             throw;
         } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_JOIN_3: {
+        bool __fin_ran_6 = false;
+        try {
+            __fin_ran_6 = true;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            __state = S_JOIN_1;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_6) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_6) throw;
             (*__with_ctx_0).__exit__({}, nullptr, {});
             throw;
         }

@@ -520,8 +520,6 @@ def main() -> None:
     branch_first_bound([40, 41], True)
     branch_alias([50, 51], True)
     print("outer_lift", list(outer_lift()))
-    # Bound first: a finished generator's locals live until its frame dies
-    # (BUGS.md#finished-frame-keeps-locals).
     order = list(frame_order(True))
     print("frame_order", order)
     generic_generator()

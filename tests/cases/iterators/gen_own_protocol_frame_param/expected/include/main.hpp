@@ -125,9 +125,9 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T, T_items>, std::t
     T_items items;
     int32_t i;
     using __for_src_0_t = decltype((items));
-    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> item;
     ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
     ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> item;
 
     enum : int32_t {
         S_INITIAL = 0,

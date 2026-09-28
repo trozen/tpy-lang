@@ -61,6 +61,7 @@ from .nodes import (
     THIRContainerLiteral,
     THIRListRepeat,
     THIRContinue,
+    THIRCloseLocal,
     THIRDelVar,
     THIRDelItem,
     THIRCtorCall,
@@ -4520,6 +4521,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             sigil = "*" if deref else ""
             out.write(f"{indent}{{ auto __del_sink = "
                       f"std::move({sigil}{name}); }}\n")
+    elif isinstance(stmt, THIRCloseLocal):
+        for name in stmt.names:
+            out.write(f"{indent}{name}.reset();\n")
     elif isinstance(stmt, THIRDelItem):
         # One `::tpy::__delitem__(recv, key);` line per target, in source
         # order.

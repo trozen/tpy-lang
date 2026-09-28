@@ -1361,6 +1361,14 @@ class FunctionGenerator:
             self.ctx.analyzer.function_hoisted_vars[synth] = (
                 self.ctx.analyzer.function_hoisted_vars[impl]
             )
+        if impl in self.ctx.analyzer.function_frame_local_roots:
+            self.ctx.analyzer.function_frame_local_roots[synth] = (
+                self.ctx.analyzer.function_frame_local_roots[impl]
+            )
+        if impl in self.ctx.analyzer.function_closed_frames:
+            self.ctx.analyzer.function_closed_frames[synth] = (
+                self.ctx.analyzer.function_closed_frames[impl]
+            )
         if impl in self.ctx.analyzer.function_move_through_vars:
             self.ctx.analyzer.function_move_through_vars[synth] = (
                 self.ctx.analyzer.function_move_through_vars[impl]
@@ -1424,6 +1432,14 @@ class FunctionGenerator:
         if impl in self.ctx.analyzer.function_hoisted_vars:
             self.ctx.analyzer.function_hoisted_vars[synth] = (
                 self.ctx.analyzer.function_hoisted_vars[impl]
+            )
+        if impl in self.ctx.analyzer.function_frame_local_roots:
+            self.ctx.analyzer.function_frame_local_roots[synth] = (
+                self.ctx.analyzer.function_frame_local_roots[impl]
+            )
+        if impl in self.ctx.analyzer.function_closed_frames:
+            self.ctx.analyzer.function_closed_frames[synth] = (
+                self.ctx.analyzer.function_closed_frames[impl]
             )
         if impl in self.ctx.analyzer.function_move_through_vars:
             self.ctx.analyzer.function_move_through_vars[synth] = (

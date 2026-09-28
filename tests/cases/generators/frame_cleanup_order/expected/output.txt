@@ -1,0 +1,81 @@
+gen got 1
+gen inner finally 1
+gen source finally
+gen outer finally
+gen caught
+with got 1
+with got 2
+with inner finally
+with exit
+with caught
+once got 1
+once got 2
+once inner finally
+once caught
+method got 1
+method inner finally 1
+method source finally
+method caught
+async inner finally 1
+async source finally
+async caught
+caught got 1
+caught got 2
+caught inner finally
+caught I
+async-caught inner finally
+async-caught I
+in-with got 1
+in-with got 2
+in-with inner finally
+in-with exit none False index True
+in-with main caught I
+outer-fin got 1
+outer-fin got 2
+outer-fin inner finally
+outer-fin outer finally
+outer-fin main caught I
+catch-all got 1
+catch-all inner finally
+catch-all source finally
+catch-all caught I
+catch-all end
+ret got 1
+ret got 2
+ret inner finally
+ret outer finally
+ret done
+ret-with got 1
+ret-with got 2
+ret-with inner finally
+ret-with exit none True index False
+ret-with done
+outermost got 1
+outermost finally
+outermost caught K
+own-normal fin
+own-normal outer caught I
+own-normal got [1]
+async-own-normal fin
+async-own-normal outer caught I
+own-unwind inner fin
+own-unwind mid fin
+own-unwind outer caught I
+own-unwind got [1, 2]
+stale-unwind inner fin
+stale-unwind mid fin
+stale-unwind outer caught I
+stale-unwind end
+stale-unwind got [1, 2, 3]
+stale-normal inner fin
+stale-normal mid fin
+stale-normal outer caught I
+stale-normal end
+stale-normal got [1, 3]
+stale-exit inner fin
+stale-exit boom exit none True
+stale-exit caught I
+stale-exit end
+stale-exit got [1, 2]
+lent 1
+dropped [1, 2]

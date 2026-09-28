@@ -98,7 +98,7 @@ from ...typesys import (
     OwnType,
     PendingListType,
     PendingViewType,
-    ConcreteCoroType,
+    ConcreteCoroType, ConcreteGenType,
     ReadonlyType,
     TpyType,
     TypeParamRef,
@@ -212,6 +212,8 @@ from ..nodes import (
     THIRCoerce,
     THIRContainerLiteral,
     THIRContinue,
+    THIRCloseLocal,
+    THIRStmtSeq,
     THIRDelVar,
     THIRDelItem,
     THIRErrorReturnBind,
@@ -3109,8 +3111,37 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
     return hoist_decls
 
 
+def _frame_slot_roots_ok(name: str, lc: '_LowerCtx',
+                         declared: 'AbstractSet[str] | None' = None) -> bool:
+    """Whether storage for the frame-holding local `name` placed NOW is
+    younger than everything its frame borrows (sema's
+    `frame_local_roots`): a parameter the body never rebinds, the receiver,
+    a module global -- or, for a slot declared at a block head, a name in
+    `declared` there. A resumable frame orders its own fields by what they
+    borrow, so it answers yes."""
+    if lc.func.is_generator or lc.func.is_async:
+        return True
+    fact = lc.analyzer.function_frame_local_roots.get(lc.func, {}).get(name)
+    if fact is None:
+        return False
+    for root in fact[0]:
+        if root is None:
+            return False
+        if declared is not None and root in declared:
+            continue
+        if root == "self" and lc.self_receiver == "self":
+            continue
+        if root in lc.prescan.param_names:
+            if root in lc.prescan.reassigned:
+                return False
+            continue
+        if root in lc.prescan.bound_names:
+            return False
+    return True
+
+
 def _rebind_rvalue_source_ok(init: TpyExpr, target_t: TpyType,
-                             analyzer, *, frame_borrows_local: bool) -> bool:
+                             analyzer, *, frame_roots_ok: bool) -> bool:
     """The rvalue shapes a slot rebind admits (`__slot_N = <init>`): a
     shape-checked container literal or comprehension, an F1-record rvalue,
     or a container-returning by-value/Own call (the storage-call family --
@@ -3122,12 +3153,13 @@ def _rebind_rvalue_source_ok(init: TpyExpr, target_t: TpyType,
     if _container_comp_arg(init, target_t):
         return True
     if frame_object_slot(target_t):
-        # The slot sits at the function's top, so the frame filling it may
-        # borrow only what outlives that (sema's TpyVarDecl stamp).
+        # The frame filling the slot may borrow only what is older than the
+        # slot (`_frame_slot_roots_ok`, asked by the caller, which knows
+        # where the slot stands).
         if not _frame_factory_source(init, target_t, analyzer):
             return False
-        if frame_borrows_local:
-            note_detail("decl.frame_borrows_local")
+        if not frame_roots_ok:
+            note_detail("decl.frame_slot_roots")
             return False
         return True
     if _record_rvalue_source_shape(init, analyzer):
@@ -3180,6 +3212,30 @@ def _rebind_rvalue_source_ok(init: TpyExpr, target_t: TpyType,
     return False
 
 
+def _closed_frame_first_decl(stmt: TpyVarDecl,
+                             scope: '_LowerScope') -> 'THIRStmt | None':
+    """The first declaration of a plain function's generator local that a
+    `del` closes (sema's `function_closed_frames`): the empty optional,
+    then the binding engaging it in place, so the close can end the frame
+    where it stands."""
+    lc, declared = scope.lc, scope.declared
+    if (lc.func.is_generator or lc.func.is_async or stmt.init is None
+            or stmt.name in declared
+            or stmt.name not in lc.analyzer.function_closed_frames.get(
+                lc.func, ())):
+        return None
+    vtype = unwrap_ref_type(_var_decl_type(stmt, lc.analyzer))
+    if not isinstance(_binding_peel(vtype), ConcreteGenType):
+        return None
+    name, cpp = _optional_storage_hoist_entry(stmt.name, vtype, declared, lc)
+    _witness("decl.closed_frame_optional")
+    bind = _lower_stmt_dispatch(stmt, scope)
+    return THIRStmtSeq(stmts=(
+        THIRVarDecl(name=name, resolved_type=vtype, init=None, cpp_type=cpp,
+                    loc=getattr(stmt, "loc", None)),
+        bind))
+
+
 def _rebind_rvalue_use(init: TpyExpr, slot_t: TpyType) -> '_ExprUse':
     """A slot assign is a storage sink at statement position: a
     container-returning call needs the STORAGE result use (the storage-decl
@@ -3217,7 +3273,7 @@ def _lower_rebind_ptr_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
     # the slot holds -- the pointee for a pointer-repr Optional local.
     slot_t = _rebind_slot_target(vtype, lc.analyzer)
     if not _rebind_rvalue_source_ok(stmt.init, slot_t, lc.analyzer,
-                                    frame_borrows_local=stmt.frame_borrows_local):
+                                    frame_roots_ok=True):
         note_detail("res.rebind_ptr_source")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     value = _lower_storage_value(stmt.init, slot_t, lc, declared, loc,
@@ -3590,6 +3646,12 @@ def _optional_storage_hoist_entry(name: str, var_type: TpyType,
     engaging assigns via `optional_locals`, last-use moves via
     `movable_locals`. Shared by the if cascade and the with family so the
     registrations cannot drift."""
+    if frame_object_slot(var_type) and not _frame_slot_roots_ok(
+            name, lc, declared):
+        # What the frame borrows must be older than the optional, or it
+        # would die first.
+        note_detail("hoist.frame_slot_roots")
+        raise ThirUnsupported("hoist.frame_slot_roots")
     declared[name] = var_type
     lc.pointers.add(name)
     lc.optional_locals.add(name)
@@ -4940,10 +5002,10 @@ def _lower_record_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
         note_detail("decl.record_slot_const")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     if (hoisted and frame_object_slot(vtype)
-            and stmt.frame_borrows_local):
+            and not _frame_slot_roots_ok(stmt.name, lc)):
         # The hoisted slot sits at the function's top, older than any local
         # the frame could borrow.
-        note_detail("decl.frame_borrows_local")
+        note_detail("decl.frame_slot_roots")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     init = _lower_storage_value(
         stmt.init, vtype, lc, declared, loc,
@@ -9137,6 +9199,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 lc.forwarded_map[stmt.name], _var_decl_type(stmt, analyzer))
             _witness("decl.forwarded_alias")
             return THIRNoOpStmt()
+        closed = _closed_frame_first_decl(stmt, scope)
+        if closed is not None:
+            return closed
         if stmt.linkage != VarLinkage.DEFAULT:
             if lc.top_level_scope:
                 # A `native_global(...)` binding declares nothing of its own
@@ -10014,9 +10079,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         scope.admission_pointers()),
                     loc=loc)
             move = _move_through_source(stmt, target_t, lc)
+            # The optional stands at the block head, where the predecl
+            # checked what the frame borrows (`_optional_storage_hoist_entry`).
             if not (move or _rebind_rvalue_source_ok(
-                    stmt.init, target_t, analyzer,
-                    frame_borrows_local=stmt.frame_borrows_local)):
+                    stmt.init, target_t, analyzer, frame_roots_ok=True)):
                 note_detail("reseat.opt_storage_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             _witness("reseat.opt_storage")
@@ -10064,7 +10130,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             slot_t = _rebind_slot_target(target_t, analyzer)
             if not _rebind_rvalue_source_ok(
                     stmt.init, slot_t, analyzer,
-                    frame_borrows_local=stmt.frame_borrows_local):
+                    frame_roots_ok=_frame_slot_roots_ok(stmt.name, lc)):
                 note_detail("reseat.branch_rvalue_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             _witness("reseat.branch_rvalue")
@@ -10226,7 +10292,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             if is_rvalue_source(analyzer, stmt.init):
                 if not _rebind_rvalue_source_ok(
                         stmt.init, declared[stmt.name], analyzer,
-                        frame_borrows_local=stmt.frame_borrows_local):
+                        frame_roots_ok=_frame_slot_roots_ok(stmt.name, lc)):
                     note_detail("decl.rebind_source")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 return THIRAssign(
@@ -15462,12 +15528,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         # comment (nonlocal's semantics live entirely in the capture list --
         # sema's node facts). `del x` follows a skip ladder:
         # a name that is not the sole owner of its value -- or whose
-        # destruction is a no-op -- emits nothing; the rest move-sink
+        # destruction is a no-op -- emits nothing; a generator or coroutine
+        # closes in place (a started frame cannot move); the rest move-sink
         # (`{ auto __del_sink = std::move(name); }`, deref-first for an
         # owning pointer-local).
         if isinstance(stmt, TpyDelVar):
             globals_ = analyzer.function_global_decls.get(lc.func, set())
             sinks: list[tuple[str, bool]] = []
+            closes: list[str] = []
             for name in stmt.names:
                 # A narrowed binding has no sink render here; an unknown
                 # name has no binding to sink; an `auto&&` storage-tuple
@@ -15486,6 +15554,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         or name in lc.prescan.param_names
                         or name in globals_):
                     continue
+                if isinstance(_binding_peel(declared[name]),
+                              ConcreteGenType):
+                    # A generator closes in place: its storage is an
+                    # optional or a frame slot (`function_closed_frames`
+                    # gives a plain function's one an optional), never a
+                    # move of a started frame. (A coroutine handle only
+                    # starts once awaited or handed on, so it keeps the
+                    # move-sink below.)
+                    if (name in lc.rebind_ptr_frame_locals
+                            or not (lc.func.is_generator or lc.func.is_async
+                                    or name in lc.optional_locals)):
+                        raise ThirUnsupported("stmt.del_var:frame_storage")
+                    closes.append(escape_cpp_name(name))
+                    continue
                 if name in lc.pointers:
                     # An alias-born pointer-local may point at another local's
                     # storage, so it is skipped.
@@ -15494,6 +15576,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     sinks.append((escape_cpp_name(name), True))
                     continue
                 sinks.append((escape_cpp_name(name), False))
+            if closes:
+                _witness("stmt.close_local")
+                close = THIRCloseLocal(names=tuple(closes), loc=loc)
+                if not sinks:
+                    return close
+                return THIRStmtSeq(stmts=(
+                    close, THIRDelVar(sinks=tuple(sinks), loc=loc)))
             if sinks:
                 _witness("stmt.del_var_sink")
                 return THIRDelVar(sinks=tuple(sinks), loc=loc)
@@ -17648,8 +17737,10 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
     hoist_decls = _lower_hoist_predecls(hoists, declared, lc,
                                         "with.hoist_decl", with_flavors)
     n_returns_before = len(lc.nested_returns)
+    # Sema declares every body name in front of the block except a
+    # generator it keeps there, which nothing after the block reads.
     body = _lower_scoped_stmts(stmt.body, lc, dict(declared),
-                               loop_depth=loop_depth)
+                               branch_decls_ok=True, loop_depth=loop_depth)
     if resumable and len(lc.nested_returns) != n_returns_before:
         # A return nested in a resumable LEAF with renders through the ctx
         # return hook, which walks the skeleton's finally_stack -- this

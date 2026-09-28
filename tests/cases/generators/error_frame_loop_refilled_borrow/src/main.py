@@ -1,27 +1,22 @@
-# In a generator body, a generator bound in a loop may not borrow storage the
-# loop binds again on its next pass (docs/LANGUAGE_FEATURES.md, Generators).
+# In a generator body, a generator bound in a loop is still open when the next
+# pass runs, so the loop may not write anything it borrows.
 from typing import Iterator
 
 from tpy import int32
 
 
-def items(xs: list[int32]) -> Iterator[int32]:
+def inner(xs: list[int32]) -> Iterator[int32]:
     for x in xs:
         yield x
 
 
-def first(g: Iterator[int32]) -> int32:
-    for v in g:
-        return v
-    return -1
+def outer(rows: list[list[int32]]) -> Iterator[int32]:
+    for row in rows:
+        xs = [row[0], row[1]]
+        # The subject: the next pass binds xs again while this g is open.
+        g = inner(xs)  # tpyc: error(/cannot keep 'g' open across passes of this loop: the loop binds 'xs' again/)
+        for v in g:
+            yield v
 
 
-def outer() -> Iterator[int32]:
-    for i in range(2):
-        xs = [i, i + 10]
-        # The subject: the next pass refills xs while this g is still open.
-        g = items(xs)  # tpyc: error(/cannot bind generator 'g' here: it borrows 'xs', which a loop around it binds again/)
-        yield first(g)
-
-
-print(list(outer()))
+print(list(outer([[1, 2], [3, 4]])))

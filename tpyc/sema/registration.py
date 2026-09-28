@@ -52,6 +52,7 @@ from ..typesys import (
     unwrap_readonly,
     unwrap_ref_type,
 )
+from ..compilation_context import get_current_compiler
 from ..module_names import public_module_name
 from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
@@ -1565,6 +1566,10 @@ class TypeRegistrar:
                 is_auto_readonly_mutable_clone=method.is_auto_readonly_mutable_clone,
                 originating_module=self.ctx.module_name,
             )
+            compiler = get_current_compiler()
+            if compiler is not None and not method.is_stub:
+                compiler.method_bodies.setdefault(
+                    (owning_type_qname, method.name), []).append(method)
             if method.is_generator:
                 # The frame also stores the receiver by reference, but -1 is
                 # NOT stamped: return_borrows_from containing -1 blocks

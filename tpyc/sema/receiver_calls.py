@@ -15,23 +15,127 @@ call, so every site answers the same three questions here, once:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from ..compilation_context import get_current_compiler
 from ..parse import (
-    TpyBinOp, TpyCoerce, TpyExpr, TpyFieldAccess, TpyIfExpr, TpyMethodCall,
+    TpyBinOp, TpyChainedCompare, TpyCoerce, TpyExpr, TpyFieldAccess, TpyIfExpr, TpyMethodCall,
     TpyName, TpyStmt, TpySubscript,
 )
+from ..type_def_registry import protocol_info_of
 from ..typesys import (
-    FunctionInfo, MutationCallEdge, ReadonlyType, TpyType, unwrap_ref_type,
-    unwrap_send_sync,
+    FunctionInfo, MutationCallEdge, NominalType, ReadonlyType, TpyType,
+    is_bodyless_binding, is_dyn_protocol, is_protocol_type, unwrap_own,
+    unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from .context import (
     _is_self_call_deferred, _local_traces_to_self, _root_name_of_expr,
-    element_index_key, element_loan_mutation_warning, loan_mutation_warning,
+    call_param_args, element_index_key, element_loan_mutation_warning,
+    loan_mutation_warning,
 )
 
 if TYPE_CHECKING:
     from .context import SemanticContext
+
+
+@dataclass(frozen=True)
+class ImplicitCall:
+    """A method a node calls without spelling it: `fi` (None when no
+    FunctionInfo names it -- a protocol method) on `receiver`."""
+    fi: FunctionInfo | None
+    receiver: TpyExpr
+    method: str
+
+
+def record_implicit_call(site: TpyExpr | TpyStmt, callee: FunctionInfo | None,
+                         recv: TpyExpr, method: str) -> None:
+    """Note that `site` calls `method` (`callee`) on `recv`. Every callee is
+    kept, readonly ones included: a readonly method may still write a
+    module global."""
+    compiler = get_current_compiler()
+    if compiler is None:
+        return
+    calls = compiler.implicit_calls.setdefault(site, [])
+    if not any(c.fi is callee and c.receiver is recv and c.method == method
+               for c in calls):
+        calls.append(ImplicitCall(callee, recv, method))
+
+
+def _user_record(ctx: 'SemanticContext', t: TpyType | None):
+    t = unwrap_readonly(unwrap_own(unwrap_ref_type(t))) if t is not None else None
+    if not (isinstance(t, NominalType) and t.is_user_record):
+        return None
+    return ctx.registry.get_record_for_type(t)
+
+
+def record_truth_calls(ctx: 'SemanticContext',
+                       leaves: 'list[TpyExpr]') -> None:
+    """A truth test of a user-type value runs its `__bool__`, or its
+    `__len__` when it has none, on each leaf the test reaches."""
+    for leaf in leaves:
+        while isinstance(leaf, TpyCoerce):
+            leaf = leaf.expr
+        record = _user_record(ctx, ctx.get_expr_type(leaf))
+        if record is None:
+            continue
+        for method in ("__bool__", "__len__"):
+            fis = ctx.registry.get_method_overloads_with_parents(record, method)
+            for fi in fis:
+                record_implicit_call(leaf, fi, leaf, method)
+            if fis:
+                break
+
+
+def record_protocol_arg_calls(ctx: 'SemanticContext',
+                              call: TpyExpr) -> None:
+    """A runtime callee (one with no body sema sees) runs the methods of a
+    structural protocol parameter on its argument -- `len(b)` runs
+    `b.__len__` -- which for a user type are the type's own."""
+    fi = getattr(call, "resolved_function_info", None)
+    if fi is None or not is_bodyless_binding(fi):
+        return
+    for param, arg in call_param_args(call):
+        pt = unwrap_readonly(unwrap_own(unwrap_ref_type(param.type)))
+        if not is_protocol_type(pt) or is_dyn_protocol(pt):
+            continue
+        while isinstance(arg, TpyCoerce):
+            arg = arg.expr
+        record = _user_record(ctx, ctx.get_expr_type(arg))
+        if record is None:
+            continue
+        for method in _protocol_methods(pt):
+            for mfi in ctx.registry.get_method_overloads_with_parents(
+                    record, method):
+                record_implicit_call(call, mfi, arg, method)
+
+
+def _protocol_methods(protocol: NominalType) -> list[str]:
+    out: list[str] = []
+    pending = [protocol]
+    seen: set[str] = set()
+    while pending:
+        info = protocol_info_of(pending.pop())
+        if info is None or info.name in seen:
+            continue
+        seen.add(info.name)
+        out += [m.name for m in info.methods]
+        pending += info.parent_protocols
+    return out
+
+
+def implicit_calls(node: TpyExpr | TpyStmt) -> list[ImplicitCall]:
+    """The dunder calls `node` makes without spelling them, as sema resolved
+    them. A chained comparison's calls are made by the pairs sema builds for
+    it, which no tree walk reaches."""
+    compiler = get_current_compiler()
+    if compiler is None:
+        return []
+    out = list(compiler.implicit_calls.get(node, ()))
+    if isinstance(node, TpyChainedCompare):
+        for pair in node.pairs or ():
+            out += compiler.implicit_calls.get(pair, ())
+    return out
 
 
 def receiver_leaves(expr: TpyExpr) -> list[TpyExpr]:
@@ -242,14 +346,18 @@ def receiver_is_readonly(ctx: SemanticContext, recv: TpyExpr,
 
 def check_implicit_readonly_receiver(
         ctx: SemanticContext, recv: TpyExpr, callee: FunctionInfo | None,
-        method: str, site: TpyExpr | TpyStmt) -> None:
+        method: str, site: TpyExpr | TpyStmt, *, record: bool = True) -> None:
     """A readonly receiver may not take a mutating implicit dunder call.
 
     Whether the dunder may be called on a const receiver is its EMITTED
     const-ness, which const inference settles for every module only in the
     workspace-wide finalize pass (`resolve_pending_readonly_receiver_checks`),
     so a known callee is queued for it. With no callee the caller has
-    already judged the call mutating, and it is rejected at once."""
+    already judged the call mutating, and it is rejected at once.
+    `record=False` for a call the frame rules count elsewhere (an awaited
+    frame runs what the calls that built it may write)."""
+    if record:
+        record_implicit_call(site, callee, recv, method)
     if callee is not None and not call_mutates_receiver(callee):
         return
     if not receiver_is_readonly(ctx, recv):
@@ -265,7 +373,8 @@ def check_implicit_readonly_receiver(
 def credit_implicit_receiver_call(
         ctx: SemanticContext, recv: TpyExpr, obj_type: TpyType | None,
         callee: FunctionInfo | None, method: str, site: TpyExpr | TpyStmt, *,
-        eager: bool = False, check_loans: bool = True) -> None:
+        eager: bool = False, check_loans: bool = True,
+        record: bool = True) -> None:
     """The receiver effects of a dunder call no call node spells.
 
     `callee` is the resolved dunder (found through the MRO); it decides
@@ -277,11 +386,15 @@ def credit_implicit_receiver_call(
     receiver directly rather than deferring a `self`-rooted one to Phase 2.
     `check_loans=False` when the caller asked `check_receiver_call_loans`
     itself, before registering a loan the call must not see (the for
-    statement's own iteration loan).
+    statement's own iteration loan). `record` as for
+    `check_implicit_readonly_receiver`.
     """
+    if record:
+        record_implicit_call(site, callee, recv, method)
     if callee is not None and not call_mutates_receiver(callee):
         return
-    check_implicit_readonly_receiver(ctx, recv, callee, method, site)
+    check_implicit_readonly_receiver(ctx, recv, callee, method, site,
+                                     record=False)
     if check_loans and obj_type is not None:
         check_receiver_call_loans(ctx, recv, obj_type, method, site,
                                   callee=callee)

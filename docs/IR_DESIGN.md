@@ -262,6 +262,41 @@ in the current model.
   resumable frame and no prologue or post-yield code runs eagerly. What this bullet used to
   park behind the reroute stays filed on its own: the alias clobber (BUGS.md
   `resumable-alias-identity`) and the owning whole-tuple-slot `yield t` rejects.
+- **Loop-bound generators that borrow storage the loop writes.** The everyday
+  `for row in rows: xs = [...]; g = gen(xs); for v in g: yield v` keeps the previous
+  pass's `g` open, in CPython, until the next pass binds `g` again -- after `xs` is
+  already a new list, while the old `g` still reads the old one. TPy writes the one
+  storage both passes share, so a generator or async body REJECTS the shape whenever
+  the loop may write what the frame borrows (`sema/loop_frames.py`), and a plain
+  function keeps `g` in the pass's C++ block, closing a pass early
+  (BUGS.md#plain-loop-generator-closes-at-pass-end). A plain function does the same
+  for a generator first bound in any other block -- an `if` arm, a `with` / `try`
+  body, a `match` arm -- closing it at the block's end
+  (BUGS.md#plain-block-generator-closes-at-block-end); read after the block it may
+  borrow only storage that outlives the body
+  (BUGS.md#generator-block-bind-borrows-local-rejects), because declaring it in front
+  of the block together with the locals it borrows (tried 2026-09-25 on
+  `frame-borrow-order`) leaves every later write to those locals unchecked against
+  the open frame -- `if k: g = gen(xs); first(g)` then `xs.append(...)` in a loop is
+  a heap-use-after-free when the frame closes -- and one declared there over a
+  parameter stays open while a `with` exit writes that parameter
+  (BUGS.md#plain-with-exit-writes-generator-storage). The fix is to close the old
+  frame just before the write (design R, studied 2026-09-25 on `frame-borrow-order`),
+  which is not a legal placement without MIR: the close must come after the
+  statement's own RHS runs (`xs = [next(g)]` consumes `g`) and before the store, on
+  normal and exceptional edges alike, and at implicit points (a `with` whose
+  `__exit__` replaces `h.xs` under a `g` created inside the body); a whole-name root
+  may hide an internal iterator (a live generator iterating a list across an
+  `append` is a use-after-free with only a warning today); only element-shaped or iterator roots may close early -- a container
+  or whole-`self` root the `finally` reads through must stay open, as CPython shares
+  that object, and whole-`self` rules must not reject the everyday
+  `for t in self.tokens(): self.cur = Cell(t)`; an early close is observable when the
+  `finally` feeds code before CPython's close point; and effect-free operands do not
+  prove the cleanup commutes with the store. It needs MIR W3 (exit and cleanup
+  effects and their order), W4 (frame dependencies across suspension and close) and
+  W5 (element / returned / escaped provenance, place-granular call effects)
+  (`docs/MIR_M3_COMPLETION_PLAN.md`); its gate is the two ASan matrices of that
+  study (`/tmp/agents/fbo-int/m3`, 301 cells; `m4`, 288 cells).
 
 ---
 

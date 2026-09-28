@@ -1,0 +1,1 @@
+main.py:39: error: cannot use 'g' after the 'with' block it is bound in: it borrows 'r', and a generator declared in front of the 'with' block may borrow only parameters the function never rebinds, the receiver and module globals, so 'g' is closed when the block ends; use it inside the block only

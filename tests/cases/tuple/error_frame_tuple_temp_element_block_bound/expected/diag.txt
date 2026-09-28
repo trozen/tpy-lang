@@ -1,1 +1,1 @@
-main.py:20: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.frame_borrows_local)
+main.py:24: error: cannot use 'it' after the 'if' block it is bound in: it borrows a temporary, so 'it' is closed when the block ends; use it inside the block only

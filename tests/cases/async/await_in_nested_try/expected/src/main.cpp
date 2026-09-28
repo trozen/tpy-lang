@@ -82,6 +82,7 @@ __coro_fail fail() {
                 return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret_0));
             } catch (const ::tpy::ValueError&) {
                 __sub_0.reset();
+                if (__fin_ran_2) throw;
                 try {
                     std::cout << "inner-handler" << "\n";
                     __sub_1.emplace(5);
@@ -109,19 +110,27 @@ __coro_fail fail() {
     case S_RESUME_1: {  // after: y = await value(int32(5))
         bool __fin_ran_4 = false;
         try {
-            auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
-            if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
-            y = std::move(__r1).value();
-            __sub_1.reset();
-            int32_t __tpy_async_ret_1 = y;
-            this->__finally_1();
-            __fin_ran_4 = true;
-            this->__finally_0();
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret_1));
+            bool __fin_ran_5 = false;
+            try {
+                auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+                if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+                y = std::move(__r1).value();
+                __sub_1.reset();
+                int32_t __tpy_async_ret_1 = y;
+                __fin_ran_5 = true;
+                this->__finally_1();
+                __fin_ran_4 = true;
+                this->__finally_0();
+                __state = S_DONE;
+                return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret_1));
+            } catch (...) {
+                if (!__fin_ran_5) {
+                    this->__finally_1();
+                }
+                throw;
+            }
         } catch (...) {
             __sub_1.reset();
-            this->__finally_1();
             if (!__fin_ran_4) {
                 this->__finally_0();
             }

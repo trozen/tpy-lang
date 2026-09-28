@@ -34,7 +34,7 @@ from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach,
     TpyFieldAccess, TpyName, TpyCall, TpyLambda,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef, TpyCoerce,
-    SourceLocation, expr_contains_self_method_call,
+    TpyDelVar, SourceLocation, expr_contains_self_method_call,
 )
 from .expressions import _collect_body_name_refs
 from ..interop.sema_validators import (
@@ -103,6 +103,8 @@ from .statements import StatementAnalyzer
 from ..prescan import ScanResult, scan_reassigned_vars, liveness_alias_sources, collect_fact_kills
 from ..liveness import analyze_last_uses, collect_finally_return_candidates
 from .alias_rebind import decide_rebind_storage, global_write_facts
+from .frame_close import decide_frame_close, stamp_close_materials
+from .loop_frames import resolve_loop_frame_calls
 from ..value_category import is_rvalue_source, wants_move
 from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
@@ -382,6 +384,11 @@ class SemanticAnalyzer:
         # Per function: what each generator-object local borrows
         # (FunctionTrackingState.frame_local_roots), for the frame layout.
         self.function_frame_local_roots: IdentityMap = IdentityMap()
+        # Per loop statement: what a pass of it binds (shared with sema).
+        self.loop_bindings: IdentityMap = self.ctx.loop_bindings
+        # Per function: the frame-holding locals some `del` closes. In a
+        # plain function they hold their frame in an optional.
+        self.function_closed_frames: IdentityMap = IdentityMap()
         self.top_level_scan_result: ScanResult | None = None
 
         # Per-function/method hoisted vars (try/finally + branch predecl)
@@ -975,6 +982,7 @@ class SemanticAnalyzer:
         # yield-slot verdicts can be answered order-independently.
         self._settle_deferred_generic_yields()
         self.stmts.scopes.settle_deferred_escapes()
+        decide_frame_close(self.ctx.frame_close_fis)
         self._advance_phase(
             self._PHASE_REGISTER_SIGNATURES,
             self._PHASE_ANALYZE_BODIES,
@@ -1070,6 +1078,7 @@ class SemanticAnalyzer:
         self.calls.resolve_pending_borrow_checks()
         self.compat.resolve_pending_iter_copy_checks()
         self.calls.resolve_pending_match_subject_checks()
+        resolve_loop_frame_calls(self.ctx)
         self.calls.resolve_pending_readonly_receiver_checks()
         self.expr.resolve_pending_lambda_borrow_checks()
         # Last diagnostic-emitting step for this analyzer, so it is where a
@@ -1461,6 +1470,7 @@ class SemanticAnalyzer:
             if name in local_names
         )
         fi.frame_subframes = list(self.ctx.func.current_awaited_subframes)
+        stamp_close_materials(self.ctx, func, fi)
         if func.loc is not None:
             self.ctx.frame_fact_fns[(func.loc.line, func.name)] = fi
 
@@ -1922,6 +1932,13 @@ class SemanticAnalyzer:
         self.function_own_rebind_names[func] = self.ctx.func.own_rebind_names
         self.function_frame_local_roots[func] = dict(
             self.ctx.func.frame_local_roots)
+        deleted: set[str] = set()
+        walk_body_stmts(func.body, lambda e: None,
+                        lambda s: deleted.update(s.names)
+                        if isinstance(s, TpyDelVar) else None)
+        closed = deleted & set(self.ctx.func.frame_local_roots)
+        if closed:
+            self.function_closed_frames[func] = frozenset(closed)
         if self.ctx.func.hoisted_vars:
             self.function_hoisted_vars[func] = self.ctx.func.hoisted_vars.copy()
         if self.ctx.func.move_through_vars:

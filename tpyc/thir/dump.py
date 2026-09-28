@@ -48,6 +48,7 @@ from .nodes import (
     THIRContainerLiteral,
     THIRContinue,
     THIRDefaultConstruct,
+    THIRCloseLocal,
     THIRDelVar,
     THIRDelItem,
     THIRFinallyDeferredReturn,
@@ -578,6 +579,8 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
         sinks = ", ".join(f"{'*' if deref else ''}{name}"
                           for name, deref in stmt.sinks)
         return [f"{pad}del [{sinks}]"]
+    if isinstance(stmt, THIRCloseLocal):
+        return [f"{pad}close [{', '.join(stmt.names)}]"]
     if isinstance(stmt, THIRDelItem):
         return [f"{pad}del [{', '.join(_expr(c) for c in stmt.calls)}]"]
     if isinstance(stmt, THIRPrint):

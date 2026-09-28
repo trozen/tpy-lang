@@ -183,6 +183,7 @@ __coro_fail fail() {
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ValueError&) {
+            if (__fin_ran_7) throw;
             bool __fin_ran_8 = false;
             try {
                 result = 99;

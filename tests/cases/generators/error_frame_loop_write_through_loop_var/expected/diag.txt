@@ -1,0 +1,1 @@
+main.py:25: error: cannot keep 'g' open across passes of this loop: the loop calls 'append', which may write 'row' while 'g' from the previous pass still borrows it; close it with 'del g' before the pass ends, or iterate it inside a helper function

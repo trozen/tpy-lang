@@ -63,8 +63,8 @@ inline std::ostream& operator<<(std::ostream& os, const Fresh& obj) {
 // def gen() -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     ::tpy::frame_state __state;
-    ::tpy::frame_slot<Item> a;
     ::tpy::frame_slot<Fresh> __with_ctx_0;
+    ::tpy::frame_slot<Item> a;
 
     enum : int32_t {
         S_INITIAL = 0,

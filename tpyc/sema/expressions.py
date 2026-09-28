@@ -64,7 +64,7 @@ from ..prescan import (
     _expr_to_narrowing_key, bound_names_of, storage_spelling, walrus_names_of)
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
-from .context import PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_generator_object, frame_binding_fact, record_frame_binding_roots, call_param_args
+from .context import PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
 from ..value_category import (is_rvalue_source, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
@@ -89,7 +89,8 @@ from .overloads import OverloadAmbiguityError, resolve_overload
 from .type_ops import frame_yield_may_borrow
 from .scope_tracker import lend_roots
 from .receiver_calls import (call_mutates_receiver, check_implicit_readonly_receiver,
-                             credit_implicit_receiver_call)
+                             credit_implicit_receiver_call, record_implicit_call,
+                             record_protocol_arg_calls, record_truth_calls)
 from .iter_loans import (_record_iter_receiver_mutation, iterated_storage,
                          register_iteration_loans)
 
@@ -448,7 +449,7 @@ class ExpressionAnalyzer:
         return make_concrete_gen(
             it, fi.name, owner=owner,
             inferred_type_args=tuple(targs) if targs else None,
-            module_qual=module_qual)
+            module_qual=module_qual, fi=fi)
 
     def _reject_frame_held_adapter(self, call: TpyExpr,
                                    fi: 'FunctionInfo') -> None:
@@ -536,11 +537,13 @@ class ExpressionAnalyzer:
         elif isinstance(expr, TpyCall):
             typ = self._concrete_generator_call(
                 expr, self.calls.analyze_call(expr))
+            record_protocol_arg_calls(self.ctx, expr)
             self.narrowing.invalidate_field_facts_for_call(expr)
             self.narrowing.invalidate_closure_written_facts()
         elif isinstance(expr, TpyMethodCall):
             typ = self._concrete_generator_call(
                 expr, self.methods.analyze_method_call(expr))
+            record_protocol_arg_calls(self.ctx, expr)
             self.narrowing.invalidate_field_facts_for_method_call(expr)
             self.narrowing.invalidate_closure_written_facts()
         elif isinstance(expr, TpyFieldAccess):
@@ -609,7 +612,9 @@ class ExpressionAnalyzer:
         a comprehension filter, a ternary test, a `not` operand, the argument
         of a constructor that only tests it (`bool(...)`)."""
         self.mark_truth_test(expr)
-        return self.analyze_expr(expr)
+        typ = self.analyze_expr(expr)
+        record_truth_calls(self.ctx, truthy_operands(expr))
+        return typ
 
     def mark_truth_test(self, expr: TpyExpr) -> None:
         """Record that `expr` is only tested for truth. The `and` / `or` /
@@ -970,6 +975,14 @@ class ExpressionAnalyzer:
         # Before the namespace walk, which reaches the module level: a nested
         # def's name is a local of this scope from its start.
         self.ctx.check_nested_def_shadowed_read(expr.name, expr)
+        # A generator its block kept closed with the block.
+        closed = self.ctx.func.block_closed_frames.get(expr.name)
+        if closed is not None:
+            why, block = closed
+            raise self.ctx.error(
+                f"cannot use '{expr.name}' after the {block} it is bound in: "
+                f"{why}, so '{expr.name}' is closed when the block ends; use "
+                f"it inside the block only", expr)
 
         # No ephemeral-borrow closure-capture check is needed: an escaping closure
         # is Callable-typed and captures by value (copies the borrow's value -- safe),
@@ -1021,7 +1034,7 @@ class ExpressionAnalyzer:
             if expr.name in self.ctx.builtin_names:
                 return self.ctx.builtin_names[expr.name]
             # Lazy promotion of loop-scoped variables referenced after the loop
-            if self._promote_pending_loop_var(expr.name):
+            if self._promote_pending_loop_var(expr.name, expr):
                 typ = self.ctx.func.current_scope.lookup(expr.name)
             else:
                 raise self.ctx.error(f"Undefined variable: '{expr.name}'", expr)
@@ -1088,7 +1101,9 @@ class ExpressionAnalyzer:
             shared += 1
         return bind_stack[shared] if shared < len(bind_stack) else bind_stack[-1]
 
-    def _promote_pending_loop_var(self, name: str) -> bool:
+    def _promote_pending_loop_var(self, name: str,
+                                  node: 'TpyExpr | TpyStmt | None' = None
+                                  ) -> bool:
         """Promote a pending loop-scoped variable if present.
 
         Returns True if the variable was promoted: added to scope and
@@ -1100,7 +1115,10 @@ class ExpressionAnalyzer:
         pending = self.ctx.func.pending_loop_vars.get(name)
         if pending is None:
             return False
+        if name in self.ctx.func.pass_scoped_frames:
+            self._check_frame_outlives_loop(name, node)
         var_type, orig_stmt = pending.var_type, pending.head_stmt
+        self.ctx.func.pass_scoped_frames.pop(name, None)
         decl_stmt = self._pending_decl_anchor(pending.first_stack)
         # A body-declared local stays in the table: the promotion defines
         # it in the scope only, and the table is what the frame-local hoist
@@ -1132,6 +1150,44 @@ class ExpressionAnalyzer:
         if isinstance(orig_stmt, TpyForEach) and name == orig_stmt.var:
             orig_stmt.hoist_loop_var = True
         return True
+
+    def frame_scope_why(self, name: str, block: str) -> str | None:
+        """Why the frame of a plain function's generator or coroutine local
+        `name` may not be declared in front of `block`, where it is first
+        bound, or None. The declaration is older than any local and outlives
+        the block's passes, so the frame may borrow only what outlives the
+        body and what nothing rebinds: a parameter the body never rebinds,
+        the receiver, a module global."""
+        fact = self.ctx.func.frame_local_roots.get(name)
+        if fact is None:
+            return "what it borrows cannot be traced"
+        for root in sorted(fact[0], key=lambda r: r or ""):
+            if root is None:
+                return "it borrows a temporary"
+            if (root in self.ctx.func.current_reassigned_vars
+                    or not self.compat._name_is_param_or_global(root)):
+                return (f"it borrows '{root}', and a generator declared in "
+                        f"front of {block} may borrow only parameters the "
+                        f"function never rebinds, the receiver and module "
+                        f"globals")
+        return None
+
+    def _check_frame_outlives_loop(self, name: str,
+                                   node: 'TpyExpr | TpyStmt | None') -> None:
+        """A plain function's generator or coroutine bound in a loop body
+        and read after the loop is declared in front of the loop, so every
+        pass rebinds it there while the previous pass's frame is still
+        open (`frame_scope_why`)."""
+        src = self.ctx.func.frame_alias_sources.get(name)
+        why = (f"it is another name for '{src}', which ends with the pass"
+               if src is not None else self.frame_scope_why(name, "the loop"))
+        if why is None:
+            return
+        raise self.ctx.error(
+            f"cannot use '{name}' after the loop it is bound in: {why}; use "
+            f"'{name}' inside the loop only",
+            node if node is not None
+            else self.ctx.func.frame_binding_nodes.get(name, [None])[0])
 
     def sync_pending_loop_var_type(self, name: str, var_type: TpyType) -> None:
         """Write a promoted loop-body local's JOINED type back to the pending
@@ -1424,6 +1480,7 @@ class ExpressionAnalyzer:
             return self.analyze_expr(e)
         left_type = operand(expr.left)
         if expr.op in ("&&", "||"):
+            record_truth_calls(self.ctx, truthy_operands(expr.left))
             type_true, type_false = self.narrowing.condition_type_facts(expr.left)
             saved_types = dict(self.ctx.func.narrowed_types)
             # Save definitely_assigned: RHS may not execute due to short-circuit
@@ -3192,13 +3249,15 @@ class ExpressionAnalyzer:
         """
         if _root_name_of_expr(operand) is None:
             check_implicit_readonly_receiver(self.ctx, operand, None,
-                                             "__poll__", operand)
+                                             "__poll__", operand, record=False)
             return
         operand_type = self.ctx.get_expr_type(operand)
         bare = (unwrap_readonly(unwrap_own(unwrap_ref_type(operand_type)))
                 if operand_type is not None else None)
+        # The frame rules count an awaited frame's writes at the calls that
+        # built it.
         credit_implicit_receiver_call(self.ctx, operand, bare, None, "__poll__",
-                                      operand)
+                                      operand, record=False)
 
     def _unwrap_awaitable_return(self, ret_type: 'TpyType') -> 'TpyType':
         """Strip `Awaitable[T]` / `Cancellable[T]` wrapping from an async
@@ -3391,9 +3450,9 @@ class ExpressionAnalyzer:
                 self.compat.check_tuple_literal_members(
                     bound_lit, bound_tuple, TupleSink.LOCAL, "owned storage")
             if not unwrap_readonly(resolved).is_value_type():
-                if holds_generator_object(resolved):
+                if holds_frame_object(resolved):
                     record_frame_binding_roots(
-                        self.ctx, name, frame_binding_fact(expr.value), expr)
+                        self.ctx, name, frame_binding_fact(expr.value, self.ctx), expr)
                 if is_rvalue_source(self.ctx, expr.value):
                     note_owned_local(self.ctx, name, resolved)
                 else:
@@ -4905,6 +4964,9 @@ class ExpressionAnalyzer:
         callee = self._resolve_getitem_overload(
             keyed, record_type, inherited_subst, unwrap_readonly(index_type))
         if callee is None:
+            # Any overload may be the one that runs.
+            for fi in keyed:
+                record_implicit_call(expr, fi, expr.obj, "__getitem__")
             callee = next((fi for fi in keyed if call_mutates_receiver(fi)), None)
         if callee is not None:
             credit_implicit_receiver_call(

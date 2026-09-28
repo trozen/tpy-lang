@@ -1,1 +1,1 @@
-main.py:23: error: cannot bind generator 'g' here: it borrows 'xs', which a loop around it binds again on its next pass while this generator is still open; bind the generator outside the loop, or iterate it inside a helper function
+main.py:17: error: cannot keep 'g' open across passes of this loop: the loop binds 'xs' again while 'g' from the previous pass still borrows it; close it with 'del g' before the pass ends, or iterate it inside a helper function

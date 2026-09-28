@@ -1640,11 +1640,27 @@ struct __coro_async_genexpr {
         S_INITIAL = 0,
         S_RESUME_0 = 1,
         S_JOIN_0 = 2,
-        S_DONE = 3,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
     };
 
     __coro_async_genexpr(const std::vector<int32_t>& xs)
         : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
+
+    __coro_async_genexpr(__coro_async_genexpr&&) = default;
+    ~__coro_async_genexpr() {
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                __for_itr_0.reset();
+                __for_src_0.reset();
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned coroutine");
+        }
+    }
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

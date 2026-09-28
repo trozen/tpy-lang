@@ -56,9 +56,9 @@ struct __gen_skip_first : public ::tpy::next_iter_mixin<__gen_skip_first<T, T_it
     T_it it;
     bool started;
     using __for_src_0_t = decltype((it));
-    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
     ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
     ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -135,9 +135,9 @@ struct __gen_gtakewhile : public ::tpy::next_iter_mixin<__gen_gtakewhile<T, T_it
     F_pred pred;
     T_it it;
     using __for_src_0_t = decltype((it));
-    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
     ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
     ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -243,9 +243,9 @@ struct __gen_first_n : public ::tpy::next_iter_mixin<__gen_first_n<T, T_it>, ::t
     int32_t n;
     int32_t c;
     using __for_src_0_t = decltype((it));
-    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
     ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
     ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
 
     enum : int32_t {
         S_INITIAL = 0,

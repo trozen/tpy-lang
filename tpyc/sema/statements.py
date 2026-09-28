@@ -73,7 +73,8 @@ from .context import (PendingLocal, addr_taken_roots, call_borrow_operands,
                       canonical_storage_key,
                       expr_yields_non_null_ptr, LoopClauseEdges,
                       record_borrow_binding, record_stmt_borrow_binding,
-                      holds_generator_object, note_owned_local,
+                      holds_generator_object, holds_frame_object,
+                      note_owned_local,
                       frame_binding_calls, frame_binding_fact,
                       record_frame_binding_roots,
                       frame_borrowed_operands,
@@ -86,7 +87,10 @@ from .narrowing import NarrowingTracker
 from .overloads import OverloadAmbiguityError, resolve_overload
 from .scope_tracker import ScopeTracker
 from .init_tracker import InitTracker
-from .receiver_calls import check_implicit_readonly_receiver, credit_implicit_receiver_call
+from .receiver_calls import (
+    check_implicit_readonly_receiver, credit_implicit_receiver_call,
+    record_implicit_call,
+)
 from .iter_loans import (
     _record_iter_receiver_mutation, check_iter_receiver_loans, hold_whole,
     is_dangling_temporary_arg,
@@ -778,56 +782,107 @@ class StatementAnalyzer:
             inner, fi.name, owner=owner,
             inferred_type_args=tuple(targs) if targs else None,
             module_qual=module_qual,
-            result_is_borrow=aliases)
-
-    def _frame_borrows_local(self, call: 'TpyCall | TpyMethodCall') -> bool:
-        """Whether the frame this generator call builds borrows anything
-        that does not outlive the function body: a temporary, a local, or
-        the adapter a @dynamic protocol parameter binds. Parameters the body
-        never rebinds, the receiver and module globals
-        (`_name_is_param_or_global`) do outlive it."""
-        operands = frame_borrowed_operands(call)
-        if operands is None:
-            return True
-        fi = call.resolved_function_info
-        borrowed = fi.root.return_borrows_from if fi is not None else None
-        if any(i < len(fi.params) and is_dyn_protocol(unwrap_readonly(
-                   unwrap_ref_type(fi.params[i].type)))
-               for i in (borrowed or ())):
-            return True
-        for e in operands:
-            root = _root_name_of_expr(e)
-            # A parameter the body rebinds may by now name a local's storage.
-            if (root is None
-                    or root in self.ctx.func.current_reassigned_vars
-                    or not self.compat._name_is_param_or_global(root)):
-                return True
-        return False
+            result_is_borrow=aliases, fi=fi)
 
     def _record_frame_binding(self, stmt: TpyVarDecl) -> None:
-        """One binding of a generator-object local: the hoist stamp, the
-        per-name roots the frame layout checks, and the two shapes a
-        resumable frame cannot hold."""
+        """One binding of a frame-holding local: the per-name roots the
+        hoist, the loop-frame check and the frame layout read, and the
+        shapes a resumable frame cannot hold."""
         init = stmt.init
         while isinstance(init, TpyCoerce):
             init = init.expr
         calls = frame_binding_calls(init)
         fact: 'tuple[frozenset[str | None], bool] | None'
         if calls is None and isinstance(init, TpyName):
-            # A name bound from another generator local (an unpack's temp)
-            # borrows what that one does.
-            src = self.ctx.func.var_decl_by_name.get(init.name)
-            stmt.frame_borrows_local = (src.frame_borrows_local
-                                        if src is not None else True)
+            # A name bound from another frame-holding local -- an alias of
+            # the same generator object, or an unpack's temp -- borrows what
+            # that one does.
             fact = self.ctx.func.frame_local_roots.get(init.name)
+            if holds_generator_object(self.ctx.local_decl_type(init.name)):
+                self.ctx.func.frame_alias_sources[stmt.name] = init.name
         elif calls is None:
-            stmt.frame_borrows_local = True
             fact = None
         else:
-            stmt.frame_borrows_local = any(
-                self._frame_borrows_local(c) for c in calls)
-            fact = frame_binding_fact(init)
+            fact = frame_binding_fact(init, self.ctx)
         record_frame_binding_roots(self.ctx, stmt.name, fact, stmt)
+
+    def _frame_hoist_body(self) -> bool:
+        """A body whose locals are C++ block locals: a plain function or
+        method. A generator or async body keeps every local in its frame
+        for the frame's whole life already, and module code declares its
+        names at namespace scope."""
+        fn = self.ctx.func.current_function
+        return (isinstance(fn, TpyFunction) and not self.ctx.is_top_level
+                and not fn.is_generator and not fn.is_async)
+
+    def _frame_block_candidate(self, name: str) -> bool:
+        """A local holding a generator, its own or another name's. A name
+        the scope-escape check hoisted already has a slot at the function's
+        top; a coroutine is run to its end by `await` or handed on whole,
+        so when its name dies is never observed."""
+        t = (self.ctx.local_decl_type(name)
+             or self.ctx.func.current_scope.lookup(name))
+        return (name in self.ctx.func.frame_local_roots
+                and holds_generator_object(t)
+                and name not in self.ctx.func.escape_hoisted_vars)
+
+    def _frame_block_keeps(self, block_new: 'AbstractSet[str]',
+                           predecl: 'AbstractSet[str]', block: str, *,
+                           keepable: 'AbstractSet[str]' = frozenset()
+                           ) -> set[str]:
+        """In a plain function a generator first bound in a block lives in
+        the block's C++ scope unless the block's pre-declarations
+        (`predecl`, taken for a read after the block) declare it in front
+        of it. That declaration is older than any local, so the frame may
+        then borrow only what outlives the body
+        (`ExpressionAnalyzer.frame_scope_why`), and another name for a
+        generator only one declared there too. One that may not is kept in
+        the block when the block can declare it itself (`keepable`), and a
+        read after the block is an error (`block_closed_frames`); otherwise
+        it is an error here. Returns the kept names, to take out of
+        `predecl`."""
+        if not self._frame_hoist_body():
+            return set()
+        names = sorted(n for n in set(block_new) & set(predecl)
+                       if self._frame_block_candidate(n))
+        sources = self.ctx.func.frame_alias_sources
+        why: dict[str, str] = {}
+        for g in names:
+            if g not in sources:
+                w = self.expr.frame_scope_why(g, f"the {block}")
+                if w is not None:
+                    why[g] = w
+        changed = True
+        while changed:
+            changed = False
+            for g in names:
+                src = sources.get(g)
+                if (g not in why and src is not None and src in block_new
+                        and (src in why or src not in predecl)):
+                    why[g] = (f"it is another name for '{src}', which ends "
+                              f"with the {block}")
+                    changed = True
+        for g in sorted(why):
+            if g not in keepable:
+                raise self.ctx.error(
+                    f"cannot keep '{g}' open after the {block} it is bound "
+                    f"in: {why[g]}; iterate it inside a helper function",
+                    self.ctx.func.frame_binding_nodes.get(g, [None])[0])
+            self.ctx.func.block_closed_frames[g] = (why[g], block)
+        return set(why)
+
+    def _note_pass_scoped_frames(self, loop: 'TpyForEach | TpyWhile') -> None:
+        """A plain function keeps a frame-holding local first bound in a
+        loop body in the pass's C++ block, so it is gone when the next pass
+        starts -- unless a read after the loop declares it in front of the
+        loop (`_promote_pending_loop_var`)."""
+        if not self._frame_hoist_body():
+            return
+        for n, pending in self.ctx.func.pending_loop_vars.items():
+            if (pending.head_stmt is None
+                    and any(s is loop for s in pending.first_stack)
+                    and n in self.ctx.func.frame_local_roots):
+                self.ctx.func.pass_scoped_frames.setdefault(n, loop)
 
     def _binds_fresh_frame(self, stmt: TpyVarDecl) -> bool:
         """An unpack target bound to a temp that holds a new generator
@@ -1872,9 +1927,11 @@ class StatementAnalyzer:
             self.ctx.func.compound_stack.append(stmt)
         enclosing_genexprs = self.ctx.stmt_genexprs
         self.ctx.stmt_genexprs = []
+        analyzed = False
         try:
             self._analyze_stmt_dispatch(stmt)
             self._check_retained_genexprs(stmt)
+            analyzed = True
         finally:
             self.ctx.stmt_genexprs = enclosing_genexprs
             if is_compound:
@@ -1890,6 +1947,8 @@ class StatementAnalyzer:
             if pending:
                 self.ctx.func.non_null_ptr_vars |= pending
                 pending.clear()
+        if analyzed and isinstance(stmt, (TpyForEach, TpyWhile)):
+            self._note_pass_scoped_frames(stmt)
 
     def _check_retained_genexprs(self, stmt: TpyStmt) -> None:
         """A statement that binds a LAZY value keeps every genexpr it created
@@ -2210,6 +2269,9 @@ class StatementAnalyzer:
                 predecl = (branch_new & newly_assigned) - self.ctx.func.global_declarations
             else:
                 predecl = set()
+            if not self.ctx.func.init_terminated:
+                predecl -= self._frame_block_keeps(
+                    branch_new, predecl, "'if' block", keepable=branch_new)
             # An `if` that is the whole `else` body of another `if` (an
             # `elif`, or `else:` over a nested `if` -- the AST is the same)
             # has nothing after it in that block to read what its arms bound,
@@ -3101,6 +3163,7 @@ class StatementAnalyzer:
         all_bindings.update(self.ctx.func.current_scope.bindings)
         branch_new = set(all_bindings.keys()) - scope_before
         predecl = branch_new - self.ctx.func.global_declarations
+        self._frame_block_keeps(branch_new, predecl, "'try' statement")
         if predecl:
             self.ctx.record_branch_decls(stmt, {
                 name: all_bindings[name]
@@ -3233,6 +3296,7 @@ class StatementAnalyzer:
         if handler.binding:
             branch_new.discard(handler.binding)
         predecl = branch_new - self.ctx.func.global_declarations
+        self._frame_block_keeps(branch_new, predecl, "'try' statement")
         if predecl:
             self.ctx.record_branch_decls(stmt, {
                 name: all_bindings[name]
@@ -3396,6 +3460,7 @@ class StatementAnalyzer:
         # inside the try block and the post-try read won't compile.
         da_new = branch_new & (self.ctx.func.definitely_assigned - before.definitely_assigned)
         predecl = (branch_new if needs_full_hoist else da_new) - self.ctx.func.global_declarations
+        self._frame_block_keeps(branch_new, predecl, "'try' statement")
         if predecl:
             self.ctx.record_branch_decls(stmt, {
                 name: all_bindings[name]
@@ -3837,6 +3902,8 @@ class StatementAnalyzer:
         # since codegen wraps the body in try {} for the with's cleanup pattern.
         branch_new = set(self.ctx.func.current_scope.bindings.keys()) - scope_before
         predecl = branch_new - self.ctx.func.global_declarations
+        predecl -= self._frame_block_keeps(
+            branch_new, predecl, "'with' block", keepable=branch_new)
         if predecl:
             self.ctx.record_branch_decls(stmt, {
                 name: self.ctx.func.current_scope.lookup(name)
@@ -4343,13 +4410,13 @@ class StatementAnalyzer:
             # head declares a fresh local that a zero-trip loop leaves
             # uninitialized where CPython keeps the body's value.
             if self.ctx.func.current_scope.lookup(stmt.var) is None:
-                self.expr._promote_pending_loop_var(stmt.var)
+                self.expr._promote_pending_loop_var(stmt.var, stmt)
         elif stmt.var not in self.ctx.func.definitely_assigned:
             # A head-first name is bound only once an earlier read or binding
             # has placed its one declaration.
             if not self._pending_local_is_declared(stmt.var):
                 return
-            self.expr._promote_pending_loop_var(stmt.var)
+            self.expr._promote_pending_loop_var(stmt.var, stmt)
         existing = self.ctx.func.current_scope.lookup(stmt.var)
         if existing is None:
             return
@@ -5495,7 +5562,8 @@ class StatementAnalyzer:
                 # forced to adopt the element type.
                 pending = self.ctx.func.pending_loop_vars.get(stmt.name)
                 if (pending is not None and pending.head_stmt is None
-                        and self.expr._promote_pending_loop_var(stmt.name)):
+                        and self.expr._promote_pending_loop_var(stmt.name,
+                                                                stmt)):
                     existing_type = self.ctx.func.current_scope.lookup(stmt.name)
 
         # Block reassignment of Final globals at module level
@@ -5810,16 +5878,11 @@ class StatementAnalyzer:
             if isinstance(unwrap_readonly(unwrap_ref_type(var_type)),
                           ConcreteGenType):
                 self.ctx.var_types[stmt] = var_type
-                if (existing_type is not None and self.ctx.func.borrow_tracker
-                        .has_iter_borrow(stmt.name)):
-                    # The running loop steps the old generator, which an
-                    # in-place rebuild would pull out from under it.
-                    raise self.ctx.error(
-                        f"cannot rebind '{stmt.name}' inside a 'for' loop "
-                        f"over it: the loop is still running the generator "
-                        f"'{stmt.name}' holds; bind the new generator to a "
-                        f"new name",
-                        stmt)
+                if existing_type is not None:
+                    self._reject_generator_end_under_loop(
+                        stmt.name, stmt, "rebind",
+                        "bind the new generator to a new name")
+            if holds_frame_object(var_type):
                 self._record_frame_binding(stmt)
             # Record the owned binding on the decl node so codegen reads
             # Own[...] instead of re-deriving the bare protocol from the
@@ -7122,6 +7185,13 @@ class StatementAnalyzer:
                     raise self.ctx.error(
                         f"'del' is not supported for type {actual}; "
                         f"define __delitem__ to enable element deletion", stmt)
+                # A builtin container's delete is the store itself; a user
+                # type's runs its dunders, which may write anything.
+                if isinstance(actual, NominalType) and actual.is_user_record:
+                    for fi in self.ctx.registry.get_method_overloads_with_parents(
+                            record_info, "__delitem__"):
+                        record_implicit_call(subscript, fi, subscript.obj,
+                                             "__delitem__")
             else:
                 raise self.ctx.error(
                     f"'del' is not supported for type {actual}", stmt)
@@ -7271,9 +7341,28 @@ class StatementAnalyzer:
                 self.ctx.mark_param_mutated(root, through_field=True)
             self._enforce_readonly_assignment_target(target)
 
+    def _reject_generator_end_under_loop(self, name: str, node: TpyStmt,
+                                         verb: str, remedy: str) -> None:
+        """A running `for` over `name` steps the generator it holds, which
+        a rebind (rebuilt in place) or a `del` (closed in place) would pull
+        out from under it."""
+        bt = self.ctx.func.borrow_tracker
+        if bt.has_iter_borrow(name) or bt.has_iter_borrow(
+                bt.effective_storage(name)):
+            raise self.ctx.error(
+                f"cannot {verb} '{name}' inside a 'for' loop over it: the "
+                f"loop is still running the generator '{name}' holds; "
+                f"{remedy}",
+                node)
+
     def _analyze_del_var(self, stmt: TpyDelVar) -> None:
         """Analyze a variable deletion statement (del x)."""
         for name in stmt.names:
+            if holds_generator_object(self.ctx.local_decl_type(name)
+                                      or self.ctx.func.current_scope.lookup(
+                                          name)):
+                self._reject_generator_end_under_loop(
+                    name, stmt, "delete", "delete it after the loop")
             # A finally-deferred return holds a borrow of the local across
             # this finally body; del would free the storage it materializes
             # from. (CPython's pending return keeps the object alive -- the

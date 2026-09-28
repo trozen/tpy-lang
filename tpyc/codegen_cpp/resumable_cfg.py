@@ -53,6 +53,7 @@ from .context import (CodeGenError, FrameSourceUnnameable, escape_cpp_name,
 if TYPE_CHECKING:
     from ..parse.nodes import TpyFunction
     from ..typesys import NominalType, TpyType
+    from .frame_fields import FrameField
     from .gen_generators import GeneratorForInfo
 
 
@@ -96,6 +97,11 @@ class ResumableFuncState:
     # the `__coro_arg_<n>` hoisted locals that back rvalue temps borrowed by
     # an INLINE sub-coro across a suspension.
     next_arg_lift_id: int = 0
+    # Each `__coro_arg_<n>` local -> (the expression it holds, the local its
+    # statement binds or None): what the lift borrows, and which handle
+    # borrows the lift, for the frame's field order.
+    arg_lifts: 'dict[str, tuple[TpyExpr, str | None]]' = field(
+        default_factory=dict)
     # for-loop prescan (_prescan_resumable_for_loops). `*_prescanned` flags
     # preserve the original "cache even when the result is empty" semantics
     # (an empty map distinct from "not yet prescanned").
@@ -192,6 +198,12 @@ class ResumableFuncState:
     frame_layout: 'FrameLayoutPlan | None' = None
     # resumable-generator eligibility memoization (generator.py gate)
     gen_eligible: 'bool | None' = None
+    # Decomposed loop -> the fields it releases on leaving
+    # (`LoopSourceRegion`), decided before the CFG build.
+    loop_close_fields: 'dict[int, tuple[str, ...]]' = field(
+        default_factory=dict)
+    # Every frame field in declaration order (`gen_async._frame_fields`).
+    frame_fields: 'list[FrameField] | None' = None
 
 
 def resumable_state(func: 'TpyFunction') -> ResumableFuncState:
@@ -727,7 +739,24 @@ class WithRegion:
     loc_source: TpyStmt | None = None
 
 
-Region = Union[TryRegion, FinallyRegion, ExceptRegion, WithRegion]
+@dataclass(frozen=True)
+class LoopSourceRegion:
+    """The advance and body of a `for` loop whose source (or the iterator
+    or step result over it) the frame holds in fields whose destruction may
+    run user code. CPython drops the loop's iterator the moment control
+    leaves the loop -- exhaustion, `break`, `return`, an exception -- so a
+    source generator's `finally` runs there, not when this frame dies.
+    Leaving the region releases `fields` (already in release order).
+
+    It opens no C++ `try`: its cleanup cannot raise (a frame's destructor
+    turns a raising `finally` into a panic), so a catch that outlives it
+    releases it on entry instead."""
+    uid: int
+    fields: tuple[str, ...]
+
+
+Region = Union[TryRegion, FinallyRegion, ExceptRegion, WithRegion,
+               LoopSourceRegion]
 
 
 # -- Terminators: one per BB
@@ -1030,7 +1059,9 @@ class CFGBuilder:
                  with_uid_map: 'dict[int, list[int]] | None' = None,
                  try_finally_uid_map:
                     'dict[int, int] | None' = None,
-                 func_returns_void: bool = False) -> None:
+                 func_returns_void: bool = False,
+                 loop_close_fields:
+                    'dict[int, tuple[str, ...]] | None' = None) -> None:
         """
         `payload_factory(await_node, host_stmt, kind, bind_target,
         return_stmt) -> AwaitPayload` is called for each top-level await
@@ -1048,6 +1079,10 @@ class CFGBuilder:
         `with_uid_map` maps id(TpyWith) -> list of ctx_n (one per WithItem,
         in source order) for with-stmts pre-scanned and registered. Used
         by `_build_with`. Missing entries cause `_build_with` to raise.
+
+        `loop_close_fields` maps id(TpyForEach) -> the frame fields a
+        decomposed loop releases when control leaves it (a
+        `LoopSourceRegion`); a loop absent from it releases nothing early.
         """
         self._blocks: dict[int, BB] = {}
         self._next_bb_id: int = 0
@@ -1068,6 +1103,8 @@ class CFGBuilder:
         self._with_uid_map: dict[int, list[int]] = with_uid_map or {}
         self._try_finally_uid_map: dict[int, int] = try_finally_uid_map or {}
         self._func_returns_void: bool = func_returns_void
+        self._loop_close_fields: dict[int, tuple[str, ...]] = (
+            loop_close_fields or {})
         # (id(region), id(handler)) -> handler-entry BB id. Populated
         # by `_record_handler_entry` during try/except construction;
         # read by emitters via `get_handler_entry`.
@@ -1424,8 +1461,23 @@ class CFGBuilder:
                 loc=stmt.loc,
             )
         iter_init_bb = self._new_bb()
-        cond_bb = self._new_bb()
-        body_bb = self._new_bb()
+        # The advance and the body are the loop's; the setup is not, so that
+        # entering the loop needs no state of its own. Exhaustion, `break`
+        # and the `else` clause are outside it: CPython drops the iterator
+        # before the `else` runs.
+        close = self._loop_close_fields.get(id(stmt))
+        # One object for every block of the loop: region stacks are compared
+        # by identity.
+        loop_region = (LoopSourceRegion(uid=uid, fields=close)
+                       if close else None)
+        if loop_region is not None:
+            self._region_stack.append(loop_region)
+        try:
+            cond_bb = self._new_bb()
+            body_bb = self._new_bb()
+        finally:
+            if loop_region is not None:
+                self._region_stack.pop()
         # `exit_bb` is the EXHAUSTED (normal-exit) target; the `else` clause
         # runs there. `break` targets `after_bb` (skips else). No else ->
         # after_bb IS exit_bb (non-else for-loops unchanged).
@@ -1450,12 +1502,16 @@ class CFGBuilder:
             break_bb=after_bb,
             regions_at_entry=tuple(self._region_stack),
         ))
+        if loop_region is not None:
+            self._region_stack.append(loop_region)
         try:
             body_end = self._build_block(body_bb, stmt.body)
             if body_end is not None:
                 self._finish(body_end, Fall(next_bb=cond_bb))
         finally:
             self._loop_stack.pop()
+            if loop_region is not None:
+                self._region_stack.pop()
         if stmt.orelse:
             else_end = self._build_block(exit_bb, stmt.orelse)
             if else_end is not None:
