@@ -233,6 +233,7 @@ struct HTTPSConnection : _Connection {
     // def __init__(self, host: str, port: int32 = HTTPS_PORT,
     //              timeout: float | None = None,
     //              context: ssl.SSLContext | None = None) -> None:
+    HTTPSConnection() = default;
     explicit HTTPSConnection(std::string_view host, int32_t port = HTTPS_PORT, std::optional<double> timeout = std::nullopt, const ::tpystd::ssl::SSLContext* context = nullptr);
     // non-copyable (field '_tls')
     HTTPSConnection(const HTTPSConnection&) = delete;

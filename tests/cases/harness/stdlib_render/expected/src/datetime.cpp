@@ -4,7 +4,7 @@
 namespace tpystd::datetime {
 
 int32_t _MAXORDINAL_DAYS{};
-timezone UTC;
+timezone UTC{};
 ::tpy::BigInt _EPOCH_ORDINAL;
 ::tpy::BigInt _TIME_T_MAX;
 

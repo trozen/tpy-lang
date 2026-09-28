@@ -21,6 +21,10 @@ namespace tpyapp::main {
 //     # T inferred from arg
 //     e: int32 = make_default(42)
 //     print(e)
+//
+//     # a ValueType heir's `T()` runs the inherited `__init__` with its defaults
+//     f = make_default[NoisyHeir]()  # tpyc: ok
+//     print(f.n)
 void main() {
     int32_t a = ::tpyapp::main::make_default<int32_t>();
     std::cout << a << "\n";
@@ -33,6 +37,8 @@ void main() {
     std::cout << d << "\n";
     int32_t e = ::tpyapp::main::make_default<int32_t>(42);
     std::cout << e << "\n";
+    NoisyHeir f = ::tpyapp::main::make_default<NoisyHeir>();
+    std::cout << f.n << "\n";
 }
 
 // main()

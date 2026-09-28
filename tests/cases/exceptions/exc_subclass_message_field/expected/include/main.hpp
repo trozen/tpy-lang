@@ -37,8 +37,10 @@ inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
 
 
 // def __init__(self, message: str):
+//     super().__init__(message)
+//     # the subject: writes the inherited `message` slot
 //     self.message = message
-inline AppError::AppError(std::string_view message) {
+inline AppError::AppError(std::string_view message) : ::tpy::Exception(message) {
     this->message = message;
 }
 

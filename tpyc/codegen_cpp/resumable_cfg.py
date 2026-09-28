@@ -189,7 +189,8 @@ class ResumableFuncState:
     # try/finally prescan (_prescan_resumable_try_finally)
     try_finally_prescanned: bool = False
     try_finally_uid_map: 'dict[int, int]' = field(default_factory=dict)
-    try_finally_fields: 'list[tuple[str, str]]' = field(default_factory=list)
+    # (name, C++ type, declarator suffix)
+    try_finally_fields: 'list[tuple[str, str, str]]' = field(default_factory=list)
     # frame-local placement plan (gen_async._frame_layout): one verdict per
     # hoisted local, consumed by the struct field-decl emit, the body-context
     # seeding, and THIR admission -- the single source of truth for the

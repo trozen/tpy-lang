@@ -6,6 +6,7 @@ class MyError(Exception, ReturnException):
     message: str
 
     def __init__(self, code: int32, message: str) -> None:
+        super().__init__(message)
         self.code = code
         self.message = message
 

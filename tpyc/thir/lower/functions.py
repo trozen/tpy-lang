@@ -9,6 +9,7 @@ from ..storage_facts import collect_storage_facts
 from ..temp_plan import prepare_temporaries
 from .callables import resolved_definition
 from .storage import borrowed_record, native_container, optional_layout, record_layout, tuple_parameter_layout
+from ...identity_map import IdentityMap
 from ...liveness import stmts_terminate
 from ...parse.nodes import (
     FunctionLinkage,
@@ -22,6 +23,7 @@ from ...parse.nodes import (
     TpyDictComprehension,
     TpyDictLiteral,
     TpyExpr,
+    TpyExprStmt,
     TpyFieldAccess,
     TpyFloatLiteral,
     TpyFString,
@@ -38,7 +40,6 @@ from ...parse.nodes import (
     TpyName,
     TpyNestedDef,
     TpyNoneLiteral,
-    TpyPassStmt,
     TpySetComprehension,
     TpySetLiteral,
     TpySlice,
@@ -51,11 +52,12 @@ from ...parse.nodes import (
     collect_top_level_local_names,
     expr_reads_self_field,
     is_base_init_call,
-    is_docstring,
+    is_init_trivia,
 )
+from ... import qnames
 from ...namespace import BindingKind
 from ...prescan import scan_reassigned_vars, scope_bound_names
-from ...sema.registration import receiver_self_type
+from ...sema.registration import receiver_self_type, skipped_base_inits
 from ...typesys import (
     AnyType,
     IntLiteralType,
@@ -143,6 +145,7 @@ from ..nodes import (
 )
 from ...value_category import is_rvalue_source
 from .predicates import (
+    _value_record_slot,
     _param_is_const,
     copy_call_arg,
     _param_is_deep_const,
@@ -833,6 +836,9 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
                 continue
         gt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(gt)))
         if (_eligible_scalar(gt) or _eligible_ptr_value(gt, analyzer)
+                # A value-form record global rebinds like a scalar one
+                # (`G = Coord(3, 4);`).
+                or _value_record_slot(gt)
                 or _value_opt_scalar(gt, analyzer) is not None
                 # A str global writes the plain owned assign
                 # (`label = "longer";`) and reads through the same
@@ -1871,12 +1877,18 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         layout = record_layout(self_type, analyzer)
         identities = {f.name: f for f in layout.fields} if layout else {}
         field_inits: list[THIRMilInit] = []
+        field_init_names: list[str] = []  # parallel to field_inits
         mil_done_fields: set[str] = set()  # own fields already hoisted
         body_done_fields: set[str] = set()  # own fields whose init went to the body
         # The EMITTED member order, which decides the order the member inits
         # run in -- not the `__init__` assignment order they are written in.
         # The two agree only where `reorder_fields_by_init` applied.
         field_index = {f.name: i for i, f in enumerate(record.fields)}
+        message_init = _lower_message_init(init_method, ri, declared, lc)
+        if message_init is not None:
+            # Hoisted ahead of every field init, so a later `self.message = x`
+            # is a re-assignment that runs in the body.
+            mil_done_fields.add(qnames.EXCEPTION_MESSAGE_FIELD)
         # An own field never assigned at the top level of `__init__` keeps its
         # class-level default. That is an NSDMI, which the ctor body sees in
         # place, so a source reading one demotes instead of rejecting. A field
@@ -1901,7 +1913,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                 continue
             # Docstring / `pass` (M3c-trivia): emit no code and break no hoist chain,
             # but stay in the body so its braces are non-empty (` {\n    }`, not ` {}`).
-            if is_docstring(stmt) or isinstance(stmt, TpyPassStmt):
+            if is_init_trivia(stmt):
                 body_stmts.append(stmt)
                 continue
             # An inherited-field write (`self.<base field> = expr`, M3d) goes to the body --
@@ -1964,6 +1976,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                 if mil_node is not None:
                     mil_node = replace(mil_node, field_identity=identities.get(stmt.target.field))
                     field_inits.append(mil_node)
+                    field_init_names.append(stmt.target.field)
                     mil_done_fields.add(stmt.target.field)
                     continue
                 # DYNAMIC demote (the probe-registers-a-temp trigger,
@@ -1994,6 +2007,13 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
             # must also demote to preserve source evaluation order.
             chain_broken = True
             body_stmts.append(stmt)
+        if message_init is not None:
+            # Written in member order, which C++ runs the list in anyway.
+            msg_idx = field_index[qnames.EXCEPTION_MESSAGE_FIELD]
+            pos = sum(1 for n in field_init_names if field_index[n] < msg_idx)
+            field_inits.insert(pos, replace(
+                message_init,
+                field_identity=identities.get(qnames.EXCEPTION_MESSAGE_FIELD)))
         body_declared = dict(declared)
         ctor = THIRConstructor(
             record_name=record.name,
@@ -2146,8 +2166,8 @@ def _ctor_demote_reason(stmt: TpyAssign, chain_broken: bool,
 
 
 def _reject_nondef_ctor_field(stmt: TpyAssign, analyzer, reason: str) -> None:
-    """Raise when a DEMOTED own-field init targets a field whose type has a
-    suppressed default constructor.
+    """Raise when a DEMOTED own-field init targets a field whose type has no
+    default constructor.
 
     Such a field has no default state, so leaving it out of the member
     initializer list is not an option the emitters have. Own-field-ness is the
@@ -2156,8 +2176,9 @@ def _reject_nondef_ctor_field(stmt: TpyAssign, analyzer, reason: str) -> None:
     ftype = analyzer.get_expr_type(stmt.target)
     if not _nondef_ctor_field(ftype, analyzer):
         return
+    rec = analyzer.registry.get_record_for_type(ftype)
     emit_prims.reject_nondef_ctor_field_in_body(
-        stmt.target.field, analyzer.registry.get_record_for_type(ftype).name,
+        stmt.target.field, rec.name if rec is not None else str(ftype),
         reason, stmt.loc)
 
 
@@ -2196,29 +2217,68 @@ def _is_self_own_field_assign(stmt: TpyStmt, own_field_names: set[str]) -> bool:
 def _lower_base_inits(init_method: TpyFunction, ri, declared: dict[str, TpyType],
                       lc: _LowerCtx) -> 'list[THIRBaseInit] | None':
     """Lower every `super().__init__` / `BaseN.__init__`
-    call to a THIRBaseInit, sorted by parent declaration order (so a multi-base list
+    call, and every base `skipped_base_inits` names, to a THIRBaseInit, sorted by
+    parent declaration order (so a multi-base list
     emits in the order C++ runs the base ctors, avoiding -Wreorder). None if any base
     init is outside the slice -- the whole ctor then rejects."""
     analyzer = lc.analyzer
-    parent_order: dict[int, int] = {}
+    parent_order: IdentityMap[RecordInfo, int] = IdentityMap()
     for idx, parent in enumerate(ri.parents):
         p_info = analyzer.registry.get_record_for_type(parent)
         if p_info is not None:
-            parent_order[id(p_info)] = idx
+            parent_order[p_info] = idx
     entries: list[tuple[int, THIRBaseInit]] = []
     for src_idx, stmt in enumerate(init_method.body):
         if not is_base_init_call(stmt):
             continue
+        assert isinstance(stmt, TpyExprStmt) and isinstance(stmt.expr, TpyMethodCall)
+        if analyzer.registry.base_init_sets_message(
+                ri, stmt.expr.base_init_direct_base):
+            continue
         lowered = _lower_base_init(stmt, ri, declared, lc)
         if lowered is None:
             return None
-        bi, parent_type = lowered
-        p_info = analyzer.registry.get_record_for_type(parent_type)
-        rank = (parent_order.get(id(p_info), len(parent_order) + src_idx)
-                if p_info is not None else len(parent_order) + src_idx)
-        entries.append((rank, bi))
+        bi, base_type = lowered
+        p_info = analyzer.registry.get_record_for_type(base_type)
+        rank = parent_order.get(p_info) if p_info is not None else None
+        entries.append((len(parent_order) + src_idx if rank is None else rank, bi))
+    # A skipped base is spelled `Base()` so it is value-initialized: left out
+    # of the list, it would be default-initialized, with its scalar fields
+    # indeterminate.
+    for base_type, _duty in skipped_base_inits(analyzer.registry, ri, init_method):
+        p_info = analyzer.registry.get_record_for_type(base_type)
+        assert p_info is not None
+        if not analyzer.registry.is_struct_base(ri, p_info):
+            continue
+        entries.append((parent_order[p_info],
+                        THIRBaseInit(base_cpp=record_base_cpp(ri, base_type),
+                                     args=())))
     entries.sort(key=lambda e: e[0])
     return [bi for _, bi in entries]
+
+def _lower_message_init(init_method: TpyFunction, ri: RecordInfo,
+                        declared: dict[str, TpyType],
+                        lc: _LowerCtx) -> 'THIRMilInit | None':
+    """The `message` member init a return exception's parent-initializer
+    call renders as, or None when no such call passes a message (the field
+    keeps its default). The argument takes the base-init arg rows, like a
+    thrown exception's `super().__init__(msg)`."""
+    for stmt in init_method.body:
+        if not is_base_init_call(stmt):
+            continue
+        assert isinstance(stmt, TpyExprStmt) and isinstance(stmt.expr, TpyMethodCall)
+        expr = stmt.expr
+        arg = lc.analyzer.registry.base_init_message_arg(ri, expr)
+        if arg is None:
+            continue
+        if (expr.kwargs or expr.double_star_unpack is not None
+                or len(expr.args) != 1
+                or not _base_init_arg_ok(arg, declared, lc)):
+            raise ThirUnsupported("ctor.base_init", loc=stmt.loc)
+        return THIRMilInit(
+            field_cpp=escape_cpp_name(qnames.EXCEPTION_MESSAGE_FIELD),
+            value=_lower_base_init_arg(arg, lc, declared))
+    return None
 
 def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -> bool:
     """One base-init arg the tail emitter can render. Every arg renders
@@ -2235,8 +2295,15 @@ def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -
         literal range like the sibling literal checks;
       * a declared PARAM name of a str-family / F1-record / pointer-repr
         Optional[F1-record] type, incl. `Own[...]` params -- all render as
-        the bare name. NB an `Own` param arg renders bare (a COPY into the
-        base slot, no `std::move`) -- a known gap, not fixed here.
+        the bare name;
+      * a record constructor over scalar-literal / scalar-name args, rendered
+        as the bare prvalue.
+
+    Two admitted pairings are NOT right and fail the C++ build
+    (BUGS.md#base-init-args-separate-lowering): a named record / list / str
+    arg at an `Own[T]` base param renders with no `std::move` (and a `str`
+    param passes its view), and the ctor prvalue cannot bind a pointer-form
+    (union / Optional) or mutated `T&` base param.
 
     Anything that could register a codegen temp is out -- a base-init cell
     has no flush point (same contract as the MIL)."""
@@ -2378,11 +2445,13 @@ def _lower_base_init_arg(a: TpyExpr, lc: _LowerCtx,
 
 def _lower_base_init(stmt: TpyStmt, ri: RecordInfo, declared: dict[str, TpyType],
                      lc: _LowerCtx) -> 'tuple[THIRBaseInit, TpyType] | None':
-    """Lower one base-init call to `(THIRBaseInit, parent_type)`, or None outside the
-    slice (the caller reuses `parent_type` for the parent-order rank). Renders
-    `{parent_type.to_cpp()}({args})` for both the
+    """Lower one base-init call to `(THIRBaseInit, base_type)`, or None outside the
+    slice (the caller reuses `base_type` for the parent-order rank). Renders
+    `{base_type.to_cpp()}({args})` for both the
     `super().__init__(args)` and the explicit `BaseN.__init__(self, args)` forms (sema
-    strips `self` from the latter's args). The base must be F1 (so `to_cpp()`
+    strips `self` from the latter's args), where `base_type` is the direct base sema
+    decided the call constructs -- past an `__init__`-less direct base, that base,
+    which inherits the named class's constructor. The base must be F1 (so `to_cpp()`
     spells the struct) and every arg in `_base_init_arg_ok`'s target-less bare-render
     rows; kwargs / star args are out."""
     analyzer = lc.analyzer
@@ -2391,31 +2460,31 @@ def _lower_base_init(stmt: TpyStmt, ri: RecordInfo, declared: dict[str, TpyType]
     # the call site, but the type system doesn't carry that) -- guards `.super_parent_type`.
     if not isinstance(expr, TpyMethodCall):
         return None
-    parent_type = expr.super_parent_type or expr.unbound_self_parent_type
-    if parent_type is None or not _f1_record(parent_type, analyzer):
+    base_type = expr.base_init_direct_base
+    if base_type is None or not _f1_record(base_type, analyzer):
         return None
     if expr.kwargs or expr.double_star_unpack is not None:
         return None
     args: list[THIRExpr] = []
-    base_info = analyzer.registry.get_record_for_type(parent_type)
-    base_params = base_info.init_params if base_info else []
+    resolved = expr.resolved_function_info
+    base_params = resolved.params if resolved is not None else []
     for i, a in enumerate(expr.args):
         if not _base_init_arg_ok(a, declared, lc):
             return None
         # A `None` arg needs its SLOT's spelling (`{}` for a variant slot,
         # `std::nullopt` for a value optional, bare `nullptr` otherwise) --
-        # rendered by `default_to_cpp` off the base's own param type.
+        # rendered by `default_to_cpp` off the resolved overload's param type.
         none_cpp = None
         if isinstance(a, TpyNoneLiteral) and i < len(base_params):
             none_cpp = default_to_cpp_from_analyzer(analyzer, a,
-                                                    base_params[i][1])
+                                                    base_params[i].type)
             _witness("baseinit.none_slot_spelling")
         if not _eligible_scalar(analyzer.get_expr_type(a)):
             _witness("baseinit.nonscalar_arg")
         args.append(_lower_base_init_arg(a, lc, declared, none_cpp=none_cpp))
-    return (THIRBaseInit(base_cpp=record_base_cpp(ri, parent_type),
+    return (THIRBaseInit(base_cpp=record_base_cpp(ri, base_type),
                          args=tuple(args)),
-            parent_type)
+            base_type)
 
 def _lower_ctor_mil_init(
         stmt: TpyAssign, own_param_names: set[str], own_field_names: set[str],

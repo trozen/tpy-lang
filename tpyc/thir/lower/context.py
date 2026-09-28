@@ -60,6 +60,8 @@ from .predicates import (
     _viewfam_return_slots,
     _record_borrow_return,
     _record_storage_return,
+    _value_record_slot,
+    _value_opt_record,
     _span_return,
     _value_opt_scalar,
     _value_opt_tuple,
@@ -768,11 +770,14 @@ class _Prescan:
         # pointee-typed name -> `&(name)` (_optional_pointer_form_value's
         # admitted subset; every render is pointee-shape-blind).
         self.ret_ptr_opt = _optional_ptr_borrow_wide(rt, analyzer)
-        # The value-repr Optional[cheap scalar] return slot (`-> int32 | None`
-        # -> `std::optional<T>`): `return None` -> `std::nullopt`, a value-opt
-        # param name passes the whole optional bare, every other scalar source
-        # rides the generic return tail (type-exact or coerce-wrapped).
+        # The value-repr Optional[cheap scalar] or Optional[value record]
+        # return slot (`-> int32 | None` / `-> Coord | None` ->
+        # `std::optional<T>`): `return None` -> `std::nullopt`, a value-opt
+        # name passes the whole optional bare, every other source rides the
+        # generic return tail (type-exact or coerce-wrapped).
         self.ret_value_opt = _value_opt_scalar(rt, analyzer)
+        if self.ret_value_opt is None:
+            self.ret_value_opt = _value_opt_record(rt)
         if self.ret_value_opt is None and rt is not None:
             # A value-BOUND `Optional[T]` return in a generic body
             # (`-> T | None` under `T: ValueType` -> `std::optional<T>`)
@@ -808,10 +813,8 @@ class _Prescan:
         # The borrow-form REFERENCE return slot (`-> Box` -> `Box&`,
         # `-> list[T]` -> `std::vector<T>&`): a bare borrow name
         # (`return name;`), `self` (`return (*this);`), a plain field read
-        # (`return recv.field;`), an element lvalue, a pointer-slot global,
-        # or -- value-type records only, where the slot actually returns by
-        # value -- a record rvalue; the return-stmt arm rejects every other
-        # source shape.
+        # (`return recv.field;`), an element lvalue or a pointer-slot
+        # global; the return-stmt arm rejects every other source shape.
         self.ret_record_borrow = _record_borrow_return(rt, analyzer)
         # The storage-form REFERENCE return slot (`-> Own[Box]` -> `Box` by
         # value, `-> Own[list[T]]` -> a by-value vector/map/set): bare names,
@@ -917,6 +920,9 @@ class _Prescan:
             rt is None or isinstance(rt, VoidType)
             or self.ret_callable
             or _eligible_scalar(rt) or _eligible_char(rt)
+            # A value-form record returns by value like a scalar: every
+            # source shape rides the generic tail (`return c;`).
+            or _value_record_slot(rt)
             or own_value_scalar
             or _is_type_param_slot(rt) or _own_type_param_slot(rt)
             or _eligible_enum(rt, analyzer) is not None

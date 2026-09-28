@@ -12,7 +12,7 @@ class Bad(Exception):
     c: Color  # tpyc: error(/data field 'c' is an exposed enum from another module/)
 
     def __init__(self, message: str, c: Color):
-        self.message = message
+        super().__init__(message)
         self.c = c
 
 

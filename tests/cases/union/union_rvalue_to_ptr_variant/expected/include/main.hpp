@@ -56,6 +56,7 @@ struct Pen {
     ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self, pet: Dog | Cat) -> None:
+    Pen() = default;
     explicit Pen(::tpy::Union<const Cat*, const Dog*> pet);
 
     // def set_pet(self, pet: Dog | Cat) -> None:

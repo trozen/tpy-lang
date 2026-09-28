@@ -59,13 +59,9 @@ template<typename T>
 struct Middle : Base<T, int32_t> {
 
     // def __init__(self, first: T, second: int32) -> None:
-    //     self.first = first
-    //     self.second = second
+    //     super().__init__(first, second)
     Middle() = default;
-    explicit Middle(::tpy::readonly_form_t<T> first, int32_t second) {
-        this->first = ::tpy::param_to_storage<T>(first);
-        this->second = second;
-    }
+    explicit Middle(::tpy::param_val_or_ref_t<T> first, int32_t second) : Base<T, int32_t>(first, second) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Middle";
 };
 
@@ -82,14 +78,10 @@ struct Leaf : Middle<T> {
     std::string extra;
 
     // def __init__(self, first: T, second: int32, extra: str) -> None:
-    //     self.first = first
-    //     self.second = second
+    //     super().__init__(first, second)
     //     self.extra = extra
     Leaf() = default;
-    explicit Leaf(::tpy::readonly_form_t<T> first, int32_t second, std::string_view extra) : extra(extra) {
-        this->first = ::tpy::param_to_storage<T>(first);
-        this->second = second;
-    }
+    explicit Leaf(::tpy::param_val_or_ref_t<T> first, int32_t second, std::string_view extra) : Middle<T>(first, second), extra(extra) {}
 
     // def get_extra(self) -> str:
     //     return self.extra

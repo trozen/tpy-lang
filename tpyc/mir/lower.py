@@ -1280,7 +1280,7 @@ class _Coverage:
     def hoists(self, stmt: th.THIRIf | th.THIRWhile | th.THIRForRange | th.THIRForEach) -> None:
         facts = stmt.hoisted_bindings
         _require(stmt, all(isinstance(f, th.THIRHoistedBinding) for f in facts)
-                 and tuple(f.name for f in facts) == tuple(name for name, _ in stmt.hoist_decls),
+                 and tuple(f.name for f in facts) == tuple(decl.name for decl in stmt.hoist_decls),
                  "missing or inconsistent hoisted binding facts")
         for fact in facts:
             _require(stmt, fact.name not in self.bindings and fact.initially_assigned is False

@@ -3,29 +3,59 @@
 
 namespace tpyapp::main {
 
-Child* c{};
-Nested* n{};
 
-// c = Child(10, 20)
-// print(c.value)
-// print(c.extra)
-//
-// n = Nested(3, 4)
-// print(n.value)
-// print(n.extra)
+// def main() -> None:
+//     c = Child(10, 20)
+//     print("docstring:", c.value, c.extra)
+//     n = Nested(3, 4)
+//     print("nested-def:", n.value, n.extra)
+//     p = PassSuper()
+//     print("pass-super:", p.value, p.y)
+//     b = PassBase()
+//     print("pass-base:", b.value)
+//     m = PassMulti()
+//     print("pass-multi:", m.value, m.m)
+//     dp = DocPass()
+//     print("doc-pass:", dp.value)
+//     pb = PassBetween()
+//     print("pass-between:", pb.value, pb.m, pb.a, pb.b)
+void main() {
+    Child c = Child(10, 20);
+    std::cout << "docstring:" << " " << c.value << " " << c.extra << "\n";
+    Nested n = Nested(3, 4);
+    std::cout << "nested-def:" << " " << n.value << " " << n.extra << "\n";
+    PassSuper p = PassSuper();
+    std::cout << "pass-super:" << " " << p.value << " " << p.y << "\n";
+    PassBase b = PassBase();
+    std::cout << "pass-base:" << " " << b.value << "\n";
+    PassMulti m = PassMulti();
+    std::cout << "pass-multi:" << " " << m.value << " " << m.m << "\n";
+    DocPass dp = DocPass();
+    std::cout << "doc-pass:" << " " << dp.value << "\n";
+    PassBetween pb = PassBetween();
+    std::cout << "pass-between:" << " " << pb.value << " " << pb.m << " " << pb.a << " " << pb.b << "\n";
+}
+
+
+// def __init__(self) -> None:
+//     Parent.__init__(self, 6)
+//     pass
+//     Other.__init__(self, 7)  # tpyc: ok
+//     pass
+//     self.a = 8
+//     pass
+//     self.b = 9  # tpyc: ok
+//     print("pass-between: after", self.value, self.m, self.a, self.b)
+PassBetween::PassBetween() : Parent(6), Other(7), a(8), b(9) {
+    std::cout << "pass-between: after" << " " << this->value << " " << this->m << " " << this->a << " " << this->b << "\n";
+}
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    static Child __global_slot_1 = Child(::tpy::BigInt(10), ::tpy::BigInt(20));
-    c = &__global_slot_1;
-    std::cout << c->value << "\n";
-    std::cout << c->extra << "\n";
-    static Nested __global_slot_2 = Nested(::tpy::BigInt(3), ::tpy::BigInt(4));
-    n = &__global_slot_2;
-    std::cout << n->value << "\n";
-    std::cout << n->extra << "\n";
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

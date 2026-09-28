@@ -288,9 +288,9 @@ class TempSink:
         return self._ctx.temps.declare_named_auto("__select_slot", f"std::optional<{expr.cpp_type}>")
 
     def declare_named(self, name: str, cpp_type: str, *,
-                      init: 'str | None' = None) -> None:
+                      init: 'str | None' = None, suffix: str = "") -> None:
         assert self.plan is None, "unplanned named declaration"
-        self._ctx.temps.declare_named(name, cpp_type, init=init)
+        self._ctx.temps.declare_named(name, cpp_type, init=init, suffix=suffix)
 
     def declare_named_auto(self, prefix: str, cpp_type: str) -> str:
         assert self.plan is None, "unplanned named declaration"
@@ -352,7 +352,7 @@ class UnevaluatedTemps(TempSink):
         return f"std::declval<{cpp_type}&>()"
 
     def declare_named(self, name: str, cpp_type: str, *,
-                      init: 'str | None' = None) -> None:
+                      init: 'str | None' = None, suffix: str = "") -> None:
         raise THIRCodeGenError(
             "internal error: a named declaration inside an unevaluated render")
 
@@ -1526,7 +1526,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # row, which the enclosing statement / loop-head / lambda flush
         # places.
         if e.cpp_type is not None:
-            state.temps.declare_named(e.cpp_name, e.cpp_type, init=e.init)
+            state.temps.declare_named(e.cpp_name, e.cpp_type, init=e.init,
+                                      suffix=e.placeholder)
         v = _emit_expr(e.value, state)
         if e.emplace_cpp is not None:
             # frame_slot<T> write: a bare brace-init needs its type prefix to
@@ -1929,11 +1930,11 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
     # its predecl
     # line (the rvalue-reassigned arm's `std::optional<T> __slot_N;`).
     slot_types = dict(stmt.hoist_slots)
-    for name, cpp_type in stmt.hoist_decls:
+    for name, cpp_type, init in stmt.hoist_decls:
         if name in slot_types:
             slot = (state.assert_local_slot() or state.next_slot())
             _declare_rebind_slot(state, name, slot, slot_types[name])
-        out.write(f"{indent}{cpp_type} {name};\n")
+        out.write(f"{indent}{cpp_type} {name}{init};\n")
     chain = if_chain(stmt)
     # An elif condition that registers temps abandons the flat `} else if`
     # chain: the temps have no legal spot between `}` and `else`, so the
@@ -2109,8 +2110,8 @@ def _emit_nested_def(out: TextIO, stmt: THIRNestedDef, indent_level: int,
 def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitState) -> None:
     # The `// while ...:` comment is emitted by the caller (_emit_stmts).
     indent = INDENT * indent_level
-    for name, cpp_type in stmt.hoist_decls:
-        out.write(f"{indent}{cpp_type} {name};\n")
+    for name, cpp_type, init in stmt.hoist_decls:
+        out.write(f"{indent}{cpp_type} {name}{init};\n")
     saved_depth = _push_loop_frame(state, has_else=bool(stmt.orelse))
     # The restructured head: anonymous cond temps re-evaluate
     # per iteration, so they live in the loop head behind `while (true)` with
@@ -2164,8 +2165,8 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
     # captured once into `__start_N`/`__stop_N` temps -- Python's range() reads
     # its args at call time, but the C++ condition re-reads each iteration.
     indent = INDENT * indent_level
-    for name, cpp_type in stmt.hoist_decls:
-        out.write(f"{indent}{cpp_type} {name};\n")
+    for name, cpp_type, init in stmt.hoist_decls:
+        out.write(f"{indent}{cpp_type} {name}{init};\n")
     saved_depth = _push_loop_frame(state, has_else=bool(stmt.orelse))
     n = state.next_loop_index()
     cpp_elem = stmt.elem_type.to_cpp()
@@ -2245,8 +2246,9 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     # alias -- auto&& / const auto&, so the const flag is threaded through,
     # not hardcoded).
     indent = INDENT * indent_level
-    for name, cpp_type in stmt.hoist_decls:
-        init = " = nullptr" if name in stmt.hoist_ptr_inits else ""
+    for name, cpp_type, init in stmt.hoist_decls:
+        if name in stmt.hoist_ptr_inits:
+            init = " = nullptr"
         out.write(f"{indent}{cpp_type} {name}{init};\n")
     saved_depth = _push_loop_frame(state, has_else=bool(stmt.orelse))
     n = state.next_loop_index()
@@ -2553,8 +2555,8 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
     # first. The header flush is a no-op in the slice -- temp-registering
     # manager expressions are gate-rejected. Hoisted predecls render first.
     indent = INDENT * indent_level
-    for name, cpp_type in stmt.hoist_decls:
-        out.write(f"{indent}{cpp_type} {name};\n")
+    for name, cpp_type, init in stmt.hoist_decls:
+        out.write(f"{indent}{cpp_type} {name}{init};\n")
     state.temps.flush(out, indent)
     ctx_ids: list[int] = []
     for item in stmt.items:
@@ -2849,8 +2851,8 @@ def _emit_try(out: TextIO, stmt: THIRTry, indent_level: int,
     # Dispatch over the routed tiers (see THIRTry). The hoisted predecls
     # render first.
     indent = INDENT * indent_level
-    for name, cpp_type in stmt.hoist_decls:
-        out.write(f"{indent}{cpp_type} {name};\n")
+    for name, cpp_type, init in stmt.hoist_decls:
+        out.write(f"{indent}{cpp_type} {name}{init};\n")
     out.write(f"{indent}{{\n")
     inner_level = indent_level + 1
     if stmt.tier is TryTier.FINALLY_ONLY:
@@ -2891,11 +2893,11 @@ def _emit_match(out: TextIO, stmt: THIRMatch, indent_level: int,
     # A hoist_slots entry allocates that name's rebind slot immediately
     # before its predecl line (THIRIf's rvalue-reassigned arm).
     slot_types = dict(stmt.hoist_slots)
-    for name, cpp_type in stmt.hoist_decls:
+    for name, cpp_type, init in stmt.hoist_decls:
         if name in slot_types:
             slot = (state.assert_local_slot() or state.next_slot())
             _declare_rebind_slot(state, name, slot, slot_types[name])
-        out.write(f"{indent}{cpp_type} {name};\n")
+        out.write(f"{indent}{cpp_type} {name}{init};\n")
     state.match_counter += 1
     subject = f"__match_subject_{state.match_counter}"
     binding = "auto&" if stmt.subject_ref else "auto"
@@ -3714,7 +3716,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         elif stmt.init is None:
             cpp = stmt.cpp_type if stmt.cpp_type is not None \
                 else stmt.resolved_type.to_cpp()
-            out.write(f"{indent}{cpp} {name};\n")
+            # An init-less decl is a slot declared before its first value.
+            init = emit_prims.placeholder_init(stmt.resolved_type, cpp)
+            out.write(f"{indent}{cpp} {name}{init};\n")
         elif stmt.btuple_slot_cpp is not None:
             # Reassigned borrow-tuple decl off an owning call: the rvalue
             # emplaces into a per-target `std::optional<...>` slot the local
@@ -4466,7 +4470,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         state.temps.flush(out, indent)
         name = escape_cpp_name(stmt.name)
         if stmt.decl_cpp is not None:
-            out.write(f"{indent}{stmt.decl_cpp} {name};\n")
+            init = emit_prims.placeholder_init(stmt.decl_type, stmt.decl_cpp)
+            out.write(f"{indent}{stmt.decl_cpp} {name}{init};\n")
         inner = indent + INDENT
         out.write(f"{indent}{{\n")
         out.write(f"{inner}auto {tmp} = {call_cpp};\n")

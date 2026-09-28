@@ -54,6 +54,7 @@ struct Holder {
     ::tpy::Union<A, B> sub;
 
     // def __init__(self, sub: A | B) -> None:
+    Holder() = default;
     explicit Holder(::tpy::Union<const A*, const B*> sub);
 
     // @property

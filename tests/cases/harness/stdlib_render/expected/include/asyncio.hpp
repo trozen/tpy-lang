@@ -232,6 +232,7 @@ struct _SockSendAll {
     bool _cancel_pending;
 
     // def __init__(self, sock: Ptr[socket], data: bytes) -> None:
+    _SockSendAll() = default;
     explicit _SockSendAll(::tpystd::socket::socket* sock, ::tpy::BytesView data);
     // non-copyable (@nocopy)
     _SockSendAll(const _SockSendAll&) = delete;
@@ -1542,6 +1543,7 @@ struct IncompleteReadError : ::tpy::EOFError {
     std::optional<int32_t> expected;
 
     // def __init__(self, partial: bytes, expected: int32 | None) -> None:
+    IncompleteReadError() = default;
     explicit IncompleteReadError(::tpy::BytesView partial, std::optional<int32_t> expected);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<IncompleteReadError>(*this); }
@@ -3157,17 +3159,9 @@ inline void Server::close() {
 }
 
 // def __init__(self, value: int32 = 1) -> None:
-//     if value < 0:
-//         raise ValueError("Semaphore initial value must be >= 0")
-//     self._value = value
-//     self._waiters = []
+//     super().__init__(value)
 //     self._bound = value
-inline BoundedSemaphore::BoundedSemaphore(int32_t value) {
-    if ((value < 0)) {
-        throw ::tpy::ValueError("Semaphore initial value must be >= 0");
-    }
-    this->_value = value;
-    this->_waiters = std::vector<::tpystd::coro::Waker>{};
+inline BoundedSemaphore::BoundedSemaphore(int32_t value) : Semaphore(value) {
     this->_bound = value;
 }
 // # `-> Own[T]`: the result is moved out of the task's owned result slot.

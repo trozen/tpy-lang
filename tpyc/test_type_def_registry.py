@@ -81,6 +81,9 @@ def _canonical_instances() -> dict[str, ts.TpyType]:
         "tpy.OwnIter":  ts.make_own_iter(I32),
         "tpy.Ptr":      ts.PtrType(I32),
         "tpy.coro.Waker": ts.WAKER,
+        "tpy.atomic._RawAtomic": ts.NominalType(
+            name="_RawAtomic", type_args=(ts.UINT32,),
+            _module_qname="tpy.atomic._RawAtomic"),
     }
     return cases
 

@@ -17,7 +17,8 @@ from ..codegen_cpp.context import CodeGenOptions
 from ..compilation_context import activate_compiler
 from ..typesys import BOOL, INT32, VoidType
 from .nodes import (
-    Form, THIRArgTemp, THIRBinOp, THIRCall, THIRCoerce, THIRExprStmt,
+    Form, HoistDecl, THIRArgTemp, THIRBinOp, THIRCall, THIRCoerce,
+    THIRExprStmt,
     THIRFieldAccess, THIRFormConvert, THIRFunction, THIRFunctionLayout,
     THIRIf, THIRLiteral,
     THIRMethodCall, THIRRaise, THIRResumableBody, THIRReturn, THIRSelf,
@@ -457,14 +458,14 @@ class TestNodeStructuralRules:
                             body=(outer,), layout=THIRFunctionLayout())
 
     def test_predecl_on_the_chain_head_passes(self):
-        validate_function(self._chain({"hoist_decls": (("r", "int32_t"),)}, {}))
+        validate_function(self._chain({"hoist_decls": (HoistDecl("r", "int32_t"),)}, {}))
 
     def test_predecl_on_an_elif_link_fails(self):
         # The emitter prints only the head's predecls; a flattened link has
         # no block of its own to hold one.
         with pytest.raises(THIRValidationError, match="elif link carries"):
             validate_function(
-                self._chain({}, {"hoist_decls": (("r", "int32_t"),)}))
+                self._chain({}, {"hoist_decls": (HoistDecl("r", "int32_t"),)}))
 
     def test_slot_on_an_elif_link_fails(self):
         with pytest.raises(THIRValidationError, match="elif link carries"):

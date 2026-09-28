@@ -9,12 +9,14 @@ namespace tpyapp::main {
 //         raise AppError("boom")
 //     except AppError as e:
 //         print(e.detail())
+//         print(str(e))
 void main() {
     {
         try {
             throw AppError("boom");
         } catch (const AppError& e) {
             std::cout << e.detail() << "\n";
+            std::cout << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }

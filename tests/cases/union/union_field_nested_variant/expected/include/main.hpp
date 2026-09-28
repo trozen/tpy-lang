@@ -60,6 +60,7 @@ struct Cat {
     ::tpy::Union<Ball, Mouse> toy;
 
     // def __init__(self, name: str, toy: Ball | Mouse) -> None:
+    Cat() = default;
     explicit Cat(std::string_view name, ::tpy::Union<const Ball*, const Mouse*> toy);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
@@ -91,6 +92,7 @@ struct Zoo {
     ::tpy::Union<Cat, Dog> animal;
 
     // def __init__(self, animal: Cat | Dog) -> None:
+    Zoo() = default;
     explicit Zoo(::tpy::Union<const Cat*, const Dog*> animal);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Zoo";
 };

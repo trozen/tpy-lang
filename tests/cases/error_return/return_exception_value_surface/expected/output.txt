@@ -10,6 +10,8 @@ dtor propagated: 4
 own str: labelled:x
 mutate: 99 bad m
 cross: level too low
+parent init: 5 not positive
+parent init unbound: unnamed
 method: 7 -3 1
 generator: 10
 generator: 20

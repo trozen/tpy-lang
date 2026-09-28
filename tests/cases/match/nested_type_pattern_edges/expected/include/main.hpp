@@ -90,6 +90,7 @@ struct Wrapper {
     ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self, pet: Cat | Dog) -> None:
+    Wrapper() = default;
     explicit Wrapper(::tpy::Union<const Cat*, const Dog*> pet);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
@@ -140,6 +141,7 @@ struct FloatHolder {
     ::tpy::Union<double, std::string> value;
 
     // def __init__(self, value: float | str) -> None:
+    FloatHolder() = default;
     explicit FloatHolder(const ::tpy::Union<double, std::string>& value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.FloatHolder";
 };
@@ -155,6 +157,7 @@ struct BoolHolder {
     ::tpy::Union<bool, std::string> value;
 
     // def __init__(self, value: bool | str) -> None:
+    BoolHolder() = default;
     explicit BoolHolder(const ::tpy::Union<bool, std::string>& value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.BoolHolder";
 };

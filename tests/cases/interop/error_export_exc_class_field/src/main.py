@@ -16,7 +16,7 @@ class ParseError(ValueError):
     where: Point  # tpyc: error(/data field 'where' of type Point cannot cross/)
 
     def __init__(self, message: str, where: Point):
-        self.message = message
+        super().__init__(message)
         self.where = where
 
 

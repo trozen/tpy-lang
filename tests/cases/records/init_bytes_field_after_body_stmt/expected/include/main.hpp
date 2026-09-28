@@ -22,6 +22,7 @@ struct Holder {
     std::string tag;
 
     // def __init__(self, data: bytes, tag: str) -> None:
+    Holder() = default;
     explicit Holder(::tpy::BytesView data, std::string_view tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };

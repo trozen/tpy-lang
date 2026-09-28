@@ -29,6 +29,7 @@ struct Owner {
     ::tpy::Bytes data;
 
     // def __init__(self, name: str, data: bytes) -> None:
+    Owner() = default;
     explicit Owner(std::string_view name, ::tpy::BytesView data);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Owner";
 };
@@ -85,6 +86,7 @@ struct Blob {
     ::tpy::Bytes from_field;
 
     // def __init__(self, src: bytes, o: Owner) -> None:
+    Blob() = default;
     explicit Blob(::tpy::BytesView src, const Owner& o);
 
     // def reset(self, o: Owner) -> None:

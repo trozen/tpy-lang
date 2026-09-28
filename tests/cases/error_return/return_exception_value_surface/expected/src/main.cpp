@@ -17,6 +17,30 @@ std::expected<int32_t, Missing> find(std::string_view key) {
     return ::tpy::make_unexpected(Missing((::tpy::str_concat("no ", key))));
 }
 
+// @error_return(Coded)
+// def coded(n: int32) -> int32:
+//     if n > 0:
+//         return n
+//     raise Coded(5, "not positive")
+std::expected<int32_t, Coded> coded(int32_t n) {
+    if ((n > 0)) {
+        return n;
+    }
+    return ::tpy::make_unexpected(Coded(5, "not positive"));
+}
+
+// @error_return(Named)
+// def named(ok: bool) -> int32:
+//     if ok:
+//         return 1
+//     raise Named("unnamed")
+std::expected<int32_t, Named> named(bool ok) {
+    if (ok) {
+        return 1;
+    }
+    return ::tpy::make_unexpected(Named("unnamed"));
+}
+
 // @error_return(Tracked)
 // def track(code: int32) -> int32:
 //     if code == 0:
@@ -250,6 +274,19 @@ __gen_count count(int32_t n) {
 //     except Denied as e:
 //         print("cross:", str(e))
 //
+//     # parent init: the call's argument is what str() renders
+//     try:
+//         v_super = coded(0)
+//         print("parent init:", v_super)
+//     except Coded as e:
+//         print("parent init:", e.code, str(e))
+//
+//     try:
+//         v_unbound = named(False)
+//         print("parent init unbound:", v_unbound)
+//     except Named as e:
+//         print("parent init unbound:", str(e))
+//
 //     r = Reader()
 //     print("method:", r.read("ok"), r.read("q"), r.seen)
 //
@@ -454,6 +491,42 @@ void main() {
             std::cout << "cross:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
         __after_try_33:;
+    }
+    int32_t v_super;
+    {
+        std::optional<Coded> __err_opt_35;
+        {
+            auto __try_tmp_36 = ::tpyapp::main::coded(0);
+            if (!__try_tmp_36.has_value()) { __err_opt_35 = std::move(__try_tmp_36.error()); goto __except_35; }
+            v_super = ::tpy::unwrap_ref_move(*__try_tmp_36);
+        }
+        std::cout << "parent init:" << " " << v_super << "\n";
+        goto __after_try_35;
+        // except Coded:
+        __except_35:;
+        {
+            auto& e = *__err_opt_35;
+            std::cout << "parent init:" << " " << e.code << " " << std::string(::tpy::__str__(e)) << "\n";
+        }
+        __after_try_35:;
+    }
+    int32_t v_unbound;
+    {
+        std::optional<Named> __err_opt_37;
+        {
+            auto __try_tmp_38 = ::tpyapp::main::named(false);
+            if (!__try_tmp_38.has_value()) { __err_opt_37 = std::move(__try_tmp_38.error()); goto __except_37; }
+            v_unbound = ::tpy::unwrap_ref_move(*__try_tmp_38);
+        }
+        std::cout << "parent init unbound:" << " " << v_unbound << "\n";
+        goto __after_try_37;
+        // except Named:
+        __except_37:;
+        {
+            auto& e = *__err_opt_37;
+            std::cout << "parent init unbound:" << " " << std::string(::tpy::__str__(e)) << "\n";
+        }
+        __after_try_37:;
     }
     Reader r = Reader();
     std::cout << "method:" << " " << r.read("ok") << " " << r.read("q") << " " << r.seen << "\n";

@@ -14,22 +14,25 @@ from ..typesys import (
     NoneType, INT32, ReadonlyType, unwrap_readonly, peel_value_readonly, unwrap_optional_own, unwrap_send_sync, OwnType, OptionalType, RecordInfo, FieldInfo,
     RecursiveUnionInfo, RecursiveAliasInstanceType,
     FunctionInfo, ParamInfo, MethodSignature, is_any_str_type, BIGINT, FLOAT,
-    make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType, PtrType,
+    make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType,
     TypeAliasInfo,
     is_integer_type, is_void_like_type,
     span_as_const, span_is_readonly, varargs_as_const, varargs_is_readonly,
     _contains_self_reference,
     contains_type_param,
-    del_suppresses_default_ctor,
+    BaseInitDuty,
     PendingListType, PendingDictType, PendingSetType, PendingViewType,
 )
 from ..type_def_registry import is_span, is_varargs, is_spanlike_view
 from ..identity_map import IdentityMap, IdentitySet
 from ..compilation_context import get_current_compiler
 from ..namespace import Namespace, NameBinding, BindingKind
-from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_docstring, is_super_del_call, is_base_init_call, ParseError
+from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call, is_base_init_call, is_init_trivia, init_leading_run_end, ParseError
 from ..parse.nodes import RecordLinkage, OverloadForm
-from .registration import receiver_self_type, _vararg_span_type
+from .registration import (
+    receiver_self_type, _vararg_span_type, skipped_base_ctor_error,
+    skipped_base_init_warning, skipped_base_inits,
+)
 from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach,
     TpyFieldAccess, TpyName, TpyCall, TpyLambda,
@@ -112,7 +115,6 @@ from ..cycle_detection import detect_type_cycles
 from ..parse import SourceLocation, is_parser_keyword, walk_body_stmts
 from ..type_def_registry import (
     is_str_type, is_str_view_type, enum_info_of,
-    is_array, is_enum_type, is_list, is_dict, is_set, is_span,
     protocol_info_of,
 )
 from ..typesys import unwrap_own, is_protocol_type, is_protocol_union, RefType
@@ -3239,30 +3241,10 @@ class SemanticAnalyzer:
                     method
                 )
 
-            # Check for field assignments inside control flow in __init__
             if method.name == "__init__":
+                self._require_leading_base_init_calls(method, record)
                 self._check_init_field_assignments(method, record)
-
-            # Validate super().__init__() position in __init__ methods
-            if method.name == "__init__" and self.ctx.func.super_init_call is not None:
-                # super().__init__() must be the first non-docstring statement
-                first_real_stmt = MethodAnalyzer.find_first_non_docstring_stmt(method.body)
-                if first_real_stmt is not None:
-                    # Check if first real statement contains the super().__init__() call
-                    if not MethodAnalyzer.stmt_contains_super_init(first_real_stmt, self.ctx.func.super_init_call):
-                        raise self._error(
-                            "super().__init__() must be the first statement in __init__",
-                            self.ctx.func.super_init_call
-                        )
-
-            # Require an explicit base-init call (super().__init__(...) or
-            # Base.__init__(self, ...)) when the single user-record base has
-            # no synthesizable default constructor. Otherwise the C++ MIL
-            # would try to implicit-default-construct the base subobject and
-            # the build fails with a cryptic "no matching function for call
-            # to Base::Base()" error from inside the subclass ctor.
-            if method.name == "__init__":
-                self._require_super_init_for_non_default_base(method, record)
+                self._require_parent_init_call(method, record)
 
             # Validate __del__ methods
             if method.name == "__del__":
@@ -3422,13 +3404,18 @@ class SemanticAnalyzer:
             return
 
         # --- Find split point ---
+        # Parent-initializer calls all sit in the leading run (already
+        # enforced), so the field inits start where that run ends.
         init_section_fields: set[str] = set()
         split_idx = len(method.body)
+        leading_end = init_leading_run_end(method.body)
+        if any(self._base_init_sets_message(record_info, stmt)
+               for stmt in method.body[:leading_end]):
+            init_section_fields.add(qnames.EXCEPTION_MESSAGE_FIELD)
 
-        for i, stmt in enumerate(method.body):
-            if is_base_init_call(stmt):
-                continue
-            if is_docstring(stmt):
+        for i in range(leading_end, len(method.body)):
+            stmt = method.body[i]
+            if is_init_trivia(stmt):
                 continue
             if (isinstance(stmt, TpyAssign)
                     and isinstance(stmt.target, TpyFieldAccess)
@@ -3534,6 +3521,17 @@ class SemanticAnalyzer:
         if first_error is not None:
             raise first_error
 
+    def _base_init_sets_message(self, record_info: RecordInfo,
+                                stmt: TpyStmt) -> bool:
+        """A leading parent-initializer call that initializes the class's own
+        `message` field (`TypeRegistry.base_init_message_arg`)."""
+        if not is_base_init_call(stmt):
+            return False
+        assert isinstance(stmt, TpyExprStmt)
+        call = stmt.expr
+        assert isinstance(call, TpyMethodCall)
+        return self.ctx.registry.base_init_message_arg(record_info, call) is not None
+
     def _collect_all_fields(self, record_info: RecordInfo) -> dict[str, FieldInfo]:
         """Collect all fields from a record and its ancestors, walking MRO base-first.
 
@@ -3548,233 +3546,107 @@ class SemanticAnalyzer:
             result[f.name] = f
         return result
 
-    def _require_super_init_for_non_default_base(
+    def _require_leading_base_init_calls(
         self, method: TpyFunction, record: TpyRecord,
     ) -> None:
-        """Reject `class Child(Base): def __init__(self, ...): ...` without an
-        explicit base-init call when Base's C++ default constructor would be
-        implicitly deleted -- C++ would otherwise fail to synthesize the
-        base subobject default-construction in the child's MIL.
-        `super().__init__(...)` and `Base.__init__(self, ...)` are both
-        accepted (mirrors `is_base_init_call`). Multi-base inheritance is
-        already covered by `validate_multi_base_init_calls`.
+        """Reject a parent-initializer call (`super().__init__(...)` or
+        `Base.__init__(self, ...)`) that the C++ member initializer list
+        cannot run with its CPython meaning: one outside the leading run of
+        `__init__`, one whose initializer no direct base runs, and a second
+        call initializing the same direct base (`base_init_direct_base`, the
+        base each call constructs).
 
-        The predicate matches the codegen-level "would `Base() = default;`
-        succeed?" not the user-level "is Base default-constructible from
-        TPy?". A base with a required-arg `__init__` but all-default-ctor
-        fields synthesizes `Base()` fine at C++ level (leaves fields
-        default-initialized), so it does NOT trigger the rule.
+        C++ runs base constructors from the member initializer list, ahead of
+        every body statement, once per direct base, while CPython runs each
+        call in place -- so only a call nothing observable precedes keeps its
+        meaning (a docstring or `pass` precedes nothing observable; a
+        multi-base `__init__` calls one base after another).
+        """
+        end = init_leading_run_end(method.body)
+        leading: IdentitySet[TpyExpr] = IdentitySet(
+            stmt.expr for stmt in method.body[:end]
+            if isinstance(stmt, TpyExprStmt) and is_base_init_call(stmt))
+        registry = self.ctx.registry
+        record_info = registry.get_record(record.name)
+        initialized: IdentityMap[RecordInfo, str] = IdentityMap()
+        for call, spelling in self.ctx.func.base_init_calls:
+            if call not in leading:
+                raise self._error(
+                    f"{spelling} must be the first statement in __init__", call)
+            parent_type = call.super_parent_type or call.unbound_self_parent_type
+            target = (registry.get_record_for_type(parent_type)
+                      if parent_type is not None else None)
+            if target is None or record_info is None:
+                continue
+            base_type = call.base_init_direct_base
+            base = (registry.get_record_for_type(base_type)
+                    if base_type is not None else None)
+            if base is None:
+                raise self._error(
+                    self._not_direct_base_message(record_info, target), call)
+            first = initialized.get(base)
+            if first is not None:
+                raise self._error(
+                    f"'{base.display_name}' is initialized twice in "
+                    f"'{record_info.display_name}.__init__' ('{first}' "
+                    f"already initializes it); a base is constructed "
+                    f"exactly once", call)
+            initialized[base] = spelling
+
+    def _not_direct_base_message(self, record_info: RecordInfo,
+                                 target: RecordInfo) -> str:
+        """The diagnostic for a parent-initializer call naming `target`, an
+        ancestor no direct base of `record_info` constructs with `target`'s
+        `__init__`. The hint names the direct base that leads to `target`,
+        and `super().__init__(...)` only when it initializes that same base."""
+        registry = self.ctx.registry
+        via = next((rec for rec in (registry.get_record_for_type(p)
+                                    for p in record_info.parents
+                                    if isinstance(p, NominalType))
+                    if rec is not None
+                    and registry.is_subclass_of_record(rec, target)), None)
+        head = (f"'{target.display_name}' is not a direct base of "
+                f"'{record_info.display_name}'")
+        if via is None:
+            return head
+        via_call = f"'{via.display_name}.__init__(self, ...)'"
+        super_base = registry.super_init_direct_base(record_info)
+        if (super_base is not None
+                and registry.get_record_for_type(super_base) is via):
+            return f"{head}; call 'super().__init__(...)' or {via_call}"
+        return f"{head}; call {via_call}"
+
+    def _require_parent_init_call(
+        self, method: TpyFunction, record: TpyRecord,
+    ) -> None:
+        """Check a single-base child `__init__` that skips its parent's
+        initializer (`super().__init__(...)` / `Base.__init__(self, ...)`,
+        mirroring `is_base_init_call`) against what it owes the parent
+        (`TypeRegistry.base_init_duty`, the rule
+        `validate_multi_base_init_calls` applies per base of a multi-base
+        class): skipping a CALL base is a warning, and any skipped base needs
+        a C++ default constructor, or the child's constructor could not be
+        built.
         """
         record_info = self.ctx.registry.get_record(record.name)
         if record_info is None or record_info.is_native:
             return
         if len(record_info.parents) != 1:
             return
-        parent = record_info.parents[0]
-        if not isinstance(parent, NominalType) or parent.is_protocol:
+        skipped = skipped_base_inits(self.ctx.registry, record_info, method)
+        if not skipped:
             return
-        parent_rec = self.ctx.registry.get_record_for_type(parent)
-        if parent_rec is None or parent_rec.is_native or parent_rec.builtin_type_key:
-            return
-        if not self._record_default_ctor_is_deleted(parent_rec):
-            return
-        # Accept either super().__init__(...) or Base.__init__(self, ...).
-        if self.ctx.func.super_init_call is not None:
-            return
-        for stmt in method.body:
-            if is_base_init_call(stmt):
+        [(parent, duty)] = skipped
+        if duty is BaseInitDuty.CALL:
+            warn = skipped_base_init_warning(
+                self.ctx.registry, record_info, parent, method, single_base=True)
+            if warn is not None:
+                self.ctx.warning(warn, method)
                 return
-        reason = self._explain_default_ctor_deletion(parent_rec)
-        if method.is_macro_generated:
-            origin = (f"'@{method.macro_origin}'" if method.macro_origin
-                      else "a macro")
-            raise self._error(
-                f"the '__init__' synthesized by {origin} for '{record.name}' "
-                f"does not initialize parent class '{parent_rec.name}', but "
-                f"'{parent_rec.name}' cannot be constructed without arguments "
-                f"({reason}). Either give '{parent_rec.name}' a zero-argument "
-                f"form, or write an explicit '__init__' on '{record.name}' "
-                f"that calls 'super().__init__(...)'.",
-                method,
-            )
-        raise self._error(
-            f"'{record.name}.__init__' must call 'super().__init__(...)' "
-            f"(or '{parent_rec.name}.__init__(self, ...)') as its first "
-            f"statement: '{parent_rec.name}' cannot be constructed without "
-            f"arguments ({reason}), so the inherited fields are left "
-            f"uninitialized.",
-            method,
-        )
-
-    def _explain_default_ctor_deletion(
-        self, rec: 'RecordInfo', _visited: set[str] | None = None,
-    ) -> str:
-        """Produce a one-clause user-facing explanation of why `rec` cannot
-        be constructed without arguments. Walks the same chain as
-        `_record_default_ctor_is_deleted` and reports the FIRST source it
-        finds, so the message attributes the actual cause (a specific
-        field on `rec` itself, or on an ancestor) rather than blaming
-        `rec` generically. `_visited` mirrors the cycle guard in
-        `_record_default_ctor_is_deleted`.
-        """
-        if _visited is None:
-            _visited = set()
-        if rec.name in _visited:
-            return f"'{rec.name}' (cycle in ancestor/field chain)"
-        _visited = _visited | {rec.name}
-        if del_suppresses_default_ctor(rec):
-            return (f"'{rec.name}' has '__del__' and required '__init__' "
-                    f"parameters")
-        for fld in rec.fields:
-            # Kept in lockstep with `_record_default_ctor_is_deleted`: a field
-            # with an in-class initializer never blocks default construction,
-            # so it can't be the cause we attribute here.
-            if fld.default_expr is not None:
-                continue
-            if self._field_type_blocks_default_ctor(fld.type):
-                inner = self._explain_field_type_blocks_default_ctor(
-                    fld.type, _visited)
-                return (f"field '{fld.name}' has type '{str(fld.type)}' "
-                        f"({inner})")
-        for p in rec.parents:
-            if not isinstance(p, NominalType) or p.is_protocol:
-                continue
-            p_rec = self.ctx.registry.get_record_for_type(p)
-            if p_rec is None or p_rec.is_native or p_rec.builtin_type_key:
-                continue
-            if self._record_default_ctor_is_deleted(p_rec):
-                inner = self._explain_default_ctor_deletion(p_rec, _visited)
-                return (f"ancestor '{p_rec.name}' (inherited by "
-                        f"'{rec.name}') has the same restriction: {inner}")
-        return "a field or ancestor has no zero-argument constructor"
-
-    def _record_default_ctor_is_deleted(
-        self, rec: 'RecordInfo', _visited: set[str] | None = None,
-    ) -> bool:
-        """True if the C++ `Base() = default;` for this user record would
-        be implicitly deleted -- either codegen explicitly suppresses it
-        (via `del_suppresses_default_ctor`) or some field / ancestor's
-        type lacks a C++ default ctor.
-
-        Mirrors codegen's `_all_fields_default_constructible` but inverted
-        (returns True when default-ctor is unavailable). `_visited` guards
-        cyclic shapes (parent reachable via own generic instantiation,
-        mutual-import edge cases).
-        """
-        if _visited is None:
-            _visited = set()
-        if rec.name in _visited:
-            return False
-        _visited = _visited | {rec.name}
-        if del_suppresses_default_ctor(rec):
-            return True
-        for fld in rec.fields:
-            # An in-class initializer makes the field default-constructible
-            # regardless of whether its type has a zero-arg C++ ctor.
-            if fld.default_expr is not None:
-                continue
-            if self._field_type_blocks_default_ctor(fld.type, _visited):
-                return True
-        # Route parents through the field-type predicate so generic
-        # parents (e.g. `class C(Box[int32])`) dispatch through the
-        # `type_args` branch and consult the base template's
-        # `del_suppresses_default_ctor`.
-        for p in rec.parents:
-            if self._field_type_blocks_default_ctor(p, _visited):
-                return True
-        return False
-
-    def _field_type_blocks_default_ctor(
-        self, typ: TpyType, _visited: set[str] | None = None,
-    ) -> bool:
-        """True if a field of this type forces the enclosing record's C++
-        default ctor to be deleted. Mirrors codegen's
-        `_fld_type_cpp_default_constructible` in `codegen_cpp/records.py`
-        (this is the inverse).
-        """
-        typ = unwrap_readonly(typ)
-        # Storage-form Own[T] field stores T inline; the wrapped type's
-        # default-ctor is what matters.
-        if isinstance(typ, OwnType):
-            return self._field_type_blocks_default_ctor(typ.wrapped, _visited)
-        # Shapes with usable C++ default ctors regardless of T.
-        if isinstance(typ, (OptionalType, PtrType)):
-            return False
-        if is_enum_type(typ):
-            return False
-        if is_list(typ) or is_dict(typ) or is_set(typ) or is_span(typ):
-            return False
-        # Tuple / Array: default-ctorable iff every element is.
-        if isinstance(typ, TupleType):
-            return any(self._field_type_blocks_default_ctor(et, _visited)
-                       for et in typ.element_types)
-        if is_array(typ):
-            elem = typ.get_element_type()
-            return elem is not None and self._field_type_blocks_default_ctor(elem, _visited)
-        # Union field lowers to std::variant<...>; codegen's
-        # `_fld_type_cpp_default_constructible` does not special-case
-        # UnionType and falls through to `_is_default_constructible`
-        # which also returns False for it -- so codegen never emits
-        # `Outer() = default;` for a class with a union field. Mirror
-        # that: every union field blocks the enclosing default ctor.
-        # (Optional[T] is OptionalType, not UnionType, and stays
-        # default-ctorable via the OptionalType branch above.)
-        if isinstance(typ, UnionType):
-            return True
-        if isinstance(typ, NominalType) and not typ.is_protocol:
-            # Generic instantiation: codegen emits `= default;` for the
-            # template unless the base template itself suppresses default
-            # construction (Box/Rc/Weak, __del__-shapes). Mirror that.
-            if typ.type_args:
-                base_rec = self.ctx.registry.get_record(typ.name)
-                if base_rec is None:
-                    return False
-                return del_suppresses_default_ctor(base_rec)
-            rec = self.ctx.registry.get_record_for_type(typ)
-            if rec is None or rec.builtin_type_key or rec.is_native:
-                return False
-            return self._record_default_ctor_is_deleted(rec, _visited)
-        return False
-
-    def _explain_field_type_blocks_default_ctor(
-        self, typ: TpyType, _visited: set[str] | None = None,
-    ) -> str:
-        """Mirror of `_field_type_blocks_default_ctor`: name the cause for
-        the user instead of just returning bool. Caller has already
-        verified that the predicate is True for this type. `_visited`
-        threads through to `_explain_default_ctor_deletion` to guard
-        against cyclic ancestor/field chains.
-        """
-        typ = unwrap_readonly(typ)
-        if isinstance(typ, OwnType):
-            return self._explain_field_type_blocks_default_ctor(
-                typ.wrapped, _visited)
-        if isinstance(typ, TupleType):
-            for i, et in enumerate(typ.element_types):
-                if self._field_type_blocks_default_ctor(et):
-                    inner = self._explain_field_type_blocks_default_ctor(
-                        et, _visited)
-                    return f"tuple element {i} ({inner})"
-            return "a tuple element cannot be constructed without arguments"
-        if is_array(typ):
-            elem = typ.get_element_type()
-            if elem is not None:
-                inner = self._explain_field_type_blocks_default_ctor(
-                    elem, _visited)
-                return f"array element type ({inner})"
-            return "the array element type cannot be constructed without arguments"
-        if isinstance(typ, UnionType):
-            return "union fields have no default in C++"
-        if isinstance(typ, NominalType) and not typ.is_protocol:
-            if typ.type_args:
-                base_rec = self.ctx.registry.get_record(typ.name)
-                if base_rec is not None and del_suppresses_default_ctor(base_rec):
-                    return (f"'{typ.name}' has '__del__' and required "
-                            f"'__init__' parameters")
-            rec = self.ctx.registry.get_record_for_type(typ)
-            if rec is not None and not rec.builtin_type_key and not rec.is_native:
-                return self._explain_default_ctor_deletion(rec, _visited)
-        return "the type has no zero-argument constructor"
+        msg = skipped_base_ctor_error(
+            self.ctx.registry, record.name, parent, method, single_base=True)
+        if msg is not None:
+            raise self._error(msg, method)
 
     def _type_has_del_or_nocopy(self, field_type: TpyType) -> bool:
         """Check if a type (or any ancestor in its MRO) has __del__ or is @nocopy."""

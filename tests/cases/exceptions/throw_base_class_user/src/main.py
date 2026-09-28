@@ -5,6 +5,7 @@ class AppError(Exception):
     code: int32
 
     def __init__(self, code: int32) -> None:
+        super().__init__()
         self.code = code
 
 def main() -> None:

@@ -80,7 +80,7 @@ inline Res::Res(const ::tpy::BigInt& n) : n(n) {}
 
 // def __init__(self, r: Own[Res]):
 //     self.r = r
-inline Holder::Holder(Res&& r) : r(std::move(r)) {}
+inline Holder::Holder(Res&& r) : Base(), r(std::move(r)) {}
 
 // def value(self) -> int:
 //     return self.r.n

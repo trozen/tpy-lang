@@ -56,6 +56,7 @@ struct Handler {
     std::function<void(int32_t)> cb;
 
     // def __init__(self, cb: Callable[[int32], None]) -> None:
+    Handler() = default;
     explicit Handler(std::function<void(int32_t)> cb);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Handler";
 };

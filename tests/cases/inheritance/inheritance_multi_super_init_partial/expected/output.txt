@@ -1,2 +1,14 @@
 10
 20
+root init 1
+side init 2
+via-super: body
+via-super: 1 2
+root init 3
+side init 4
+via-lane: body
+via-lane: 3 4
+side init 5
+root init 6
+via-root: body
+via-root: 6 5

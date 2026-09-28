@@ -22,6 +22,7 @@ struct R {
     std::string s;
 
     // def __init__(self, s: str) -> None:
+    R() = default;
     explicit R(std::string_view s);
     static constexpr std::string_view __tpy_class_name__ = "__main__.R";
 };

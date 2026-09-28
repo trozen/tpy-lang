@@ -29,16 +29,14 @@ class Base[T, U]:
 
 class Middle[T](Base[T, int32]):
     def __init__(self, first: T, second: int32) -> None:
-        self.first = first
-        self.second = second
+        super().__init__(first, second)
 
 
 class Leaf[T](Middle[T]):
     extra: str
 
     def __init__(self, first: T, second: int32, extra: str) -> None:
-        self.first = first
-        self.second = second
+        super().__init__(first, second)
         self.extra = extra
 
     def get_extra(self) -> str:

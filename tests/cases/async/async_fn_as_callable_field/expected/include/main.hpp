@@ -56,6 +56,7 @@ struct Dispatcher {
 
     // def __init__(self,
     //              cb: Callable[[Own[Conn]], Own[Cancellable[None]]]) -> None:
+    Dispatcher() = default;
     explicit Dispatcher(std::function<std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>>(Conn&&)> cb);
     // non-copyable (@nocopy)
     Dispatcher(const Dispatcher&) = delete;

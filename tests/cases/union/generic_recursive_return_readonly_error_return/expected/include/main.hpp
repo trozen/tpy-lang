@@ -53,6 +53,7 @@ struct Holder {
     Tree<int32_t> t;
 
     // def __init__(self, t: Own[Tree[int32]]) -> None:
+    Holder() = default;
     explicit Holder(Tree<int32_t>&& t);
 
     // @error_return(E)

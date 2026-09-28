@@ -1,0 +1,5 @@
+noisy init 0
+noisy init 1
+noisy 1
+plain init 3
+plain 3

@@ -10,6 +10,12 @@ namespace tpyapp::main {
 struct HasInitA;
 struct HasInitB;
 struct Combined;
+struct Root;
+struct Side;
+struct Lane;
+struct ViaSuper;
+struct ViaLane;
+struct ViaRoot;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -48,6 +54,38 @@ inline std::ostream& operator<<(std::ostream& os, const HasInitB& obj) {
     return os;
 }
 
+// class Root:
+struct Root {
+    // r: int32
+    int32_t r;
+
+    // def __init__(self, r: int32) -> None:
+    Root() = default;
+    explicit Root(int32_t r);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Root";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Root& obj) {
+    ::tpy::print_object_default(os, "Root", obj);
+    return os;
+}
+
+// class Side:
+struct Side {
+    // s: int32
+    int32_t s;
+
+    // def __init__(self, s: int32) -> None:
+    Side() = default;
+    explicit Side(int32_t s);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Side";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Side& obj) {
+    ::tpy::print_object_default(os, "Side", obj);
+    return os;
+}
+
 // class Combined(HasInitA, HasInitB):
 struct Combined : HasInitA, HasInitB {
 
@@ -62,6 +100,57 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
     return os;
 }
 
+// class Lane(Root):
+struct Lane : Root {
+
+    using Root::Root;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Lane";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Lane& obj) {
+    ::tpy::print_object_default(os, "Lane", obj);
+    return os;
+}
+
+// class ViaSuper(Lane, Side):
+struct ViaSuper : Lane, Side {
+
+    // def __init__(self) -> None:
+    ViaSuper();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ViaSuper";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const ViaSuper& obj) {
+    ::tpy::print_object_default(os, "ViaSuper", obj);
+    return os;
+}
+
+// class ViaLane(Lane, Side):
+struct ViaLane : Lane, Side {
+
+    // def __init__(self) -> None:
+    ViaLane();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ViaLane";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const ViaLane& obj) {
+    ::tpy::print_object_default(os, "ViaLane", obj);
+    return os;
+}
+
+// class ViaRoot(Side, Lane):
+struct ViaRoot : Side, Lane {
+
+    // def __init__(self) -> None:
+    ViaRoot();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ViaRoot";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const ViaRoot& obj) {
+    ::tpy::print_object_default(os, "ViaRoot", obj);
+    return os;
+}
+
 
 // def __init__(self, a: int32) -> None:
 //     self.a = a
@@ -71,9 +160,49 @@ inline HasInitA::HasInitA(int32_t a) : a(a) {}
 //     self.b = b
 inline HasInitB::HasInitB(int32_t b) : b(b) {}
 
+// def __init__(self, r: int32) -> None:
+//     print("root init", r)
+//     self.r = r
+inline Root::Root(int32_t r) {
+    std::cout << "root init" << " " << r << "\n";
+    this->r = r;
+}
+
+// def __init__(self, s: int32) -> None:
+//     print("side init", s)
+//     self.s = s
+inline Side::Side(int32_t s) {
+    std::cout << "side init" << " " << s << "\n";
+    this->s = s;
+}
+
 // def __init__(self, a: int32, b: int32) -> None:
 //     super().__init__(a)              # covers HasInitA (MRO-first)
 //     HasInitB.__init__(self, b)       # HasInitB still needs an explicit call
 inline Combined::Combined(int32_t a, int32_t b) : HasInitA(a), HasInitB(b) {}
+
+// def __init__(self) -> None:
+//     super().__init__(1)  # tpyc: ok
+//     Side.__init__(self, 2)
+//     print("via-super: body")
+inline ViaSuper::ViaSuper() : Lane(1), Side(2) {
+    std::cout << "via-super: body" << "\n";
+}
+
+// def __init__(self) -> None:
+//     Lane.__init__(self, 3)  # tpyc: ok
+//     Side.__init__(self, 4)
+//     print("via-lane: body")
+inline ViaLane::ViaLane() : Lane(3), Side(4) {
+    std::cout << "via-lane: body" << "\n";
+}
+
+// def __init__(self) -> None:
+//     super().__init__(5)
+//     Root.__init__(self, 6)  # tpyc: ok
+//     print("via-root: body")
+inline ViaRoot::ViaRoot() : Side(5), Lane(6) {
+    std::cout << "via-root: body" << "\n";
+}
 void __tpy_init();
 } // namespace tpyapp::main

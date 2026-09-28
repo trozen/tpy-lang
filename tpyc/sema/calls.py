@@ -5656,14 +5656,9 @@ class CallAnalyzer:
         """
         if record.is_generic() or expr.kwargs:
             return None
-        overloads = record.get_method_overloads("__init__")
+        overloads = self.ctx.registry.ctor_overloads(record)
         if len(overloads) <= 1:
-            if overloads or record.inherits_init_from is None:
-                return None
-            overloads = self.ctx.registry.get_method_overloads_with_parents(
-                record, "__init__")
-            if len(overloads) <= 1:
-                return None
+            return None
         arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
         try:
             winner = resolve_overload(

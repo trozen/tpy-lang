@@ -4,6 +4,7 @@
 # element that doesn't support the body.
 class AErr(Exception):
     def __init__(self, code: int) -> None:
+        super().__init__()
         self.code = code
 
 

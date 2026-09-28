@@ -11,7 +11,7 @@ class BaseErr(Exception):
     code: int32
 
     def __init__(self, message: str, code: int32):
-        self.message = message
+        super().__init__(message)
         self.code = code
 
 
@@ -19,8 +19,7 @@ class DerivedErr(BaseErr):
     detail: str
 
     def __init__(self, message: str, code: int32, detail: str):
-        self.message = message
-        self.code = code
+        super().__init__(message, code)
         self.detail = detail
 
 

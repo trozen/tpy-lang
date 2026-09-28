@@ -69,7 +69,7 @@ class JSONDecodeError(ValueError):
         # `message` is BaseException's runtime field (used by __str__);
         # `msg` is CPython's documented attribute on JSONDecodeError.
         # Always equal -- both names are exposed for compatibility.
-        self.message = msg
+        super().__init__(msg)
         self.msg = msg
         self.doc = doc
         self.pos = pos

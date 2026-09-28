@@ -557,7 +557,14 @@ class ProtocolChecker:
         return False
 
     def _is_default_constructible(self, actual: TpyType) -> bool:
-        """Check if a type supports default construction (zero-arg init)."""
+        """Whether TPy can build a fully initialized value from `T()` with no
+        arguments -- the rule of the `Default` marker, of an aggregate's
+        `Record()` and of the constructor split-point check. For an aggregate
+        that is stricter than CPython, whose `T()` leaves a field without a
+        default unset. Not C++
+        default construction: codegen gives a record with a required-argument
+        `__init__` `X() = default;` too (`typesys.cpp_default_init`), which a
+        Python-level `T()` must not reach."""
         # All primitive value types are default-constructible
         if (is_numeric_type(actual) or is_char_type(actual)
                 or is_str_category(actual)):

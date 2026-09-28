@@ -12,7 +12,7 @@ class Child[T, N: int](Base[T, N]):
     extra: int32
 
     def __init__(self, v: T, e: int32) -> None:
-        self.value = v
+        super().__init__(v)
         self.extra = e
 
 
@@ -20,8 +20,7 @@ class GrandChild[T, N: int](Child[T, N]):
     name: str
 
     def __init__(self, v: T, e: int32, n: str) -> None:
-        self.value = v
-        self.extra = e
+        super().__init__(v, e)
         self.name = n
 
 

@@ -17,7 +17,7 @@ class Square(Shape):
     side: int32
 
     def __init__(self, side: int32) -> None:
-        self.name = "Square"
+        super().__init__("Square")
         self.side = side
 
     def area(self) -> int32:
@@ -29,7 +29,7 @@ class Rectangle(Shape):
     height: int32
 
     def __init__(self, width: int32, height: int32) -> None:
-        self.name = "Rectangle"
+        super().__init__("Rectangle")
         self.width = width
         self.height = height
 

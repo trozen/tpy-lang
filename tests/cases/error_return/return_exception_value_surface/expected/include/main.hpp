@@ -17,6 +17,8 @@ struct Missing;
 struct ParseError;
 struct Tracked;
 struct Labelled;
+struct Coded;
+struct Named;
 struct Reader;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -28,6 +30,12 @@ struct __gen_pairs;
 // @error_return(Missing)
 // def find(key: str) -> int32:
 std::expected<int32_t, Missing> find(std::string_view key);
+// @error_return(Coded)
+// def coded(n: int32) -> int32:
+std::expected<int32_t, Coded> coded(int32_t n);
+// @error_return(Named)
+// def named(ok: bool) -> int32:
+std::expected<int32_t, Named> named(bool ok);
 // @error_return(Tracked)
 // def track(code: int32) -> int32:
 std::expected<int32_t, Tracked> track(int32_t code);
@@ -151,6 +159,44 @@ inline std::ostream& operator<<(std::ostream& os, const Labelled& obj) {
     return os;
 }
 
+// class Coded(Exception, ReturnException):
+struct Coded : ::tpy::ReturnException {
+    // code: int32
+    int32_t code;
+    // message: str
+    std::string message;
+
+    // def __init__(self, code: int32, why: str) -> None:
+    Coded() = default;
+    explicit Coded(int32_t code, std::string_view why);
+
+    std::string_view __str__() const { return message; }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Coded";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Coded& obj) {
+    ::tpy::print_object_default(os, "Coded", obj);
+    return os;
+}
+
+// class Named(Exception, ReturnException):
+struct Named : ::tpy::ReturnException {
+    // message: str
+    std::string message;
+
+    // def __init__(self, why: str) -> None:
+    Named() = default;
+    explicit Named(std::string_view why);
+
+    std::string_view __str__() const { return message; }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Named";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
+    ::tpy::print_object_default(os, "Named", obj);
+    return os;
+}
+
 // class Reader:
 struct Reader {
     // seen: int32
@@ -266,15 +312,17 @@ __gen_pairs<T_it> pairs(T_it&& it) {
 
 
 // def __init__(self, message: str = "") -> None:
-//     self.message = message
+//     super().__init__(message)
 inline Missing::Missing(std::string_view message) : message(message) {}
 
 // def __init__(self, line: int32, detail: str) -> None:
+//     super().__init__()
 //     self.line = line
 //     self.detail = detail
 inline ParseError::ParseError(int32_t line, std::string_view detail) : line(line), detail(detail) {}
 
 // def __init__(self, code: int32) -> None:
+//     super().__init__()
 //     self.code = code
 inline Tracked::Tracked(int32_t code) : code(code) {}
 
@@ -296,14 +344,26 @@ inline Tracked::~Tracked() {
 }
 
 // def __init__(self, message: str) -> None:
+//     super().__init__(message)
 //     self.message = message
-inline Labelled::Labelled(std::string_view message) : message(message) {}
+inline Labelled::Labelled(std::string_view message) : message(message) {
+    this->message = message;
+}
 
 // def __str__(self) -> str:
 //     return "labelled:" + self.message
 inline std::string Labelled::__str__() const {
     return (::tpy::str_concat("labelled:", this->message));
 }
+
+// def __init__(self, code: int32, why: str) -> None:
+//     super().__init__(why)  # tpyc: ok
+//     self.code = code
+inline Coded::Coded(int32_t code, std::string_view why) : code(code), message(why) {}
+
+// def __init__(self, why: str) -> None:
+//     Exception.__init__(self, why)  # tpyc: ok
+inline Named::Named(std::string_view why) : message(why) {}
 
 // def __init__(self) -> None:
 //     self.seen = 0

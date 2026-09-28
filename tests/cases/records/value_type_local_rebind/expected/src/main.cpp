@@ -3,8 +3,8 @@
 
 namespace tpyapp::main {
 
-Coord g;
-Coord h;
+Coord g{};
+Coord h{};
 
 // def step(c: Coord) -> Coord:
 //     return Coord(c.column + 1, c.row)
@@ -222,7 +222,7 @@ void match_arm(int32_t tag, Coord p) {
 //     c = Coord(c.column + 1, 0)  # tpyc: ok
 //     return c.column
 std::expected<int32_t, Err> err_bind(std::string_view s) {
-    Coord c;
+    Coord c{};
     {
         auto __try_tmp_1 = ::tpyapp::main::parse(s);
         if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_1.error()));
@@ -236,7 +236,6 @@ std::expected<int32_t, Err> err_bind(std::string_view s) {
 //     free_fn()
 //     loop_var([Coord(1, 0), Coord(5, 0), Coord(9, 0)])
 //     subscript([Coord(3, 0), Coord(4, 0)])
-//     # Bound first: BUGS.md#valuetype-ctor-temp-argument-rejects.
 //     p = Coord(6, 0)
 //     param(p)
 //     branch(True)

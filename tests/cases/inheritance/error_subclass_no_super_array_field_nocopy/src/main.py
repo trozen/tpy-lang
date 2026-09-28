@@ -1,8 +1,5 @@
-# Array branch of `_field_type_blocks_default_ctor`: a base with
-# `Array[Resource, N]` field where Resource is @nocopy+__del__. The
-# array's element type has no default ctor, so std::array<Resource, N>
-# is not default-ctorable and the base's = default ctor is implicitly
-# deleted -- subclass without super() must be rejected.
+# No super() over an `__init__`-less base with an `Array` of @nocopy+__del__
+# (no default ctor) is rejected (LANGUAGE_FEATURES "Single class inheritance").
 from tpy import Array, Ptr, int32, nocopy
 from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop
 
@@ -23,14 +20,12 @@ class Resource:
 class Base:
     arr: Array[Resource, 2]
 
-    def __init__(self, a: int32, b: int32) -> None:
-        self.arr = Array[Resource, 2](Resource(a), Resource(b))
-
 
 class Child(Base):
     label: str
 
-    def __init__(self, a: int32, b: int32, label: str) -> None:   # tpyc: error(/must call 'super\(\).__init__/)
+    def __init__(self, a: int32, b: int32, label: str) -> None:   # tpyc: error(/cannot be constructed without arguments \(field 'arr' .*array element type/)
+        self.arr = Array[Resource, 2](Resource(a), Resource(b))
         self.label = label
 
 

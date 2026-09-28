@@ -1,0 +1,1 @@
+main.py:24: error: 'Slot.__init__' does not initialize base 'Holder', but 'Holder' cannot be constructed without arguments (field 'c' has type 'Counter' ('Counter' has no zero-argument constructor)), so the inherited fields are left uninitialized. Give 'Holder' field defaults, or an '__init__' for 'Slot.__init__' to call.

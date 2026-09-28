@@ -10,6 +10,19 @@ namespace tpyapp::main {
 struct Box;
 struct IntBox;
 struct TaggedBox;
+struct LabeledBox;
+struct Doubled;
+struct NamedGrand;
+struct NamedMid;
+struct Opt;
+struct OptMid;
+struct OptLeaf;
+template<typename U> struct Holder;
+template<typename T> struct ListHolder;
+struct ViaSuper;
+struct ViaName;
+struct AppError;
+struct SubError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -35,6 +48,57 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+// class Opt:
+struct Opt {
+    // level: int32
+    int32_t level;
+
+    // def __init__(self, level: int32 = 1) -> None:
+    explicit Opt(int32_t level = 1);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Opt";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Opt& obj) {
+    ::tpy::print_object_default(os, "Opt", obj);
+    return os;
+}
+
+// class Holder[U]:
+template<typename U>
+struct Holder {
+    // item: U
+    U item;
+
+    // def __init__(self, item: U) -> None:
+    //     # The copy is unobservable here: every caller passes a fresh literal.
+    //     self.item = item  # tpyc: warning(/may copy U into field/)
+    Holder() = default;
+    explicit Holder(::tpy::readonly_form_t<U> item) : item(item) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
+};
+
+template<typename U>
+inline std::ostream& operator<<(std::ostream& os, const Holder<U>& obj) {
+    ::tpy::print_object_default(os, "Holder", obj);
+    return os;
+}
+
+// class AppError(Exception):
+struct AppError : ::tpy::Exception {
+
+    using ::tpy::Exception::Exception;
+
+    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<AppError>(*this); }
+    [[noreturn]] void __raise__() const override { throw *this; }
+    const char* what() const noexcept override { return this->message.c_str(); }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.AppError";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
+    ::tpy::print_object_default(os, "AppError", obj);
+    return os;
+}
+
 // class IntBox(Box):
 struct IntBox : Box {
 
@@ -44,6 +108,66 @@ struct IntBox : Box {
 
 inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
     ::tpy::print_object_default(os, "IntBox", obj);
+    return os;
+}
+
+// class LabeledBox(Box):
+struct LabeledBox : Box {
+    // label: str = "box"
+    std::string label = "box";
+
+    using Box::Box;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.LabeledBox";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const LabeledBox& obj) {
+    ::tpy::print_object_default(os, "LabeledBox", obj);
+    return os;
+}
+
+// class OptMid(Opt):
+struct OptMid : Opt {
+
+    using Opt::Opt;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OptMid";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OptMid& obj) {
+    ::tpy::print_object_default(os, "OptMid", obj);
+    return os;
+}
+
+// class ListHolder[T](Holder[list[T]]):
+template<typename T>
+struct ListHolder : Holder<std::vector<T>> {
+
+    using Holder<std::vector<T>>::Holder;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ListHolder";
+};
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const ListHolder<T>& obj) {
+    ::tpy::print_object_default(os, "ListHolder", obj);
+    return os;
+}
+
+// class SubError(AppError):
+struct SubError : AppError {
+    // self.code = code
+    int32_t code;
+
+    // def __init__(self, code: int32) -> None:
+    SubError() = default;
+    explicit SubError(int32_t code);
+
+    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<SubError>(*this); }
+    [[noreturn]] void __raise__() const override { throw *this; }
+    const char* what() const noexcept override { return this->message.c_str(); }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.SubError";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const SubError& obj) {
+    ::tpy::print_object_default(os, "SubError", obj);
     return os;
 }
 
@@ -59,6 +183,89 @@ inline std::ostream& operator<<(std::ostream& os, const TaggedBox& obj) {
     return os;
 }
 
+// class Doubled(LabeledBox):
+struct Doubled : LabeledBox {
+
+    // def __init__(self, n: int32) -> None:
+    Doubled() = default;
+    explicit Doubled(int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Doubled";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Doubled& obj) {
+    ::tpy::print_object_default(os, "Doubled", obj);
+    return os;
+}
+
+// class NamedGrand(LabeledBox):
+struct NamedGrand : LabeledBox {
+
+    // def __init__(self, n: int32) -> None:
+    NamedGrand() = default;
+    explicit NamedGrand(int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.NamedGrand";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const NamedGrand& obj) {
+    ::tpy::print_object_default(os, "NamedGrand", obj);
+    return os;
+}
+
+// class OptLeaf(OptMid):
+struct OptLeaf : OptMid {
+
+    // def __init__(self) -> None:
+    OptLeaf();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OptLeaf";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OptLeaf& obj) {
+    ::tpy::print_object_default(os, "OptLeaf", obj);
+    return os;
+}
+
+// class ViaSuper(ListHolder[int32]):
+struct ViaSuper : ListHolder<int32_t> {
+
+    // def __init__(self, xs: list[int32]) -> None:
+    ViaSuper() = default;
+    explicit ViaSuper(std::vector<int32_t>& xs);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ViaSuper";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const ViaSuper& obj) {
+    ::tpy::print_object_default(os, "ViaSuper", obj);
+    return os;
+}
+
+// class ViaName(ListHolder[int32]):
+struct ViaName : ListHolder<int32_t> {
+
+    // def __init__(self, xs: list[int32]) -> None:
+    ViaName() = default;
+    explicit ViaName(std::vector<int32_t>& xs);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ViaName";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const ViaName& obj) {
+    ::tpy::print_object_default(os, "ViaName", obj);
+    return os;
+}
+
+// class NamedMid(TaggedBox):
+struct NamedMid : TaggedBox {
+
+    // def __init__(self, n: int32) -> None:
+    NamedMid() = default;
+    explicit NamedMid(int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.NamedMid";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const NamedMid& obj) {
+    ::tpy::print_object_default(os, "NamedMid", obj);
+    return os;
+}
+
 
 // def __init__(self, value: int32) -> None:
 //     self.value = value
@@ -69,5 +276,46 @@ inline Box::Box(int32_t value) : value(value) {}
 inline int32_t Box::get() const {
     return this->value;
 }
+
+// def __init__(self, level: int32 = 1) -> None:
+//     self.level = level
+inline Opt::Opt(int32_t level) : level(level) {}
+
+// def __init__(self, code: int32) -> None:
+//     # a native grandparent's `__init__` through an `__init__`-less class
+//     super().__init__(f"sub {code}")  # tpyc: ok
+//     self.code = code
+inline SubError::SubError(int32_t code) : AppError(std::format("sub {}", code)), code(code) {}
+
+// def __init__(self, n: int32) -> None:
+//     # resolves to `Box.__init__` through `__init__`-less LabeledBox
+//     super().__init__(n * 2)  # tpyc: ok
+inline Doubled::Doubled(int32_t n) : LabeledBox((::tpy::mul_check<int32_t>(n, 2))) {}
+
+// def __init__(self, n: int32) -> None:
+//     # naming the ancestor past the `__init__`-less direct base runs exactly
+//     # that base's inherited initializer, so it constructs LabeledBox
+//     Box.__init__(self, n + 1)  # tpyc: ok
+inline NamedGrand::NamedGrand(int32_t n) : LabeledBox((::tpy::add_check<int32_t>(n, 1))) {}
+
+// def __init__(self) -> None:
+//     # an all-defaulted ancestor `__init__` reached through a `pass` class
+//     super().__init__(5)  # tpyc: ok
+inline OptLeaf::OptLeaf() : OptMid(5) {}
+
+// def __init__(self, xs: list[int32]) -> None:
+//     # the ancestor's `U` binds through the parent's arguments: list[int32]
+//     super().__init__(xs)  # tpyc: ok
+inline ViaSuper::ViaSuper(std::vector<int32_t>& xs) : ListHolder<int32_t>(xs) {}
+
+// def __init__(self, xs: list[int32]) -> None:
+//     # the same resolution for the named-parent spelling
+//     ListHolder.__init__(self, xs)  # tpyc: ok
+inline ViaName::ViaName(std::vector<int32_t>& xs) : ListHolder<int32_t>(xs) {}
+
+// def __init__(self, n: int32) -> None:
+//     # the named class is `__init__`-less itself: TaggedBox runs Box's too
+//     IntBox.__init__(self, n + 2)  # tpyc: ok
+inline NamedMid::NamedMid(int32_t n) : TaggedBox((::tpy::add_check<int32_t>(n, 2))) {}
 void __tpy_init();
 } // namespace tpyapp::main

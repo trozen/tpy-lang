@@ -1,0 +1,1 @@
+main.py:18: error: 'Base' is initialized twice in 'Child.__init__' ('Base.__init__(self, ...)' already initializes it); a base is constructed exactly once

@@ -45,6 +45,7 @@ struct RawSession {
     ::tpystd::termios::TermAttributes saved;
 
     // def __init__(self, fd: int64) -> None:
+    RawSession() = default;
     explicit RawSession(int64_t fd);
 
     // def restore(self) -> None:
@@ -65,6 +66,7 @@ struct CbreakMode {
     ::tpystd::termios::TermAttributes saved;
 
     // def __init__(self, fd: int64) -> None:
+    CbreakMode() = default;
     explicit CbreakMode(int64_t fd);
 
     // def __enter__(self) -> "CbreakMode":

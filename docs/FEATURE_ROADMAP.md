@@ -3174,10 +3174,10 @@ Pythonic cooperative `super()` chaining (see "Non-goals" below) is not planned.
 emits non-virtual C++ multiple inheritance. C3 linearization (MRO) is computed at sema
 registration; method resolution, field inheritance, and `isinstance` fold compile-time
 via MRO membership. Diamonds are rejected with a diagnostic pointing at `@dynamic`.
-Multiple bases may declare `__init__`; the child must invoke each explicitly via
-`BaseN.__init__(self, ...)` -- `super().__init__(...)` covers only the MRO-first
-`__init__` base, so multi-base classes with >1 `__init__` bases still need explicit
-calls for the rest.
+Multiple bases may declare `__init__`; the child should invoke each explicitly via
+`BaseN.__init__(self, ...)` (skipping one is a warned divergence) --
+`super().__init__(...)` covers only the MRO-first `__init__` base, so multi-base
+classes with >1 `__init__` bases still need explicit calls for the rest.
 
 **Shipped** (static, non-virtual):
 - C3 linearization + diamond rejection (`Diamond inheritance not supported: '{anc}' is
@@ -3199,7 +3199,9 @@ calls for the rest.
   `__init__`; `BaseN.__del__(self)` is rejected.
 - Multi-base `__init__` coverage validator: every base with `__init__` must be invoked
   explicitly from the child's `__init__` (either form). Base-init calls must be
-  top-level statements; nesting in control flow is rejected with a targeted error.
+  the leading statements; a later or nested one is rejected ("must be the first
+  statement"), as are a second call for the same direct base and one naming an
+  ancestor past a direct base that defines its own `__init__`.
   C++ MIL is emitted in declaration order regardless of how the user writes the calls
   (avoids `-Wreorder` in generated code); out-of-declaration-order source is flagged
   with a sema warning since C++ evaluates init arguments in MIL order too.

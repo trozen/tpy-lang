@@ -16,7 +16,7 @@ class Animal(Tag):
 
 class Dog(Animal):
     def __init__(self) -> None:
-        pass
+        super().__init__()
 
 
 class Widget:

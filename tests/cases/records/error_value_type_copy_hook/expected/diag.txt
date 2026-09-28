@@ -1,0 +1,1 @@
+main.py:12: error: ValueType class 'Tok' cannot define '__copy__': a value is copied implicitly wherever it is passed or bound, so a copy hook would run user code the program never calls; use a regular class

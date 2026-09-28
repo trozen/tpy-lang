@@ -42,12 +42,10 @@ struct Child : Base<T, N> {
     int32_t extra;
 
     // def __init__(self, v: T, e: int32) -> None:
-    //     self.value = v
+    //     super().__init__(v)
     //     self.extra = e
     Child() = default;
-    explicit Child(::tpy::readonly_form_t<T> v, int32_t e) : extra(e) {
-        this->value = ::tpy::param_to_storage<T>(v);
-    }
+    explicit Child(::tpy::param_val_or_ref_t<T> v, int32_t e) : Base<T, N>(v), extra(e) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
@@ -64,14 +62,10 @@ struct GrandChild : Child<T, N> {
     std::string name;
 
     // def __init__(self, v: T, e: int32, n: str) -> None:
-    //     self.value = v
-    //     self.extra = e
+    //     super().__init__(v, e)
     //     self.name = n
     GrandChild() = default;
-    explicit GrandChild(::tpy::readonly_form_t<T> v, int32_t e, std::string_view n) : name(n) {
-        this->value = ::tpy::param_to_storage<T>(v);
-        this->extra = e;
-    }
+    explicit GrandChild(::tpy::param_val_or_ref_t<T> v, int32_t e, std::string_view n) : Child<T, N>(v, e), name(n) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.GrandChild";
 };
 

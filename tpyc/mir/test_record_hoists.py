@@ -225,7 +225,7 @@ def test_missing_or_inconsistent_positive_facts_stay_uncovered(artifacts: Artifa
 
 def test_render_string_is_not_a_storage_fact(artifacts: Artifacts) -> None:
     fn = artifacts[0]["branch"]
-    hoist = replace(fn.body[0], hoist_decls=(("cell", "opaque render data"),))
+    hoist = replace(fn.body[0], hoist_decls=(th.HoistDecl("cell", "opaque render data"),))
     result = lower_function(replace(fn, body=(hoist, *fn.body[1:])), MIRBodyId("record_hoists", "render"),
                             definitions=artifacts[2], kind=MIRBodyKind.FREE_FUNCTION)
     assert isinstance(result, MIRFunction), result

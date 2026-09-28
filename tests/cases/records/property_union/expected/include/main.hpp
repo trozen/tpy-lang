@@ -56,6 +56,7 @@ struct Canvas {
     ::tpy::Union<Circle, Square> _shape;
 
     // def __init__(self, s: Circle | Square) -> None:
+    Canvas() = default;
     explicit Canvas(::tpy::Union<const Circle*, const Square*> s);
 
     // @property

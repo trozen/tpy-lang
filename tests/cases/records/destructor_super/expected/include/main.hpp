@@ -78,7 +78,7 @@ inline Base::~Base() {
 
 // def __init__(self, label: str):
 //     self.label = label
-inline Child::Child(std::string_view label) : label(label) {}
+inline Child::Child(std::string_view label) : Base(), label(label) {}
 
 inline Child::Child(Child&& other) noexcept : Base(std::move(other)), label(std::move(other.label)) {
     other.__tpy_owned_ = false;

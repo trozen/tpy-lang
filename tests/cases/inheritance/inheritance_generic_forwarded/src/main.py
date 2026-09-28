@@ -14,7 +14,7 @@ class Wrapper[T](Container[T]):
     extra: int32
 
     def __init__(self, value: T, extra: int32) -> None:
-        self.value = value
+        super().__init__(value)
         self.extra = extra
 
     def get_extra(self) -> int32:

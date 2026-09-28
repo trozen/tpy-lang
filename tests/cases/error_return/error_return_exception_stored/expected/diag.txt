@@ -1,1 +1,1 @@
-main.py:28: error: cannot store the return-only exception 'Bad' as an owned value in reassignment to 'last': keeping a caught return exception is not supported yet; copy the fields you need out of it instead
+main.py:29: error: cannot store the return-only exception 'Bad' as an owned value in reassignment to 'last': keeping a caught return exception is not supported yet; copy the fields you need out of it instead

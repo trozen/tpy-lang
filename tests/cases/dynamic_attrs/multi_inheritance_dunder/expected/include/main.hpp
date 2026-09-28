@@ -82,6 +82,6 @@ inline std::string Mixin::helper() const {
 
 // def __init__(self, store: dict[str, str]) -> None:
 //     super().__init__(store)
-inline Combined::Combined(const ::tpy::ordered_map<std::string, std::string>& store) : WithGetattr(store) {}
+inline Combined::Combined(const ::tpy::ordered_map<std::string, std::string>& store) : WithGetattr(store), Mixin() {}
 void __tpy_init();
 } // namespace tpyapp::main

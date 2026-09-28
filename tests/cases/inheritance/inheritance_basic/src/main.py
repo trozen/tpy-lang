@@ -19,8 +19,7 @@ class Dog(Animal):
     breed: str
 
     def __init__(self, name: str, age: int32, breed: str) -> None:
-        self.name = name
-        self.age = age
+        super().__init__(name, age)
         self.breed = breed
 
     def speak(self) -> str:

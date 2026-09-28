@@ -1,1 +1,1 @@
-main.py:7: warning: returns a copy of str field 'self.message'; use -> StrView for zero-copy access or -> String to silence this warning
+main.py:9: warning: returns a copy of str field 'self.message'; use -> StrView for zero-copy access or -> String to silence this warning

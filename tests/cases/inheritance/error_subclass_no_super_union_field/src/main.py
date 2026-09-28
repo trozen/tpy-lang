@@ -1,7 +1,5 @@
-# UnionType branch of `_field_type_blocks_default_ctor`: a base with
-# any non-Optional union field. Codegen does not emit `Base() = default;`
-# for classes with union fields (its predicate falls through to the
-# False arm for UnionType), so subclass without super() must be rejected.
+# No super() over an `__init__`-less base whose union field's first alternative
+# has no default ctor (LANGUAGE_FEATURES "Single class inheritance").
 from tpy import int32
 
 
@@ -10,6 +8,9 @@ class A:
 
     def __init__(self, x: int32) -> None:
         self.x = x
+
+    def __del__(self) -> None:
+        pass
 
 
 class B:
@@ -22,14 +23,12 @@ class B:
 class Base:
     val: A | B
 
-    def __init__(self, v: A | B) -> None:
-        self.val = v
-
 
 class Child(Base):
     extra: int32
 
-    def __init__(self, e: int32) -> None:   # tpyc: error(/must call 'super\(\).__init__/)
+    def __init__(self, e: int32) -> None:   # tpyc: error(/cannot be constructed without arguments \(field 'val' .*its first alternative 'A'/)
+        self.val = B(e)
         self.extra = e
 
 

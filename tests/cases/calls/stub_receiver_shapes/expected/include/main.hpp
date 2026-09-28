@@ -24,6 +24,7 @@ struct Buf {
     std::vector<int32_t> nums;
 
     // def __init__(self, data: Own[bytearray]) -> None:
+    Buf() = default;
     explicit Buf(::tpy::ByteArray&& data);
 
     // @property

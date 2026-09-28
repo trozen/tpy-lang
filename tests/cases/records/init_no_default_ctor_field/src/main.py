@@ -1,6 +1,5 @@
-# Class with a non-Python-default-constructible field, properly initialized in init section.
-# Handle() = default; is emitted (its C++ fields are all trivial) even though Handle requires
-# an id argument in Python -- known semantic gap, see CONSTRUCTOR_DESIGN.md open question 4.
+# A field whose type needs `__init__` arguments, initialized in the init section; Handle
+# still gets the C++ placeholder `Handle() = default;` (its fields are all trivial).
 from tpy import nocopy, int32
 
 @nocopy

@@ -1,0 +1,1 @@
+main.py:18: error: 'B' has no '__init__' and its field 'y' has no default, so it cannot pass arguments on to 'A.__init__'; give 'B' an '__init__' or a default for 'y'

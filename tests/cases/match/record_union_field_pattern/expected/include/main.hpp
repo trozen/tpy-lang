@@ -63,6 +63,7 @@ struct Wrapper {
     ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self, pet: Cat | Dog) -> None:
+    Wrapper() = default;
     explicit Wrapper(::tpy::Union<const Cat*, const Dog*> pet);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
@@ -80,6 +81,7 @@ struct Tagged {
     ::tpy::Union<int32_t, std::string> value;
 
     // def __init__(self, tag: str, value: str | int32) -> None:
+    Tagged() = default;
     explicit Tagged(std::string_view tag, const ::tpy::Union<int32_t, std::string>& value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };

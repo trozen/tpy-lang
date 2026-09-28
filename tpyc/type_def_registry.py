@@ -61,6 +61,19 @@ class TypeCategory(Enum):
     STRUCTURAL_WRAPPER = auto()
 
 
+class CppDefaultInit(Enum):
+    """What C++ default construction of a type's storage form does -- the
+    one fact behind a record's `X() = default;` and a base or field built
+    without arguments. Ordered, so a composite's verdict is the `meet` of
+    its parts'."""
+    NONE = 0        # not default-constructible, or not known to be
+    USER_INIT = 1   # legal, but it runs a record's user `__init__`
+    INERT = 2       # legal, and runs no user code
+
+    def meet(self, other: 'CppDefaultInit') -> 'CppDefaultInit':
+        return self if self.value <= other.value else other
+
+
 @dataclass(frozen=True)
 class IntTraits:
     """Fixed-width integer traits: width + signedness.
@@ -220,6 +233,11 @@ class TypeDef:
     # fields do not set this -- their indirection is inferred structurally
     # from the field walk.
     is_indirecting: bool = False
+    # The runtime type's default construction (see `CppDefaultInit`), for a
+    # builtin whose C++ type the compiler cannot introspect; None leaves the
+    # verdict to the record walk (`typesys.cpp_default_init`), which answers
+    # NONE for a builtin without one.
+    cpp_default_init: Optional[CppDefaultInit] = None
     # Category-specific trait payloads.
     int_traits: Optional[IntTraits] = None
     float_traits: Optional[FloatTraits] = None
@@ -1068,6 +1086,10 @@ def is_int_enum_type(t: "TpyType") -> bool:
 
 def _populate() -> None:
     TC = TypeCategory
+    # Every runtime type below default-constructs to an empty / zero value
+    # except the iterator adapters (SpanIter has no default constructor;
+    # CopyIter / OwnIter spell `auto`) and varargs.
+    _INERT = CppDefaultInit.INERT
 
     # Fixed-width integers (signed + unsigned). Value types. cpp_formatter
     # renders as int{bits}_t / uint{bits}_t derived from int_traits.
@@ -1081,6 +1103,7 @@ def _populate() -> None:
             qn = f"tpy.{prefix}{bits}"
             register(TypeDef(
                 qn, TC.FIXED_INT, is_value_type=True, boundary_marshal=True,
+                cpp_default_init=_INERT,
                 cpp_formatter=_int_cpp(bits, signed),
                 param_cpp_formatter=_int_cpp(bits, signed),
                 int_traits=IntTraits(bits=bits, signed=signed),
@@ -1088,7 +1111,7 @@ def _populate() -> None:
 
     # BigInt: heap-backed, expensive to copy, passed by const reference.
     register(TypeDef(
-        "builtins.int", TC.BIG_INT, is_value_type=True, boundary_marshal=True,
+        "builtins.int", TC.BIG_INT, cpp_default_init=_INERT, is_value_type=True, boundary_marshal=True,
         cpp_formatter=lambda args: "::tpy::BigInt",
         param_cpp_formatter=lambda args: "const ::tpy::BigInt&",
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
@@ -1096,13 +1119,13 @@ def _populate() -> None:
 
     # Floats.
     register(TypeDef(
-        "builtins.float", TC.FLOAT, is_value_type=True, boundary_marshal=True,
+        "builtins.float", TC.FLOAT, cpp_default_init=_INERT, is_value_type=True, boundary_marshal=True,
         cpp_formatter=lambda args: "double",
         param_cpp_formatter=lambda args: "double",
         float_traits=FloatTraits(bits=64),
     ))
     register(TypeDef(
-        "tpy.float32", TC.FLOAT, is_value_type=True,
+        "tpy.float32", TC.FLOAT, cpp_default_init=_INERT, is_value_type=True,
         cpp_formatter=lambda args: "float",
         param_cpp_formatter=lambda args: "float",
         float_traits=FloatTraits(bits=32),
@@ -1110,13 +1133,13 @@ def _populate() -> None:
 
     # Bool and char.
     register(TypeDef(
-        "builtins.bool", TC.BOOL, is_value_type=True, boundary_marshal=True,
+        "builtins.bool", TC.BOOL, cpp_default_init=_INERT, is_value_type=True, boundary_marshal=True,
         ctor_arg_truth_test=True,
         cpp_formatter=lambda args: "bool",
         param_cpp_formatter=lambda args: "bool",
     ))
     register(TypeDef(
-        "tpy.char", TC.CHAR, is_value_type=True,
+        "tpy.char", TC.CHAR, cpp_default_init=_INERT, is_value_type=True,
         cpp_formatter=lambda args: "char",
         param_cpp_formatter=lambda args: "char",
     ))
@@ -1131,21 +1154,21 @@ def _populate() -> None:
         return CHAR
 
     register(TypeDef(
-        "builtins.str", TC.STR, is_value_type=True, boundary_marshal=True,
+        "builtins.str", TC.STR, cpp_default_init=_INERT, is_value_type=True, boundary_marshal=True,
         cpp_formatter=lambda args: "std::string",
         param_cpp_formatter=lambda args: "std::string_view",
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
         element_of=_char_elem,
     ))
     register(TypeDef(
-        "tpy.String", TC.STR, is_value_type=True,
+        "tpy.String", TC.STR, cpp_default_init=_INERT, is_value_type=True,
         cpp_formatter=lambda args: "::tpy::String",
         param_cpp_formatter=lambda args: "const ::tpy::String&",
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
         element_of=_char_elem,
     ))
     register(TypeDef(
-        "tpy.StrView", TC.STR, is_value_type=True,
+        "tpy.StrView", TC.STR, cpp_default_init=_INERT, is_value_type=True,
         is_send=False, is_sync=True,
         cpp_formatter=lambda args: "std::string_view",
         param_cpp_formatter=lambda args: "std::string_view",
@@ -1169,7 +1192,7 @@ def _populate() -> None:
         return UINT8
 
     register(TypeDef(
-        "builtins.bytes", TC.BYTES, is_value_type=True, boundary_marshal=True,
+        "builtins.bytes", TC.BYTES, cpp_default_init=_INERT, is_value_type=True, boundary_marshal=True,
         cpp_formatter=lambda args: "::tpy::Bytes",
         param_cpp_formatter=lambda args: "::tpy::BytesView",
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
@@ -1179,7 +1202,7 @@ def _populate() -> None:
         # A mutable buffer is a reference type (like list/dict/set): locals and
         # field/return reads alias rather than deep-copy the buffer, matching
         # CPython. bytes stays value-like (immutable, so a copy is unobservable).
-        "builtins.bytearray", TC.BYTES,
+        "builtins.bytearray", TC.BYTES, cpp_default_init=_INERT,
         # Send (owns a plain u8 buffer, no shared refs) but not Sync (mutable),
         # same as list[int32]; the reference-type default is non-Send, so spell
         # it out.
@@ -1191,7 +1214,7 @@ def _populate() -> None:
         element_of=_u8_elem,
     ))
     register(TypeDef(
-        "tpy.BytesView", TC.BYTES, is_value_type=True,
+        "tpy.BytesView", TC.BYTES, cpp_default_init=_INERT, is_value_type=True,
         is_send=False, is_sync=True,
         cpp_formatter=lambda args: "::tpy::BytesView",
         param_cpp_formatter=lambda args: "::tpy::BytesView",
@@ -1201,12 +1224,12 @@ def _populate() -> None:
     # Slice types (value types, no subscript). basic_slice is tpy-specific
     # (no CPython analog); slice is the CPython built-in.
     register(TypeDef(
-        "tpy.basic_slice", TC.SLICE, is_value_type=True,
+        "tpy.basic_slice", TC.SLICE, cpp_default_init=_INERT, is_value_type=True,
         cpp_formatter=lambda args: "::tpy::BasicSlice",
         param_cpp_formatter=lambda args: "::tpy::BasicSlice",
     ))
     register(TypeDef(
-        "builtins.slice", TC.SLICE, is_value_type=True,
+        "builtins.slice", TC.SLICE, cpp_default_init=_INERT, is_value_type=True,
         cpp_formatter=lambda args: "::tpy::Slice",
         param_cpp_formatter=lambda args: "::tpy::Slice",
     ))
@@ -1219,7 +1242,7 @@ def _populate() -> None:
     # list[T]: is_send from element, is_sync always False (mutable); cpp
     # emits std::vector<T>; subscript_borrows (element view of container).
     register(TypeDef(
-        "builtins.list", TC.LIST,
+        "builtins.list", TC.LIST, cpp_default_init=_INERT,
         subscript_borrows=True,
         is_send=lambda args: args[0].is_send(),
         is_sync=False,
@@ -1231,7 +1254,7 @@ def _populate() -> None:
     # NominalType.get_element_type would return K (first type_arg), so use
     # element_of to override. cpp: ::tpy::ordered_map<K, V>.
     register(TypeDef(
-        "builtins.dict", TC.DICT,
+        "builtins.dict", TC.DICT, cpp_default_init=_INERT,
         subscript_borrows=True,
         is_send=lambda args: args[0].is_send() and args[1].is_send(),
         is_sync=False,
@@ -1243,7 +1266,7 @@ def _populate() -> None:
     # threads only when its element is); is_sync always False (mutable
     # container). C++ name diverges: set[T] -> ::tpy::ordered_set<T>.
     register(TypeDef(
-        "builtins.set", TC.SET,
+        "builtins.set", TC.SET, cpp_default_init=_INERT,
         is_send=lambda args: args[0].is_send(),
         is_sync=False,
         cpp_formatter=lambda args: f"::tpy::ordered_set<{args[0].to_cpp()}>",
@@ -1252,14 +1275,14 @@ def _populate() -> None:
     # Dict views: value_type=True but is_send/is_sync forced False (they
     # borrow from the parent dict). The C++ spelling comes from the stubs'
     # own `@native("tpy::dict_*_view")`.
-    register(TypeDef("builtins.dict_keys",   TC.DICT_VIEW, is_value_type=True,
+    register(TypeDef("builtins.dict_keys",   TC.DICT_VIEW, cpp_default_init=_INERT, is_value_type=True,
                      is_send=False, is_sync=False))
-    register(TypeDef("builtins.dict_values", TC.DICT_VIEW, is_value_type=True,
+    register(TypeDef("builtins.dict_values", TC.DICT_VIEW, cpp_default_init=_INERT, is_value_type=True,
                      is_send=False, is_sync=False))
-    register(TypeDef("builtins.dict_items",  TC.DICT_VIEW, is_value_type=True,
+    register(TypeDef("builtins.dict_items",  TC.DICT_VIEW, cpp_default_init=_INERT, is_value_type=True,
                      is_send=False, is_sync=False))
     register(TypeDef(
-        "builtins.Range", TC.RANGE, is_value_type=True,
+        "builtins.Range", TC.RANGE, cpp_default_init=_INERT, is_value_type=True,
         cpp_formatter=lambda args: f"::tpy::Range<{args[0].to_cpp()}>",
     ))
 
@@ -1305,7 +1328,7 @@ def _populate() -> None:
     _span_elem = _readonly_view_elem
 
     register(TypeDef(
-        "tpy.Span", TC.SPAN,
+        "tpy.Span", TC.SPAN, cpp_default_init=_INERT,
         is_value_type=True,
         is_send=False,
         is_sync=_span_is_sync,
@@ -1362,8 +1385,17 @@ def _populate() -> None:
     # any pre-sema query of value-ness consults this entry directly.
     register(TypeDef(
         "tpy.coro.Waker", TC.RECORD, is_value_type=True,
+        # Its all-defaulted `__init__` is its default constructor, as the
+        # record walk (`typesys.cpp_default_init`) says of the stub.
+        cpp_default_init=CppDefaultInit.USER_INIT,
         is_send=False, is_sync=False,
         cpp_formatter=lambda args: "::tpystd::coro::Waker",
+    ))
+
+    # `tpy::MovableAtomic` inherits `std::atomic`'s value-initializing default
+    # ctor, which its stub `__init__` (one required value) cannot declare.
+    register(TypeDef(
+        "tpy.atomic._RawAtomic", TC.RECORD, cpp_default_init=_INERT,
     ))
 
     _populate_factories()

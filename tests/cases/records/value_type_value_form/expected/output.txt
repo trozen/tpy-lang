@@ -1,0 +1,143 @@
+module tuple 4 4
+module 7 9 3 1
+calm hoist 1 1
+calm loop 1
+calm loop 1
+calm hoist return 1
+calm subscript 1
+calm union 1
+calm union 2
+calm tuple 2 2
+tuple generator [3, 6, 6]
+spelling classmethod
+noisy init 7
+spelling super
+noisy init 7
+spelling inherited
+noisy init 7
+spelling dataclass
+settings init 3 4
+spelling by type
+noisy init 7
+spelling factory
+noisy init 7
+spelling protocol by type
+measured init 1
+spelling protocol keyword
+measured init 5
+spelling protocol
+measured init 1
+spellings 7 7 7 3 4 7 7 1 5 1
+noisy init 7
+far init 40
+far init 40
+default scope 99 7 40 40
+noisy init 7
+noisy init 7
+noisy init 7
+array local 7
+noisy init 7
+noisy init 7
+array field 7
+noisy init 7
+noisy init 7
+noisy init 7
+noisy init 7
+array nested 7
+array zero 0 0
+noisy init 7
+noisy init 7
+noisy init 7
+inherited 7 7 7
+cell init 5
+cell init 5
+cell init 5
+cell init 5
+generic 5 5 5 5
+factory 7 1 1 2
+no-args 7 hi 7 hi
+noisy init 7
+noisy init 7
+noisy init 7
+heir 7 5 7 5
+noisy init 8
+noisy init 8
+noisy init 8
+heir by type 8 5 8 5
+heir value 3 5
+kw init 1 2
+keyword only 1 2
+generic slots 2 4 3
+generic generator [0, 6]
+composite annotated 8 8
+union if 1
+union try 3
+union with 4
+union for after 6
+union match 7
+union walrus 9
+skipped super 3
+calm try 7
+calm annotated 1
+calm walrus 2
+calm match 10
+calm with 12
+calm for after 14
+calm wrapped 15 1
+calm error_return 17
+calm tree 1
+calm copy 1 1
+union generator [1, 2, 3, 1]
+union generator generic [3, 5]
+union async 6
+calm generator [0, 4]
+calm async 20
+calm finally body
+calm finally 21
+text rebind ['abcdefghijklmnopqrstuvwxyz0123456789', 'abcdefghijklmnopqrstuvwxyz0123456789', 'abcdefghijklmnopqrstuvwxyz0123456789'] ['abcdefghijklmnopqrstuvwxyz0123456789', 'abcdefghijklmnopqrstuvwxyz0123456789', 'w']
+union rebind ['3', 'abcdefghijklmnopqrstuvwxyz0123456789']
+store generator [0, 1] 56
+store generator optional 5 6
+store async 78 7 8
+ret free 34
+ret method 51
+ret field 11 56
+ret generic 2 1
+ret date 29
+ret try_finally: finally
+ret try_finally 55
+ret with 62
+ret match 11 99
+ret closure 42
+field plain 12
+field optional 3 4
+field nested 34 12
+arg ctor 34
+arg call 56
+arg kwarg 67
+arg copy 12
+arg error_return 89
+generator 10
+generator 21
+generator 32
+generator generic [5, 0]
+generator date [28, 29, 1]
+generator loop var [1, 3]
+generator method result [12, 21]
+generator optional call [0, 4] [0]
+async 44
+async method result 43
+optional none
+optional plain none
+optional narrowed none
+optional 2 2
+optional plain 2 3
+optional narrowed 2 2
+optional field 7 8
+tuple unpack 12 2
+tuple rebind 56 2
+dict items 46
+walrus 34
+global 56
+ternary True 56 12 12
+ternary False 78 34 99

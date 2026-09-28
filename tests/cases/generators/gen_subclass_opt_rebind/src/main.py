@@ -17,11 +17,13 @@ class Animal:
 
 class Dog(Animal):
     def __init__(self) -> None:
+        super().__init__()
         self.kind = "dog"
 
 
 class Cat(Animal):
     def __init__(self) -> None:
+        super().__init__()
         self.kind = "cat"
 
 

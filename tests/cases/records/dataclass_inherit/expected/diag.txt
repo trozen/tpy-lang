@@ -1,0 +1,1 @@
+main.py:26: warning: the '__init__' synthesized by '@dataclass' for 'Tagged' does not call 'Labeled.__init__'; TPy default-constructs the 'Labeled' part instead; write an explicit '__init__' that calls it

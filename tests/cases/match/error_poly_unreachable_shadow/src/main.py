@@ -17,12 +17,12 @@ class Animal(Tag):
 
 class Mammal(Animal):
     def __init__(self) -> None:
-        pass
+        super().__init__()
 
 
 class Dog(Mammal):
     def __init__(self) -> None:
-        pass
+        super().__init__()
 
 
 def f(a: Animal) -> str:

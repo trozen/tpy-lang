@@ -60,8 +60,9 @@ inline int32_t Base::get_x() const {
 }
 
 // def __init__(self, x: int32):
+//     super().__init__(0)
 //     self.x = x          # x is Base.x -- reuse the inherited slot, no shadow
-inline Child::Child(int32_t x) {
+inline Child::Child(int32_t x) : Base(0) {
     this->x = x;
 }
 void __tpy_init();

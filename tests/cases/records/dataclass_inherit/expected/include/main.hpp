@@ -9,6 +9,9 @@ namespace tpyapp::main {
 
 struct Base;
 struct Child;
+struct Labeled;
+struct Counted;
+struct Tagged;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -41,6 +44,35 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
     return os;
 }
 
+// class Labeled:
+struct Labeled {
+    // label: str
+    std::string label;
+
+    // def __init__(self, label: str) -> None:
+    Labeled() = default;
+    explicit Labeled(std::string_view label);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Labeled";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Labeled& obj) {
+    ::tpy::print_object_default(os, "Labeled", obj);
+    return os;
+}
+
+// class Counted:
+struct Counted {
+    // count: int32 = 0
+    int32_t count = 0;
+
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counted";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Counted& obj) {
+    ::tpy::print_object_default(os, "Counted", obj);
+    return os;
+}
+
 // @dataclass
 // class Child(Base):
 struct Child : Base {
@@ -65,6 +97,30 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     return os;
 }
 
+// @dataclass
+// class Tagged(Labeled, Counted):  # tpyc: warning(/synthesized by '@dataclass' for 'Tagged' does not call 'Labeled.__init__'/)
+struct Tagged : Labeled, Counted {
+    // z: int32
+    int32_t z;
+
+    Tagged() = default;
+    explicit Tagged(int32_t z);
+
+    bool __eq__(const Tagged& other) const;
+
+    std::string __repr__() const;
+
+    friend bool operator==(const Tagged& lhs, const Tagged& other) {
+        return lhs.__eq__(other);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
+    os << obj.__repr__();
+    return os;
+}
+
 
 inline Base::Base(int32_t x, int32_t y) : x(x), y(y) {}
 
@@ -76,6 +132,10 @@ inline std::string Base::__repr__() const {
     return std::format("Base(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 
+// def __init__(self, label: str) -> None:
+//     self.label = label
+inline Labeled::Labeled(std::string_view label) : label(label) {}
+
 inline Child::Child(int32_t x, int32_t y, int32_t z) : Base(x, y), z(z) {}
 
 inline bool Child::__eq__(const Child& other) const {
@@ -84,6 +144,16 @@ inline bool Child::__eq__(const Child& other) const {
 
 inline std::string Child::__repr__() const {
     return std::format("Child(x={}, y={}, z={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y), ::tpy::repr_of(this->z));
+}
+
+inline Tagged::Tagged(int32_t z) : Labeled(), Counted(), z(z) {}
+
+inline bool Tagged::__eq__(const Tagged& other) const {
+    return (this->z == other.z);
+}
+
+inline std::string Tagged::__repr__() const {
+    return std::format("Tagged(z={})", ::tpy::repr_of(this->z));
 }
 void __tpy_init();
 } // namespace tpyapp::main

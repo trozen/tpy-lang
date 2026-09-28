@@ -101,14 +101,16 @@ inline std::string Animal::name() const {
 }
 
 // def __init__(self) -> None:
+//     super().__init__()
 //     self.kind = "dog"
-inline Dog::Dog() {
+inline Dog::Dog() : Animal() {
     this->kind = "dog";
 }
 
 // def __init__(self) -> None:
+//     super().__init__()
 //     self.kind = "cat"
-inline Cat::Cat() {
+inline Cat::Cat() : Animal() {
     this->kind = "cat";
 }
 void __tpy_init();

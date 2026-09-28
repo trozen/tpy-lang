@@ -58,6 +58,7 @@ struct Sink {
     ::tpy::Union<A, B> u;
 
     // def __init__(self, v: Own[A | B]) -> None:
+    Sink() = default;
     explicit Sink(::tpy::Union<A, B>&& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sink";
 };

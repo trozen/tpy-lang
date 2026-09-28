@@ -97,6 +97,7 @@ struct TermAttributes {
 
     // def __init__(self, iflag: int64, oflag: int64, cflag: int64, lflag: int64,
     //              ispeed: int64, ospeed: int64, cc: Own[bytearray]) -> None:
+    TermAttributes() = default;
     explicit TermAttributes(int64_t iflag, int64_t oflag, int64_t cflag, int64_t lflag, int64_t ispeed, int64_t ospeed, ::tpy::ByteArray&& cc);
 
     // def __eq__(self, other: "TermAttributes") -> bool:

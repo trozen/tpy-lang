@@ -45,12 +45,10 @@ struct Wrapper : Container<T> {
     int32_t extra;
 
     // def __init__(self, value: T, extra: int32) -> None:
-    //     self.value = value
+    //     super().__init__(value)
     //     self.extra = extra
     Wrapper() = default;
-    explicit Wrapper(::tpy::readonly_form_t<T> value, int32_t extra) : extra(extra) {
-        this->value = ::tpy::param_to_storage<T>(value);
-    }
+    explicit Wrapper(::tpy::param_val_or_ref_t<T> value, int32_t extra) : Container<T>(value), extra(extra) {}
 
     // def get_extra(self) -> int32:
     //     return self.extra

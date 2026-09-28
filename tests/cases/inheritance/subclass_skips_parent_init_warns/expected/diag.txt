@@ -1,0 +1,7 @@
+main.py:30: warning: 'Tag.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'Labeled' part instead
+main.py:38: warning: 'Dog.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'Pet' part instead, which runs 'Animal.__init__()'
+main.py:50: warning: 'CodeError.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'AppError' part instead
+main.py:58: warning: 'Failed.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'Exception' part instead
+main.py:73: warning: 'Both.__init__' does not call 'Animal.__init__(self, ...)'; TPy default-constructs the 'Animal' part instead, which runs 'Animal.__init__()'
+main.py:73: warning: 'Both.__init__' does not call 'Labeled.__init__(self, ...)'; TPy default-constructs the 'Labeled' part instead
+main.py:79: warning: the '__init__' synthesized by '@dataclass' for 'Kid' does not call 'Animal.__init__'; TPy default-constructs the 'Animal' part instead, which runs 'Animal.__init__()'; write an explicit '__init__' that calls it

@@ -27,9 +27,11 @@ def _adopt_skeleton(skeleton, full):
 
 from ..typesys import (
     mark_overload_group,
-    TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
+    TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, InitInheritBlock, InitInheritBlocker, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type, AnyType, PtrType, RefType,
     ReadonlyType, InteriorMutableType,
+    BaseInitDuty, CppDefaultInit, cpp_default_init, cpp_default_init_blocker,
+    init_is_default_ctor,
     is_c_abi_allowed, c_abi_type_hint, C_ABI_TYPE_ERROR,
     type_contains_own,
     IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, make_span, make_varargs,
@@ -59,7 +61,8 @@ from ..parse import (
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
     TpyNoneLiteral, TpyStrLiteral, TpyRaise, TpyTry, collect_name_refs,
 )
-from ..parse.nodes import returns_borrow_rooted_at_self
+from ..parse.nodes import is_base_init_call, returns_borrow_rooted_at_self
+from ..identity_map import IdentitySet
 from ..parse.parser import auto_declare_fields_from_init, reorder_fields_by_init
 from ..namespace import NameBinding, BindingKind
 from .send_chain import why_not_send, why_not_sync, render_chain
@@ -342,6 +345,118 @@ def _is_valid_dyn_getattr_return(ret: TpyType) -> bool:
     if is_borrowing_view_type(ret):
         return False
     return ret.is_value_type()
+
+
+def macro_origin_phrase(init_method: TpyFunction) -> str:
+    return (f"'@{init_method.macro_origin}'" if init_method.macro_origin
+            else "a macro")
+
+
+def skipped_base_ctor_error(registry: 'TypeRegistry', child: str,
+                            base: NominalType, init_method: TpyFunction,
+                            single_base: bool) -> str | None:
+    """The diagnostic for a child `__init__` (hand-written or
+    macro-synthesized) that leaves direct base `base` to its C++ default
+    constructor when it has none, else None."""
+    if cpp_default_init(base) is not CppDefaultInit.NONE:
+        return None
+    base_rec = registry.get_record_for_type(base)
+    assert base_rec is not None
+    n = base_rec.name
+    reason = cpp_default_init_blocker(base)
+    call = ("'super().__init__(...)'" if single_base
+            else f"'{n}.__init__(self, ...)'")
+    # Advising a call to an `__init__` the base does not have would send the
+    # user to a second error.
+    has_init = registry.init_owner(base_rec) is not None
+    if init_method.is_macro_generated:
+        origin = macro_origin_phrase(init_method)
+        fix = (f"Either give '{n}' a zero-argument form, or write an explicit "
+               f"'__init__' on '{child}' that calls {call}." if has_init
+               else f"Either give '{n}' field defaults, or give it an "
+               f"'__init__' and call it from an explicit '__init__' on "
+               f"'{child}'.")
+        return (f"the '__init__' synthesized by {origin} for '{child}' does "
+                f"not initialize parent class '{n}', but '{n}' cannot be "
+                f"constructed without arguments ({reason}). {fix}")
+    if has_init:
+        if single_base:
+            call += f" (or '{n}.__init__(self, ...)')"
+        fix = f"Call {call} as its first statement."
+    else:
+        fix = (f"Give '{n}' field defaults, or an '__init__' for "
+               f"'{child}.__init__' to call.")
+    return (f"'{child}.__init__' does not initialize base '{n}', but '{n}' "
+            f"cannot be constructed without arguments ({reason}), so the "
+            f"inherited fields are left uninitialized. {fix}")
+
+
+def skipped_base_init_warning(registry: 'TypeRegistry', child_info: RecordInfo,
+                              base: NominalType, init_method: TpyFunction,
+                              single_base: bool) -> str | None:
+    """The warning for a child `__init__` (hand-written or macro-synthesized)
+    that skips the initializer it owes direct base `base`
+    (`BaseInitDuty.CALL`); None when the base cannot be built without the
+    call (`skipped_base_ctor_error` then applies). The text states only
+    what TPy does, which holds for every base shape: what CPython would do
+    instead differs per shape (unset attributes, a message kept by
+    `BaseException.__new__`) and is left to the reader."""
+    base_rec = registry.get_record_for_type(base)
+    assert base_rec is not None
+    n = base_rec.display_name
+    child = child_info.display_name
+    if init_method.is_macro_generated:
+        head = (f"the '__init__' synthesized by {macro_origin_phrase(init_method)} "
+                f"for '{child}' does not call '{n}.__init__'")
+    else:
+        call = ("'super().__init__(...)'" if single_base
+                else f"'{n}.__init__(self, ...)'")
+        head = f"'{child}.__init__' does not call {call}"
+    msg = f"{head}; TPy default-constructs the '{n}' part instead"
+    # A return exception's `Exception` base builds no C++ base, so it has no
+    # default constructor to run.
+    if registry.is_struct_base(child_info, base_rec):
+        fact = cpp_default_init(base)
+        if fact is CppDefaultInit.NONE:
+            return None
+        if fact is CppDefaultInit.USER_INIT:
+            owner = registry.init_owner(base_rec)
+            if owner is not None and init_is_default_ctor(owner):
+                msg += f", which runs '{owner.display_name}.__init__()'"
+            else:
+                msg += ", which runs an '__init__'"
+    if init_method.is_macro_generated:
+        msg += "; write an explicit '__init__' that calls it"
+    return msg
+
+
+def skipped_base_inits(registry: 'TypeRegistry', child_info: RecordInfo,
+                       init_method: TpyFunction
+                       ) -> list[tuple[NominalType, BaseInitDuty]]:
+    """The direct bases of `child_info` that its `__init__` (hand-written or
+    macro-synthesized) reaches with no parent-initializer call, each with
+    what the child owes it (`base_init_duty`, never NONE), in declaration
+    order. Each is default-constructed: sema warns or rejects per base,
+    codegen value-initializes it."""
+    called: IdentitySet[RecordInfo] = IdentitySet()
+    for stmt in init_method.body:
+        if not is_base_init_call(stmt):
+            continue
+        assert isinstance(stmt, TpyExprStmt) and isinstance(stmt.expr, TpyMethodCall)
+        base = stmt.expr.base_init_direct_base
+        rec = registry.get_record_for_type(base) if base is not None else None
+        if rec is not None:
+            called.add(rec)
+    skipped: list[tuple[NominalType, BaseInitDuty]] = []
+    for p in child_info.parents:
+        duty = registry.base_init_duty(child_info, p)
+        if duty is BaseInitDuty.NONE:
+            continue
+        assert isinstance(p, NominalType)
+        rec = registry.get_record_for_type(p)
+        if rec is not None and rec not in called:
+            skipped.append((p, duty))
+    return skipped
 
 
 class TypeRegistrar:
@@ -2415,6 +2530,26 @@ class TypeRegistrar:
                         f"(value types require copy semantics)",
                         record.loc
                     )
+                for hook in ("__copy__", "__move__"):
+                    method = next((m for m in record.methods
+                                   if m.name == hook), None)
+                    if method is not None:
+                        raise SemanticError(
+                            f"ValueType class '{record.name}' cannot define "
+                            f"'{hook}': a value is copied implicitly wherever "
+                            f"it is passed or bound, so a copy hook would run "
+                            f"user code the program never calls; use a "
+                            f"regular class",
+                            method.loc or record.loc
+                        )
+                if record.del_method is not None:
+                    raise SemanticError(
+                        f"ValueType class '{record.name}' cannot define "
+                        f"'__del__': a value is copied freely, so there is no "
+                        f"single object to release; use a regular class for a "
+                        f"type that needs cleanup",
+                        record.del_method.loc or record.loc
+                    )
                 record_info.is_value_type = True
                 break
 
@@ -2829,24 +2964,47 @@ class TypeRegistrar:
     def _find_unique_init_parent(self, record_info: RecordInfo) -> NominalType | None:
         """Return the parent whose __init__ this record can inherit, or None.
 
-        Returns None when the record itself has __init__/fields/is_native, when
+        Returns None when the record itself has __init__ or is_native, when
         no parent has __init__, when more than one does, or when the candidate
-        is generic (would leak unsubstituted type params).
+        is generic (would leak unsubstituted type params). Own fields are
+        allowed only with a default: the inherited C++ constructor builds
+        them from their member initializer, and a field without one would be
+        left for the caller to read uninitialized.
+
+        A refusal of a class without `__init__` is recorded on
+        `record_info.init_inherit_blocker` for the diagnostic on arguments
+        passed through it.
         """
-        if (record_info.has_init
-                or record_info.fields
-                or record_info.is_native
-                or not record_info.parents):
+        if record_info.has_init or not record_info.parents:
+            return None
+
+        def refuse(kind: InitInheritBlock, name: str | None = None) -> None:
+            record_info.init_inherit_blocker = InitInheritBlocker(kind, name)
+
+        blocker = next((f.name for f in record_info.fields
+                        if f.default_expr is None), None)
+        if blocker is not None:
+            refuse(InitInheritBlock.FIELD_WITHOUT_DEFAULT, blocker)
+            return None
+        if record_info.is_native:
+            refuse(InitInheritBlock.NATIVE)
             return None
         found: NominalType | None = None
+        skipped: InitInheritBlocker | None = None
         for parent in record_info.parents:
             if not isinstance(parent, NominalType):
                 continue
             parent_info = self.ctx.registry.get_record_for_type(parent)
-            if parent_info is None or not parent_info.has_init:
+            if parent_info is None:
+                continue
+            if not parent_info.has_init:
+                skipped = skipped or InitInheritBlocker(
+                    InitInheritBlock.BASE_WITHOUT_INIT, parent_info.name)
                 continue
             # No `Exception(message)` to inherit on a return exception.
             if not self.ctx.registry.is_struct_base(record_info, parent_info):
+                skipped = skipped or InitInheritBlocker(
+                    InitInheritBlock.RETURN_EXCEPTION)
                 continue
             # A generic parent is inheritable only as a concrete instantiation
             # (`class Sub(Base[14])`): the type args then substitute the init
@@ -2854,10 +3012,14 @@ class TypeRegistrar:
             # base would leak unsubstituted params, so it stays excluded.
             if parent_info.type_params and (
                     len(parent.type_args) != len(parent_info.type_params)):
+                refuse(InitInheritBlock.BARE_GENERIC_BASE, parent_info.name)
                 return None
             if found is not None:
+                refuse(InitInheritBlock.SEVERAL_INIT_BASES)
                 return None
             found = parent
+        if found is None and skipped is not None:
+            record_info.init_inherit_blocker = skipped
         return found
 
     def _check_field_shadowing(self, record: TpyRecord, record_info: RecordInfo) -> None:
@@ -2874,14 +3036,17 @@ class TypeRegistrar:
                     break
 
     def validate_multi_base_init_calls(self, record: TpyRecord, record_info: RecordInfo) -> None:
-        """Every base with __init__ must be called explicitly from the child's
-        __init__. BaseN.__init__(self, ...) covers each base by name;
+        """The child's `__init__` must meet each base's `base_init_duty`
+        (the single-base rule, per base): a skipped CALL base is a warning
+        (`skipped_base_init_warning`), and any skipped base must have a C++
+        default constructor.
+        BaseN.__init__(self, ...) covers each base by name;
         super().__init__(...) covers only the MRO-first base with __init__
         (v2.3: MRO-aware resolution), so other bases still need explicit
         BaseN.__init__ calls.
 
-        Runs after __init__ body analysis so unbound-self calls have been
-        resolved (expr.unbound_self_parent_type set by MethodAnalyzer).
+        Runs after __init__ body analysis so every call carries the direct
+        base it initializes (expr.base_init_direct_base, set by MethodAnalyzer).
         Scope: multi-base classes only. Single-base inheritance uses the
         existing super().__init__() path.
         """
@@ -2891,20 +3056,23 @@ class TypeRegistrar:
         # `using <Base>::<Base>;` -- no explicit per-base call needed.
         if record_info.inherits_init_from is not None:
             return
-        bases_with_init: list[tuple[str, NominalType]] = []
+        init_method = record.init_method
+        base_duties: list[tuple[str, NominalType, BaseInitDuty]] = []
         for p in record_info.parents:
-            if not isinstance(p, NominalType):
+            duty = self.ctx.registry.base_init_duty(record_info, p)
+            if duty is BaseInitDuty.NONE:
                 continue
+            assert isinstance(p, NominalType)
             p_info = self.ctx.registry.get_record_for_type(p)
-            if p_info is None:
-                continue
-            if self.ctx.registry.get_method_overloads_with_parents(p_info, "__init__"):
-                bases_with_init.append((p_info.name, p))
-        if not bases_with_init:
-            return
+            assert p_info is not None
+            base_duties.append((p_info.name, p, duty))
+        bases_with_init = [(n, p) for n, p, d in base_duties
+                           if d is BaseInitDuty.CALL]
 
         # Child must define __init__ to call them.
-        if record.init_method is None:
+        if init_method is None:
+            if not bases_with_init:
+                return
             names = ", ".join(n for n, _ in bases_with_init)
             raise SemanticError(
                 f"Multi-base class '{record.name}' inherits __init__ from bases ({names}); "
@@ -2919,61 +3087,44 @@ class TypeRegistrar:
             expr = stmt.expr
             if not (isinstance(expr, TpyMethodCall) and expr.method == "__init__"):
                 return None
-            pt = expr.unbound_self_parent_type or expr.super_parent_type
-            if pt is None:
+            base = expr.base_init_direct_base
+            if base is None:
                 return None
-            pt_info = self.ctx.registry.get_record_for_type(pt)
-            return pt_info.name if pt_info is not None else None
+            base_info = self.ctx.registry.get_record_for_type(base)
+            return base_info.name if base_info is not None else None
 
         call_sequence: list[tuple[str, TpyExprStmt]] = []
-        for stmt in record.init_method.body:
+        for stmt in init_method.body:
             n = base_name_of(stmt)
             if n is not None:
                 assert isinstance(stmt, TpyExprStmt)
                 call_sequence.append((n, stmt))
-        called_base_names: set[str] = {n for n, _ in call_sequence}
 
-        # Treat base inits nested in control flow as a distinct, more actionable
-        # error so users aren't misled by a generic "missing calls" message when
-        # they did write the call but placed it inside an if/loop/try branch.
-        nested_base_names: set[str] = set()
-        def walk_nested(stmts: list[TpyStmt]) -> None:
-            for stmt in stmts:
-                sub = getattr(stmt, "sub_bodies", None)
-                if sub is None:
+        # A call nested in control flow never reaches here: the __init__ body
+        # check rejects every base init outside the leading statements.
+        loc = init_method.loc or record.loc
+        for p, duty in skipped_base_inits(self.ctx.registry, record_info, init_method):
+            if duty is BaseInitDuty.CALL:
+                warn = skipped_base_init_warning(
+                    self.ctx.registry, record_info, p, init_method, single_base=False)
+                if warn is not None:
+                    self.ctx.warning_from_loc(warn, loc)
                     continue
-                for body in sub():
-                    for inner in body:
-                        n = base_name_of(inner)
-                        if n is not None and n not in called_base_names:
-                            nested_base_names.add(n)
-                    walk_nested(body)
-        walk_nested(record.init_method.body)
-
-        if nested_base_names:
-            raise SemanticError(
-                f"Base __init__ calls must be top-level statements in "
-                f"'{record.name}.__init__', not nested in control flow; "
-                f"found nested call(s) for: {', '.join(sorted(nested_base_names))}.",
-                record.init_method.loc,
-            )
-
-        missing = [n for n, _ in bases_with_init if n not in called_base_names]
-        if missing:
-            raise SemanticError(
-                f"Multi-base class '{record.name}' must call __init__ on every base that "
-                f"defines one; missing calls for: {', '.join(missing)}. "
-                f"Invoke each via 'BaseN.__init__(self, ...)'; 'super().__init__(...)' "
-                f"covers the MRO-first base only.",
-                record.init_method.loc,
-            )
+            msg = skipped_base_ctor_error(
+                self.ctx.registry, record.name, p, init_method, single_base=False)
+            if msg is not None:
+                raise SemanticError(msg, loc)
 
         # Warn when the source order of the calls disagrees with declaration
         # order. Codegen hoists them into the MIL in declaration order regardless
         # (C++ runs base ctors that way no matter how the list is written), so
         # the user's source order is misleading: argument evaluation order
         # shifts too.
-        declared_rank: dict[str, int] = {n: i for i, (n, _) in enumerate(bases_with_init)}
+        declared_rank: dict[str, int] = {}
+        for p in record_info.parents:
+            p_info = self.ctx.registry.get_record_for_type(p)
+            if p_info is not None:
+                declared_rank.setdefault(p_info.name, len(declared_rank))
         for i in range(1, len(call_sequence)):
             prev_name, _ = call_sequence[i - 1]
             curr_name, curr_stmt = call_sequence[i]

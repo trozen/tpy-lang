@@ -79,7 +79,7 @@ from ...typesys import (
     contains_type_param,
     recursive_union_alternatives,
     substitute_type_params_simple,
-    del_suppresses_default_ctor,
+    CppDefaultInit, cpp_default_init,
     is_dyn_protocol,
     is_fn_type,
     is_any_bytes_type,
@@ -162,6 +162,7 @@ from ..nodes import (
     THIRStrSlice,
 )
 from .predicates import (
+    _value_record_slot,
     _value_opt_call_ret_arg,
     _union_dict_literal_temp_arg,
     _ptr_optional_tuple,
@@ -374,7 +375,7 @@ from .predicates import (
     _tuple_literal_value_opt_arg,
     _value_opt_owned_str,
     _value_opt_scalar,
-    _value_opt_value_record,
+    _value_opt_record,
     _value_opt_scalar_name,
     _value_opt_str,
     _value_opt_string_owned,
@@ -2528,14 +2529,14 @@ def _union_member_ctor_rvalue(value: TpyExpr, u: UnionType, analyzer) -> bool:
     return any(m == vt for m in u.members)
 
 def _nondef_ctor_field(ftype: 'TpyType | None', analyzer) -> bool:
-    """The field's record type has a suppressed default ctor (`@nocopy` with
-    `__del__`): a DEMOTED init of such a field must raise the
-    `reject_nondef_ctor_field_in_body` diagnostic rather than emit the
-    uncompilable default-init, so the plain-assign row declines it. Keyed on
-    the field TYPE only -- an inherited field of such a type over-rejects (the
-    diagnostic covers own fields only), which is safe."""
-    rec = analyzer.registry.get_record_for_type(ftype)
-    return rec is not None and del_suppresses_default_ctor(rec)
+    """The field's type has no C++ default constructor: a DEMOTED init of
+    such a field must raise the `reject_nondef_ctor_field_in_body`
+    diagnostic rather than emit the uncompilable default-init, so the
+    plain-assign row declines it. Keyed on the field TYPE only -- an
+    inherited field of such a type over-rejects (the diagnostic covers own
+    fields only), which is safe."""
+    return (isinstance(ftype, TpyType)
+            and cpp_default_init(ftype) is CppDefaultInit.NONE)
 
 def _ref_field_write_ok(
         stmt: TpyAssign, declared: dict[str, TpyType], analyzer,
@@ -6841,19 +6842,20 @@ def _record_call_rvalue_shape_ok(a: TpyExpr, analyzer) -> bool:
 
 def _value_record_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
                              analyzer) -> bool:
-    """A record rvalue (ctor / by-value record-returning call) into a
-    BY-VALUE same-record slot (a ValueType record param --
-    `timezone(timedelta(...), "IST")`): the slot is not a ref param, so
-    the temp cascade never fires and the render is the bare
-    expansion. The same-nominal check is the usual slice guard. Method-call
-    rvalues stay out pending a witness. The slot's record-ness is
-    `_f1_record`'s question, not user-record-ness: a builtin RECORD-category
-    slot (`__poll__(Waker())`) copies by value exactly the same way."""
-    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-          if isinstance(ptype, TpyType) else None)
-    if not (isinstance(pt, NominalType) and not pt.is_ref_param()
-            and record_like(pt, analyzer)):
+    """A record rvalue (ctor / by-value record-returning call / `copy(x)`)
+    into a BY-VALUE same-record slot (a value-form record param --
+    `timezone(timedelta(...), "IST")`, `__poll__(Waker())`): the slot is not
+    a ref param, so the temp cascade never fires and the render is the bare
+    expansion (`use(Coord(a))` for the copy). The same-nominal check is the
+    usual slice guard. Method-call rvalues stay out pending a witness."""
+    if not _value_record_slot(ptype):
         return False
+    pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+    # frozenset(): the gate is pointer-blind, like the Own-slot copy row;
+    # lowering re-runs the copy arms with the live pointer set.
+    src = copy_construct_source(a, analyzer, frozenset())
+    if src is not None:
+        return src == pt and bool(_witness("call.value_record_copy_arg"))
     if not isinstance(a, TpyCall):
         return False
     if analyzer.get_expr_type(a) != pt or not is_rvalue_source(analyzer, a):
@@ -6870,8 +6872,7 @@ def _value_record_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     question)."""
     pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
           if isinstance(ptype, TpyType) else None)
-    if not (isinstance(pt, NominalType) and pt.is_user_record
-            and not pt.is_ref_param() and _f1_record(pt, analyzer)):
+    if not (_value_record_slot(pt) and _f1_record(pt, analyzer)):
         return False
     if not isinstance(a, TpyName) or a.name not in locals_:
         return False
@@ -6888,7 +6889,7 @@ def _value_opt_record_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
     `_value_record_rvalue_arg`."""
     pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
           if isinstance(ptype, TpyType) else None)
-    opt = _value_opt_value_record(pt, analyzer)
+    opt = _value_opt_record(pt)
     if opt is None:
         return False
     inner = unwrap_readonly(opt.inner)
@@ -8543,21 +8544,6 @@ def _float_literal_operand(a: TpyExpr, analyzer) -> bool:
             and isinstance(a.operand, TpyFloatLiteral)
             and isinstance(analyzer.get_expr_type(a.operand), FloatLiteralType))
 
-def _builtin_value_record(t: 'TpyType | None', analyzer) -> bool:
-    """A BUILTIN ValueType record (tpy.coro.Waker): a TPy-IMPLEMENTED
-    registry record, plain member renders -- the F1 family's builtin
-    sibling. The non-native record-info guard keeps out both TypeDef-only
-    value types (str / bytes, whose methods take dispatch arms) and
-    @native value records (Span -- projections and element decls have
-    their own gated rows)."""
-    if not (isinstance(t, NominalType)
-            and not t.is_user_record and not t.is_protocol
-            and t.is_value_type()):
-        return False
-    ri = analyzer.registry.get_record_for_type(t)
-    return ri is not None and not ri.is_native
-
-
 def _record_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
                              locals_: dict[str, TpyType], analyzer) -> bool:
     """A bare-name F1-record arg into a non-Own param slot of the SAME record
@@ -8605,9 +8591,7 @@ def _record_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
               if at is not None else None)
         if isinstance(at, OptionalType):
             return False  # not narrowed -- defensive, sema rejects upstream
-    if not (isinstance(at, NominalType)
-            and (_f1_record(at, analyzer)
-                 or _builtin_value_record(at, analyzer))):
+    if not (isinstance(at, NominalType) and _f1_record(at, analyzer)):
         return False
     if ptype is None or not isinstance(ptype, TpyType):
         return False
@@ -11924,6 +11908,15 @@ def _r_record_field_ref(req: _ArgReq) -> bool:
     return _record_field_ref_arg(req.a, req.ptype, req.locals_, req.analyzer)
 
 
+def _r_value_record_field(req: _ArgReq) -> bool:
+    # The by-value half of `record_field_ref`: a value-form record field
+    # read copies into its slot (`Segment(s.b, a)`), so no alias question
+    # arises; a reference-record field at a ref slot keeps its own rows.
+    return (_value_record_slot(req.ptype)
+            and _record_field_ref_arg(req.a, req.ptype, req.locals_,
+                                      req.analyzer))
+
+
 def _r_deref_coerce(req: _ArgReq) -> bool:
     # The flush test reads the PREDICATE'S verdict (the wrapper-`__deref__()`
     # form needs a temp, the inline Ptr deref does not), so it cannot be a
@@ -13248,6 +13241,10 @@ _PLAIN_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("value_union_narrowed_pass", _r_value_union_narrowed_pass),
         _ArgRow("record_rvalue_temp", _r_record_rvalue_temp,
                 extra=_x_temps_ok),
+        # A record rvalue into a BY-VALUE record slot (a value-form record
+        # param -- `use(Coord(1, 2))`): no ref param, no temp cascade, bare
+        # -- the method / ctor families' row.
+        _ArgRow("value_record_rvalue", _r_value_record_rvalue),
         # The S1/S6 view->owned convert rows, free-call twins of the
         # method ladder's: a VIEW-form str/bytes source at an `Own[str]`
         # / `Own[bytes]` slot materializes the inline owned copy
@@ -13809,15 +13806,10 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
                         if not is_void_like_type(m))
                 and record_like(_anu_b, analyzer)):
             recv_t = _anu_b
-    # A BUILTIN value-record receiver (`w.wake()` on tpy.coro.Waker): its
-    # TPy-defined methods render the same plain member call as an F1
-    # record's; the record-info guard keeps TypeDef-only value types (str /
-    # bytes / span -- their methods take dispatch arms) out.
     # An enum member's methods are its companion record's; the method-call
     # lowering wraps the member in the companion.
     if not (isinstance(recv_t, NominalType)
             and (_f1_record(recv_t, analyzer)
-                 or _builtin_value_record(recv_t, analyzer)
                  or is_enum_type(recv_t))):
         # The drill's "which methods block" discriminant: name the receiver
         # family AND the method, so e.g. str methods rank individually.
@@ -13934,6 +13926,9 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # (subscript read, decl slot, arg, unpack source) gates its own
             # family, so admitting it here only opens those gated sinks.
             or _value_tuple_nested(ret, analyzer) is not None
+            # ... and a value-form record result (`c = c.swapped()`), the
+            # same by-value prvalue.
+            or _value_record_slot(ret)
             # An F1-record return is admitted at the owned-record decl sink
             # (`Rec r = b.build();`, record_ret_ok -- `is_rvalue_source`,
             # checked at the decl gate, keeps a `T&` borrow return out there)

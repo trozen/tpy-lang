@@ -19,7 +19,7 @@ class Box[T]:
 
 class Child[U](Box[U]):
     def __init__(self, v: U) -> None:
-        self.v = v
+        super().__init__(v)
 
 
 async def main_coro() -> None:

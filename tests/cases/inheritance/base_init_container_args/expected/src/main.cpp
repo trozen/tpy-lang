@@ -6,12 +6,14 @@ namespace tpyapp::main {
 
 // def main() -> None:
 //     # The field write itself is a warned copy (both legs), so the case pins
-//     # the warning rather than aliasing: what flipped is the base-init ARG.
+//     # the warning rather than aliasing; the subject is the base-init ARG.
 //     c = Child(bytearray(b"xy"), [1, 2, 3])
 //     print(len(c.buf), len(c.xs), c.n)
+//     print("str:", Numbered(42).s, Fixed().s)
 void main() {
     Child c = Child(::tpy::ByteArray(::tpy::bytes_literal("xy", 2)), {1, 2, 3});
     std::cout << ::tpy::__len__(c.buf) << " " << ::tpy::__len__(c.xs) << " " << c.n << "\n";
+    std::cout << "str:" << " " << Numbered(42).s << " " << Fixed().s << "\n";
 }
 
 // main()

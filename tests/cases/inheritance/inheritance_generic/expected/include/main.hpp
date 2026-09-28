@@ -56,10 +56,8 @@ inline std::ostream& operator<<(std::ostream& os, const IntContainer& obj) {
 
 
 // def __init__(self, value: int32, extra: int32) -> None:
-//     self.value = value
+//     super().__init__(value)
 //     self.extra = extra
-inline IntContainer::IntContainer(int32_t value, int32_t extra) : extra(extra) {
-    this->value = value;
-}
+inline IntContainer::IntContainer(int32_t value, int32_t extra) : Container<int32_t>(value), extra(extra) {}
 void __tpy_init();
 } // namespace tpyapp::main

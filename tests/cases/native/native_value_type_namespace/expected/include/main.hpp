@@ -12,6 +12,7 @@ namespace tpyapp::myns {
 } // namespace tpyapp::myns
 
 template<> struct tpy::is_value_type<::MyHandle> : std::true_type {};
+static_assert(std::is_default_constructible_v<::MyHandle>, "@native ValueType 'Handle' needs a default constructor: a slot declared before its value is built by it");
 
 namespace tpyapp::myns {
 

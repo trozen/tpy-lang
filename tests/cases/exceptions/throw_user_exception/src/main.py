@@ -6,6 +6,7 @@ class AppError(Exception):
     detail: str
 
     def __init__(self, code: int32, detail: str) -> None:
+        super().__init__()
         self.code = code
         self.detail = detail
 

@@ -50,6 +50,7 @@ struct Box {
     ::tpy::Union<Cat, Dog> payload;
 
     // def __init__(self, p: Dog | Cat) -> None:
+    Box() = default;
     explicit Box(::tpy::Union<const Cat*, const Dog*> p);
 
     __gen_Box_describe describe() const;

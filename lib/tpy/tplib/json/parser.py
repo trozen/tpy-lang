@@ -12,8 +12,10 @@ class JsonError(Exception, ReturnException):
     pos: int32
 
     def __init__(self, message: str = "", pos: int32 = -1) -> None:
-        self.message = message
+        super().__init__(message)
         self.pos = pos
+        # CPython keeps the message only in `args`; `describe()` reads the attribute.
+        self.message = message
 
     def describe(self, data: str) -> str:
         """Format error with context from the input string.

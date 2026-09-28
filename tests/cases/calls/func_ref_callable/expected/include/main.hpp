@@ -28,6 +28,7 @@ struct Handler {
     std::function<void(int32_t)> callback;
 
     // def __init__(self, cb: Callable[[int32], None]) -> None:
+    Handler() = default;
     explicit Handler(std::function<void(int32_t)> cb);
 
     // def run(self, x: int32) -> None:

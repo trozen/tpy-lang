@@ -148,7 +148,7 @@ Auto-declaration only applies to top-level `self.field = expr` statements in `__
 
 ```
 def __init__(self, ...):
-    super().__init__(...)    # optional, must come first
+    super().__init__(...)    # must come first; warned when skipped and an ancestor defines __init__
     self.x = expr            # init section  -> C++ member initializer list
     self.y = expr            # init section  -> C++ member initializer list
     # <-- split point
@@ -159,10 +159,10 @@ def __init__(self, ...):
 ```
 
 **Init section** -- the contiguous leading prefix of:
-- At most one `super().__init__(...)` call (must be first if present)
+- Parent-initializer calls, `super().__init__(...)` or `Parent.__init__(self, ...)`: first, one per direct base (a single-base child makes one; a multi-base child's per-base calls follow one another). A call placed after any other statement, a second call initializing the same direct base, and a call naming an ancestor that no direct base constructs with that ancestor's `__init__` (one past a direct base defining its own) are compile errors, since C++ constructs each direct base exactly once, ahead of the body. Owed when a class in the parent's ancestry defines `__init__`, an `@native` one such as `Exception` included (`class E(Exception)` calls `super().__init__(...)`, rendered `: ::tpy::Exception(...)`; a return exception makes the same call, which renders as its declared `message` field's init, `: message(...)`, since its struct has no thrown base). Skipping an owed call -- from a hand-written `__init__` or a macro-synthesized one -- is a warned divergence: the C++ base is built by its default constructor (a zero-argument `__init__` CPython never calls, or default-initialized fields CPython leaves unset; for an exception base, an empty message); it stays a compile error when the base has no default constructor (`cpp_default_init` NONE). Builtin container bases are owed nothing (CPython's `__new__` has already built the empty container; the call itself does not lower yet, BUGS.md#builtin-container-base-init-unlowered); protocol bases are not parent classes and are owed nothing. `super().__init__(...)` runs the nearest `__init__` in the parent's MRO, as in CPython
 - `self.field = expr` assignments, each field at most once
 
-The init section ends at the first statement that does not match the above, OR when the same field is assigned a second time. Every statement in the init section goes to the C++ member initializer list, unless it is **demoted**: an assignment the member initializer list cannot hold becomes a C++ assignment in the constructor body, after the field was default-constructed. The demotion reasons (one message constant each, `CTOR_DEMOTE_*` in `tpyc/codegen_cpp/emit_prims.py`, chosen by `_ctor_demote_reason` in `tpyc/thir/lower/functions.py`):
+A docstring or `pass` anywhere in the prefix runs nothing and is skipped. The init section ends at the first statement that does not match the above, OR when the same field is assigned a second time. Every statement in the init section goes to the C++ member initializer list, unless it is **demoted**: an assignment the member initializer list cannot hold becomes a C++ assignment in the constructor body, after the field was default-constructed. The demotion reasons (one message constant each, `CTOR_DEMOTE_*` in `tpyc/codegen_cpp/emit_prims.py`, chosen by `_ctor_demote_reason` in `tpyc/thir/lower/functions.py`):
 - a prior statement in the body would run before this initializer (the leading chain is broken);
 - the value is a function defined in the body, a bare name other than a parameter, or references a local defined earlier in the body;
 - the value **binds** a local -- a walrus (`self._r = Resource((n := seed))`): the member initializer list has no scope to declare `n` in;
@@ -178,10 +178,10 @@ A demoted assignment is only valid when the field's type is default-constructibl
 | Field state at split point | Severity |
 |---|---|
 | Has class-level default value | silent |
-| Has a default constructor | warning (field will be zero/default-constructed; semantics differ from CPython where the attribute would not exist) |
-| No default constructor | error (C++ compile failure) |
+| `T()` builds the field's type with no arguments | warning (field will be zero/default-constructed; semantics differ from CPython where the attribute would not exist) |
+| Otherwise | error |
 
-Note: `@nocopy` and `__del__` are orthogonal to default-constructibility. A `@nocopy` type that has a default constructor is just a warning, not an error, for missing initialization.
+"`T()` builds it with no arguments" is the Python-level question (`_is_default_constructible` in `tpyc/sema/protocols.py`, the rule of the `Default` marker): a primitive, a container, an `Optional`, a `Ptr`, a tuple or array of such, or a record whose `__init__` takes no required argument (an aggregate: whose fields all qualify). It is deliberately not codegen's C++ fact `cpp_default_init` (Decision 3): a record whose `__init__` requires arguments keeps a C++ placeholder `X() = default;`, but a value CPython can only build by calling that `__init__` is not left to the placeholder, so such a field -- `@nocopy` or not -- is an error, and so is a union field. `@nocopy` alone does not decide it; `__del__` also removes a zero-argument record's default constructor in the cases `typesys.del_suppresses_default_ctor` lists.
 
 **Instance method calls** (`self.method(...)`) in the init section before all fields are initialized produce a warning -- the method may access uninitialized fields. `@staticmethod` and free function calls are safe and produce no warning.
 
@@ -205,7 +205,7 @@ Currently this is emitted unconditionally. It enables `ClassName{}` and `std::op
 
 **Chosen approach: Only emit when all fields are default-constructible.**
 
-Check each field type. If any field is non-default-constructible (e.g., `@nocopy` without default ctor), skip the `= default` line. Need to track default-constructibility as a type property.
+Check each field type. If any field is non-default-constructible (e.g., `@nocopy` without default ctor), skip the `= default` line. Default-constructibility is one type fact, `cpp_default_init` in `tpyc/typesys.py` (NONE / USER_INIT / INERT, see open question 4), and the emission is decided by it (`emits_default_ctor`), so "has a default constructor" means exactly "codegen emitted one".
 
 Additionally, the auto `= default;` is suppressed for any record where `~T` would read indeterminate field state if `T()` were callable -- see `del_suppresses_default_ctor` in `tpyc/typesys.py` for the predicate. Three cases trigger suppression:
 
@@ -221,12 +221,12 @@ Empty-fields `__del__`-only records (the abstract-base pattern) stay default-con
 
 **Chosen approach: Severity depends on default-constructibility, not on `@nocopy`/`__del__`.**
 
-See the split-point table in Decision 2. The key distinction is whether the field type has a default constructor, not whether it is `@nocopy` or has `__del__` (those properties only matter for branch-body assignments):
+See the split-point table in Decision 2. The key distinction is whether `T()` builds the field type with no arguments, not whether it is `@nocopy` or has `__del__` (those properties only matter for branch-body assignments):
 
 ```python
 class Bad:
     x: int32
-    y: Handle  # Handle has no default ctor
+    y: Handle  # Handle.__init__ requires arguments
 
     def __init__(self, x: int32):
         self.x = x
@@ -283,10 +283,10 @@ Note: classes with only field annotations and no `__init__` cannot be constructe
 ### Phase 2: Warnings and Safety (Done)
 
 **Split-point detection** (`_check_init_field_assignments` in `tpyc/sema/analyzer.py`):
-- Walks `__init__` body to find the split point: the first statement that is not `super().__init__()`, a docstring, or a first-time `self.field = expr` (own or inherited field).
+- Walks `__init__` body to find the split point: the first statement that is not a parent-initializer call (`super().__init__()` / `Parent.__init__(self, ...)`), a docstring, `pass`, or a first-time `self.field = expr` (own or inherited field). The leading run of trivia and parent-initializer calls is found once (`init_leading_run_end`, over the same docstring / `pass` predicate THIR's constructor lowering uses); the field walk starts where it ends.
 - At the split point, checks every own field not assigned at depth 0 anywhere in the body:
-  - Not initialized + no default ctor -> error
-  - Not initialized + has default ctor -> warning
+  - Not initialized + `T()` needs arguments (`_is_default_constructible` false) -> error
+  - Not initialized + `T()` needs none -> warning
   - Has class-level default -> silent
   - Type contains a TypeParamRef in a generic record -> skip (C++ handles at instantiation)
 - If `self.method(...)` is called in the init section before all fields are initialized -> warning.
@@ -296,9 +296,9 @@ Note: classes with only field annotations and no `__init__` cannot be constructe
 - `__del__` field assigned inside `if`/`for`/`while` body -> error (destructor on default-constructed value)
 - All other body assignments are silently allowed (e.g., accumulating into a field in a loop).
 
-**`= default` constructor** (`_all_fields_default_constructible` in `tpyc/codegen_cpp/records.py`):
-- Generic records (with `type_params`): always emit `= default` (C++ handles constraint at instantiation).
-- Non-generic records: emit `= default` only if all fields and the parent are C++-default-constructible (recursive check via `_fld_type_cpp_default_constructible`).
+**`= default` constructor** (`emits_default_ctor` in `tpyc/typesys.py`, read by `tpyc/codegen_cpp/records.py`):
+- Generic records (with `type_params`): emit `= default` unless `__del__` suppresses it (`del_suppresses_default_ctor`); C++ handles the field constraint at instantiation, and `cpp_default_init` answers per instantiation.
+- Non-generic records: emit `= default` only if all fields and the parent are C++-default-constructible (`cpp_default_init` is not NONE).
 - C++-level constructibility differs from Python-level: a user record with required `__init__` params IS C++-constructible if all its own fields are (because it also emits `= default`).
 
 ### Phase 3: `@dataclass`
@@ -313,8 +313,8 @@ Note: classes with only field annotations and no `__init__` cannot be constructe
 
 2. **`@noalloc` and auto-declare**: In `@noalloc` mode, `self.x = 42` would infer `int` (BigInt) which is heap-allocated. Should auto-declare be restricted in `@noalloc` to only typed params?
 
-3. ~~**Inherited fields in `__init__`**~~: Resolved -- `self.inherited_field = value` in `__init__` is accepted as part of the init section (same as own fields), so it goes into the C++ member initializer list. Both `super().__init__(args)` and direct assignment of inherited fields are valid patterns.
+3. ~~**Inherited fields in `__init__`**~~: Resolved -- `self.inherited_field = value` in `__init__` is accepted as part of the init section (same as own fields), so it goes into the C++ member initializer list. An inherited field may be assigned after `super().__init__(args)`, or without it when no class in the parent's ancestry, TPy or `@native`, defines `__init__` (otherwise the call is required -- see "Single class inheritance" in `docs/LANGUAGE_FEATURES.md`).
 
-4. **`= default` for records with required `__init__` params**: A record like `class Handle: id: int32; def __init__(self, id: int32)` gets `Handle() = default;` emitted because `id: int32` is C++-default-constructible. This is intentional: sema rejects user-level `Handle()` (the `__init__` requires `id`), but the C++ default ctor must exist so internal codegen paths (`std::array<Handle, N>` slots, parent-record `= default;`, `std::variant` default alternative) compile. For aggregate records (no `__init__`) whose fields aren't all default-constructible, sema instead rejects zero-arg `Point()` with a clean diagnostic (see `tpyc/sema/calls.py::_validate_aggregate_zero_arg`). The remaining "implicitly deleted" path -- a subclass `__init__` that omits `super().__init__(...)` over a parent whose own default ctor is implicitly deleted (because of a `@nocopy`/`__del__` field, etc.) -- is rejected by `tpyc/sema/analyzer.py::_require_super_init_for_non_default_base`, so the cascading C++ error is no longer reachable from user code.
+4. **`= default` for records with required `__init__` params**: current rule, still open (TODO.md "A record gets a C++ default constructor only when Python `T()` is valid" questions whether such a record should have one at all) -- the C++ default constructor is a PLACEHOLDER, not a TPy construction path, and the one fact about it is `cpp_default_init` (`tpyc/typesys.py`): NONE (no default constructor), USER_INIT (it exists but IS the record's user `__init__` -- a zero-argument or all-defaulted one), INERT (it exists and runs no user code). A record like `class Handle: id: int32; def __init__(self, id: int32)` keeps `Handle() = default;` (INERT): sema still rejects user-level `Handle()` through the separate Python-level rule (`_is_default_constructible` in `tpyc/sema/protocols.py`, the `Default` protocol and zero-argument call validation -- see `tpyc/sema/calls.py::_validate_aggregate_zero_arg` for aggregates), while the placeholder serves the C++ positions that need one (`std::array<Handle, N>` slots, a parent's base subobject, a `std::variant`'s first alternative, and a slot declared before its first value). Codegen's `= default` emission, the parent-initializer checks (`TypeRegistry.base_init_duty`, single- and multi-base: a base a child `__init__` skips is rejected when its verdict is NONE; skipping one whose ancestry defines `__init__` warns, naming the USER_INIT run or the INERT default-initialized fields) and the demoted-field check read the same fact. The constructor split-point check intentionally does not: it asks the Python-level question (Decision 2), so a field whose type's `__init__` requires arguments is an error there although the type has the placeholder. A slot declared before its first value is value-initialized by that default constructor, `P p{};` -- a USER_INIT one runs the zero-argument `__init__` once more than CPython, which the documented contract asks to be side-effect free (see "Placeholders run the default constructor" in `docs/LANGUAGE_FEATURES.md`); a `@native` value type's slot is `::X x{};` and its default constructor is asserted beside its declaration (see `docs/NATIVE_INTEROP.md`). A base subobject runs a parent `__init__` CPython would skip only with a warning: a child `__init__` -- hand-written or `@dataclass`-synthesized -- that skips the parent's initializer while a class in the parent's ancestry (TPy or `@native`) defines `__init__` is warned (see "Single class inheritance" and "Multiple Inheritance (D22)" in `docs/LANGUAGE_FEATURES.md`). A USER_INIT default constructor still runs a user `__init__` CPython would not where a field's init moves out of the member-init list into the constructor body (BUGS.md#demoted-field-init-runs-default-init).
 
 5. ~~**Auto-declare + control flow**~~: Resolved -- auto-declare only from top-level statements. Assignments inside control flow require an explicit annotation, otherwise error.

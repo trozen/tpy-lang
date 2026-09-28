@@ -24,6 +24,7 @@ struct Holder {
     std::function<void(std::vector<int32_t>&)> cb;
 
     // def __init__(self, cb: Callable[[list[int32]], None]) -> None:
+    Holder() = default;
     explicit Holder(std::function<void(std::vector<int32_t>&)> cb);
 
     // def poke(self) -> None:

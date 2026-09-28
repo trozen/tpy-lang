@@ -1,0 +1,1 @@
+main.py:19: error: Base.__init__(self, ...) must be the first statement in __init__

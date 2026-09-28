@@ -18,7 +18,7 @@ class Missing(Exception, ReturnException):
     message: str  # tpyc: ok
 
     def __init__(self, message: str = "") -> None:
-        self.message = message
+        super().__init__(message)
 
 
 class ParseError(Exception, ReturnException):
@@ -26,6 +26,7 @@ class ParseError(Exception, ReturnException):
     detail: str
 
     def __init__(self, line: int32, detail: str) -> None:
+        super().__init__()
         self.line = line
         self.detail = detail
 
@@ -45,6 +46,7 @@ class Tracked(Exception, ReturnException):
     code: int32
 
     def __init__(self, code: int32) -> None:
+        super().__init__()
         self.code = code
 
     def __del__(self) -> None:
@@ -56,10 +58,44 @@ class Labelled(Exception, ReturnException):
     message: str
 
     def __init__(self, message: str) -> None:
+        super().__init__(message)
         self.message = message
 
     def __str__(self) -> str:
         return "labelled:" + self.message
+
+
+# The parent initializer's argument initializes the declared `message` field
+# (laid out after `code` here): str() reads it, as CPython's reads `args`.
+class Coded(Exception, ReturnException):
+    code: int32
+    message: str
+
+    def __init__(self, code: int32, why: str) -> None:
+        super().__init__(why)  # tpyc: ok
+        self.code = code
+
+
+# The unbound spelling of the same parent-initializer call.
+class Named(Exception, ReturnException):
+    message: str
+
+    def __init__(self, why: str) -> None:
+        Exception.__init__(self, why)  # tpyc: ok
+
+
+@error_return(Coded)
+def coded(n: int32) -> int32:
+    if n > 0:
+        return n
+    raise Coded(5, "not positive")
+
+
+@error_return(Named)
+def named(ok: bool) -> int32:
+    if ok:
+        return 1
+    raise Named("unnamed")
 
 
 @error_return(Tracked)
@@ -238,6 +274,19 @@ def main() -> None:
         print("cross:", v_cross)
     except Denied as e:
         print("cross:", str(e))
+
+    # parent init: the call's argument is what str() renders
+    try:
+        v_super = coded(0)
+        print("parent init:", v_super)
+    except Coded as e:
+        print("parent init:", e.code, str(e))
+
+    try:
+        v_unbound = named(False)
+        print("parent init unbound:", v_unbound)
+    except Named as e:
+        print("parent init unbound:", str(e))
 
     r = Reader()
     print("method:", r.read("ok"), r.read("q"), r.seen)

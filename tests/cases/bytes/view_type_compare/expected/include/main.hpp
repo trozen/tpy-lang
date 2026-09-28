@@ -43,6 +43,7 @@ struct Entry {
     ::tpy::ordered_set<::tpy::Bytes> tags;
 
     // def __init__(self, name: bytes) -> None:
+    Entry() = default;
     explicit Entry(::tpy::BytesView name);
 
     // def is_named(self, other: bytes) -> bool:

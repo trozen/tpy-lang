@@ -8,10 +8,22 @@ namespace tpyapp::main {
 //     c = Combined(int32(10), int32(20))
 //     print(c.a)
 //     print(c.b)
+//     vs = ViaSuper()
+//     print("via-super:", vs.r, vs.s)
+//     vl = ViaLane()
+//     print("via-lane:", vl.r, vl.s)
+//     vr = ViaRoot()
+//     print("via-root:", vr.r, vr.s)
 void main() {
     Combined c = Combined(10, 20);
     std::cout << c.a << "\n";
     std::cout << c.b << "\n";
+    ViaSuper vs = ViaSuper();
+    std::cout << "via-super:" << " " << vs.r << " " << vs.s << "\n";
+    ViaLane vl = ViaLane();
+    std::cout << "via-lane:" << " " << vl.r << " " << vl.s << "\n";
+    ViaRoot vr = ViaRoot();
+    std::cout << "via-root:" << " " << vr.r << " " << vr.s << "\n";
 }
 
 // main()

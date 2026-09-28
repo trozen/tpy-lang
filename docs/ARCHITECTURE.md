@@ -467,6 +467,45 @@ neither, and an owning slot must ask the former. See `LANGUAGE_FEATURES.md`
 `IR_DESIGN.md` Open Questions item 9 for the planned IR-level form fact.
 Unit-tested in `tpyc/test_value_form.py`.
 
+### Default construction
+
+Whether a type's C++ default construction exists and whether it runs user
+code is one typesys fact, `cpp_default_init` (`CppDefaultInit`: `NONE` /
+`USER_INIT` / `INERT`), computed by one walk over the storage form (unwrap
+-> tuple -> a union's first alternative -> array -> a record's fields and
+non-protocol bases) and memoized per record instantiation on the `Compiler`
+(`default_ctor_facts`). Builtins the compiler cannot introspect declare it on
+the `TypeDef` (`cpp_default_init`).
+
+Codegen emits `X() = default;` by it, and sema's parent-initializer checks
+(single- and multi-base) and the demoted ctor-field check reject on NONE.
+An open instantiation (a generic definition, or type args naming a type
+parameter) answers what the template emits; a type parameter answers
+INERT. The Python-level zero-argument rule (`Default` conformance, an
+aggregate's `Record()`, and the constructor split-point check;
+`_is_default_constructible` in `sema/protocols.py`) is a separate question:
+whether TPy can build a fully initialized value from `T()` with no
+arguments, which a record with a required-argument `__init__` fails although
+C++ gives it `X() = default;`. The two readers differ on purpose: the
+placeholder serves C++ positions, while the split point decides whether a
+field `__init__` leaves unset may be default-constructed at all, and it
+rejects one CPython could only build through a required-argument `__init__`
+(or a union field). For an aggregate the rule differs from CPython, whose
+`T()` leaves a field without a default unset.
+
+A slot declared before its first value -- a hoist, a walrus
+pre-declaration, an annotation-only decl, a match capture, an
+`@error_return` bind, a frame field or pending return, a module global --
+is built by that C++ default constructor. Every pre-declared position
+renders its declarator through `emit_prims.placeholder_init`: `P p{};`
+(value-initialized) where `typesys.placeholder_value_inits` holds -- a
+`ValueType` record, reached directly or through a tuple, an array or a
+union's first alternative, or a type parameter -- and the bare `T x;`
+otherwise. A `ValueType` whose `__init__` can be called with no arguments
+(USER_INIT) runs it there, once more than CPython; the contract asks such an
+`__init__` to be free of observable side effects (LANGUAGE_FEATURES
+"Placeholders run the default constructor").
+
 ### TypeDef registry
 
 `tpyc/type_def_registry.py` holds a single `TypeDef` per qname with

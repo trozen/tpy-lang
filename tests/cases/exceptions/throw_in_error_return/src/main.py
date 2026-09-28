@@ -7,6 +7,7 @@ class NotFound(Exception, ReturnException):
 
 class BadKey(Exception):
     def __init__(self, key: str) -> None:
+        super().__init__()
         self.key = key
 
     key: str

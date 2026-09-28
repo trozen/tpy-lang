@@ -2299,15 +2299,16 @@ class AsyncCoroCodegen:
         # await bodies. std::exception_ptr default-constructs
         # to null; the catch arm sets it via std::current_exception().
         # bool pending-return flags need explicit init: NSDMI
-        # = false. Value slots default-init via their own type's ctor.
+        # = false. Value slots take the placeholder initializer the
+        # prescan recorded with them.
         is_gen = self._is_generator_shape()
-        for fname, ftype in state.try_finally_fields:
+        for fname, ftype, finit in state.try_finally_fields:
             # Generators always return StopIteration; no pending-return value
             # slot is needed. The field may be allocated by the prescan when
             # the trial build ran under the async shape -- skip it here.
             if is_gen and fname.startswith("__finally_ret_"):
                 continue
-            init = " = false" if ftype == "bool" else ""
+            init = " = false" if ftype == "bool" else finit
             loop_machinery.append(FrameField(
                 name=fname, decl=f"{INDENT}{ftype} {fname}{init};\n"))
 
@@ -2537,10 +2538,12 @@ class AsyncCoroCodegen:
         elif kind is rcfg.FrameLocalKind.BORROW_TUPLE:
             cpp_type = self.types.tuple_borrow_cpp(
                 ltype_inner, const=verdict.const)
-            out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
+            init = emit_prims.placeholder_init(ltype_inner, cpp_type)
+            out.write(f"{INDENT}{cpp_type} {cpp_name}{init};\n")
         elif kind is rcfg.FrameLocalKind.VALUE:
             cpp_type = self.types.type_to_cpp(ltype_inner)
-            out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
+            init = emit_prims.placeholder_init(ltype_inner, cpp_type)
+            out.write(f"{INDENT}{cpp_type} {cpp_name}{init};\n")
         elif kind is rcfg.FrameLocalKind.OPT_PTR:
             inner_cpp = self.types.type_to_cpp(
                 unwrap_readonly(unwrap_readonly(ltype_inner).inner))
@@ -4743,10 +4746,14 @@ class AsyncCoroCodegen:
         if state.try_finally_prescanned:
             return state.try_finally_uid_map
         uid_map: dict[int, int] = {}
-        fields_out: list[tuple[str, str]] = []
+        fields_out: list[tuple[str, str, str]] = []
         counter = [0]
         is_void = self._is_void_return(func)
         ret_cpp = self._ret_cpp(func) if not is_void else None
+        # The pending return is a slot declared before its value.
+        ret_init = (emit_prims.placeholder_init(
+            unwrap_ref_type(func.return_type), ret_cpp)
+            if ret_cpp is not None else "")
 
         def walk(stmts: list[TpyStmt]) -> None:
             for s in stmts:
@@ -4757,19 +4764,20 @@ class AsyncCoroCodegen:
                     counter[0] += 1
                     uid_map[id(s)] = cur_uid
                     fields_out.append(
-                        (f"__finally_exc_{cur_uid}", "std::exception_ptr"))
+                        (f"__finally_exc_{cur_uid}", "std::exception_ptr", ""))
                     has_return = (rcfg._stmts_have_any_return(s.try_body)
                                    or any(rcfg._stmts_have_any_return(h.body)
                                            for h in s.handlers)
                                    or rcfg._stmts_have_any_return(s.finally_body))
                     if has_return:
                         fields_out.append(
-                            (f"__finally_pending_{cur_uid}", "bool"))
+                            (f"__finally_pending_{cur_uid}", "bool", ""))
                         # Generator pending returns are always StopIteration;
                         # no value slot needed (_ret_cpp would give Iterator[T]).
                         if ret_cpp is not None and not self._is_generator_shape():
                             fields_out.append(
-                                (f"__finally_ret_{cur_uid}", ret_cpp))
+                                (f"__finally_ret_{cur_uid}", ret_cpp,
+                                 ret_init))
                 # `async with` desugars to a try/finally where the
                 # finally body is `await __cm.__aexit__(...)`. The
                 # synthetic finally needs the same set of frame slots
@@ -4780,13 +4788,14 @@ class AsyncCoroCodegen:
                     counter[0] += 1
                     uid_map[id(s)] = cur_uid
                     fields_out.append(
-                        (f"__finally_exc_{cur_uid}", "std::exception_ptr"))
+                        (f"__finally_exc_{cur_uid}", "std::exception_ptr", ""))
                     if rcfg._stmts_have_any_return(s.body):
                         fields_out.append(
-                            (f"__finally_pending_{cur_uid}", "bool"))
+                            (f"__finally_pending_{cur_uid}", "bool", ""))
                         if ret_cpp is not None:
                             fields_out.append(
-                                (f"__finally_ret_{cur_uid}", ret_cpp))
+                                (f"__finally_ret_{cur_uid}", ret_cpp,
+                                 ret_init))
                 if hasattr(s, "sub_bodies"):
                     for b in s.sub_bodies():
                         walk(b)

@@ -100,14 +100,27 @@ public:
 
     template <typename... Args>
     T& emplace(Args&&... args) {
+        using U = std::remove_const_t<T>;
         if (alive_) {
-            ptr()->~T();
-            // Mark dead between destroy and placement-new so a throwing
-            // T ctor doesn't leave alive_=true over destroyed storage
-            // (would cause the dtor to double-destroy).
-            alive_ = false;
+            if constexpr (std::is_move_constructible_v<U>) {
+                // A rebind's arguments may read the payload being replaced
+                // (`z = z`, `z = z if f else w`, a view or heap subobject the
+                // payload owns), so the new value is built before the old one
+                // is destroyed.
+                U next(std::forward<Args>(args)...);
+                ptr()->~T();
+                alive_ = false;
+                ::new (static_cast<void*>(raw())) U(std::move(next));
+                alive_ = true;
+                return *ptr();
+            } else {
+                ptr()->~T();
+                alive_ = false;
+            }
         }
-        ::new (static_cast<void*>(raw())) T(std::forward<Args>(args)...);
+        // alive_ stays false until the ctor returns, so a throwing T ctor
+        // does not leave the dtor to destroy unconstructed storage.
+        ::new (static_cast<void*>(raw())) U(std::forward<Args>(args)...);
         alive_ = true;
         return *ptr();
     }

@@ -28,6 +28,7 @@ class DataError(Exception):
     n: int32
 
     def __init__(self, xs: list[int32]):
+        super().__init__()
         self.n = len(xs)
 
 

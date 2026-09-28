@@ -215,6 +215,7 @@ struct FileField {
 
     // def __init__(self, filename: str, content: Own[bytes],
     //              content_type: str = "application/octet-stream") -> None:
+    FileField() = default;
     explicit FileField(std::string_view filename, ::tpy::Bytes content, std::string_view content_type = "application/octet-stream");
     static constexpr std::string_view __tpy_class_name__ = "tplib.requests.FileField";
 };
@@ -451,6 +452,7 @@ struct Response {
     //              headers: Own[CaseInsensitiveDict], content: bytes,
     //              cookies: Own[CookieJar],
     //              raw: Own[HTTPResponse] | None = None) -> None:
+    Response() = default;
     explicit Response(int32_t status_code, std::string_view reason, std::string_view url, CaseInsensitiveDict&& headers, ::tpy::BytesView content, CookieJar&& cookies, std::optional<::tpystd::http::client::HTTPResponse> raw = std::nullopt);
     // non-copyable (field 'history')
     Response(const Response&) = delete;

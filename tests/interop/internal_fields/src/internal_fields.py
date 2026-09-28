@@ -79,7 +79,7 @@ class OpError(ValueError):
                          # field cannot be (located error); internal is allowed
 
     def __init__(self, message: str, code: int32, trace: int32):
-        self.message = message
+        super().__init__(message)
         self.code = code
         self._trace = [trace]
 
@@ -90,7 +90,7 @@ class SilentError(ValueError):
     _note: int32
 
     def __init__(self, message: str, note: int32):
-        self.message = message
+        super().__init__(message)
         self._note = note
 
 

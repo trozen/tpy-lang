@@ -1,2 +1,2 @@
-main.py:11: warning: copies bytearray into field; use copy() to make this explicit
-main.py:19: error: in the constructor of 'Child': this construct is not yet supported by C++ code generation (ctor.base_init)
+main.py:12: warning: copies bytearray into field; use copy() to make this explicit
+main.py:20: error: in the constructor of 'Child': this construct is not yet supported by C++ code generation (ctor.base_init)

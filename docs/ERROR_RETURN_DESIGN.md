@@ -120,23 +120,34 @@ What follows from "plain value, never thrown":
   that is not one. It also keeps a bound error's static type equal to its
   dynamic type. (Hierarchies of return exceptions compiled before this rule;
   none existed in the corpus. Reopening it is a TODO.md entry.)
-- It carries **only the fields it declares**. The `message` field and the
-  `Exception(message)` constructor a thrown exception inherits are not part of
-  it: `raise NotFound("why")` on a `pass` class, and `super().__init__(msg)`
-  in its `__init__`, are compile errors (CPython accepts both; a bare
-  `super().__init__()` stays legal). A class that wants a message declares it like any other field --
-  `message: str` plus an `__init__` that stores it, which also runs under
-  CPython -- and only that class pays for the string. Of the 88 return
-  exceptions in the test corpus and stdlib when this was decided, 2 used one.
+- It carries **only the fields it declares**. The `message` field a thrown
+  exception inherits is not part of it: `raise NotFound("why")` on a `pass`
+  class is a compile error (CPython accepts it). A class that wants a message
+  declares it like any other field -- `message: str` -- and only that class
+  pays for the string. Of the 88 return exceptions in the test corpus and
+  stdlib when this was decided, 2 used one.
+- A hand-written `__init__` **owes the parent call** like any exception
+  subclass's: `super().__init__(...)` (or `Exception.__init__(self, ...)`) as
+  its first statement. Skipping it compiles with a warning ("'E.__init__' does
+  not call 'super().__init__(...)'; TPy default-constructs the 'Exception'
+  part instead"): the message keeps its default, where CPython builds it
+  from the constructor's arguments. No C++ base constructor runs
+  for it -- the struct has no thrown base -- but the call sets the message: its
+  one argument initializes the declared `message` field (`message(msg)` in the
+  member initializer list), and a bare `super().__init__()` leaves it to its
+  default. A message argument on a class that declares no `message` is a
+  compile error. So `def __init__(self, why: str): super().__init__(why)` over
+  `message: str` gives `str(e) == why` under both TPy and CPython (which
+  renders `args`); a class whose own methods read `self.message` also assigns
+  it, as CPython needs, and that second write runs in the constructor body.
 - After `except E as e`, `e` supports `str(e)` (the declared `message` field,
   or `""` without one), its own fields and methods, and a bare `raise` to pass
   it on. It has no `clone()` / `__raise__()`. A declared `message` must be
   `str`: codegen emits the `__str__` that reads it, and any other type would
   print nothing where CPython prints the value. `str(e)` is that field and
   nothing else -- CPython renders `args`, so a class whose `__init__` calls a
-  bare `super().__init__()` (legal here, it clears `args` there) prints `""`
-  under CPython and its message under TPy; a multi-argument `__init__` diverges
-  the same way on both tiers.
+  bare `super().__init__()` (it clears `args` there) and then stores a
+  `message` prints `""` under CPython and its message under TPy.
 - A caught return exception cannot yet be STORED as an owned value (a local
   rebind, a field, a container element); copy the fields you need out of it.
 - It need not be copyable: the error is MOVED at every step (the `raise`, each
@@ -517,7 +528,7 @@ never sees it -- no stub needed for that case.
 | Return exception passed as `Exception` / `BaseException` / `Throwable` | `'E' is a return-only exception (ReturnException) and cannot be used as 'Exception'` |
 | `e.clone()` / `e.__raise__()` on a return exception | `'E' is a return-only exception (ReturnException): ... it has no 'clone()'` |
 | `raise E("why")` on a class that declares no message | `'raise E()' does not accept arguments: a return-only exception carries only the fields it declares` |
-| `super().__init__(msg)` in a return exception | `'E' is a return-only exception (ReturnException): ... has no Exception(message) constructor to call` |
+| `super().__init__(msg)` on a class that declares no `message` | `'E' is a return-only exception (ReturnException): ... stores a message argument in a declared 'message: str' field, which 'E' does not declare` |
 | Reading `e.message` when the class declares none | `Record 'E' has no field 'message': a return-only exception (ReturnException) carries only the fields it declares` |
 | `message` declared with a type other than `str` | `Field 'message' of return-only exception 'E' must be 'str'` |
 | Storing a caught return exception (`last = e`, a field, a container) | `cannot store the return-only exception 'E' as an owned value` |

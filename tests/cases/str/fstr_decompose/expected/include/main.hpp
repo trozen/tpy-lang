@@ -25,7 +25,6 @@ struct Module {
     ::mylog::LogHandle _logger;
 
     // def __init__(self, name: str) -> None:
-    Module() = default;
     explicit Module(std::string_view name);
 
     // def log_auto(self, tag: str, n: int32) -> None:
@@ -44,7 +43,6 @@ struct Service {
     ::mylog::LogHandle _handle;
 
     // def __init__(self, name: str) -> None:
-    Service() = default;
     explicit Service(std::string_view name);
 
     // def get_logger(self) -> LogHandle:

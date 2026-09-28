@@ -70,6 +70,7 @@ struct Rec {
     Inner inner;
 
     // def __init__(self, name: str) -> None:
+    Rec() = default;
     explicit Rec(std::string_view name);
 
     // def label(self) -> str:
@@ -90,6 +91,7 @@ struct Holder {
     Rec rec;
 
     // def __init__(self, name: str) -> None:
+    Holder() = default;
     explicit Holder(std::string_view name);
 
     // def tagged(self, s: str) -> int32:

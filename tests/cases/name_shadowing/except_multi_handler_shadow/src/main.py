@@ -13,11 +13,13 @@ class Registry:
 
 class NotFound(Exception):
     def __init__(self, code: int32):
+        super().__init__()
         self.code = code
 
 
 class Denied(Exception):
     def __init__(self, code: int32):
+        super().__init__()
         self.code = code
 
 

@@ -1,5 +1,5 @@
-main.py:35: warning: upcast narrows 'Child' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
-main.py:43: warning: upcast narrows 'Child' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
-main.py:53: warning: upcast narrows 'Child' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
-main.py:61: warning: upcast narrows 'Child' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
-main.py:69: warning: upcast narrows 'Child' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:36: warning: upcast narrows 'Child' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:44: warning: upcast narrows 'Child' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:54: warning: upcast narrows 'Child' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:62: warning: upcast narrows 'Child' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:70: warning: upcast narrows 'Child' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol

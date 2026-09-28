@@ -9,6 +9,7 @@ class Failed(Exception, ReturnException):
     message: int32  # tpyc: error(/Field 'message' of return-only exception 'Failed' must be 'str'.*got 'int32'/)
 
     def __init__(self, message: int32) -> None:
+        super().__init__()
         self.message = message
 
 

@@ -28,6 +28,7 @@ struct Store {
     ::tpy::Bytes data;
 
     // def __init__(self, data: bytes) -> None:
+    Store() = default;
     explicit Store(::tpy::BytesView data);
 
     // def put(self, a: bytes, b: bytes) -> None:

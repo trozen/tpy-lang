@@ -13,6 +13,7 @@ class E(Exception, ReturnException):
 class ParseErr(Exception, ReturnException):
     code: int
     def __init__(self, code: int) -> None:
+        super().__init__()
         self.code = code
 
 @error_return(E)

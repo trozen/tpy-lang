@@ -1,6 +1,6 @@
-# Base __init__ calls must be top-level statements in the child's __init__.
-# Nesting them in control flow is rejected with a targeted error message; the
-# C++ member initializer list can't model conditional base construction.
+# Base __init__ calls must be the leading statements of the child's __init__
+# (LANGUAGE_FEATURES.md multi-base "Key points"): one nested in control flow
+# is not, so it is rejected -- C++ cannot construct a base conditionally.
 from tpy import int32
 
 
@@ -19,9 +19,9 @@ class Right:
 
 
 class Child(Left, Right):
-    def __init__(self, a: int32, b: int32, flag: bool) -> None:  # tpyc: error(/nested call\(s\) for: Right/)
+    def __init__(self, a: int32, b: int32, flag: bool) -> None:
         Left.__init__(self, a)
         if flag:
-            Right.__init__(self, b)
+            Right.__init__(self, b)  # tpyc: error(/Right\.__init__\(self, \.\.\.\) must be the first statement in __init__/)
         else:
             Right.__init__(self, int32(0))

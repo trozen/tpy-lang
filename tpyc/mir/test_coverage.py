@@ -83,9 +83,9 @@ def test_unreachable_unsupported_nodes_still_fail_whole_body(
 @pytest.mark.parametrize("stmt,reason", [
     (th.THIRBreak(loc=LOC), "outside loop"),
     (th.THIRContinue(loc=LOC), "outside loop"),
-    (th.THIRIf(th.THIRLiteral(BOOL, True), (), hoist_decls=(("v", "int32_t"),), loc=LOC),
+    (th.THIRIf(th.THIRLiteral(BOOL, True), (), hoist_decls=(th.HoistDecl("v", "int32_t"),), loc=LOC),
      "missing or inconsistent hoisted binding facts"),
-    (th.THIRWhile(th.THIRLiteral(BOOL, True), (), hoist_decls=(("v", "int32_t"),), loc=LOC),
+    (th.THIRWhile(th.THIRLiteral(BOOL, True), (), hoist_decls=(th.HoistDecl("v", "int32_t"),), loc=LOC),
      "missing or inconsistent hoisted binding facts"),
     (th.THIRIf(th.THIRLiteral(BOOL, True), (), is_constexpr=True, loc=LOC),
      "unsupported metadata: is_constexpr"),

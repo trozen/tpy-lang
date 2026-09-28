@@ -20,6 +20,7 @@ struct Blob {
     ::tpy::Bytes data;
 
     // def __init__(self, v: BytesView) -> None:
+    Blob() = default;
     explicit Blob(::tpy::BytesView v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Blob";
 };

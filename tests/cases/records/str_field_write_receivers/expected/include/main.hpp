@@ -61,6 +61,7 @@ struct Inner {
     int32_t count;
 
     // def __init__(self, name: str) -> None:
+    Inner() = default;
     explicit Inner(std::string_view name);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };

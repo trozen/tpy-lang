@@ -1,0 +1,1 @@
+main.py:26: error: 'G' is not a direct base of 'C'; call 'super().__init__(...)' or 'M.__init__(self, ...)'

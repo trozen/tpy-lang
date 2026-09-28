@@ -157,7 +157,7 @@ def test_range_facts_fail_closed(artifacts, damage: str) -> None:
         case "target_residence":
             loop = replace(loop, hoist_loop_var=True)
         case "hoists":
-            loop = replace(loop, hoist_decls=(("missing", "int32_t"),))
+            loop = replace(loop, hoist_decls=(th.HoistDecl("missing", "int32_t"),))
     fn = replace(fn, body=tuple(loop if isinstance(s, th.THIRForRange) else s for s in fn.body))
     result = lower_function(fn, MIRBodyId("ranges", "damaged"), kind=MIRBodyKind.FREE_FUNCTION,
                             definitions=definitions)

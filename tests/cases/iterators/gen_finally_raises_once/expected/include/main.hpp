@@ -359,8 +359,9 @@ struct __gen_continue_exit : public ::tpy::next_iter_mixin<__gen_continue_exit, 
 
 
 // def __init__(self, code: int) -> None:
+//     super().__init__()
 //     self.code = code
-inline Err::Err(const ::tpy::BigInt& code) : code(code) {}
+inline Err::Err(const ::tpy::BigInt& code) : ::tpy::Exception(), code(code) {}
 
 // def __enter__(self) -> int:
 //     return 1

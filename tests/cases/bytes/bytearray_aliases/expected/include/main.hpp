@@ -20,6 +20,7 @@ struct Holder {
     ::tpy::ByteArray data;
 
     // def __init__(self, data: bytearray):
+    Holder() = default;
     explicit Holder(const ::tpy::ByteArray& data);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };

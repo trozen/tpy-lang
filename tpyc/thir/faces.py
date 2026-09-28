@@ -471,6 +471,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.native_record_arg",       # F1-record call rvalue bare into a native slot
     "call.native_value_record_arg", # builtin value-record call rvalue (range) bare
     "call.value_record_arg",        # record rvalue bare into a by-value record slot
+    "call.value_record_copy_arg",   # `use(copy(a))` -> `use(Coord(a))` at a
+                                    # by-value record slot
     "call.value_opt_record_arg",    # ValueType-record ctor rvalue inline
                                     # at a value-opt record slot
     "call.value_record_name_arg",   # ValueType-record NAME bare at a
@@ -1336,11 +1338,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # return -- bare passthrough
     "ret.record_op_storage",        # Own-returning user dunder binop/unary
                                     # at the STORAGE return -- bare
-    "ret.record_op_value",          # ... at a VALUE-record slot (by-value ret)
     "ret.record_storage",
     "ret.copy_record",              # `return copy(p)` -> `return Point(p);`
     "ret.record_methodcall",        # method-call rvalue at the storage slot
-    "ret.record_methodcall_value",  # ... at a VALUE-record slot (by-value ret)
     "ret.record_deref_coerce",      # `return ptr` (Ptr[T] local/param) at the
                                     # borrow return -> `deref_check(ptr)`
     "ret.record_self",              # `return self` -> `return (*this);`
@@ -1390,9 +1390,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # instantiation arg: bare in construct<>
     "call.inst_user_iterable_arg",  # user iterable name/self/field at an
                                     # instantiation arg: bare in construct<>
-    "call.builtin_value_record_ret",   # builtin ValueType record return, bare at storage
+    "call.value_record_ret",        # value-form record return, bare at storage
     "decl.dyn_own_erased_call",        # already-erased Own[dyn] call decl (unique_ptr spelled)
-    "decl.builtin_value_record_slot",  # builtin ValueType record decl, plain spelled copy
     "decl.list_repeat_slot",        # lazy `[v] * n` decl slot: the
                                     # spelled `repeat_range<T>` copy
     "decl.coro_frame_rebind",       # concrete coro handle rebind (emplace / move pair)

@@ -4,7 +4,7 @@
 # rejects at the definition site so the user gets a targeted message.
 class CustomError(Exception):
     def __init__(self, msg: str) -> None:
-        self.message = msg
+        super().__init__(msg)
 
     def __raise__(self) -> None:  # tpyc: error(/cannot define '__raise__'/)
         pass

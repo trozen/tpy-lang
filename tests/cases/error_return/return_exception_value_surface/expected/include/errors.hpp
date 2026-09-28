@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Denied& obj) {
 
 
 // def __init__(self, message: str) -> None:
-//     self.message = message
+//     super().__init__(message)
 inline Denied::Denied(std::string_view message) : message(message) {}
 void __tpy_init();
 } // namespace tpyapp::errors

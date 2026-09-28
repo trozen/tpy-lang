@@ -13,7 +13,7 @@ namespace tpyapp::main {
 //     except ValueError:
 //         return "ValueError"
 std::string probe(std::string_view key) {
-    ::tpystd::datetime::ZoneInfo z;
+    ::tpystd::datetime::ZoneInfo z{};
     {
         try {
             z = ::tpystd::datetime::ZoneInfo(key);

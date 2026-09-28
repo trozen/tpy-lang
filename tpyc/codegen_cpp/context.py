@@ -919,7 +919,8 @@ class TempState:
 
     def __init__(self):
         self._queue: TempQueue[tuple[str, str, str | None, bool]] = TempQueue()
-        self._pending_named: list[tuple[str, str, str | None, bool]] = []
+        # (name, cpp_type, init, declarator suffix)
+        self._pending_named: list[tuple[str, str, str | None, str]] = []
         # Names minted by `declare_named_auto` (a select's slot): a
         # compiler-owned declaration, not a user walrus pre-declaration.
         self._auto_named: set[str] = set()
@@ -1003,14 +1004,16 @@ class TempState:
         caller needs the generated name back rather than supplying it."""
         self._counter += 1
         name = f"{prefix}_{self._counter}"
-        self._pending_named.append((name, cpp_type, init, False))
+        self._pending_named.append((name, cpp_type, init, ""))
         self._auto_named.add(name)
         return name
 
     def declare_named(self, name: str, cpp_type: str, *,
-                      init: str | None = None, brace_init: bool = False) -> None:
-        """Register a named pre-declaration (for walrus operator variables)."""
-        self._pending_named.append((name, cpp_type, init, brace_init))
+                      init: str | None = None, suffix: str = "") -> None:
+        """Register a named pre-declaration (for walrus operator variables);
+        `suffix` is a placeholder's declarator suffix
+        (`emit_prims.placeholder_init`)."""
+        self._pending_named.append((name, cpp_type, init, suffix))
 
     def has_pending_since(self, checkpoint: tuple[int, ...]) -> bool:
         """True if anonymous temps were registered after `checkpoint`."""
@@ -1070,15 +1073,13 @@ class TempState:
 
     @staticmethod
     def _render(out: TextIO, indent: str,
-                named: list[tuple[str, str, str | None, bool]],
+                named: list[tuple[str, str, str | None, str]],
                 pending: list[tuple[str, str, str | None, bool]]) -> None:
-        for name, cpp_type, init_val, brace_init in named:
+        for name, cpp_type, init_val, suffix in named:
             if init_val is not None:
                 out.write(f"{indent}{cpp_type} {name} = {init_val};\n")
-            elif brace_init:
-                out.write(f"{indent}{cpp_type} {name}{{}};\n")
             else:
-                out.write(f"{indent}{cpp_type} {name};\n")
+                out.write(f"{indent}{cpp_type} {name}{suffix};\n")
         for temp_name, type_cpp, init_expr, brace_init in pending:
             if init_expr is None:
                 # A conditional-region slot: the initializer moved into the

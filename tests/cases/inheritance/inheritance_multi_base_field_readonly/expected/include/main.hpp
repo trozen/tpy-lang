@@ -67,7 +67,7 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
 // def __init__(self) -> None:
 //     A.buf = [int32(1), int32(2)]
 //     B.buf = ["x", "y"]
-inline Combined::Combined() {
+inline Combined::Combined() : A(), B() {
     this->A::buf = {1, 2};
     this->B::buf = {"x", "y"};
 }

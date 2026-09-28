@@ -30,6 +30,7 @@ struct Buf {
     ::tpy::ByteArray ba;
 
     // def __init__(self, k: int32) -> None:
+    Buf() = default;
     explicit Buf(int32_t k);
 
     // def load(self, src: bytes) -> None:

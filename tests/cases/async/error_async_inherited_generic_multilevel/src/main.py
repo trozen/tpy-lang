@@ -18,12 +18,12 @@ class A[T]:
 
 class B[U](A[U]):
     def __init__(self, v: U) -> None:
-        self.v = v
+        super().__init__(v)
 
 
 class C(B[int32]):
     def __init__(self, v: int32) -> None:
-        self.v = v
+        super().__init__(v)
 
 
 async def main_coro() -> None:

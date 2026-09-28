@@ -2,6 +2,8 @@
 # self.message must reuse that inherited slot, not declare a shadow.
 class AppError(Exception):
     def __init__(self, message: str):
+        super().__init__(message)
+        # the subject: writes the inherited `message` slot
         self.message = message
     def detail(self) -> str:
         return self.message
@@ -11,5 +13,6 @@ def main() -> None:
         raise AppError("boom")
     except AppError as e:
         print(e.detail())
+        print(str(e))
 
 main()

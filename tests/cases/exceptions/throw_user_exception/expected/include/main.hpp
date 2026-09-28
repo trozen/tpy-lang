@@ -40,8 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
 
 
 // def __init__(self, code: int32, detail: str) -> None:
+//     super().__init__()
 //     self.code = code
 //     self.detail = detail
-inline AppError::AppError(int32_t code, std::string_view detail) : code(code), detail(detail) {}
+inline AppError::AppError(int32_t code, std::string_view detail) : ::tpy::Exception(), code(code), detail(detail) {}
 void __tpy_init();
 } // namespace tpyapp::main

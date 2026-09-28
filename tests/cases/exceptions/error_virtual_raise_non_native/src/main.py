@@ -7,7 +7,7 @@ from tpy.extern import virtual_raise
 @virtual_raise
 class AppError(Exception):  # tpyc: error(/@virtual_raise on 'AppError' requires @native/)
     def __init__(self, message: str) -> None:
-        self.message = message
+        super().__init__(message)
 
 
 def main() -> None:
