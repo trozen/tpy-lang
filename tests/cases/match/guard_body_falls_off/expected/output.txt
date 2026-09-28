@@ -1,0 +1,48 @@
+func: guard
+mixed: guard
+mixed: after
+mixed: five
+middle: guard
+or: guard
+enum: guard
+optional: guard
+no_default: guard
+no_default: after
+method: guard
+generator: guard
+generator: got 1
+generator: guard yields
+generator: got 40
+generator: got 1
+nested: inner guard
+nested: after inner
+loop: guard 1
+loop: guard 2
+loop: done 2
+func: default
+mixed: plain
+mixed: five
+middle: default
+or: default
+enum: default
+optional: default
+no_default: after
+method: default
+generator: default
+generator: got 1
+generator: default
+generator: got 1
+nested: inner default
+nested: after inner
+loop: default 1
+loop: after 1
+loop: default 2
+loop: after 2
+loop: default 3
+loop: after 3
+loop: done 3
+two_guards: first
+two_guards: second
+two_guards: default
+async: guard
+async: default

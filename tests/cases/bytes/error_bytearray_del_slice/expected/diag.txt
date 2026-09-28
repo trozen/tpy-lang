@@ -1,0 +1,1 @@
+main.py:7: error: deleting a slice ('del xs[a:b]') is not yet supported

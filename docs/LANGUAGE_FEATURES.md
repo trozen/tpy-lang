@@ -4166,6 +4166,7 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
   - Class fields and container elements: `std::optional<T>` (storage form). Boundary conversions emitted via `tpy::ptr_to_optional` / `tpy::optional_to_ptr`.
   - `x is None` / `x is not None` for null checks
   - Field/method/subscript access on unproven optional values emits a warning and inserts a runtime null check
+  - An element READ through an unproven `Optional[container]` receiver checks the receiver first: `d[0].x`, `print(d[0].x)`, `d[-1]`, `d[0].rows[0]`, `d[0][0]`, `r = xs[0]` (an Optional element), `xs[0] is None`, `if xs[0]:` (a non-None test only for a record element, BUGS.md#optional-record-elem-truthiness-has-value) and `xs[0].n` render `::tpy::__getitem__(::tpy::deref_check(d), 0)` off a pointer binding (param, local, generator/async frame field, global) and `::tpy::__getitem__(::tpy::deref_optional_check(h.d), 0)` off a storage optional (a field, an `Own[... | None]` param, a comprehension loop variable over `Optional` elements); a None receiver panics (`null pointer dereference` / `null optional dereference`). The index is normalised as for a plain receiver. A `str` / `bytes` element bound to a local (`t = d[0]`) owns a copy where the narrowed receiver binds a view (BUGS.md#checked-optional-elem-decl-copies-str). Element writes, aug-assigns, method calls on the element, element binds of a record element and the other sinks listed in TODO.md ("flag-keyed rejects over an UNPROVEN `Optional` container receiver") still reject until the receiver is narrowed (BUGS.md#unproven-optional-elem-sink-rejects).
   - Guarded paths (`if x is not None`) and `assert x is not None` narrow `x` to `T`
   - Returning narrowed optional values: `if x is not None: return x` correctly unwraps to `T`
   - Narrowed optional values flow into write sinks unwrapped to `T`: `list.append(x)` / `set.add(x)` and subscript-assign values (`d[k] = x`, `lst[i] = x`)
@@ -4555,6 +4556,7 @@ spelling too).
 ### Other
 - **Working**: `return`, `pass`. Bare `return` and `return None` are one statement everywhere (the parser gives the bare form a `None` operand, so every later phase sees one shape): at a void slot -- `-> None`, an unannotated def, a generator's end-of-iteration return -- both emit a plain `return;`, in every position (free function, method, `__init__`, `__exit__`, `try`/`finally`, `with`, `match` arm, closure, `@error_return` body, `async def`); at an Optional or None-union slot both spell the None value (`std::nullopt` / the null pointer / the monostate). At a slot that cannot hold None either spelling is the ordinary return-type mismatch ("expected int32, got None").
 - **Working**: `del obj[key]` -- element deletion via `__delitem__` dunder (dict, list, user types)
+- **Not yet**: `del xs[a:b]` -- slice deletion is rejected (`deleting a slice ('del xs[a:b]') is not yet supported`); rebuild the container from the kept part instead (BUGS.md#del-slice-rejected)
 - **Working**: `del x` -- variable unbinding. Use after del is a compile-time error. Re-assignment after del is supported. Works on locals, parameters, globals, nonlocals, loop variables, generators, and module-level variables. Early destruction (move-sink) is only emitted when the variable is the sole owner of its value -- except a generator or coroutine, which `del` closes in place (its pending `finally` runs there, as in CPython) since a started frame cannot move; aliases, alias sources, parameters, and globals just unbind the name without destroying. Limitation: pointer-locals that were initially aliases (e.g. `a = b; a = new_value; del a`) skip early destruction conservatively, even after reassignment to an owned value.
 - **Working**: `match`/`case` -- structural pattern matching
   - **Union subjects**: class patterns (`case Circle():`, `case Circle(radius=r):`), primitive type patterns (`case int32():`, `case str():`), container type patterns (`case list():`), parameterized record patterns (`case Box():`), subject narrowing, `switch (s.index())` codegen with `std::get<N>`. **Literal field-value sub-patterns** (`case Dog(legs=4):`) compare the field after the variant index matches: the arm becomes conditional (routed to the guarded switch path, `if (__case.legs == 4)`), falls through to a later `Dog()` / `_` arm when it fails, and does not count toward exhaustiveness. `field=None` on a nullable field tests its storage repr (`!opt.has_value()` for an optional field, `std::holds_alternative<std::monostate>` for a union-with-None field); `=None` on a non-nullable field is rejected (can never match). **Nested type sub-patterns** for disambiguating parameterized union members: `case Box(value=str() as v):` on `Box[str] | Box[int32]` resolves to `Box[str]` at compile time via recursive field type matching. Also works on union-typed record fields (`case Wrapper(pet=Cat() as c):` where `pet: Cat | Dog`) with `std::holds_alternative`/`std::get` codegen. Supports arbitrary nesting depth and mixed combinations (type-param x type-param, type-param x union-field, union-field x type-param, union-field x union-field).
@@ -6058,6 +6060,8 @@ s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
 
 - **Working**: `from tpy import ...` (built-in types like `int32`, `Span`, `Array`)
   - **Note**: tpy types require explicit import -- using `int32` without `from tpy import int32` produces an error with a helpful suggestion
+  - A name `tpy` does not export is rejected at the import line: `from tpy import Int32` -> `'Int32' not found in module 'tpy'` (the same check covers `typing` and `builtins`, with the wording a user module's missing name gets).
+  - **Not yet**: `from tpy import bits` (a submodule) is rejected with a pointer to `import tpy.bits` / `from tpy.bits import ...`, which work (BUGS.md#tpy-from-import-submodule)
 - **Working**: `from typing import ...` (type annotations like `Optional`, `Protocol`, `Self`, `Sized`, `Sequence`, `MutableSequence`, `Iterator`, `Iterable`)
   - **Note**: typing names require explicit import -- using `Optional` without `from typing import Optional` produces an error with a helpful suggestion
 - **Working**: `import time` and `from time import time`
@@ -6655,7 +6659,7 @@ Import existing C++ classes and C structs so TPy code can declare their fields, 
 
 ```python
 from tpy.extern import native, native_field
-from tpy import int32, Float
+from tpy import int32
 
 # @native -- C++ class import (constructor call syntax)
 @native
@@ -6670,11 +6674,11 @@ class Vec2:
 # @native with rename -- fully qualified C++ name
 @native("b2::Vec2")
 class PhysVec:
-    x: Float
-    y: Float
-    def length(self) -> Float: ...
+    x: float
+    y: float
+    def length(self) -> float: ...
     @native("mag")
-    def magnitude(self) -> Float: ...  # method rename
+    def magnitude(self) -> float: ...  # method rename
 
 # C struct import (aggregate init syntax)
 @native(binding="C")
@@ -7608,6 +7612,7 @@ fixed, under `BUGS.md#subexpression-right-to-left-eval`.
   - Tier separation enforced: ReturnException and non-ReturnException types cannot be mixed in same `try`/`except`
 - **Working**: Polymorphic exception storage via `Box[Throwable]` (Phase 20)
   - `Throwable` is the ABI protocol all exceptions implement (declared in `tpy._core._types` as `@native + @dynamic`, bridged to `::tpy::Throwable` in the runtime header)
+  - Imported with `from tpy import Throwable`
   - User-facing pattern: `self.exc: Box[Throwable] | None` stores a caught exception, preserving its dynamic subclass through the cycle
     ```python
     try:

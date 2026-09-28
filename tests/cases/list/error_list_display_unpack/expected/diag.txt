@@ -1,0 +1,1 @@
+main.py:6: error: unpacking with '*' ('*xs') is not supported here

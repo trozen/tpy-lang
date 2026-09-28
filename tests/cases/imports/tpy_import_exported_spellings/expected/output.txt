@@ -1,0 +1,6 @@
+alias 8
+keyword [1, 2, 3]
+function [1, 2, 3] [1, 2, 3, 9]
+multi-line 255
+typing 2 None
+throwable 0

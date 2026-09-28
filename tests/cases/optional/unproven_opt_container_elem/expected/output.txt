@@ -1,0 +1,32 @@
+free print 1
+free 1
+method 3
+gen 0
+gen 6
+async 3
+closure 8
+ctor 9
+comprehension [10, 10]
+finally ran
+try 11
+match 12
+pointer local 13
+field 4
+own 5
+readonly 14
+decl alias 9
+is none False True
+truthy 1 0
+str elem 2
+bytes elem 3
+owned after mutation long enough to live on the heap, not in SSO
+loop var elem long enough to live on the heap, not in SSO
+index 30
+nested field elem 16
+nested elem 17
+unpack 54
+storage loop var [19, 20]
+record getitem 7
+bytearray 98
+global 5
+overload trial 2

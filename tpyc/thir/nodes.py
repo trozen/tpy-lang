@@ -1651,6 +1651,31 @@ class THIRSubscript(THIRExpr):
     deref: bool = False
 
 
+class OptionalCheckSpelling(Enum):
+    """How a runtime-checked Optional unwrap is spelled, picked from the
+    receiver's representation: `PTR` for a pointer-repr binding (the `T*`
+    itself is the None encoding), `OPTIONAL` for a storage `std::optional<T>`
+    lvalue."""
+    PTR = auto()
+    OPTIONAL = auto()
+
+
+@dataclass(frozen=True)
+class THIROptionalRecvCheck(THIRExpr):
+    """The runtime-checked unwrap of an Optional container RECEIVER that sema
+    could not prove non-None (`TpySubscript.needs_optional_runtime_check`):
+    `::tpy::deref_check(value)` (PTR) or `::tpy::deref_optional_check(value)`
+    (OPTIONAL), both panicking on None and yielding the container lvalue.
+
+    `value` is the raw receiver -- the bare `T*` or the whole storage
+    optional, never an already-dereffed read. `result_type` is the PEELED
+    container type (qualifiers kept), so the subscript's family dispatch and
+    every consumer of the receiver type see the container, not the
+    Optional."""
+    value: THIRExpr
+    spelling: OptionalCheckSpelling
+
+
 @dataclass(frozen=True)
 class THIRStrSlice(THIRExpr):
     """A str/bytes slice off a str/bytes-family receiver, emitted via the
@@ -3443,8 +3468,8 @@ class THIRMatch(THIRStmt):
     emit_unreachable: bool = False    # is_exhaustive AND every arm terminates
     synthetic_default: bool = False   # no wildcard AND not exhaustive
     # The needs_default_goto fold: a user default exists
-    # AND some labeled group is entirely guarded -- its chain falls through via
-    # `goto __match_default_N;` onto the `default: __match_default_N: {`
+    # AND some labeled group is entirely guarded -- its chain's last `else`
+    # is `goto __match_default_N;` onto the `default: __match_default_N: {`
     # label, N drawing the second per-function counter bump (before the
     # switch head).
     default_goto: bool = False

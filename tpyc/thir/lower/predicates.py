@@ -7071,15 +7071,15 @@ def _lvalue_chain_hop_ok(link: TpyExpr, declared: dict[str, TpyType],
     view over the receiver. WHICH render each hop takes (a plain member read,
     a getter call, a `deref_check`) is the hop's own arm's business.
 
-    A hop off a pointer-repr `Optional` NAME renders the BARE `(*recv)`
-    unwrap, keyed on the body's pointer BINDING set -- a representation fact,
-    not a proof -- so it is an lvalue hop only under sema's narrowing proof:
-    `needs_optional_runtime_check` cleared on the hop AND the name in that
-    set, which together is what `_narrowed_ptr_opt_recv` answers. Un-narrowed,
-    the walk must stop, or the chain consumer spells the unwrap with no null
-    check while sema warns one was added. An Optional reached any other way
-    (a FIELD link, `o.inner.items[0]`) renders its own `deref_optional_check`
-    inside the chain, so the hop stays an lvalue and is left to its own arm."""
+    A SUBSCRIPT hop off a pointer-repr `Optional` NAME is an lvalue hop
+    either way: proven, its arm reads the bare unwrap; unproven
+    (`needs_optional_runtime_check`), the same arm wraps the receiver in the
+    checked unwrap, which yields the same container lvalue. A FIELD hop off
+    such a name has no checked render in the chain, so it walks only under
+    the proof (flag cleared and the name in the pointer set). An Optional
+    reached any other way (a FIELD link, `o.inner.items[0]`) renders its own
+    `deref_optional_check` inside the chain, so the hop stays an lvalue and
+    is left to its own arm."""
     if isinstance(link, TpySubscript) and isinstance(link.index, TpySlice):
         return False
     recv = link.obj
@@ -7087,9 +7087,11 @@ def _lvalue_chain_hop_ok(link: TpyExpr, declared: dict[str, TpyType],
         rt = declared.get(recv.name)
         rtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
                if rt is not None else None)
-        if isinstance(rtu, OptionalType) and rtu.uses_pointer_repr():
+        if (isinstance(rtu, OptionalType) and rtu.uses_pointer_repr()
+                and not (isinstance(link, TpySubscript)
+                         and link.needs_optional_runtime_check)):
             if (link.needs_optional_runtime_check
-                    or _narrowed_ptr_opt_recv(recv, rt, pointers) is None):
+                    or _ptr_opt_binding_inner(recv, rt, pointers) is None):
                 return False
     return not is_rvalue_source(analyzer, link)
 
@@ -7543,12 +7545,11 @@ def _chained_subscript_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
     rooted-lvalue walker (the for-each iterable and the tuple-unpack source
     read the same one); the ELEMENT family check stays with the caller.
 
-    `pointers` is the body's pointer BINDING set -- the same one the deref
-    render keys on, and the only thing that tells a None-narrowed pointer-repr
-    `Optional[container]` receiver from an un-narrowed one. It is required,
-    not per-caller: a receiver whose narrowing sema has proven resolves to the
-    narrowed INNER here, so no caller re-applies `_narrowed_ptr_opt_recv`
-    itself and none can forget to."""
+    `pointers` is the body's pointer BINDING set: a pointer-repr
+    `Optional[container]` NAME in it resolves to the INNER container here
+    (`_ptr_opt_binding_inner`), proven or not -- the set is a representation
+    fact. A caller that admits a read off it must also read the subscript's
+    `needs_optional_runtime_check`, which is where the None proof lives."""
     t = _subscript_container_recv_type(recv, locals_, analyzer,
                                        narrowed_ok=True)
     if t is None:
@@ -7560,7 +7561,7 @@ def _chained_subscript_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
             rt = analyzer.get_expr_type(recv)
             t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
                  if rt is not None else None)
-    nptr = _narrowed_ptr_opt_recv(recv, t, pointers)
+    nptr = _ptr_opt_binding_inner(recv, t, pointers)
     return t if nptr is None else nptr
 
 
@@ -7593,18 +7594,16 @@ def _container_elem_lvalue_subscript(e: TpyExpr, locals_: dict[str, TpyType],
             or call_returns_cpp_ref(analyzer, e.getitem_function_info))
 
 
-def _narrowed_ptr_opt_recv(recv: TpyExpr, recv_t: 'TpyType | None',
+def _ptr_opt_binding_inner(recv: TpyExpr, recv_t: 'TpyType | None',
                            pointers) -> 'TpyType | None':
-    """The narrowed INNER container of a None-narrowed pointer-repr
-    `Optional[container]` NAME receiver, or None.
+    """The INNER container of a pointer-repr `Optional[container]` NAME
+    receiver bound in the pointer BINDING set, or None.
 
-    The name binds `T*` and the subscript renders through the `(*recv)`
-    deref, so the family / element / dunder checks downstream must key on
-    the inner container -- keying on the Optional misses `__getitem__` and
-    drops to the raw `operator[]`. The un-narrowed flavor carries
-    `needs_optional_runtime_check` and rejects upstream, so reaching here
-    implies sema's proof. Gated on the pointer BINDING set, which is what
-    the deref render itself keys on.
+    A REPRESENTATION answer only: the name binds `T*`, so a subscript off it
+    reaches the container through an unwrap and the family / element /
+    dunder checks key on the inner container. It says nothing about whether
+    sema proved the name non-None -- that is the subscript's own
+    `needs_optional_runtime_check`, which picks the checked unwrap.
     """
     rtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_t)))
            if recv_t is not None else None)
@@ -7614,13 +7613,11 @@ def _narrowed_ptr_opt_recv(recv: TpyExpr, recv_t: 'TpyType | None',
     return None
 
 
-def _narrowed_ptr_opt_name(recv: TpyExpr, declared: dict[str, TpyType],
-                           pointers) -> bool:
-    """The `declared`-typed twin of `_narrowed_ptr_opt_recv`: a NAME bound to a
-    pointer-repr `Optional[T]` whose subscript reads through the `(*recv)`
-    deref. Used where the receiver family is resolved off the DECLARED slot
-    (the record-getitem arm, the general subscript emit) rather than off the
-    container-receiver resolver."""
+def _ptr_opt_binding_name(recv: TpyExpr, declared: dict[str, TpyType],
+                          pointers) -> bool:
+    """The `declared`-typed twin of `_ptr_opt_binding_inner`: a NAME bound to
+    a pointer-repr `Optional[T]` in the pointer binding set. Representation
+    only, like its twin -- the proof is the subscript's flag."""
     if not (isinstance(recv, TpyName) and recv.name in pointers
             and recv.name in declared):
         return False

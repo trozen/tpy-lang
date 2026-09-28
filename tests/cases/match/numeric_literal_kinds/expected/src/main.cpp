@@ -202,8 +202,9 @@ std::string guard_default(int32_t v, bool flag) {
     case 2: {
         if (flag) {
             return "guarded";
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     default: __match_default_2: {

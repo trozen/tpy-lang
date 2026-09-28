@@ -90,8 +90,9 @@ int32_t opt_guard(int32_t k, std::optional<int32_t> v) {
     case 1: {
         if (::tpy::is_truthy(v)) {
             return 10;
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     default: __match_default_2: {
@@ -113,8 +114,9 @@ int32_t str_guard(int32_t k, std::string_view t) {
     case 1: {
         if ((!t.empty())) {
             return 10;
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     default: __match_default_2: {
@@ -136,8 +138,9 @@ int32_t list_guard(int32_t k, const std::vector<int32_t>& xs) {
     case 1: {
         if ((::tpy::__len__(xs) != 0)) {
             return 10;
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     default: __match_default_2: {
@@ -159,8 +162,9 @@ int32_t record_guard(int32_t k, const Bag& g) {
     case 1: {
         if ((::tpy::__len__(g) != 0)) {
             return 10;
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     default: __match_default_2: {
@@ -182,8 +186,9 @@ int32_t not_guard(int32_t k, std::string_view t) {
     case 1: {
         if ((!((!t.empty())))) {
             return 10;
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     default: __match_default_2: {
@@ -205,8 +210,9 @@ int32_t enum_guard(int32_t k, Color c) {
     case 1: {
         if ((static_cast<void>(c), true)) {
             return 10;
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     default: __match_default_2: {
@@ -228,8 +234,9 @@ int32_t int_enum_guard(int32_t k, Level lv) {
     case 1: {
         if ((static_cast<int32_t>(lv) != 0)) {
             return 10;
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     default: __match_default_2: {
@@ -251,8 +258,9 @@ int32_t plain_record_guard(int32_t k, const Plain& p) {
     case 1: {
         if ((static_cast<void>(p), true)) {
             return 10;
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     default: __match_default_2: {
@@ -274,8 +282,9 @@ int32_t any_guard(int32_t k, ::tpy::Any v) {
     case 1: {
         if (::tpy::to_bool(v)) {
             return 10;
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     default: __match_default_2: {
@@ -297,8 +306,9 @@ int32_t and_guard(int32_t k, std::string_view t, const std::vector<int32_t>& xs)
     case 1: {
         if (((!t.empty()) && (::tpy::__len__(xs) != 0))) {
             return 10;
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     default: __match_default_2: {

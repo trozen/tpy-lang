@@ -843,8 +843,10 @@ user code inside the match body).
 
 **Enum/primitive subjects with guards**: still uses `switch`, with
 if/else guard chains inside each case arm. Same-value cases with
-different guards are merged. Failed guards use `goto` to the default
-arm:
+different guards are merged. A group with no unguarded same-value arm
+ends its chain with an `else` that jumps to the default arm, so only a
+failed guard reaches it (a taken guard body that falls off its end
+breaks out of the switch):
 
 ```cpp
 // case Color.Green if x: / case Color.Green if y: / case Color.Green: / case _:
@@ -867,9 +869,10 @@ default: {
 switch (__match_subject) {
 case Color::Green: {
     if (allow) {
-        return "guarded-green";
+        print("guarded-green");
+    } else {
+        goto __match_default_1;
     }
-    goto __match_default_1;
     break;
 }
 default: __match_default_1: {

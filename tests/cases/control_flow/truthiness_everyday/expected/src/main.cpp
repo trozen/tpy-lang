@@ -160,29 +160,33 @@ int32_t guard_shapes(Holder& h, const std::vector<int32_t>& xs, const std::vecto
     case 1: {
         if (::tpy::__getitem__(xs, 0)) {
             return 1;
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     case 2: {
         if (h.size()) {
             return 2;
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     case 3: {
         if ((::tpy::add_check<int32_t>(h.n, 1))) {
             return 3;
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     case 4: {
         if ((!::tpy::__getitem__(names, 0).empty())) {
             return 4;
+        } else {
+            goto __match_default_2;
         }
-        goto __match_default_2;
         break;
     }
     default: __match_default_2: {

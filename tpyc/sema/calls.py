@@ -662,6 +662,12 @@ def _probe_arg_hint(arg: TpyExpr,
     return hint
 
 
+def _is_fn_slot_param(ptype: TpyType) -> bool:
+    """A parameter that takes a callable argument. `Send`/`Sync` are
+    unwrapped because `Send[Callable[...]]` is a callable slot too."""
+    return is_callable_type(unwrap_send_sync(unwrap_ref_type(ptype)))
+
+
 class CallAnalyzer:
     """Function and constructor call analysis."""
 
@@ -1308,8 +1314,7 @@ class CallAnalyzer:
                                 factory_args = []
                                 for p in record_info.type_params:
                                     t = inferred_params[p]
-                                    if isinstance(t, IntLiteralType):
-                                        t = self.ctx.default_int_for_literal(t)
+                                    t = resolve_int_literals(t, self.ctx.default_int_for_literal)
                                     # Constructors produce owned storage -- strip Ref
                                     t = unwrap_ref_type(t)
                                     factory_args.append(t)
@@ -3927,7 +3932,7 @@ class CallAnalyzer:
         # Quick check: if no Fn/Callable params, analyze all args directly
         fn_positions: set[int] = set()
         for i, (_, ptype) in enumerate(func.params):
-            if is_callable_type(unwrap_ref_type(ptype)):
+            if _is_fn_slot_param(ptype):
                 fn_positions.add(i)
         if not fn_positions:
             return [_analyze_arg(i, arg) for i, arg in enumerate(expr.args)]
@@ -3955,12 +3960,13 @@ class CallAnalyzer:
             if param.is_variadic and is_varargs(unwrap_ref_type(match_ptype)):
                 match_ptype = unwrap_readonly(unwrap_ref_type(match_ptype).type_args[0])
             self.type_ops.match_type_with_inference(match_ptype, arg_type, partial_inferred)
-        # Resolve IntLiteralType to concrete int for the Fn hint
+        # Resolve literal markers (a nested one too: the hint spells the
+        # lambda's parameter type) to concrete types for the Fn hint
         for k, v in partial_inferred.items():
-            if isinstance(v, IntLiteralType):
-                partial_inferred[k] = self.ctx.default_int_type or INT32
-            elif isinstance(v, PendingViewType):
+            if isinstance(v, PendingViewType):
                 partial_inferred[k] = v.family.owned_type
+            elif isinstance(v, TpyType):
+                partial_inferred[k] = resolve_int_literals(v, self.ctx.default_int_type or INT32)
 
         if partial_inferred:
             for i in fn_positions:
@@ -4068,14 +4074,13 @@ class CallAnalyzer:
         result: list[SuppliedFnSlot] = []
         for i in range(rightmost + 1):
             p = func.params[i]
-            ptype = unwrap_ref_type(p.type)
             if i < len(args):
-                if is_callable_type(ptype):
+                if _is_fn_slot_param(p.type):
                     result.append(SuppliedFnSlot(
                         param_index=i, arg_expr=args[i],
                         arg_index=i, kwarg_name=None))
             elif p.name in kwargs:
-                if is_callable_type(ptype):
+                if _is_fn_slot_param(p.type):
                     result.append(SuppliedFnSlot(
                         param_index=i, arg_expr=kwargs[p.name],
                         arg_index=None, kwarg_name=p.name))
@@ -4136,7 +4141,7 @@ class CallAnalyzer:
         # per-candidate _supplied_fn_slots walks for the common
         # non-callable overload set.
         any_fn_typed_param = any(
-            is_callable_type(unwrap_ref_type(p.type))
+            _is_fn_slot_param(p.type)
             for f in func_infos for p in f.params
         )
         fn_bearing_supplied: list[tuple[FunctionInfo, list[SuppliedFnSlot]]] = []
@@ -4626,13 +4631,13 @@ class CallAnalyzer:
                 if idx is None:
                     continue
                 self.type_ops.match_type_with_inference(func.params[idx].type, kw_t, partial_inferred)
-            # Resolve IntLit -> default int, PendingView -> owned (mirrors
+            # Resolve literal markers -> concrete, PendingView -> owned (mirrors
             # _infer_arg_types' resolution step).
             for k, v in list(partial_inferred.items()):
-                if isinstance(v, IntLiteralType):
-                    partial_inferred[k] = self.ctx.default_int_type or INT32
-                elif isinstance(v, PendingViewType):
+                if isinstance(v, PendingViewType):
                     partial_inferred[k] = v.family.owned_type
+                elif isinstance(v, TpyType):
+                    partial_inferred[k] = resolve_int_literals(v, self.ctx.default_int_type or INT32)
 
         # Per-Fn-slot trial.
         for slot in fn_slots:
@@ -4852,17 +4857,18 @@ class CallAnalyzer:
                     self.type_ops.compute_representational_subst_params(
                         overload, expr.inferred_type_args))
                 self.ctx.record_own_copy_instantiation(overload.root, type_subst)
+                ret = self.type_ops.substitute_type_params(
+                    overload.return_type,
+                    dict(zip(overload.type_params, expr.inferred_type_args)))
                 if isinstance(overload.return_type, UnionType):
                     orig_count = len(overload.return_type.members)
-                    resolved_ret = matched.return_type
-                    resolved_count = len(resolved_ret.members) if isinstance(resolved_ret, UnionType) else 1
+                    resolved_count = len(ret.members) if isinstance(ret, UnionType) else 1
                     if resolved_count < orig_count:
                         raise self.ctx.error(
                             f"Generic union return type '{overload.return_type}' produces duplicate "
-                            f"members with these type arguments (resolves to '{resolved_ret}')",
+                            f"members with these type arguments (resolves to '{ret}')",
                             expr,
                         )
-                ret = matched.return_type
                 if overload.is_builtin_function and overload.type_params:
                     ret = strip_template_repr(ret)
                 return ret
@@ -5504,6 +5510,7 @@ class CallAnalyzer:
         expr.inferred_type_args = tuple(
             self._resolve_inferred_type_arg(type_subst[p]) for p in func.type_params
         )
+        final_subst = dict(zip(func.type_params, expr.inferred_type_args))
         expr.representational_subst_params = (
             self.type_ops.compute_representational_subst_params(
                 func, expr.inferred_type_args))
@@ -5539,8 +5546,13 @@ class CallAnalyzer:
                     raise self.ctx.error(
                         f"Cannot use *unpacking: '{func.name}' "
                         f"does not accept *args", arg)
+            # A callable parameter's signature spells the argument's own
+            # parameters, which are slots and never literals, so it takes the
+            # finalized bindings; every other parameter keeps the markers its
+            # literal argument coerces against.
             for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
-                resolved_ptype = self.type_ops.substitute_param_type(ptype, type_subst)
+                resolved_ptype = self.type_ops.substitute_param_type(
+                    ptype, final_subst if _is_fn_slot_param(ptype) else type_subst)
 
                 # @value_ptr_coercion: Ptr[T] params accept T values via address-of coercion.
                 vpc_active = func.value_ptr_coercion and isinstance(resolved_ptype, PtrType)
@@ -5586,7 +5598,8 @@ class CallAnalyzer:
                 self.mark_pending_arg_context(arg, arg_type, resolved_ptype)
 
         # Resolve return type
-        resolved_return = self.type_ops.substitute_type_params(func.return_type, type_subst)
+        resolved_return = self.type_ops.substitute_type_params(
+            func.return_type, final_subst)
 
         # Builtin generics (e.g. iter) delegate to concrete C++ that returns
         # std::optional<T>, not T*, despite the template-committed signature.
@@ -6110,8 +6123,8 @@ class CallAnalyzer:
             )
             if partial:
                 for k, v in partial.items():
-                    if isinstance(v, IntLiteralType):
-                        v = self.ctx.default_int_for_literal(v)
+                    if isinstance(v, TpyType):
+                        v = resolve_int_literals(v, self.ctx.default_int_for_literal)
                     inferred[k] = v
 
         info = PendingGenericInstanceInfo(

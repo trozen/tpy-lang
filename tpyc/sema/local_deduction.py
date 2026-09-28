@@ -83,16 +83,6 @@ if TYPE_CHECKING:
     from ..parse.nodes import SourceLocation
 
 
-def _contains_literal_type(typ: TpyType) -> bool:
-    """Check if a composite type contains unresolved IntLiteralType/FloatLiteralType."""
-    if isinstance(typ, TupleType):
-        return any(
-            isinstance(e, (IntLiteralType, FloatLiteralType)) or _contains_literal_type(e)
-            for e in typ.element_types
-        )
-    return False
-
-
 def is_enum_name_read(expr: 'TpyExpr', ctx: 'SemanticContext') -> bool:
     """True for an enum member's `.name`.
 
@@ -1082,11 +1072,7 @@ class LocalTypeDeduction:
             if info.coerced_element_type is not None and not isinstance(elem_type, UnknownElementType):
                 elem_type = info.coerced_element_type
 
-            if isinstance(elem_type, IntLiteralType):
-                # Use configured integer default when no stronger context exists.
-                elem_type = self.ctx.default_int_for_literal(elem_type)
-            elif _contains_literal_type(elem_type):
-                elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
+            elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
             if isinstance(elem_type, PendingViewType):
                 # Container elements are owned -- views can't be stored in a list.
                 elem_type = elem_type.family.owned_type

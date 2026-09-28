@@ -60,6 +60,7 @@ from .nodes import (
     THIRCopy,
     THIRSlotEmplace,
     THIRDecayCopy,
+    THIROptionalRecvCheck,
     THIRMove,
     THIRName,
     THIRNarrowAlias,
@@ -295,6 +296,8 @@ def _expr(e: THIRExpr) -> str:
         idx = e.index.value if isinstance(e.index, THIRLiteral) else _expr(e.index)
         flags = " bounds_safe" if e.bounds_safe else ""
         return f"{_expr(e.receiver)}[{idx}]{tag}{flags}"
+    if isinstance(e, THIROptionalRecvCheck):
+        return f"opt_recv_check[{e.spelling.name.lower()}]({_expr(e.value)})"
     if isinstance(e, THIRStrSlice):
         if e.index is not None:
             return f"{_expr(e.receiver)}[{_expr(e.index)}]"
