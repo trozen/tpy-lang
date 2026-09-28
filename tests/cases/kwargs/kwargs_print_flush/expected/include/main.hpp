@@ -41,7 +41,9 @@ inline std::ostream& operator<<(std::ostream& os, const CountingSink& obj) {
 // def __init__(self) -> None:
 //     self.parts = []
 //     self.flushes = int32(0)
-inline CountingSink::CountingSink() : parts(std::vector<std::string>{}), flushes(0) {}
+inline CountingSink::CountingSink()
+    : parts(std::vector<std::string>{}),
+      flushes(0) {}
 
 // def write(self, text: str) -> int32:
 //     self.parts.append(text)

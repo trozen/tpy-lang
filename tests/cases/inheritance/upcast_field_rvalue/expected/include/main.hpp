@@ -120,7 +120,9 @@ struct __coro_coro {
     };
 
     __coro_coro(Holder& h)
-        : __state(S_INITIAL), __cancel_pending(false), h(h) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          h(h) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -143,7 +145,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     };
 
     __gen_gen(Holder& h)
-        : __state(S_INITIAL), h(h) {}
+        : __state(S_INITIAL),
+          h(h) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -167,7 +170,9 @@ inline void Pet::rename(std::string_view name) {
 // def __init__(self) -> None:
 //     self.plain = Pet("init")
 //     self.opt = None
-inline Holder::Holder() : plain(Pet("init")), opt(std::nullopt) {}
+inline Holder::Holder()
+    : plain(Pet("init")),
+      opt(std::nullopt) {}
 
 // # method: the same two writes off `self`
 // def refill(self) -> None:
@@ -182,7 +187,9 @@ inline void Holder::refill() {
 // def __init__(self, tag: str) -> None:
 //     self.plain = Dog(tag)  # tpyc: warning(/upcast narrows/)
 //     self.opt = Dog(tag)  # tpyc: warning(/upcast narrows/)
-inline CtorHolder::CtorHolder(std::string_view tag) : plain(Dog(tag)), opt(Dog(tag)) {}
+inline CtorHolder::CtorHolder(std::string_view tag)
+    : plain(Dog(tag)),
+      opt(Dog(tag)) {}
 
 // def __init__(self, name: str) -> None:
 //     super().__init__(name)

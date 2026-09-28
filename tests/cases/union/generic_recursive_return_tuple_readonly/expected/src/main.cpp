@@ -27,11 +27,9 @@ int32_t leaf_count(const Tree<int32_t>& t) {
             n = ::tpy::add_check<int32_t>(n, ::tpyapp::main::leaf_count(c));
         }
         return n;
-        break;
     }
     default: {
         return 1;
-        break;
     }
     }
     ::std::unreachable();

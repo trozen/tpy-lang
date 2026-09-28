@@ -80,6 +80,8 @@ inline Cat::Cat(std::string_view name) : name(name) {}
 // def __init__(self, pet: Dog | Cat, tag: str) -> None:
 //     self.pet = pet  # tpyc: warning(/copies/)
 //     self.tag = tag
-inline Zoo::Zoo(::tpy::Union<const Cat*, const Dog*> pet, std::string_view tag) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)), tag(tag) {}
+inline Zoo::Zoo(::tpy::Union<const Cat*, const Dog*> pet, std::string_view tag)
+    : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)),
+      tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

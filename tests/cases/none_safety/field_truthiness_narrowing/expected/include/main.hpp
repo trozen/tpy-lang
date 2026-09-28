@@ -42,6 +42,8 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 // def __init__(self, name: Optional[str], port: Optional[int]) -> None:
 //     self.name = name
 //     self.port = port
-inline Config::Config(std::optional<std::string_view> name, std::optional<::tpy::BigInt> port) : name(name ? std::make_optional(std::string(*name)) : std::nullopt), port(port) {}
+inline Config::Config(std::optional<std::string_view> name, std::optional<::tpy::BigInt> port)
+    : name(name ? std::make_optional(std::string(*name)) : std::nullopt),
+      port(port) {}
 void __tpy_init();
 } // namespace tpyapp::main

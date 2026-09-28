@@ -43,7 +43,9 @@ struct __coro_direct {
     };
 
     __coro_direct(std::string_view tag_)
-        : __state(S_INITIAL), __cancel_pending(false), tag(std::string(tag_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          tag(std::string(tag_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -65,7 +67,9 @@ struct __coro_in_finally {
     };
 
     __coro_in_finally(std::string_view tag_)
-        : __state(S_INITIAL), __cancel_pending(false), tag(std::string(tag_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          tag(std::string(tag_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -95,7 +99,9 @@ struct __coro_pending_slot {
     };
 
     __coro_pending_slot(std::string_view tag_)
-        : __state(S_INITIAL), __cancel_pending(false), tag(std::string(tag_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          tag(std::string(tag_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -117,7 +123,9 @@ struct __coro_opt_ternary {
     };
 
     __coro_opt_ternary(std::optional<std::string_view> tag_)
-        : __state(S_INITIAL), __cancel_pending(false), tag(tag_ ? std::make_optional(std::string(*tag_)) : std::nullopt) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          tag(tag_ ? std::make_optional(std::string(*tag_)) : std::nullopt) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -154,7 +162,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

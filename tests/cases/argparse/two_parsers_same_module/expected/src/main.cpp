@@ -24,8 +24,8 @@ int32_t parse_a() {
 //     print(args.count)
 //     return 0
 int32_t parse_b() {
-    std::vector<std::string> __tmp_2 = {"--count", "7"};
-    __tpy_builder_argparse_args_2 args = ::tpyapp::main::__tpy_builder_argparse_parse_2(__tmp_2);
+    std::vector<std::string> __tmp_1 = {"--count", "7"};
+    __tpy_builder_argparse_args_2 args = ::tpyapp::main::__tpy_builder_argparse_parse_2(__tmp_1);
     std::cout << args.count << "\n";
     return 0;
 }

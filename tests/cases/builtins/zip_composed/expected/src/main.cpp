@@ -48,10 +48,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        auto& __tup_1 = __for_tup_0;
-        auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-        auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        std::cout << a << " " << b << "\n";
+            auto& __tup_1 = __for_tup_0;
+            auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+            auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            std::cout << a << " " << b << "\n";
         }
     }
     {
@@ -61,10 +61,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
-        auto& __tup_2 = __for_tup_1;
-        auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
-        int32_t v = std::get<1>(__tup_2);
-        std::cout << p << " " << v << "\n";
+            auto& __tup_2 = __for_tup_1;
+            auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
+            int32_t v = std::get<1>(__tup_2);
+            std::cout << p << " " << v << "\n";
         }
     }
     {
@@ -74,11 +74,11 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
-        auto& __tup_3 = __for_tup_2;
-        auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
-        auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
-        a.x = ::tpy::add_check<int32_t>(a.x, 100);
-        b.y = ::tpy::add_check<int32_t>(b.y, 200);
+            auto& __tup_3 = __for_tup_2;
+            auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
+            auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
+            a.x = ::tpy::add_check<int32_t>(a.x, 100);
+            b.y = ::tpy::add_check<int32_t>(b.y, 200);
         }
     }
     auto& __obj_6 = pts1;

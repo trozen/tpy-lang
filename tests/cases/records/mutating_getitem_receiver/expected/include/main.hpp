@@ -124,7 +124,9 @@ struct DefaultDict {
     //     self.factory = factory
     //     self.data = {}
     DefaultDict() = default;
-    explicit DefaultDict(std::function<V()> factory) : factory(factory), data(::tpy::ordered_map<K, V>()) {}
+    explicit DefaultDict(std::function<V()> factory)
+        : factory(factory),
+          data(::tpy::ordered_map<K, V>()) {}
 
     // # Node-based storage: the insert never moves an existing value.
     // @readonly(False)
@@ -441,7 +443,10 @@ struct __coro_async_read {
     };
 
     __coro_async_read(Counts& c, std::string_view k_)
-        : __state(S_INITIAL), __cancel_pending(false), c(c), k(std::string(k_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(c),
+          k(std::string(k_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -469,7 +474,9 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
     };
 
     __gen_walk(Counts& c, const std::vector<std::string>& keys)
-        : __state(S_INITIAL), c(c), keys(keys) {}
+        : __state(S_INITIAL),
+          c(c),
+          keys(keys) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_walk& __iter__() { return *this; }
@@ -584,7 +591,9 @@ inline int32_t Tally::__getitem__(int32_t i) {
 // def __init__(self) -> None:
 //     self.d = {}
 //     self.xs = [5]
-inline Two::Two() : d(::tpy::ordered_map<std::string, int32_t>()), xs(std::vector<int32_t>{5}) {}
+inline Two::Two()
+    : d(::tpy::ordered_map<std::string, int32_t>()),
+      xs(std::vector<int32_t>{5}) {}
 
 // @dispatch
 // def __getitem__(self, i: int32) -> int32:
@@ -611,7 +620,9 @@ inline int32_t Two::__getitem__(std::string_view k) {
 // def __init__(self) -> None:
 //     self.n = 0
 //     self.resets = 0
-inline Bag::Bag() : n(0), resets(0) {}
+inline Bag::Bag()
+    : n(0),
+      resets(0) {}
 
 // # No `__contains__`: `x in bag` iterates, and `__iter__` mutates.
 // def __iter__(self) -> "Bag":

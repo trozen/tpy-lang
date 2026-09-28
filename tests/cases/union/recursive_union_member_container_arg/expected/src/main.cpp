@@ -16,11 +16,9 @@ std::string first_kind(const V& v) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1.value);
         return "list";
-        break;
     }
     default: {
         return "scalar";
-        break;
     }
     }
     ::std::unreachable();

@@ -44,7 +44,8 @@ struct __gen_Source_values : public ::tpy::next_iter_mixin<__gen_Source_values, 
     };
 
     __gen_Source_values(const Source& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Source_values& __iter__() { return *this; }

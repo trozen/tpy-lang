@@ -55,7 +55,9 @@ struct __coro_Box2_me {
     };
 
     __coro_Box2_me(Box2& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<Box2*> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -83,7 +85,9 @@ struct __coro_relay {
     };
 
     __coro_relay(Box2& b)
-        : __state(S_INITIAL), __cancel_pending(false), b(b) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          b(b) {}
 
     ::tpystd::tpy::Poll<Box2*> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -108,7 +112,8 @@ struct __coro_main {
     };
 
     __coro_main()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

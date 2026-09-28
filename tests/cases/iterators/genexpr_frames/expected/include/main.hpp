@@ -320,7 +320,9 @@ struct __coro_aio {
     };
 
     __coro_aio(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -346,7 +348,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     };
 
     __gen_gen(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -374,7 +377,8 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T_it>, int32_t> {
     };
 
     __gen_relay(T_it&& it_)
-        : __state(S_INITIAL), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_relay& __iter__() { return *this; }
@@ -436,7 +440,8 @@ struct __gen_pairs_of : public ::tpy::next_iter_mixin<__gen_pairs_of, std::tuple
     };
 
     __gen_pairs_of(std::vector<Node>& ns)
-        : __state(S_INITIAL), ns(ns) {}
+        : __state(S_INITIAL),
+          ns(ns) {}
 
     std::expected<std::tuple<int32_t, Node*>, ::tpy::StopIteration> __next__();
     __gen_pairs_of& __iter__() { return *this; }
@@ -462,7 +467,8 @@ struct __gen_scores : public ::tpy::next_iter_mixin<__gen_scores, int32_t> {
     };
 
     __gen_scores(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_scores& __iter__() { return *this; }
@@ -487,7 +493,8 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
     };
 
     __gen_walk(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_walk& __iter__() { return *this; }
@@ -514,7 +521,8 @@ struct __genexpr___init___3_frame : public ::tpy::next_iter_mixin<__genexpr___in
     };
 
     __genexpr___init___3_frame(const std::vector<int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr___init___3_frame& __iter__() { return *this; }
@@ -543,7 +551,9 @@ struct __genexpr_tot_4_frame : public ::tpy::next_iter_mixin<__genexpr_tot_4_fra
     };
 
     __genexpr_tot_4_frame(const std::vector<int32_t>& __src, F_self&& self_)
-        : __state(S_INITIAL), __src(__src), self(std::forward<F_self>(self_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          self(std::forward<F_self>(self_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_tot_4_frame& __iter__() { return *this; }
@@ -588,7 +598,8 @@ struct __genexpr_count_5_frame : public ::tpy::next_iter_mixin<__genexpr_count_5
     };
 
     __genexpr_count_5_frame(const std::vector<T>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_count_5_frame& __iter__() { return *this; }
@@ -634,7 +645,9 @@ struct __genexpr_first_big_12_frame : public ::tpy::next_iter_mixin<__genexpr_fi
     };
 
     __genexpr_first_big_12_frame(const std::vector<T>& __src, F_lim&& lim_)
-        : __state(S_INITIAL), __src(__src), lim(std::forward<F_lim>(lim_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          lim(std::forward<F_lim>(lim_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<bool, ::tpy::StopIteration> __next__();
     __genexpr_first_big_12_frame& __iter__() { return *this; }
@@ -680,7 +693,9 @@ struct __genexpr_walk_22_frame : public ::tpy::next_iter_mixin<__genexpr_walk_22
     };
 
     __genexpr_walk_22_frame(const std::vector<int32_t>& __src, F_k&& k_)
-        : __state(S_INITIAL), __src(__src), k(std::forward<F_k>(k_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          k(std::forward<F_k>(k_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_walk_22_frame& __iter__() { return *this; }
@@ -725,7 +740,9 @@ struct __genexpr_walk_23_frame : public ::tpy::next_iter_mixin<__genexpr_walk_23
     };
 
     __genexpr_walk_23_frame(const std::vector<int32_t>& __src, F_k&& k_)
-        : __state(S_INITIAL), __src(__src), k(std::forward<F_k>(k_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          k(std::forward<F_k>(k_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_walk_23_frame& __iter__() { return *this; }
@@ -770,7 +787,9 @@ struct __genexpr_aio_24_frame : public ::tpy::next_iter_mixin<__genexpr_aio_24_f
     };
 
     __genexpr_aio_24_frame(const std::vector<int32_t>& __src, F_k&& k_)
-        : __state(S_INITIAL), __src(__src), k(std::forward<F_k>(k_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          k(std::forward<F_k>(k_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_aio_24_frame& __iter__() { return *this; }
@@ -825,7 +844,9 @@ inline Cur Noisy::__iter__() const {
 // def __init__(self, n: int32) -> None:
 //     self.i = 0
 //     self.n = n
-inline Cur::Cur(int32_t n) : i(0), n(n) {}
+inline Cur::Cur(int32_t n)
+    : i(0),
+      n(n) {}
 
 // def __iter__(self) -> Cur:
 //     return self
@@ -851,7 +872,10 @@ inline std::expected<int32_t, ::tpy::StopIteration> Cur::__next__() {
 //     self.k = 5
 //     # constructor body: a param source, stored into a field.
 //     self.t = sum(x * 2 for x in xs)  # tpyc: ok
-inline Acc::Acc(const std::vector<int32_t>& xs) : items(std::vector<int32_t>{1, 2, 3}), k(5), t(::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr___init___3(xs))) {}
+inline Acc::Acc(const std::vector<int32_t>& xs)
+    : items(std::vector<int32_t>{1, 2, 3}),
+      k(5),
+      t(::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr___init___3(xs))) {}
 
 // def tot(self) -> int32:
 //     # method: `self` is a capture, a field is the borrowed source.
@@ -869,7 +893,9 @@ inline std::vector<int32_t> Acc::make() const {
 // def __init__(self) -> None:
 //     self.items = [1, 2, 3]
 //     self.scale = 2
-inline Shelf::Box::Box() : items(std::vector<int32_t>{1, 2, 3}), scale(2) {}
+inline Shelf::Box::Box()
+    : items(std::vector<int32_t>{1, 2, 3}),
+      scale(2) {}
 // def total(it: Iterable[int32]) -> int32:
 //     s = 0
 //     for v in it:

@@ -21,18 +21,15 @@ std::string classify(int32_t n) {
     case 3:
     {
         return "small";
-        break;
     }
     case 4:
     case 5:
     case 6:
     {
         return "medium";
-        break;
     }
     default: {
         return "big";
-        break;
     }
     }
     ::std::unreachable();

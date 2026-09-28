@@ -86,7 +86,9 @@ struct __gen_chunks_of : public ::tpy::next_iter_mixin<__gen_chunks_of, ::tpy::B
     };
 
     __gen_chunks_of(::tpy::BytesView data_, int32_t n_)
-        : __state(S_INITIAL), data(::tpy::Bytes(data_)), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          data(::tpy::Bytes(data_)),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::Bytes, ::tpy::StopIteration> __next__();
     __gen_chunks_of& __iter__() { return *this; }
@@ -100,7 +102,9 @@ struct __gen_chunks_of : public ::tpy::next_iter_mixin<__gen_chunks_of, ::tpy::B
 // def __init__(self) -> None:
 //     self.d = zlib.decompressobj()
 //     self.out = b""
-inline Unpacker::Unpacker() : d(::tpystd::zlib::decompressobj()), out(::tpy::Bytes{}) {}
+inline Unpacker::Unpacker()
+    : d(::tpystd::zlib::decompressobj()),
+      out(::tpy::Bytes{}) {}
 
 // def feed(self, chunk: bytes) -> None:
 //     self.out = self.out + self.d.decompress(chunk)

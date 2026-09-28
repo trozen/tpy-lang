@@ -533,7 +533,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen:" << " " << got << "\n";
+            std::cout << "gen:" << " " << got << "\n";
         }
     }
     {
@@ -543,7 +543,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "gen_drop:" << " " << got << "\n";
+            std::cout << "gen_drop:" << " " << got << "\n";
         }
     }
     std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_section())) << "\n";

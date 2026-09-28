@@ -60,7 +60,9 @@ inline std::ostream& operator<<(std::ostream& os, const SimpleBuffer& obj) {
 // def __init__(self) -> None:
 //     self._data = [10, 20, 30, 0]
 //     self._n = 3
-inline SimpleBuffer::SimpleBuffer() : _data(std::array<int32_t, 4>{10, 20, 30, 0}), _n(3) {}
+inline SimpleBuffer::SimpleBuffer()
+    : _data(std::array<int32_t, 4>{10, 20, 30, 0}),
+      _n(3) {}
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[int32]]:

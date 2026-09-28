@@ -107,7 +107,10 @@ inline std::string Event::kind() {
 //     super().__init__()
 //     self.x = x
 //     self.y = y
-inline ClickEvent::ClickEvent(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : Event(), x(x), y(y) {}
+inline ClickEvent::ClickEvent(const ::tpy::BigInt& x, const ::tpy::BigInt& y)
+    : Event(),
+      x(x),
+      y(y) {}
 
 // def kind(self) -> str:
 //     return "click"

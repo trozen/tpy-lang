@@ -34,7 +34,9 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     };
 
     __gen_gen(int32_t n_, int32_t brk_)
-        : __state(S_INITIAL), n(std::move(n_)), brk(std::move(brk_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)),
+          brk(std::move(brk_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

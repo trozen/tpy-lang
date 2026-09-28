@@ -257,7 +257,9 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
-inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+inline Vec2::Vec2(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // def __add__(self, other: Vec2) -> Own[Vec2]:
 //     return Vec2(self.x + other.x, self.y + other.y)

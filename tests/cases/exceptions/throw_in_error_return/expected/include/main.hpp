@@ -53,6 +53,8 @@ inline std::ostream& operator<<(std::ostream& os, const BadKey& obj) {
 // def __init__(self, key: str) -> None:
 //     super().__init__()
 //     self.key = key
-inline BadKey::BadKey(std::string_view key) : ::tpy::Exception(), key(key) {}
+inline BadKey::BadKey(std::string_view key)
+    : ::tpy::Exception(),
+      key(key) {}
 void __tpy_init();
 } // namespace tpyapp::main

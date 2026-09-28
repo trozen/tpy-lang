@@ -44,7 +44,9 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 }
 
 
-inline Bag::Bag(const ::tpy::BigInt& n, std::vector<::tpy::BigInt>&& items) : n(n), items(std::move(items)) {
+inline Bag::Bag(const ::tpy::BigInt& n, std::vector<::tpy::BigInt>&& items)
+    : n(n),
+      items(std::move(items)) {
     this->__post_init__();
 }
 

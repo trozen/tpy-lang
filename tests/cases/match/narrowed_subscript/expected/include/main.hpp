@@ -167,7 +167,9 @@ struct __coro_async_read {
     };
 
     __coro_async_read(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x_)
-        : __state(S_INITIAL), __cancel_pending(false), x(x_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          x(x_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -192,7 +194,8 @@ struct __gen_generate : public ::tpy::next_iter_mixin<__gen_generate, int32_t> {
     };
 
     __gen_generate(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x_)
-        : __state(S_INITIAL), x(x_) {}
+        : __state(S_INITIAL),
+          x(x_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_generate& __iter__() { return *this; }
@@ -244,11 +247,9 @@ inline std::string Reader::read(const ::tpy::Union<int32_t, std::string>& x) con
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
         return std::string(::tpy::char_to_str(::tpy::__getitem__(__case_0, -1)));
-        break;
     }
     default: {
         return "";
-        break;
     }
     }
     ::std::unreachable();

@@ -26,7 +26,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& r = ::tpy::unwrap_ref(*__r_1);
-        r.fd = (::tpy::add_check<int32_t>(r.fd, 10));
+            r.fd = (::tpy::add_check<int32_t>(r.fd, 10));
         }
     }
     auto& __obj_2 = data;

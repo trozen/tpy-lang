@@ -23,11 +23,9 @@ std::string feed(::tpy::Union<std::monostate, Cat*, Dog*> a) {
         auto& c = __case_0;
         c.hunger = (c.hunger) - (::tpy::BigInt(1));
         return "cat";
-        break;
     }
     default: {
         return "rest";
-        break;
     }
     }
     ::std::unreachable();
@@ -47,7 +45,6 @@ std::string only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const 
     switch (__match_subject_1.index()) {
     default: {
         return "any";
-        break;
     }
     }
     return "unreached";

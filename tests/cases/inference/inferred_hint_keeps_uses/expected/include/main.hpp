@@ -257,7 +257,9 @@ struct __coro_async_body {
     };
 
     __coro_async_body(const std::vector<double>& fs)
-        : __state(S_INITIAL), __cancel_pending(false), fs(fs) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          fs(fs) {}
 
     ::tpystd::tpy::Poll<double> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -280,7 +282,8 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, double> {
     };
 
     __gen_gen_body(const std::vector<double>& fs)
-        : __state(S_INITIAL), fs(fs) {}
+        : __state(S_INITIAL),
+          fs(fs) {}
 
     std::expected<double, ::tpy::StopIteration> __next__();
     __gen_gen_body& __iter__() { return *this; }

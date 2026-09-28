@@ -73,7 +73,9 @@ inline int32_t Base::x() const {
 // def __init__(self, x: int32, y: int32) -> None:
 //     super().__init__(x)
 //     self._y = y
-inline Child::Child(int32_t x, int32_t y) : Base(x), _y(y) {}
+inline Child::Child(int32_t x, int32_t y)
+    : Base(x),
+      _y(y) {}
 
 // @property
 // def y(self) -> int32:

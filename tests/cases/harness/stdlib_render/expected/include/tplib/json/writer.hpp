@@ -108,7 +108,12 @@ inline std::ostream& operator<<(std::ostream& os, const JsonWriter& obj) {
 //     self._indent = indent
 //     self._depth = 0
 //     self._fresh_line = False
-inline JsonWriter::JsonWriter(int32_t indent) : _buf(""), _needs_comma(false), _indent(indent), _depth(0), _fresh_line(false) {}
+inline JsonWriter::JsonWriter(int32_t indent)
+    : _buf(""),
+      _needs_comma(false),
+      _indent(indent),
+      _depth(0),
+      _fresh_line(false) {}
 
 // # -- pretty-printing helpers (only called when _indent > 0) --
 // def _emit_nl(self) -> None:

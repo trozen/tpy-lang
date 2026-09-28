@@ -33,7 +33,8 @@ struct __gen_squares_plus : public ::tpy::next_iter_mixin<__gen_squares_plus, in
     };
 
     __gen_squares_plus(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_squares_plus& __iter__() { return *this; }

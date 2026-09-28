@@ -84,7 +84,8 @@ struct __gen_chars : public ::tpy::next_iter_mixin<__gen_chars, int32_t> {
     };
 
     __gen_chars(const Cell<std::string>& c)
-        : __state(S_INITIAL), c(c) {}
+        : __state(S_INITIAL),
+          c(c) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_chars& __iter__() { return *this; }
@@ -113,7 +114,8 @@ struct __gen_chars_m : public ::tpy::next_iter_mixin<__gen_chars_m, int32_t> {
     };
 
     __gen_chars_m(Cell<std::string>& c)
-        : __state(S_INITIAL), c(c) {}
+        : __state(S_INITIAL),
+          c(c) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_chars_m& __iter__() { return *this; }

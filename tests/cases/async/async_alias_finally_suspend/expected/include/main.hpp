@@ -43,7 +43,8 @@ struct __coro_make {
     };
 
     __coro_make()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<std::vector<int32_t>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -67,7 +68,8 @@ struct __coro_driver {
     };
 
     __coro_driver()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

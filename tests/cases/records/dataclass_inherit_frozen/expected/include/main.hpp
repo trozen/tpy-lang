@@ -90,7 +90,9 @@ namespace tpyapp::main {
 
 
 
-inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+inline Vec2::Vec2(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 inline bool Vec2::__eq__(const Vec2& other) const {
     return ((this->x == other.x) && (this->y == other.y));
@@ -106,7 +108,9 @@ inline uint64_t Vec2::__hash__() const {
     return h;
 }
 
-inline Vec3::Vec3(int32_t x, int32_t y, int32_t z) : Vec2(x, y), z(z) {}
+inline Vec3::Vec3(int32_t x, int32_t y, int32_t z)
+    : Vec2(x, y),
+      z(z) {}
 
 inline bool Vec3::__eq__(const Vec3& other) const {
     return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));

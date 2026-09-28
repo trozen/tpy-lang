@@ -78,7 +78,9 @@ inline std::ostream& operator<<(std::ostream& os, const Track& obj) {
 // def __init__(self, x: int, y: int) -> None:
 //     self.x = x
 //     self.y = y
-inline Coord::Coord(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x((x).to_fixed_check<int32_t>()), y((y).to_fixed_check<int32_t>()) {}
+inline Coord::Coord(const ::tpy::BigInt& x, const ::tpy::BigInt& y)
+    : x((x).to_fixed_check<int32_t>()),
+      y((y).to_fixed_check<int32_t>()) {}
 
 // def __eq__(self, other: "Coord") -> bool:
 //     return self.x == other.x and self.y == other.y
@@ -90,7 +92,10 @@ inline bool Coord::__eq__(Coord other) const {
 //     self._cx = cx
 //     self._cy = cy
 //     self._has_goal = False
-inline Track::Track(const ::tpy::BigInt& cx, const ::tpy::BigInt& cy) : _cx((cx).to_fixed_check<int32_t>()), _cy((cy).to_fixed_check<int32_t>()), _has_goal(false) {}
+inline Track::Track(const ::tpy::BigInt& cx, const ::tpy::BigInt& cy)
+    : _cx((cx).to_fixed_check<int32_t>()),
+      _cy((cy).to_fixed_check<int32_t>()),
+      _has_goal(false) {}
 
 // @property
 // def position(self) -> Coord:  # bare value-record return

@@ -113,7 +113,9 @@ struct GenericNotLastUse {
     //     self.item = item  # tpyc: warning(/may copy T into field/)
     //     self.spare = item
     GenericNotLastUse() = default;
-    explicit GenericNotLastUse(::tpy::own_param_t<T> item) : item(item), spare(std::move(item)) {}
+    explicit GenericNotLastUse(::tpy::own_param_t<T> item)
+        : item(item),
+          spare(std::move(item)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenericNotLastUse";
 };
 

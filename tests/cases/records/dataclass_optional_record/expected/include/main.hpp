@@ -76,7 +76,9 @@ inline std::string Inner::__repr__() const {
     return std::format("Inner(x={})", ::tpy::repr_of(this->x));
 }
 
-inline Outer::Outer(std::string_view name, std::optional<Inner>&& inner) : name(name), inner(std::move(inner)) {}
+inline Outer::Outer(std::string_view name, std::optional<Inner>&& inner)
+    : name(name),
+      inner(std::move(inner)) {}
 
 inline bool Outer::__eq__(const Outer& other) const {
     return ((this->name == other.name) && (this->inner == other.inner));

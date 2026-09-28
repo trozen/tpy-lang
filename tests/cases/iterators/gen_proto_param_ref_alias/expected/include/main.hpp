@@ -60,7 +60,8 @@ struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump<T_items>, int32_t> 
     };
 
     __gen_bump(T_items&& items_)
-        : __state(S_INITIAL), items(std::forward<T_items>(items_)) {}
+        : __state(S_INITIAL),
+          items(std::forward<T_items>(items_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_bump& __iter__() { return *this; }
@@ -130,7 +131,8 @@ struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T_nums>, int3
     };
 
     __gen_doubled(T_nums&& nums_)
-        : __state(S_INITIAL), nums(std::forward<T_nums>(nums_)) {}
+        : __state(S_INITIAL),
+          nums(std::forward<T_nums>(nums_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_doubled& __iter__() { return *this; }

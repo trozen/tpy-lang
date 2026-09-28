@@ -53,7 +53,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 //     self.lst = [1, 2, 3]
 //     self.st = {40}
 //     self.s = "xy"
-inline Holder::Holder() : d(::tpy::ordered_map<std::string, std::string>({{"transfer-encoding-extension", "1"}, {"b", "2"}})), lst(std::vector<int32_t>{1, 2, 3}), st(::tpy::ordered_set<int32_t>({40})), s("xy") {}
+inline Holder::Holder()
+    : d(::tpy::ordered_map<std::string, std::string>({{"transfer-encoding-extension", "1"}, {"b", "2"}})),
+      lst(std::vector<int32_t>{1, 2, 3}),
+      st(::tpy::ordered_set<int32_t>({40})),
+      s("xy") {}
 
 // def scan_dict(self) -> int32:
 //     n = 0

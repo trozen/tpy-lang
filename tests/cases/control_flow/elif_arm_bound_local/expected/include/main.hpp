@@ -113,7 +113,9 @@ struct __coro_in_async {
     };
 
     __coro_in_async(int32_t k_)
-        : __state(S_INITIAL), __cancel_pending(false), k(std::move(k_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          k(std::move(k_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -141,7 +143,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     };
 
     __gen_gen(int32_t k_)
-        : __state(S_INITIAL), k(std::move(k_)) {}
+        : __state(S_INITIAL),
+          k(std::move(k_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

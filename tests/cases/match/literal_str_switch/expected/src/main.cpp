@@ -28,42 +28,36 @@ std::string classify(std::string_view s) {
         case 'a': {
             if (__match_subject_1 == "cat") {
                 return "animal";
-                goto __match_end_2;
             }
             break;
         }
         case 'e': {
             if (__match_subject_1 == "red") {
                 return "color";
-                goto __match_end_2;
             }
             break;
         }
         case 'i': {
             if (__match_subject_1 == "bird") {
                 return "animal";
-                goto __match_end_2;
             }
             break;
         }
         case 'l': {
             if (__match_subject_1 == "blue") {
                 return "color";
-                goto __match_end_2;
             }
             break;
         }
         case 'o': {
             if (__match_subject_1 == "dog") {
                 return "animal";
-                goto __match_end_2;
             }
             break;
         }
         case 'r': {
             if (__match_subject_1 == "green") {
                 return "color";
-                goto __match_end_2;
             }
             break;
         }
@@ -71,9 +65,7 @@ std::string classify(std::string_view s) {
     }
     {
         return "unknown";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -100,7 +92,6 @@ std::string with_guard(std::string_view cmd, bool verbose) {
     if (__match_subject_1 == "help") {
         if (verbose) {
             return "verbose help";
-            goto __match_end_2;
         }
     }
     if (__match_subject_1.size() >= 1) {
@@ -108,42 +99,36 @@ std::string with_guard(std::string_view cmd, bool verbose) {
         case 'h': {
             if (__match_subject_1 == "help") {
                 return "help";
-                goto __match_end_2;
             }
             break;
         }
         case 'l': {
             if (__match_subject_1 == "load") {
                 return "load";
-                goto __match_end_2;
             }
             break;
         }
         case 'q': {
             if (__match_subject_1 == "quit") {
                 return "quit";
-                goto __match_end_2;
             }
             break;
         }
         case 'r': {
             if (__match_subject_1 == "redo") {
                 return "redo";
-                goto __match_end_2;
             }
             break;
         }
         case 's': {
             if (__match_subject_1 == "save") {
                 return "save";
-                goto __match_end_2;
             }
             break;
         }
         case 'u': {
             if (__match_subject_1 == "undo") {
                 return "undo";
-                goto __match_end_2;
             }
             break;
         }
@@ -152,9 +137,7 @@ std::string with_guard(std::string_view cmd, bool verbose) {
     {
         auto& s = __match_subject_1;
         return (::tpy::str_concat("unknown: ", s));
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -175,56 +158,48 @@ std::string with_or(std::string_view s) {
         case 'a': {
             if (__match_subject_1 == "cat") {
                 return "animal";
-                goto __match_end_2;
             }
             break;
         }
         case 'e': {
             if (__match_subject_1 == "red") {
                 return "color";
-                goto __match_end_2;
             }
             break;
         }
         case 'i': {
             if (__match_subject_1 == "bird") {
                 return "animal";
-                goto __match_end_2;
             }
             break;
         }
         case 'l': {
             if (__match_subject_1 == "blue") {
                 return "color";
-                goto __match_end_2;
             }
             break;
         }
         case 'n': {
             if (__match_subject_1 == "one") {
                 return "number";
-                goto __match_end_2;
             }
             break;
         }
         case 'o': {
             if (__match_subject_1 == "dog") {
                 return "animal";
-                goto __match_end_2;
             }
             break;
         }
         case 'r': {
             if (__match_subject_1 == "green") {
                 return "color";
-                goto __match_end_2;
             }
             break;
         }
         case 'w': {
             if (__match_subject_1 == "two") {
                 return "number";
-                goto __match_end_2;
             }
             break;
         }
@@ -232,9 +207,7 @@ std::string with_or(std::string_view s) {
     }
     {
         return "other";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -258,44 +231,37 @@ std::string by_length(std::string_view s) {
     case 1: {
         if (__match_subject_1 == "a") {
             return "one";
-            goto __match_end_2;
         }
         break;
     }
     case 2: {
         if (__match_subject_1 == "bb") {
             return "two";
-            goto __match_end_2;
         }
         break;
     }
     case 3: {
         if (__match_subject_1 == "ccc") {
             return "three";
-            goto __match_end_2;
         }
         break;
     }
     case 4: {
         if (__match_subject_1 == "dddd") {
             return "four";
-            goto __match_end_2;
         }
         break;
     }
     case 5: {
         if (__match_subject_1 == "eeeee") {
             return "five";
-            goto __match_end_2;
         }
         break;
     }
     }
     {
         return "other";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 

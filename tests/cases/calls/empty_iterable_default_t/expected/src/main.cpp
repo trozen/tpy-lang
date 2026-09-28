@@ -50,10 +50,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        const auto& __tup_1 = __for_tup_0;
-        int32_t i = std::get<0>(__tup_1);
-        int32_t x = std::get<1>(__tup_1);
-        std::cout << i << " " << x << "\n";
+            const auto& __tup_1 = __for_tup_0;
+            int32_t i = std::get<0>(__tup_1);
+            int32_t x = std::get<1>(__tup_1);
+            std::cout << i << " " << x << "\n";
         }
     }
     std::cout << "enumerate done" << "\n";
@@ -64,7 +64,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_3);
-        std::cout << x << "\n";
+            std::cout << x << "\n";
         }
     }
     std::cout << "iter done" << "\n";
@@ -75,7 +75,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_5);
-        std::cout << x << "\n";
+            std::cout << x << "\n";
         }
     }
     std::cout << "reversed done" << "\n";

@@ -1,4 +1,5 @@
 # Test and/or returning operand values (Python semantics), not bool.
+from typing import Iterator
 from tpy import int32
 
 def test_or_int() -> None:
@@ -203,6 +204,40 @@ def test_literal_or_literal() -> None:
     yi: int = 3 and 0  # tpyc: type(int)
     print(yi)
 
+# A literal left operand with a variable right one, at the free-function,
+# method and generator positions.
+def test_literal_lhs_free(a: float) -> None:
+    # free function: int literal joined with a float operand
+    w: float = 0 or a  # tpyc: type(float)
+    print("free:", w)
+    n = 5
+    k = 0 and n  # tpyc: type(int32)
+    print("free:", k)
+    # free function: float and negative literals, and a small int literal
+    # against an `int` operand, which converts only in its chosen arm
+    f = 0.0 or a  # tpyc: type(float)
+    m = -1 and n  # tpyc: type(int32)
+    big: int = 7
+    s = 0 or big  # tpyc: type(int)
+    print("free:", f, m, s)
+    # free function: a literal beyond int64 is an `int` construction
+    h: int = 123456789012345678901234567890 or big
+    print("free:", h)
+
+class LiteralLhs:
+    def __init__(self, v: int32) -> None:
+        self.v = v
+
+    def pick(self) -> int32:
+        # method: literal LHS against a field
+        return 0 or self.v  # tpyc: ok
+
+def gen_literal_lhs(v: int32) -> Iterator[int32]:
+    # generator: literal LHS in a yield and in a local
+    yield 7 and v  # tpyc: ok
+    w = 0 or v  # tpyc: type(int32)
+    yield w
+
 def main() -> None:
     test_or_int()
     test_and_int()
@@ -222,5 +257,9 @@ def main() -> None:
     test_record_or_constructor()
     test_annotated()
     test_literal_or_literal()
+    test_literal_lhs_free(2.5)
+    print("method:", LiteralLhs(4).pick())
+    for g in gen_literal_lhs(3):
+        print("generator:", g)
 
 main()

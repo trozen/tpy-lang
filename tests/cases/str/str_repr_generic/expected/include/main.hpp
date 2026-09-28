@@ -71,7 +71,9 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
-inline Pair::Pair(int32_t x, int32_t y) : x(x), y(y) {}
+inline Pair::Pair(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // def __str__(self) -> str:
 //     return f"({self.x}, {self.y})"

@@ -16,19 +16,15 @@ std::string flagged(const Box* o, bool flag) {
     auto& __match_subject_1 = o;
     if (__match_subject_1 == nullptr) {
         return "none";
-        goto __match_end_2;
     }
     if (__match_subject_1 != nullptr) {
         if (flag) {
             return "flag";
-            goto __match_end_2;
         }
     }
     {
         return "box";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 

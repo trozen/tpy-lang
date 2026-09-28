@@ -40,7 +40,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        out.push_back(v);
+            out.push_back(v);
         }
     }
     std::cout << ::tpy::ListPrinter(out) << "\n";

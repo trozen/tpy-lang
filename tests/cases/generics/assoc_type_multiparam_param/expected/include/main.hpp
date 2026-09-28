@@ -55,7 +55,9 @@ inline std::ostream& operator<<(std::ostream& os, const IntStr& obj) {
 // def __init__(self, a: int, b: str):
 //     self.a = a
 //     self.b = b
-inline IntStr::IntStr(const ::tpy::BigInt& a, std::string_view b) : a(a), b(b) {}
+inline IntStr::IntStr(const ::tpy::BigInt& a, std::string_view b)
+    : a(a),
+      b(b) {}
 
 // def first(self) -> int:
 //     return self.a

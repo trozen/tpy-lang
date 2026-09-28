@@ -50,7 +50,8 @@ struct __gen_Counter_each : public ::tpy::next_iter_mixin<__gen_Counter_each, ::
     };
 
     __gen_Counter_each(const Counter& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_Counter_each& __iter__() { return *this; }

@@ -18,43 +18,33 @@ std::string classify(::tpy::Union<const Bird*, const Cat*, const Dog*> a, bool a
         {
             if (allow) {
                 return "allowed";
-                goto __match_end_2;
             }
         }
         {
             return "blocked";
-            goto __match_end_2;
         }
-        break;
     }
     case 1: {
         {
             if (allow) {
                 return "allowed";
-                goto __match_end_2;
             }
         }
         {
             return "blocked";
-            goto __match_end_2;
         }
-        break;
     }
     case 2: {
         {
             if (allow) {
                 return "allowed";
-                goto __match_end_2;
             }
         }
         {
             return "blocked";
-            goto __match_end_2;
         }
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
 }
 
@@ -71,18 +61,14 @@ std::string small(const ::tpy::BigInt& n, bool allow) {
     if ((__match_subject_1 == 1 || __match_subject_1 == 2 || __match_subject_1 == 3)) {
         if (allow) {
             return "small-allowed";
-            goto __match_end_2;
         }
     }
     if ((__match_subject_1 == 1 || __match_subject_1 == 2 || __match_subject_1 == 3)) {
         return "small-blocked";
-        goto __match_end_2;
     }
     {
         return "other";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 

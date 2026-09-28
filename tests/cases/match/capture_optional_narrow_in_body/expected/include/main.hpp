@@ -55,7 +55,9 @@ inline std::ostream& operator<<(std::ostream& os, const Test& obj) {
 // def __init__(self, target: Optional[str], jobs: Optional[str]) -> None:
 //     self.target = target
 //     self.jobs = jobs
-inline Build::Build(std::optional<std::string_view> target, std::optional<std::string_view> jobs) : target(target ? std::make_optional(std::string(*target)) : std::nullopt), jobs(jobs ? std::make_optional(std::string(*jobs)) : std::nullopt) {}
+inline Build::Build(std::optional<std::string_view> target, std::optional<std::string_view> jobs)
+    : target(target ? std::make_optional(std::string(*target)) : std::nullopt),
+      jobs(jobs ? std::make_optional(std::string(*jobs)) : std::nullopt) {}
 
 // def __init__(self, filter_: Optional[str]) -> None:
 //     self.filter_ = filter_

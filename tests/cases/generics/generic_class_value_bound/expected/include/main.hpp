@@ -31,7 +31,7 @@ struct Box {
 
     // def get(self) -> T:
     //     return self.value
-    ::tpy::val_or_cref_t<T> get() const {
+    T get() const {
         return this->value;
     }
 
@@ -61,7 +61,9 @@ struct Ring {
     //     self.data = [fill, fill, fill, fill]
     //     self.size = 0
     Ring() = default;
-    explicit Ring(::tpy::readonly_form_t<T> fill) : data(std::array<T, 4>{::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill)}), size(0) {}
+    explicit Ring(::tpy::readonly_form_t<T> fill)
+        : data(std::array<T, 4>{::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill)}),
+          size(0) {}
 
     // def put(self, v: T) -> None:
     //     self.data[self.size] = v  # tpyc: ok
@@ -73,8 +75,18 @@ struct Ring {
 
     // def get(self, i: int32) -> T:
     //     return self.data[i]
-    ::tpy::val_or_cref_t<T> get(int32_t i) const {
+    T get(int32_t i) const {
         return ::tpy::__getitem__(this->data, i);
+    }
+
+    // # A mutating method: its T return spells plain `T` on the non-const
+    // # path too, not the val_or_ref trait.
+    // def pop(self) -> T:
+    //     self.size -= 1
+    //     return self.data[self.size]
+    T pop() {
+        this->size = ::tpy::sub_check<int32_t>(this->size, 1);
+        return ::tpy::__getitem__(this->data, this->size);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Ring";
 };

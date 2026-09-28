@@ -135,7 +135,9 @@ inline const Box& Box::view() {
     return (*this);
 }
 
-inline Cursor::Cursor(int32_t n) : n(n), _i(0) {}
+inline Cursor::Cursor(int32_t n)
+    : n(n),
+      _i(0) {}
 
 inline Cursor& Cursor::__iter__() {
     return (*this);

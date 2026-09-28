@@ -31,7 +31,8 @@ struct __gen_greetings : public ::tpy::next_iter_mixin<__gen_greetings, std::str
     };
 
     __gen_greetings(std::string_view name_)
-        : __state(S_INITIAL), name(std::string(name_)) {}
+        : __state(S_INITIAL),
+          name(std::string(name_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_greetings& __iter__() { return *this; }

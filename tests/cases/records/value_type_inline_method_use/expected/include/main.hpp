@@ -69,7 +69,9 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
 // def __init__(self, deadline: float, tid: int32) -> None:
 //     self.deadline = deadline
 //     self.tid = tid
-inline TimerEntry::TimerEntry(double deadline, int32_t tid) : deadline(deadline), tid(tid) {}
+inline TimerEntry::TimerEntry(double deadline, int32_t tid)
+    : deadline(deadline),
+      tid(tid) {}
 
 // def __lt__(self, o: 'TimerEntry') -> bool:
 //     return self.deadline < o.deadline

@@ -62,9 +62,13 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 
 
 // args = parser.parse_args([])
-inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::vector<std::string>&& tag, std::vector<::tpy::BigInt>&& count) : tag(std::move(tag)), count(std::move(count)) {}
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::vector<std::string>&& tag, std::vector<::tpy::BigInt>&& count)
+    : tag(std::move(tag)),
+      count(std::move(count)) {}
 
 // args = parser.parse_args(["--tag", "gamma", "--count", "10", "20"])
-inline __tpy_builder_argparse_args_2::__tpy_builder_argparse_args_2(std::vector<std::string>&& tag, std::vector<::tpy::BigInt>&& count) : tag(std::move(tag)), count(std::move(count)) {}
+inline __tpy_builder_argparse_args_2::__tpy_builder_argparse_args_2(std::vector<std::string>&& tag, std::vector<::tpy::BigInt>&& count)
+    : tag(std::move(tag)),
+      count(std::move(count)) {}
 void __tpy_init();
 } // namespace tpyapp::main

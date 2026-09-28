@@ -39,7 +39,9 @@ inline std::ostream& operator<<(std::ostream& os, const Stats& obj) {
 // def __init__(self, total: int | None, label: int | None) -> None:
 //     self.total = total
 //     self.label = label
-inline Stats::Stats(std::optional<::tpy::BigInt> total, std::optional<::tpy::BigInt> label) : total(total), label(label) {}
+inline Stats::Stats(std::optional<::tpy::BigInt> total, std::optional<::tpy::BigInt> label)
+    : total(total),
+      label(label) {}
 
 // def show(self) -> None:
 //     if self.total is None:

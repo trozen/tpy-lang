@@ -71,7 +71,8 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T>, T> {
     };
 
     __gen_each(const std::vector<T>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<T, ::tpy::StopIteration> __next__();
     __gen_each& __iter__() { return *this; }
@@ -135,7 +136,8 @@ struct __gen_each_twice : public ::tpy::next_iter_mixin<__gen_each_twice<T>, T> 
     };
 
     __gen_each_twice(const std::vector<T>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<T, ::tpy::StopIteration> __next__();
     __gen_each_twice& __iter__() { return *this; }
@@ -191,7 +193,9 @@ __gen_each_twice<T> each_twice(const std::vector<T>& xs) {
 // def __init__(self, key: int32, tag: int32) -> None:
 //     self.key = key
 //     self.tag = tag
-inline Item::Item(int32_t key, int32_t tag) : key(key), tag(tag) {}
+inline Item::Item(int32_t key, int32_t tag)
+    : key(key),
+      tag(tag) {}
 
 // def __lt__(self, other: 'Item') -> bool:
 //     return self.key < other.key

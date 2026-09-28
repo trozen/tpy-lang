@@ -54,7 +54,8 @@ struct __coro_read_after_await {
     };
 
     __coro_read_after_await()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

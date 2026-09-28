@@ -114,7 +114,9 @@ inline Mouse::Mouse(std::string_view size) : size(size) {}
 // def __init__(self, name: str, toy: Ball | Mouse) -> None:
 //     self.name = name
 //     self.toy = toy
-inline Cat::Cat(std::string_view name, ::tpy::Union<const Ball*, const Mouse*> toy) : name(name), toy(::tpy::to_value_variant<::tpy::Union<Ball, Mouse>>(toy)) {}
+inline Cat::Cat(std::string_view name, ::tpy::Union<const Ball*, const Mouse*> toy)
+    : name(name),
+      toy(::tpy::to_value_variant<::tpy::Union<Ball, Mouse>>(toy)) {}
 
 // def __init__(self, name: str) -> None:
 //     self.name = name

@@ -66,7 +66,9 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 // def __init__(self, x: int32) -> None:
 //     self.x = x
 //     self.u = 0
-inline A::A(int32_t x) : x(x), u(0) {}
+inline A::A(int32_t x)
+    : x(x),
+      u(0) {}
 
 // # Discriminates on float64 (== float under CPython) so a plain-int
 // # argument narrows the same way on both runtimes.

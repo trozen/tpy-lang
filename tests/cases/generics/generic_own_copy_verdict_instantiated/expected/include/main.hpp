@@ -374,7 +374,9 @@ struct __coro_async_slot {
     };
 
     __coro_async_slot(::tpy::param_val_or_ref_t<T> v_)
-        : __state(S_INITIAL), __cancel_pending(false), v(v_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          v(v_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -430,7 +432,9 @@ struct __coro_async_driver {
     };
 
     __coro_async_driver(Cell& c)
-        : __state(S_INITIAL), __cancel_pending(false), c(c) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(c) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -454,7 +458,8 @@ struct __gen_gen_slot : public ::tpy::next_iter_mixin<__gen_gen_slot<T>, int32_t
     };
 
     __gen_gen_slot(::tpy::param_val_or_ref_t<T> v_)
-        : __state(S_INITIAL), v(v_) {}
+        : __state(S_INITIAL),
+          v(v_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_slot& __iter__() { return *this; }

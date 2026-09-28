@@ -112,7 +112,9 @@ struct __coro_Pet_describe {
     };
 
     __coro_Pet_describe(const Pet& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -140,7 +142,9 @@ struct __coro_describe_via_pet {
     };
 
     __coro_describe_via_pet(const Pet& p)
-        : __state(S_INITIAL), __cancel_pending(false), p(p) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          p(p) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -169,7 +173,8 @@ struct __coro_amain {
     };
 
     __coro_amain()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

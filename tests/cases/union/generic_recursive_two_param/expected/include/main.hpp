@@ -59,11 +59,9 @@ int32_t leaf_count(const DictTree<K, V>& t) {
             acc = ::tpy::add_check<int32_t>(acc, ::tpyapp::main::leaf_count<K, V>(v));
         }
         return acc;
-        break;
     }
     default: {
         return 1;
-        break;
     }
     }
     ::std::unreachable();

@@ -23,7 +23,8 @@ struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_f
     };
 
     __genexpr_main_1_frame(const std::vector<int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_1_frame& __iter__() { return *this; }
@@ -65,7 +66,8 @@ struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_f
     };
 
     __genexpr_main_2_frame(const std::vector<int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_2_frame& __iter__() { return *this; }
@@ -106,7 +108,8 @@ struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_f
     };
 
     __genexpr_main_3_frame(const std::vector<uint8_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<uint8_t, ::tpy::StopIteration> __next__();
     __genexpr_main_3_frame& __iter__() { return *this; }

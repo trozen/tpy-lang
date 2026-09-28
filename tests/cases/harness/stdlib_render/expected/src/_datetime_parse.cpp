@@ -1363,7 +1363,32 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
 //     self.gmtoff_fraction = 0
 //     self.has_zname = False
 //     self.zname = ""
-_ParseState::_ParseState() : has_year(false), year(::tpy::BigInt(0)), has_iso_year(false), iso_year(::tpy::BigInt(0)), month(::tpy::BigInt(1)), day(::tpy::BigInt(1)), hour(::tpy::BigInt(0)), minute(::tpy::BigInt(0)), second(::tpy::BigInt(0)), fraction(::tpy::BigInt(0)), has_hour12(false), hour12(::tpy::BigInt(0)), ampm(::tpy::BigInt(-1)), weekday(::tpy::BigInt(-1)), has_julian(false), julian(::tpy::BigInt(0)), week_of_year(::tpy::BigInt(-1)), week_starts_mon(false), has_iso_week(false), iso_week(::tpy::BigInt(0)), has_gmtoff(false), gmtoff(::tpy::BigInt(0)), gmtoff_fraction(::tpy::BigInt(0)), has_zname(false), zname("") {}
+_ParseState::_ParseState()
+    : has_year(false),
+      year(::tpy::BigInt(0)),
+      has_iso_year(false),
+      iso_year(::tpy::BigInt(0)),
+      month(::tpy::BigInt(1)),
+      day(::tpy::BigInt(1)),
+      hour(::tpy::BigInt(0)),
+      minute(::tpy::BigInt(0)),
+      second(::tpy::BigInt(0)),
+      fraction(::tpy::BigInt(0)),
+      has_hour12(false),
+      hour12(::tpy::BigInt(0)),
+      ampm(::tpy::BigInt(-1)),
+      weekday(::tpy::BigInt(-1)),
+      has_julian(false),
+      julian(::tpy::BigInt(0)),
+      week_of_year(::tpy::BigInt(-1)),
+      week_starts_mon(false),
+      has_iso_week(false),
+      iso_week(::tpy::BigInt(0)),
+      has_gmtoff(false),
+      gmtoff(::tpy::BigInt(0)),
+      gmtoff_fraction(::tpy::BigInt(0)),
+      has_zname(false),
+      zname("") {}
 // from _datetime_cal import (
 //     _DAY_ABBR, _DAY_FULL, _MONTH_ABBR, _MONTH_FULL, _MAXORDINAL,
 //     _ymd2ord, _ord2ymd, _is_leap, _isoweek1monday, _isoweek_to_gregorian,

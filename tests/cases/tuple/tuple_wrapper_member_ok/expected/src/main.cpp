@@ -32,11 +32,9 @@ int32_t count(const Tree<int32_t>& t) {
     case 1: {
         auto& b = std::get<1>(__match_subject_1.value);
         return ::tpy::__len__(b);
-        break;
     }
     default: {
         return 1;
-        break;
     }
     }
     ::std::unreachable();

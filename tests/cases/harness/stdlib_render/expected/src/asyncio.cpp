@@ -903,7 +903,9 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 //         executor.shutdown_armed = True
 //         self._armed = True
 //         self._fd = fd
-_SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor) : _armed(false), _fd(-1) {
+_SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
+    : _armed(false),
+      _fd(-1) {
     int32_t fd = ::tpy_signal_install_shutdown();
     if ((fd >= 0)) {
         executor.register_fd(fd, EPOLLIN, ::tpystd::coro::Waker());

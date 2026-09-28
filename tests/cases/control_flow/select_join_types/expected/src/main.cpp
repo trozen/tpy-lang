@@ -49,13 +49,13 @@ void record_or(C& a, F& f) {
 //     print("list_or_alias:", len(y), len(e))
 void list_or() {
     std::vector<int32_t> e = std::vector<int32_t>{};
-    std::optional<std::vector<int32_t>> __select_slot_3;
-    std::vector<int32_t>& x = ((::tpy::__len__(e) != 0) ? e : __select_slot_3.emplace(std::vector<int32_t>{5}));
+    std::optional<std::vector<int32_t>> __select_slot_1;
+    std::vector<int32_t>& x = ((::tpy::__len__(e) != 0) ? e : __select_slot_1.emplace(std::vector<int32_t>{5}));
     x.push_back(1);
     std::cout << "list_or_fresh:" << " " << ::tpy::__len__(x) << " " << ::tpy::__len__(e) << "\n";
     e.push_back(7);
-    std::optional<std::vector<int32_t>> __select_slot_4;
-    std::vector<int32_t>& y = ((::tpy::__len__(e) != 0) ? e : __select_slot_4.emplace(std::vector<int32_t>{5}));
+    std::optional<std::vector<int32_t>> __select_slot_2;
+    std::vector<int32_t>& y = ((::tpy::__len__(e) != 0) ? e : __select_slot_2.emplace(std::vector<int32_t>{5}));
     y.push_back(8);
     std::cout << "list_or_alias:" << " " << ::tpy::__len__(y) << " " << ::tpy::__len__(e) << "\n";
 }
@@ -71,12 +71,12 @@ void list_or() {
 //     print("int64_ternary:", len(y), len(e64))
 void int64_literal_arm(bool c) {
     std::vector<int64_t> e64 = std::vector<int64_t>{};
-    std::optional<std::vector<int64_t>> __select_slot_5;
-    std::vector<int64_t>& x = ((::tpy::__len__(e64) != 0) ? e64 : __select_slot_5.emplace(std::vector<int64_t>{5}));
+    std::optional<std::vector<int64_t>> __select_slot_1;
+    std::vector<int64_t>& x = ((::tpy::__len__(e64) != 0) ? e64 : __select_slot_1.emplace(std::vector<int64_t>{5}));
     x.push_back(static_cast<int64_t>(1099511627776));
     std::cout << "int64_or:" << " " << ::tpy::__getitem__(x, 0) << " " << ::tpy::__getitem__(x, 1) << " " << ::tpy::__len__(e64) << "\n";
-    std::optional<std::vector<int64_t>> __select_slot_6;
-    std::vector<int64_t>& y = ((c) ? (e64) : (__select_slot_6.emplace(std::vector<int64_t>{5})));
+    std::optional<std::vector<int64_t>> __select_slot_2;
+    std::vector<int64_t>& y = ((c) ? (e64) : (__select_slot_2.emplace(std::vector<int64_t>{5})));
     y.push_back(static_cast<int64_t>(2199023255552));
     std::cout << "int64_ternary:" << " " << ::tpy::__len__(y) << " " << ::tpy::__len__(e64) << "\n";
 }
@@ -102,20 +102,20 @@ void empty_literal_arm(bool c) {
     std::vector<int32_t> xs = {1};
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
     ::tpy::ordered_set<int32_t> st = ::tpy::ordered_set<int32_t>();
-    std::optional<std::vector<int32_t>> __select_slot_7;
-    std::vector<int32_t>& a = ((::tpy::__len__(xs) != 0) ? xs : __select_slot_7.emplace(std::vector<int32_t>{}));
+    std::optional<std::vector<int32_t>> __select_slot_1;
+    std::vector<int32_t>& a = ((::tpy::__len__(xs) != 0) ? xs : __select_slot_1.emplace(std::vector<int32_t>{}));
     a.push_back(2);
     std::cout << "empty_list_or:" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(xs) << "\n";
-    std::optional<::tpy::ordered_map<std::string, int32_t>> __select_slot_8;
-    ::tpy::ordered_map<std::string, int32_t>& b = ((::tpy::__len__(d) != 0) ? d : __select_slot_8.emplace(::tpy::ordered_map<std::string, int32_t>()));
+    std::optional<::tpy::ordered_map<std::string, int32_t>> __select_slot_2;
+    ::tpy::ordered_map<std::string, int32_t>& b = ((::tpy::__len__(d) != 0) ? d : __select_slot_2.emplace(::tpy::ordered_map<std::string, int32_t>()));
     ::tpy::__setitem__(b, "k", 1);
     std::cout << "empty_dict_or:" << " " << ::tpy::__len__(b) << " " << ::tpy::__len__(d) << "\n";
-    std::optional<::tpy::ordered_set<int32_t>> __select_slot_9;
-    ::tpy::ordered_set<int32_t>& s = ((::tpy::__len__(st) != 0) ? st : __select_slot_9.emplace(::tpy::ordered_set<int32_t>()));
+    std::optional<::tpy::ordered_set<int32_t>> __select_slot_3;
+    ::tpy::ordered_set<int32_t>& s = ((::tpy::__len__(st) != 0) ? st : __select_slot_3.emplace(::tpy::ordered_set<int32_t>()));
     s.insert(3);
     std::cout << "empty_set_or:" << " " << ::tpy::__len__(s) << " " << ::tpy::__len__(st) << "\n";
-    std::optional<::tpy::ordered_map<std::string, int32_t>> __select_slot_10;
-    ::tpy::ordered_map<std::string, int32_t>& t = ((c) ? (d) : (__select_slot_10.emplace(::tpy::ordered_map<std::string, int32_t>())));
+    std::optional<::tpy::ordered_map<std::string, int32_t>> __select_slot_4;
+    ::tpy::ordered_map<std::string, int32_t>& t = ((c) ? (d) : (__select_slot_4.emplace(::tpy::ordered_map<std::string, int32_t>())));
     ::tpy::__setitem__(t, "j", 2);
     std::cout << "empty_dict_ternary:" << " " << ::tpy::__len__(t) << " " << ::tpy::__len__(d) << "\n";
 }
@@ -144,8 +144,8 @@ void method_result_arm(bool c) {
 //     print("literal_left:", len(x), len(e))
 void literal_left() {
     std::vector<int32_t> e = {9};
-    auto&& __tmp_11 = std::vector<int32_t>{5};
-    std::vector<int32_t>& x = ((::tpy::__len__(__tmp_11) != 0) ? __tmp_11 : e);
+    auto&& __tmp_1 = std::vector<int32_t>{5};
+    std::vector<int32_t>& x = ((::tpy::__len__(__tmp_1) != 0) ? __tmp_1 : e);
     x.push_back(6);
     std::cout << "literal_left:" << " " << ::tpy::__len__(x) << " " << ::tpy::__len__(e) << "\n";
 }
@@ -164,15 +164,15 @@ void literal_left() {
 void nested_select() {
     std::vector<int32_t> e = std::vector<int32_t>{};
     std::vector<int32_t> f = std::vector<int32_t>{};
-    std::optional<std::vector<int32_t>> __select_slot_13;
-    auto&& __tmp_12 = ((::tpy::__len__(e) != 0) ? e : f);
-    std::vector<int32_t>& x = ((::tpy::__len__(__tmp_12) != 0) ? __tmp_12 : __select_slot_13.emplace(std::vector<int32_t>{7}));
+    std::optional<std::vector<int32_t>> __select_slot_2;
+    auto&& __tmp_1 = ((::tpy::__len__(e) != 0) ? e : f);
+    std::vector<int32_t>& x = ((::tpy::__len__(__tmp_1) != 0) ? __tmp_1 : __select_slot_2.emplace(std::vector<int32_t>{7}));
     x.push_back(8);
     std::cout << "nested_or:" << " " << ::tpy::__len__(x) << " " << ::tpy::__len__(e) << " " << ::tpy::__len__(f) << "\n";
     f.push_back(1);
-    std::optional<std::vector<int32_t>> __select_slot_15;
-    auto&& __tmp_14 = ((::tpy::__len__(e) != 0) ? e : f);
-    std::vector<int32_t>& y = ((::tpy::__len__(__tmp_14) != 0) ? __tmp_14 : __select_slot_15.emplace(std::vector<int32_t>{7}));
+    std::optional<std::vector<int32_t>> __select_slot_4;
+    auto&& __tmp_3 = ((::tpy::__len__(e) != 0) ? e : f);
+    std::vector<int32_t>& y = ((::tpy::__len__(__tmp_3) != 0) ? __tmp_3 : __select_slot_4.emplace(std::vector<int32_t>{7}));
     y.push_back(2);
     std::cout << "nested_or_alias:" << " " << ::tpy::__len__(y) << " " << ::tpy::__len__(f) << "\n";
 }
@@ -206,10 +206,10 @@ void int_widen_or() {
 //     z = 0 if c else 10000000000  # tpyc: warning(/outside default int32 range; inferring int/)
 //     print("int_literal_pair:", x, y, z)
 void int_literal_pair(bool c) {
-    auto&& __tmp_16 = 0;
-    ::tpy::BigInt x = (__tmp_16 ? ::tpy::BigInt(__tmp_16) : static_cast<int64_t>(10000000000));
-    auto&& __tmp_17 = static_cast<int64_t>(10000000000);
-    ::tpy::BigInt y = (__tmp_17 ? __tmp_17 : ::tpy::BigInt(0));
+    auto&& __tmp_1 = 0;
+    ::tpy::BigInt x = (__tmp_1 ? ::tpy::BigInt(__tmp_1) : static_cast<int64_t>(10000000000));
+    auto&& __tmp_2 = static_cast<int64_t>(10000000000);
+    ::tpy::BigInt y = (__tmp_2 ? __tmp_2 : ::tpy::BigInt(0));
     ::tpy::BigInt z = ((c) ? (::tpy::BigInt(0)) : (::tpy::BigInt(static_cast<int64_t>(10000000000LL))));
     std::cout << "int_literal_pair:" << " " << x << " " << y << " " << z << "\n";
 }
@@ -222,8 +222,8 @@ void int_literal_pair(bool c) {
 //     print("float_literal_elem:", len(y), len(ef))
 void float_literal_elem(bool c) {
     std::vector<double> ef = std::vector<double>{};
-    std::optional<std::vector<double>> __select_slot_18;
-    std::vector<double>& y = ((c) ? (ef) : (__select_slot_18.emplace(std::vector<double>{2.5})));
+    std::optional<std::vector<double>> __select_slot_1;
+    std::vector<double>& y = ((c) ? (ef) : (__select_slot_1.emplace(std::vector<double>{2.5})));
     y.push_back(1.0);
     std::cout << "float_literal_elem:" << " " << ::tpy::__len__(y) << " " << ::tpy::__len__(ef) << "\n";
 }
@@ -316,17 +316,17 @@ double half_or(int32_t a) {
 //     t: tuple[float, str] = (1, "x") if c else (2.5, "y")  # tpyc: ok
 //     print("declared_tuple_ternary:", t[0] / 2, t[1])
 void declared_containers(bool c) {
-    auto&& __tmp_19 = std::vector<double>{1};
-    std::vector<double> y = ((::tpy::__len__(__tmp_19) != 0) ? std::move(__tmp_19) : std::vector<double>{2.5});
+    auto&& __tmp_1 = std::vector<double>{1};
+    std::vector<double> y = ((::tpy::__len__(__tmp_1) != 0) ? std::move(__tmp_1) : std::vector<double>{2.5});
     std::cout << "declared_list_or:" << " " << ::tpy::__len__(y) << " " << ::tpy::print_float((::tpy::truediv(::tpy::__getitem__(y, 0), 2))) << "\n";
-    auto&& __tmp_20 = std::vector<double>{};
-    std::vector<double> e = ((::tpy::__len__(__tmp_20) != 0) ? std::vector<double>{2.5} : std::move(__tmp_20));
+    auto&& __tmp_2 = std::vector<double>{};
+    std::vector<double> e = ((::tpy::__len__(__tmp_2) != 0) ? std::vector<double>{2.5} : std::move(__tmp_2));
     std::cout << "declared_list_and:" << " " << ::tpy::__len__(e) << "\n";
-    auto&& __tmp_21 = ::tpy::ordered_map<std::string, double>({{"a", 1}});
-    ::tpy::ordered_map<std::string, double> d = ((::tpy::__len__(__tmp_21) != 0) ? std::move(__tmp_21) : ::tpy::ordered_map<std::string, double>({{"b", 2.5}}));
+    auto&& __tmp_3 = ::tpy::ordered_map<std::string, double>({{"a", 1}});
+    ::tpy::ordered_map<std::string, double> d = ((::tpy::__len__(__tmp_3) != 0) ? std::move(__tmp_3) : ::tpy::ordered_map<std::string, double>({{"b", 2.5}}));
     std::cout << "declared_dict_or:" << " " << ::tpy::__len__(d) << " " << ::tpy::print_float((::tpy::truediv(::tpy::__getitem__(d, "a"), 2))) << "\n";
-    auto&& __tmp_22 = ::tpy::ordered_set<double>({1});
-    ::tpy::ordered_set<double> s = ((::tpy::__len__(__tmp_22) != 0) ? std::move(__tmp_22) : ::tpy::ordered_set<double>({2.5}));
+    auto&& __tmp_4 = ::tpy::ordered_set<double>({1});
+    ::tpy::ordered_set<double> s = ((::tpy::__len__(__tmp_4) != 0) ? std::move(__tmp_4) : ::tpy::ordered_set<double>({2.5}));
     std::cout << "declared_set_or:" << " " << ::tpy::__len__(s) << "\n";
     std::tuple<double, std::string> t = ((c) ? (std::tuple<double, std::string>{1, "x"}) : (std::tuple<double, std::string>{2.5, "y"}));
     std::cout << "declared_tuple_ternary:" << " " << ::tpy::print_float((::tpy::truediv(std::get<0>(t), 2))) << " " << std::get<1>(t) << "\n";
@@ -417,7 +417,6 @@ std::string int_float_guard(int32_t a, double g, int32_t k) {
         } else {
             return "none";
         }
-        break;
     }
     }
     ::std::unreachable();
@@ -446,11 +445,17 @@ struct __genexpr_int_float_conditions_1_frame : public ::tpy::next_iter_mixin<__
     };
 
     __genexpr_int_float_conditions_1_frame(T___src&& __src_, F_a&& a_, F_g&& g_)
-        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)), a(std::forward<F_a>(a_)), g(std::forward<F_g>(g_)) {}
+        : __state(S_INITIAL),
+          __src(std::forward<T___src>(__src_)),
+          a(std::forward<F_a>(a_)),
+          g(std::forward<F_g>(g_)) {}
 
     template <typename F_make>
     __genexpr_int_float_conditions_1_frame(std::in_place_t, F_make&& make_, F_a&& a_, F_g&& g_)
-        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()), a(std::forward<F_a>(a_)), g(std::forward<F_g>(g_)) {}
+        : __state(S_INITIAL),
+          __src(std::forward<F_make>(make_)()),
+          a(std::forward<F_a>(a_)),
+          g(std::forward<F_g>(g_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_int_float_conditions_1_frame& __iter__() { return *this; }
@@ -642,9 +647,9 @@ void readonly_join(bool c, const C& ro, C& plain) {
 //     for c in [True, False]:
 //         readonly_join(c, C(1), C(2))
 void main() {
-    C __tmp_23 = C(1);
-    F __tmp_24 = F(0);
-    ::tpyapp::main::record_or(__tmp_23, __tmp_24);
+    C __tmp_1 = C(1);
+    F __tmp_2 = F(0);
+    ::tpyapp::main::record_or(__tmp_1, __tmp_2);
     ::tpyapp::main::list_or();
     ::tpyapp::main::int64_literal_arm(true);
     ::tpyapp::main::empty_literal_arm(false);
@@ -698,22 +703,22 @@ void main() {
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
         bool c = *__beg_4;
-        C __tmp_25 = C(1);
-        std::vector<int32_t> __tmp_26 = std::vector<int32_t>{};
-        ::tpyapp::main::mixed_truth_arms(0, c, __tmp_25, __tmp_26, "");
-        C __tmp_27 = C(1);
-        std::vector<int32_t> __tmp_28 = {1};
-        ::tpyapp::main::mixed_truth_arms(2, c, __tmp_27, __tmp_28, "s");
+        C __tmp_3 = C(1);
+        std::vector<int32_t> __tmp_4 = std::vector<int32_t>{};
+        ::tpyapp::main::mixed_truth_arms(0, c, __tmp_3, __tmp_4, "");
+        C __tmp_5 = C(1);
+        std::vector<int32_t> __tmp_6 = {1};
+        ::tpyapp::main::mixed_truth_arms(2, c, __tmp_5, __tmp_6, "s");
     }
-    C __tmp_29 = C(1);
-    ::tpyapp::main::not_or(__tmp_29);
+    C __tmp_7 = C(1);
+    ::tpyapp::main::not_or(__tmp_7);
     auto __obj_5 = {true, false};
     auto __beg_5 = __obj_5.begin();
     auto __end_5 = __obj_5.end();
     for (; __beg_5 != __end_5; ++__beg_5) {
         bool c = *__beg_5;
-        C __tmp_30 = C(2);
-        ::tpyapp::main::readonly_join(c, C(1), __tmp_30);
+        C __tmp_8 = C(2);
+        ::tpyapp::main::readonly_join(c, C(1), __tmp_8);
     }
 }
 

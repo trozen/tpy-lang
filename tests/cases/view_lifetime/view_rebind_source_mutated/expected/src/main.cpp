@@ -15,8 +15,8 @@ void straight_line(const std::vector<std::string>& xs, std::vector<std::string>&
     std::string v = ::tpy::__getitem__(xs, 0);
     v = ::tpy::__getitem__(ys, 0);
     ys.clear();
-    std::string __tmp_2{PAD};
-    ys.push_back(std::move(__tmp_2));
+    std::string __tmp_1{PAD};
+    ys.push_back(std::move(__tmp_1));
     std::cout << "straight_line" << " " << v << "\n";
 }
 
@@ -30,8 +30,8 @@ void literal_then_element(std::vector<std::string>& ys) {
     std::string v = "lit";
     v = ::tpy::__getitem__(ys, 0);
     ys.clear();
-    std::string __tmp_3{PAD};
-    ys.push_back(std::move(__tmp_3));
+    std::string __tmp_1{PAD};
+    ys.push_back(std::move(__tmp_1));
     std::cout << "literal_then_element" << " " << v << "\n";
 }
 
@@ -46,8 +46,8 @@ void compound_source(bool c, const std::vector<std::string>& xs, const std::vect
     std::string v = ::tpy::__getitem__(xs, 0);
     v = ((c) ? (::tpy::__getitem__(ys, 0)) : (::tpy::__getitem__(zs, 0)));
     zs.clear();
-    std::string __tmp_4{PAD};
-    zs.push_back(std::move(__tmp_4));
+    std::string __tmp_1{PAD};
+    zs.push_back(std::move(__tmp_1));
     std::cout << "compound_source" << " " << v << "\n";
 }
 
@@ -67,8 +67,8 @@ void if_arms(int32_t k, const std::vector<std::string>& xs, std::vector<std::str
         v = ::tpy::__getitem__(ys, 0);
     }
     ys.clear();
-    std::string __tmp_5{PAD};
-    ys.push_back(std::move(__tmp_5));
+    std::string __tmp_1{PAD};
+    ys.push_back(std::move(__tmp_1));
     std::cout << "if_arms" << " " << v << "\n";
 }
 
@@ -95,8 +95,8 @@ void match_arms(int32_t k, const std::vector<std::string>& xs, std::vector<std::
     }
     }
     ys.clear();
-    std::string __tmp_6{PAD};
-    ys.push_back(std::move(__tmp_6));
+    std::string __tmp_1{PAD};
+    ys.push_back(std::move(__tmp_1));
     std::cout << "match_arms" << " " << v << "\n";
 }
 
@@ -123,8 +123,8 @@ void try_handler(int32_t k, std::vector<std::string>& xs) {
         }
     }
     xs.clear();
-    std::string __tmp_7{PAD};
-    xs.push_back(std::move(__tmp_7));
+    std::string __tmp_1{PAD};
+    xs.push_back(std::move(__tmp_1));
     std::cout << "try_handler" << " " << v << "\n";
 }
 
@@ -163,30 +163,30 @@ void no_mutation(const std::vector<std::string>& xs, const std::vector<std::stri
 //     bytes_face([b"a" * 40], [b"h" * 40])
 //     no_mutation(["a" * 40], ["i" * 40])
 void main() {
-    std::vector<std::string> __tmp_8 = {(::tpy::str_repeat("a", 40))};
-    std::vector<std::string> __tmp_9 = {(::tpy::str_repeat("b", 40))};
-    ::tpyapp::main::straight_line(__tmp_8, __tmp_9);
-    std::vector<std::string> __tmp_10 = {(::tpy::str_repeat("c", 40))};
-    ::tpyapp::main::literal_then_element(__tmp_10);
-    std::vector<std::string> __tmp_11 = {(::tpy::str_repeat("a", 40))};
-    std::vector<std::string> __tmp_12 = {(::tpy::str_repeat("b", 40))};
-    std::vector<std::string> __tmp_13 = {(::tpy::str_repeat("k", 40))};
-    ::tpyapp::main::compound_source(false, __tmp_11, __tmp_12, __tmp_13);
-    std::vector<std::string> __tmp_14 = {(::tpy::str_repeat("a", 40))};
-    std::vector<std::string> __tmp_15 = {(::tpy::str_repeat("d", 40))};
-    ::tpyapp::main::if_arms(2, __tmp_14, __tmp_15);
-    std::vector<std::string> __tmp_16 = {(::tpy::str_repeat("a", 40))};
-    std::vector<std::string> __tmp_17 = {(::tpy::str_repeat("e", 40))};
-    ::tpyapp::main::match_arms(2, __tmp_16, __tmp_17);
-    std::vector<std::string> __tmp_18 = {(::tpy::str_repeat("f", 40))};
-    ::tpyapp::main::try_handler(1, __tmp_18);
+    std::vector<std::string> __tmp_1 = {(::tpy::str_repeat("a", 40))};
+    std::vector<std::string> __tmp_2 = {(::tpy::str_repeat("b", 40))};
+    ::tpyapp::main::straight_line(__tmp_1, __tmp_2);
+    std::vector<std::string> __tmp_3 = {(::tpy::str_repeat("c", 40))};
+    ::tpyapp::main::literal_then_element(__tmp_3);
+    std::vector<std::string> __tmp_4 = {(::tpy::str_repeat("a", 40))};
+    std::vector<std::string> __tmp_5 = {(::tpy::str_repeat("b", 40))};
+    std::vector<std::string> __tmp_6 = {(::tpy::str_repeat("k", 40))};
+    ::tpyapp::main::compound_source(false, __tmp_4, __tmp_5, __tmp_6);
+    std::vector<std::string> __tmp_7 = {(::tpy::str_repeat("a", 40))};
+    std::vector<std::string> __tmp_8 = {(::tpy::str_repeat("d", 40))};
+    ::tpyapp::main::if_arms(2, __tmp_7, __tmp_8);
+    std::vector<std::string> __tmp_9 = {(::tpy::str_repeat("a", 40))};
+    std::vector<std::string> __tmp_10 = {(::tpy::str_repeat("e", 40))};
+    ::tpyapp::main::match_arms(2, __tmp_9, __tmp_10);
+    std::vector<std::string> __tmp_11 = {(::tpy::str_repeat("f", 40))};
+    ::tpyapp::main::try_handler(1, __tmp_11);
     Holder().method();
-    std::vector<::tpy::Bytes> __tmp_19 = {(::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 40))};
-    std::vector<::tpy::Bytes> __tmp_20 = {(::tpy::bytes_repeat(::tpy::bytes_literal_owned("h", 1), 40))};
-    ::tpyapp::main::bytes_face(__tmp_19, __tmp_20);
-    std::vector<std::string> __tmp_21 = {(::tpy::str_repeat("a", 40))};
-    std::vector<std::string> __tmp_22 = {(::tpy::str_repeat("i", 40))};
-    ::tpyapp::main::no_mutation(__tmp_21, __tmp_22);
+    std::vector<::tpy::Bytes> __tmp_12 = {(::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 40))};
+    std::vector<::tpy::Bytes> __tmp_13 = {(::tpy::bytes_repeat(::tpy::bytes_literal_owned("h", 1), 40))};
+    ::tpyapp::main::bytes_face(__tmp_12, __tmp_13);
+    std::vector<std::string> __tmp_14 = {(::tpy::str_repeat("a", 40))};
+    std::vector<std::string> __tmp_15 = {(::tpy::str_repeat("i", 40))};
+    ::tpyapp::main::no_mutation(__tmp_14, __tmp_15);
 }
 
 // PAD = "Z" * 40

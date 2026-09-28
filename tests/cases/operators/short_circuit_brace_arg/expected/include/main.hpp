@@ -184,7 +184,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int64_t> {
     };
 
     __gen_gen(const std::vector<int64_t>& o)
-        : __state(S_INITIAL), o(o) {}
+        : __state(S_INITIAL),
+          o(o) {}
 
     std::expected<int64_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -212,7 +213,9 @@ struct __gen_Bx_gen : public ::tpy::next_iter_mixin<__gen_Bx_gen, int64_t> {
     };
 
     __gen_Bx_gen(const Bx& __self, const std::vector<int64_t>& o)
-        : __state(S_INITIAL), __self(__self), o(o) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          o(o) {}
 
     std::expected<int64_t, ::tpy::StopIteration> __next__();
     __gen_Bx_gen& __iter__() { return *this; }

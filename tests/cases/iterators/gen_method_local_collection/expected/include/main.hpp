@@ -55,7 +55,8 @@ struct __gen_Series_items : public ::tpy::next_iter_mixin<__gen_Series_items, in
     };
 
     __gen_Series_items(const Series& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Series_items& __iter__() { return *this; }
@@ -73,6 +74,8 @@ inline __gen_Series_items Series::items() const {
 // def __init__(self, a: int32, b: int32) -> None:
 //     self.a = a
 //     self.b = b
-inline Series::Series(int32_t a, int32_t b) : a(a), b(b) {}
+inline Series::Series(int32_t a, int32_t b)
+    : a(a),
+      b(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -38,6 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 
 
 // args = parser.parse_args(["--verbose", "-c", "-c", "-c"])
-inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(bool verbose, bool no_cache, const ::tpy::BigInt& c) : verbose(verbose), no_cache(no_cache), c(c) {}
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(bool verbose, bool no_cache, const ::tpy::BigInt& c)
+    : verbose(verbose),
+      no_cache(no_cache),
+      c(c) {}
 void __tpy_init();
 } // namespace tpyapp::main

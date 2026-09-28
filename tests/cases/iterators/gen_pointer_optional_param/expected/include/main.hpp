@@ -59,7 +59,9 @@ struct __gen_gen_n_times : public ::tpy::next_iter_mixin<__gen_gen_n_times, int3
     };
 
     __gen_gen_n_times(P* p_, int32_t n_)
-        : __state(S_INITIAL), p(p_), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          p(p_),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_n_times& __iter__() { return *this; }

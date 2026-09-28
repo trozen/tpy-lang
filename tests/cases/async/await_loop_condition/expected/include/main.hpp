@@ -32,7 +32,10 @@ struct __coro_below {
     };
 
     __coro_below(::tpy::BigInt i_, ::tpy::BigInt limit_)
-        : __state(S_INITIAL), __cancel_pending(false), i(std::move(i_)), limit(std::move(limit_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          i(std::move(i_)),
+          limit(std::move(limit_)) {}
 
     ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -59,7 +62,8 @@ struct __coro_main {
     };
 
     __coro_main()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

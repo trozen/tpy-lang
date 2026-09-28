@@ -33,8 +33,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
         S_DONE = 4,
     };
 
-    __gen_gen()
-        : __state(S_INITIAL) {}
+    __gen_gen() : __state(S_INITIAL) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

@@ -26,8 +26,8 @@ void absent_case() {
 //     print(args.tag)
 //     print(args.count)
 void present_case() {
-    std::vector<std::string> __tmp_2 = {"--tag", "gamma", "--count", "10", "20"};
-    __tpy_builder_argparse_args_2 args = ::tpyapp::main::__tpy_builder_argparse_parse_2(__tmp_2);
+    std::vector<std::string> __tmp_1 = {"--tag", "gamma", "--count", "10", "20"};
+    __tpy_builder_argparse_args_2 args = ::tpyapp::main::__tpy_builder_argparse_parse_2(__tmp_1);
     std::cout << ::tpy::ListPrinter(args.tag) << "\n";
     std::cout << ::tpy::ListPrinter(args.count) << "\n";
 }

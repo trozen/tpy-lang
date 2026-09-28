@@ -77,7 +77,9 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
 // def __init__(self) -> None:
 //     self._a = 0
 //     self._b = 0
-inline Store::Store() : _a(0), _b(0) {}
+inline Store::Store()
+    : _a(0),
+      _b(0) {}
 
 // def __getitem__(self, key: str) -> int32:
 //     if key == "a":

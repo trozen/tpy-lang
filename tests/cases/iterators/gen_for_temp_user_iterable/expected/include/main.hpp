@@ -58,7 +58,8 @@ struct __gen_Holder___iter__ : public ::tpy::next_iter_mixin<__gen_Holder___iter
     };
 
     __gen_Holder___iter__(const Holder& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Holder___iter__& __iter__() { return *this; }
@@ -88,8 +89,7 @@ struct __gen_g_simple : public ::tpy::next_iter_mixin<__gen_g_simple, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_g_simple()
-        : __state(S_INITIAL) {}
+    __gen_g_simple() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_g_simple& __iter__() { return *this; }
@@ -116,8 +116,7 @@ struct __gen_g_resumable : public ::tpy::next_iter_mixin<__gen_g_resumable, int3
         S_DONE = 4,
     };
 
-    __gen_g_resumable()
-        : __state(S_INITIAL) {}
+    __gen_g_resumable() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_g_resumable& __iter__() { return *this; }

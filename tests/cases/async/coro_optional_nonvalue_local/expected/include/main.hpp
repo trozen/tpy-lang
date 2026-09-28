@@ -63,7 +63,11 @@ struct __coro_pick {
     };
 
     __coro_pick(std::vector<P>& items, int32_t i_, bool drop_)
-        : __state(S_INITIAL), __cancel_pending(false), items(items), i(std::move(i_)), drop(std::move(drop_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          items(items),
+          i(std::move(i_)),
+          drop(std::move(drop_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -97,7 +101,8 @@ struct __coro_driver {
     };
 
     __coro_driver()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

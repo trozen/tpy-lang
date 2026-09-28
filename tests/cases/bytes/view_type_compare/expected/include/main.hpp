@@ -120,7 +120,9 @@ struct __gen_matching : public ::tpy::next_iter_mixin<__gen_matching, ::tpy::Byt
     };
 
     __gen_matching(const std::vector<::tpy::Bytes>& names, ::tpy::BytesView want_)
-        : __state(S_INITIAL), names(names), want(::tpy::Bytes(want_)) {}
+        : __state(S_INITIAL),
+          names(names),
+          want(::tpy::Bytes(want_)) {}
 
     std::expected<::tpy::Bytes, ::tpy::StopIteration> __next__();
     __gen_matching& __iter__() { return *this; }
@@ -134,7 +136,9 @@ struct __gen_matching : public ::tpy::next_iter_mixin<__gen_matching, ::tpy::Byt
 // def __init__(self, name: bytes) -> None:
 //     self.name = name
 //     self.tags = {b"a", b"b"}
-inline Entry::Entry(::tpy::BytesView name) : name(::tpy::Bytes(name)), tags(::tpy::ordered_set<::tpy::Bytes>({::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1)})) {}
+inline Entry::Entry(::tpy::BytesView name)
+    : name(::tpy::Bytes(name)),
+      tags(::tpy::ordered_set<::tpy::Bytes>({::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1)})) {}
 
 // # method: a bytes field against a bytes param and a literal
 // def is_named(self, other: bytes) -> bool:

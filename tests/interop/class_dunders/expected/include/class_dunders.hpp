@@ -93,7 +93,9 @@ inline std::ostream& operator<<(std::ostream& os, const Ordered& obj) {
 }
 
 
-inline Vec2::Vec2(int64_t x, int64_t y) : x(x), y(y) {}
+inline Vec2::Vec2(int64_t x, int64_t y)
+    : x(x),
+      y(y) {}
 
 inline std::string Vec2::__repr__() const {
     return std::format("Vec2({}, {})", this->x, this->y);
@@ -111,7 +113,9 @@ inline uint64_t Vec2::__hash__() const {
     return ::tpy::int_cast_check<uint64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(this->x, 31)), this->y)));
 }
 
-inline Frac::Frac(int64_t num, int64_t den) : num(num), den(den) {}
+inline Frac::Frac(int64_t num, int64_t den)
+    : num(num),
+      den(den) {}
 
 inline bool Frac::__eq__(const Frac& other) const {
     return ((this->num == other.num) && (this->den == other.den));

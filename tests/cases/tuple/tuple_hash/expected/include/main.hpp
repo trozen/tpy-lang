@@ -164,7 +164,9 @@ inline bool Key::__eq__(const Key& other) const {
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // def __hash__(self) -> uint64:
 //     return hash((self.x, self.y))
@@ -181,7 +183,9 @@ inline bool Point::__eq__(const Point& other) const {
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.a = Key(x)
 //     self.b = Key(y)
-inline Edge::Edge(int32_t x, int32_t y) : a(Key(x)), b(Key(y)) {}
+inline Edge::Edge(int32_t x, int32_t y)
+    : a(Key(x)),
+      b(Key(y)) {}
 
 // def __hash__(self) -> uint64:
 //     return hash((self.a, self.b))

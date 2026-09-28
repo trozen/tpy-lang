@@ -49,7 +49,9 @@ struct __gen_Walker_walk : public ::tpy::next_iter_mixin<__gen_Walker_walk, int3
     };
 
     __gen_Walker_walk(const Walker& __self, const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __self(__self), xs(xs) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Walker_walk& __iter__() { return *this; }

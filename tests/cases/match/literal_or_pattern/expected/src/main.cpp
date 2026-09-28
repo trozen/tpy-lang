@@ -21,17 +21,14 @@ std::string classify_num(int32_t x) {
     case 3:
     {
         return "small";
-        break;
     }
     case 4:
     case 5:
     {
         return "medium";
-        break;
     }
     default: {
         return "large";
-        break;
     }
     }
     ::std::unreachable();
@@ -75,11 +72,9 @@ std::string classify_as(int32_t x) {
     {
         auto n = __match_subject_1;
         return (::tpy::str_concat("small: ", ::tpy::fixed_to_str<int32_t>(n)));
-        break;
     }
     default: {
         return "other";
-        break;
     }
     }
     ::std::unreachable();

@@ -38,7 +38,11 @@ struct __coro_scaled {
     };
 
     __coro_scaled(int64_t a_, int64_t b_, int64_t c_)
-        : __state(S_INITIAL), __cancel_pending(false), a(std::move(a_)), b(std::move(b_)), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(std::move(a_)),
+          b(std::move(b_)),
+          c(std::move(c_)) {}
 
     ::tpystd::tpy::Poll<int64_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -65,7 +69,8 @@ struct __coro_drive {
     };
 
     __coro_drive()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -92,7 +97,9 @@ struct __gen_counted : public ::tpy::next_iter_mixin<__gen_counted, int64_t> {
     };
 
     __gen_counted(int64_t n_, int64_t step_)
-        : __state(S_INITIAL), n(std::move(n_)), step(std::move(step_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)),
+          step(std::move(step_)) {}
 
     std::expected<int64_t, ::tpy::StopIteration> __next__();
     __gen_counted& __iter__() { return *this; }

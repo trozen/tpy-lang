@@ -26,7 +26,9 @@ struct Pair {
     //     self.a = a
     //     self.b = b
     Pair() = default;
-    explicit Pair(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b) : a(std::move(a)), b(std::move(b)) {}
+    explicit Pair(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b)
+        : a(std::move(a)),
+          b(std::move(b)) {}
 
     // def min_val[T: Comparable](self) -> T:
     //     if self.a < self.b:

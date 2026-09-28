@@ -19,10 +19,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        auto& __tup_1 = __for_tup_0;
-        int32_t i = std::get<0>(__tup_1);
-        auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        p.x = (::tpy::mul_check<int32_t>((::tpy::add_check<int32_t>(i, 1)), 10));
+            auto& __tup_1 = __for_tup_0;
+            int32_t i = std::get<0>(__tup_1);
+            auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            p.x = (::tpy::mul_check<int32_t>((::tpy::add_check<int32_t>(i, 1)), 10));
         }
     }
     auto& __obj_2 = points;

@@ -48,8 +48,8 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_fresh_each_pull_
         [[fallthrough]];
     case S_RESUME_1:  // after: yield 2
     case S_JOIN_0: {
-        std::vector<::tpy::BigInt> __tmp_2 = {1, 2};
-        if ((::tpyapp::main::eat(__tmp_2) > 1)) {
+        std::vector<::tpy::BigInt> __tmp_1 = {1, 2};
+        if ((::tpyapp::main::eat(__tmp_1) > 1)) {
             __state = S_RESUME_0;
             return ::tpy::BigInt(1);
         } else {
@@ -85,8 +85,8 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_if_cond_temp::__
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         i = ((*__for_i_0))++;
-        std::vector<::tpy::BigInt> __tmp_3 = {1, 2, 3};
-        if ((::tpyapp::main::eat(__tmp_3) > 2)) {
+        std::vector<::tpy::BigInt> __tmp_1 = {1, 2, 3};
+        if ((::tpyapp::main::eat(__tmp_1) > 2)) {
             __state = S_RESUME_0;
             return i;
         } else {

@@ -65,8 +65,7 @@ struct __gen_gen_lens : public ::tpy::next_iter_mixin<__gen_gen_lens, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_gen_lens()
-        : __state(S_INITIAL) {}
+    __gen_gen_lens() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_lens& __iter__() { return *this; }
@@ -84,7 +83,10 @@ struct __gen_gen_lens : public ::tpy::next_iter_mixin<__gen_gen_lens, int32_t> {
 //     # constructor, member-init comprehension: a reject here fails the
 //     # whole constructor rather than demoting to the body.
 //     self.grid = [make_ints(i) for i in range(n)]  # tpyc: ok
-inline Maker::Maker(std::string_view tag, int32_t n) : tag(tag), rows(::tpy::make_vector<std::vector<std::string>>(::tpyapp::main::make_rows(1), ::tpyapp::main::make_rows(2))), grid(({
+inline Maker::Maker(std::string_view tag, int32_t n)
+    : tag(tag),
+      rows(::tpy::make_vector<std::vector<std::string>>(::tpyapp::main::make_rows(1), ::tpyapp::main::make_rows(2))),
+      grid(({
     std::vector<std::vector<int32_t>> __result;
     const int32_t __stop_0 = n;
     if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));

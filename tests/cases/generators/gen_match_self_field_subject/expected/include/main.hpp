@@ -49,7 +49,8 @@ struct __gen_Counter_items : public ::tpy::next_iter_mixin<__gen_Counter_items, 
     };
 
     __gen_Counter_items(Counter& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Counter_items& __iter__() { return *this; }

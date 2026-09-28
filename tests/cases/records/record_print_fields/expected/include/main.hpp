@@ -47,7 +47,12 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 }
 
 
-inline Config::Config(bool flag, double ratio, std::vector<int32_t>&& items, ::tpy::ordered_map<std::string, int32_t>&& tags, const std::tuple<int32_t, std::string>& pair) : flag(flag), ratio(ratio), items(std::move(items)), tags(std::move(tags)), pair(pair) {}
+inline Config::Config(bool flag, double ratio, std::vector<int32_t>&& items, ::tpy::ordered_map<std::string, int32_t>&& tags, const std::tuple<int32_t, std::string>& pair)
+    : flag(flag),
+      ratio(ratio),
+      items(std::move(items)),
+      tags(std::move(tags)),
+      pair(pair) {}
 
 inline bool Config::__eq__(const Config& other) const {
     return (((((this->flag == other.flag) && (this->ratio == other.ratio)) && (this->items == other.items)) && (this->tags == other.tags)) && (this->pair == other.pair));

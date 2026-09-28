@@ -30,8 +30,8 @@ int32_t payload(int32_t value) {
 //     saved = observe(Cell(payload(1)))  # tpyc: warning(/Result borrows from temporary argument/)
 //     print("fixed", saved.value)
 void fixed() {
-    Cell __tmp_3 = Cell(::tpyapp::main::payload(1));
-    const Cell& saved = ::tpyapp::main::observe(__tmp_3);
+    Cell __tmp_1 = Cell(::tpyapp::main::payload(1));
+    const Cell& saved = ::tpyapp::main::observe(__tmp_1);
     std::cout << "fixed" << " " << saved.value << "\n";
 }
 
@@ -43,8 +43,8 @@ void fixed() {
 //     print("external", saved.value)
 void external(bool flag) {
     Cell owner = Cell(21);
-    Cell __tmp_4 = Cell(22);
-    const Cell& saved = ::tpyapp::main::choose(flag, owner, __tmp_4);
+    Cell __tmp_1 = Cell(22);
+    const Cell& saved = ::tpyapp::main::choose(flag, owner, __tmp_1);
     owner.value = 23;
     std::cout << "external" << " " << saved.value << "\n";
 }
@@ -63,14 +63,14 @@ void external(bool flag) {
 void loops() {
     int32_t remaining = 2;
     while ((remaining > 0)) {
-        Cell __tmp_5 = Cell(remaining);
-        const Cell& saved = ::tpyapp::main::observe(__tmp_5);
+        Cell __tmp_1 = Cell(remaining);
+        const Cell& saved = ::tpyapp::main::observe(__tmp_1);
         std::cout << "while" << " " << saved.value << "\n";
         remaining = ::tpy::sub_check<int32_t>(remaining, 1);
     }
     for (int32_t index = 0; index < 2; ++index) {
-        Cell __tmp_6 = Cell(index);
-        const Cell& item = ::tpyapp::main::observe(__tmp_6);
+        Cell __tmp_2 = Cell(index);
+        const Cell& item = ::tpyapp::main::observe(__tmp_2);
         std::cout << "for" << " " << item.value << "\n";
     }
 }

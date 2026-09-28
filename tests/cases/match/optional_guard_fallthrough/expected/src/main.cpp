@@ -15,14 +15,11 @@ std::string with_wildcard(std::optional<int32_t> x, bool flag) {
     if (!__match_subject_1.has_value()) {
         if (flag) {
             return "none+flag";
-            goto __match_end_2;
         }
     }
     {
         return "other";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -39,7 +36,6 @@ std::string with_capture(std::optional<int32_t> x, bool flag) {
     if (!__match_subject_1.has_value()) {
         if (flag) {
             return "none+flag";
-            goto __match_end_2;
         }
     }
     {
@@ -48,9 +44,7 @@ std::string with_capture(std::optional<int32_t> x, bool flag) {
             return "none-noflag";
         }
         return ::tpy::fixed_to_str<int32_t>((*v));
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 

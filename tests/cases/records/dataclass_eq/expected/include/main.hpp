@@ -105,7 +105,9 @@ inline std::string Id::__repr__() const {
     return std::format("Id(value={})", ::tpy::repr_of(this->value));
 }
 
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 inline bool Point::__eq__(const Point& other) const {
     return ((this->x == other.x) && (this->y == other.y));
@@ -115,7 +117,10 @@ inline std::string Point::__repr__() const {
     return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 
-inline Config::Config(std::string_view name, int32_t value, std::optional<std::string_view> label) : name(name), value(value), label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
+inline Config::Config(std::string_view name, int32_t value, std::optional<std::string_view> label)
+    : name(name),
+      value(value),
+      label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
 
 inline bool Config::__eq__(const Config& other) const {
     return (((this->name == other.name) && (this->value == other.value)) && (this->label == other.label));

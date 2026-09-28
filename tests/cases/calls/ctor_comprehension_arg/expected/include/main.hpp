@@ -237,7 +237,7 @@ inline Site::Site(int32_t k) {
 //     f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
 //     self.n += f.n
 inline void Site::bump(int32_t k) {
-    std::vector<::tpy::Bytes> __tmp_2 = ({
+    std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_0 = k;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
@@ -246,7 +246,7 @@ inline void Site::bump(int32_t k) {
         }
         std::move(__result);
     });
-    Flat f = Flat(__tmp_2);
+    Flat f = Flat(__tmp_1);
     this->n = ::tpy::add_check<int32_t>(this->n, f.n);
 }
 void __tpy_init();

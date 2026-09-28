@@ -76,7 +76,10 @@ inline Rec::Rec(int32_t x) : x(x) {}
 //     self.items = [1]
 //     self.counts = {"a": 1}
 //     self.recs = [Rec(1)]
-inline W::W() : items(std::vector<int32_t>{1}), counts(::tpy::ordered_map<std::string, int32_t>({{"a", 1}})), recs(std::vector<Rec>{Rec(1)}) {}
+inline W::W()
+    : items(std::vector<int32_t>{1}),
+      counts(::tpy::ordered_map<std::string, int32_t>({{"a", 1}})),
+      recs(std::vector<Rec>{Rec(1)}) {}
 // def take_list[T](w: T, xs: list[int32]) -> int32:
 //     xs.append(9)
 //     return len(xs)

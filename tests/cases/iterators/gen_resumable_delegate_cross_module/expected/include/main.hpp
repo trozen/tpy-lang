@@ -104,7 +104,8 @@ struct __coro_async_position {
     };
 
     __coro_async_position()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -130,8 +131,7 @@ struct __gen_free_import : public ::tpy::next_iter_mixin<__gen_free_import, int3
         S_DONE = 4,
     };
 
-    __gen_free_import()
-        : __state(S_INITIAL) {}
+    __gen_free_import() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_free_import& __iter__() { return *this; }
@@ -157,8 +157,7 @@ struct __gen_single_yield_import : public ::tpy::next_iter_mixin<__gen_single_yi
         S_DONE = 4,
     };
 
-    __gen_single_yield_import()
-        : __state(S_INITIAL) {}
+    __gen_single_yield_import() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_single_yield_import& __iter__() { return *this; }
@@ -184,8 +183,7 @@ struct __gen_module_call : public ::tpy::next_iter_mixin<__gen_module_call, int3
         S_DONE = 4,
     };
 
-    __gen_module_call()
-        : __state(S_INITIAL) {}
+    __gen_module_call() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_module_call& __iter__() { return *this; }
@@ -213,7 +211,8 @@ struct __gen_imported_method : public ::tpy::next_iter_mixin<__gen_imported_meth
     };
 
     __gen_imported_method(const ::tpyapp::gensrc::Src& s)
-        : __state(S_INITIAL), s(s) {}
+        : __state(S_INITIAL),
+          s(s) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_imported_method& __iter__() { return *this; }
@@ -239,8 +238,7 @@ struct __gen_generic_callee : public ::tpy::next_iter_mixin<__gen_generic_callee
         S_DONE = 4,
     };
 
-    __gen_generic_callee()
-        : __state(S_INITIAL) {}
+    __gen_generic_callee() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_generic_callee& __iter__() { return *this; }
@@ -268,7 +266,8 @@ struct __gen_generic_owner_imported : public ::tpy::next_iter_mixin<__gen_generi
     };
 
     __gen_generic_owner_imported(::tpyapp::gensrc::Box<int32_t>& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_generic_owner_imported& __iter__() { return *this; }
@@ -296,7 +295,8 @@ struct __gen_mutate_receiver : public ::tpy::next_iter_mixin<__gen_mutate_receiv
     };
 
     __gen_mutate_receiver(::tpyapp::gensrc::Bag& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_mutate_receiver& __iter__() { return *this; }
@@ -322,8 +322,7 @@ struct __gen_lazy_interleave : public ::tpy::next_iter_mixin<__gen_lazy_interlea
         S_DONE = 4,
     };
 
-    __gen_lazy_interleave()
-        : __state(S_INITIAL) {}
+    __gen_lazy_interleave() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_lazy_interleave& __iter__() { return *this; }
@@ -349,8 +348,7 @@ struct __gen_abandoned : public ::tpy::next_iter_mixin<__gen_abandoned, int32_t>
         S_DONE = 4,
     };
 
-    __gen_abandoned()
-        : __state(S_INITIAL) {}
+    __gen_abandoned() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_abandoned& __iter__() { return *this; }
@@ -374,7 +372,8 @@ struct __gen_LocalBox_two : public ::tpy::next_iter_mixin<__gen_LocalBox_two<T>,
     };
 
     __gen_LocalBox_two(LocalBox<T>& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_LocalBox_two& __iter__() { return *this; }
@@ -432,7 +431,8 @@ struct __gen_generic_owner_local : public ::tpy::next_iter_mixin<__gen_generic_o
     };
 
     __gen_generic_owner_local(LocalBox<int32_t>& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_generic_owner_local& __iter__() { return *this; }

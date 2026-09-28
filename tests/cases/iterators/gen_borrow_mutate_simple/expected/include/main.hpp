@@ -33,7 +33,8 @@ struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled, int32_t> {
     };
 
     __gen_doubled(const std::vector<int32_t>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_doubled& __iter__() { return *this; }

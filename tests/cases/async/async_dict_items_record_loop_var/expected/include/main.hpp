@@ -51,7 +51,9 @@ struct __coro_step {
     };
 
     __coro_step(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -83,7 +85,9 @@ struct __coro_f {
     };
 
     __coro_f(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

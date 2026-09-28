@@ -189,7 +189,7 @@ void main() {
             auto __r_2 = __itr_1.__next__();
             if (!__r_2.has_value()) break;
             std::string_view g = ::tpy::unwrap_ref(*__r_2);
-        out += g;
+            out += g;
         }
     }
     std::cout << "gen" << " " << out << "\n";

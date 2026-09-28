@@ -52,7 +52,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // def __init__(self):
 //     self.b = b""
 //     self.s = ""
-inline Holder::Holder() : b(::tpy::Bytes{}), s("") {}
+inline Holder::Holder()
+    : b(::tpy::Bytes{}),
+      s("") {}
 
 // def set_bytes(self, x: bytes) -> None:
 //     self.b = x[1:3]

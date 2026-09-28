@@ -928,9 +928,8 @@ class THIRArgTemp(THIRExpr):
     and a temp-bearing elif nests the remaining chain in an else block.
 
     Carries NO temp number: numbering is emit-time via the TempSink (the
-    `__slot_N` precedent), drawing real numbers from the module-cumulative
-    `ctx.temps` counter so every body in one module numbers
-    continuously. `cpp_type` is the declared C++ type rendered at
+    `__slot_N` precedent), drawing real numbers from the `ctx.temps`
+    counter, which numbers per emitted C++ function. `cpp_type` is the declared C++ type rendered at
     lowering (`None` -> `auto`, `TempState.create`'s protocol arm and the
     rows whose init type has no spelling); `brace_init` selects `{init}`
     over `= init`.
@@ -3367,6 +3366,11 @@ class THIRMatchArmEntry:
     poly_cast: 'tuple[str, str] | None' = None
     poly_ref_decl: 'str | None' = None
     poly_or_conds: 'tuple[tuple[str, str], ...] | None' = None
+    # The `stmts_terminate` fact of the source case body (set by the
+    # lowering's `_case_entry`): the goto tiers write no
+    # `goto __match_end_N`, the switch tiers no `break;`, after a body
+    # that never falls out.
+    body_terminates: bool = False
 
 
 @dataclass(frozen=True)
@@ -3406,7 +3410,7 @@ class THIRMatch(THIRStmt):
         // case A:
         case A: {
             <body>
-            break;                          // always, even after goto/continue
+            break;                          // unless <body> terminates
         }
         default: break;                     // synthetic, non-exhaustive only
         }

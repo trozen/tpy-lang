@@ -124,7 +124,8 @@ struct __coro_aret {
     };
 
     __coro_aret()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -146,7 +147,9 @@ struct __coro_opt_async_finally {
     };
 
     __coro_opt_async_finally(int32_t k_)
-        : __state(S_INITIAL), __cancel_pending(false), k(std::move(k_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          k(std::move(k_)) {}
 
     ::tpystd::tpy::Poll<std::optional<int32_t>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -175,7 +178,8 @@ struct __coro_amain {
     };
 
     __coro_amain()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -196,8 +200,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_gen()
-        : __state(S_INITIAL) {}
+    __gen_gen() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -217,8 +220,7 @@ struct __gen_gen_bare : public ::tpy::next_iter_mixin<__gen_gen_bare, int32_t> {
         S_DONE = 2,
     };
 
-    __gen_gen_bare()
-        : __state(S_INITIAL) {}
+    __gen_gen_bare() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_bare& __iter__() { return *this; }

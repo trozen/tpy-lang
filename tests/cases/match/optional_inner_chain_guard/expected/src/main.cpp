@@ -71,19 +71,15 @@ std::string folded_later(std::optional<std::string_view> x, bool flag) {
     auto& __match_subject_1 = x;
     if (__match_subject_1.has_value() && (*__match_subject_1) == "a") {
         return "a";
-        goto __match_end_2;
     }
     if (__match_subject_1.has_value() && (*__match_subject_1) == "b") {
         if (flag) {
             return "b-flag";
-            goto __match_end_2;
         }
     }
     {
         return "other";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -103,23 +99,18 @@ std::string wildcard_guard(std::optional<std::string_view> x, bool flag) {
     auto& __match_subject_1 = x;
     if (!__match_subject_1.has_value()) {
         return "none";
-        goto __match_end_2;
     }
     if (__match_subject_1.has_value() && (*__match_subject_1) == "a") {
         return "a";
-        goto __match_end_2;
     }
     {
         if (flag) {
             return "wild-flag";
-            goto __match_end_2;
         }
     }
     {
         return "other";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -139,24 +130,19 @@ std::string binding_guard(std::optional<std::string_view> x, bool flag) {
     auto& __match_subject_1 = x;
     if (!__match_subject_1.has_value()) {
         return "none";
-        goto __match_end_2;
     }
     if (__match_subject_1.has_value() && (*__match_subject_1) == "a") {
         auto& got = (*__match_subject_1);
         if (flag) {
             return (::tpy::str_concat("got:", got));
-            goto __match_end_2;
         }
     }
     if (__match_subject_1.has_value() && (*__match_subject_1) == "a") {
         return "a";
-        goto __match_end_2;
     }
     {
         return "other";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -192,7 +178,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     {
@@ -203,7 +189,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
 }

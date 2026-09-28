@@ -50,7 +50,9 @@ namespace tpyapp::main {
 // def __init__(self, x: int32, y: int32):
 //     self.x = x
 //     self.y = y
-inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+inline Vec2::Vec2(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // @classmethod
 // def zero(cls) -> Self:

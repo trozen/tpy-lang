@@ -45,7 +45,9 @@ struct Container {
     //     self._value = value
     //     self._has = True
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> value) : _value(value), _has(true) {}
+    explicit Container(::tpy::readonly_form_t<T> value)
+        : _value(value),
+          _has(true) {}
 
     // def get(self) -> T | None:
     //     if self._has:
@@ -70,6 +72,8 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

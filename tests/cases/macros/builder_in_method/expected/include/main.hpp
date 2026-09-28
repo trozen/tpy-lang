@@ -62,7 +62,9 @@ inline int32_t Holder::make() const {
 }
 
 // res = c.build()
-inline __tpy_builder_counter_1::__tpy_builder_counter_1(int32_t v0, int32_t v1) : v0(v0), v1(v1) {}
+inline __tpy_builder_counter_1::__tpy_builder_counter_1(int32_t v0, int32_t v1)
+    : v0(v0),
+      v1(v1) {}
 
 inline int32_t __tpy_builder_counter_1::total() const {
     return (::tpy::add_check<int32_t>(this->v0, this->v1));

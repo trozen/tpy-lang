@@ -105,7 +105,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             double v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "generator" << " " << ::tpy::print_float(v) << "\n";
+            std::cout << "generator" << " " << ::tpy::print_float(v) << "\n";
         }
     }
     std::cout << "generator" << " " << ::tpy::print_float(::tpy::__getitem__(things, 0).x) << " " << ::tpy::print_float(::tpy::__getitem__(things, 1).x) << "\n";

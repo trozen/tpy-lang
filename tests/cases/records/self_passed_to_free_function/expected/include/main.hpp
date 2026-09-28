@@ -63,7 +63,9 @@ inline std::ostream& operator<<(std::ostream& os, const Module& obj) {
 // def __init__(self, name: str) -> None:
 //     self._name = name
 //     self._items = []
-inline Module::Module(std::string_view name) : _name(name), _items(std::vector<int32_t>{}) {}
+inline Module::Module(std::string_view name)
+    : _name(name),
+      _items(std::vector<int32_t>{}) {}
 
 // def log(self, s: str):
 //     print(self._name + ": " + s)

@@ -24,37 +24,29 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
         {
             if (__case_0.name == "rex") {
                 return "rex cat";
-                goto __match_end_2;
             }
         }
         {
             return "cat";
-            goto __match_end_2;
         }
-        break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         {
             if (__case_1.legs == 4) {
                 return "quad dog";
-                goto __match_end_2;
             }
         }
         {
             if (__case_1.legs == 3) {
                 return "tripod dog";
-                goto __match_end_2;
             }
         }
         {
             return "some dog";
-            goto __match_end_2;
         }
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
 }
 
@@ -69,25 +61,19 @@ std::string either(::tpy::Union<const Cat*, const Dog*> a) {
     switch (__match_subject_1.index()) {
     case 0: {
         return "quaddog-or-cat";
-        goto __match_end_2;
-        break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         {
             if (__case_1.legs == 4) {
                 return "quaddog-or-cat";
-                goto __match_end_2;
             }
         }
         {
             return "other";
-            goto __match_end_2;
         }
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
 }
 

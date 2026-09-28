@@ -63,7 +63,9 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
 // def __init__(self, name: str, id: int32) -> None:
 //     self.name = name
 //     self.id = id
-inline Entity::Entity(std::string_view name, int32_t id) : name(name), id(id) {}
+inline Entity::Entity(std::string_view name, int32_t id)
+    : name(name),
+      id(id) {}
 
 // def get_name(self) -> str:
 //     return self.name
@@ -74,7 +76,9 @@ inline std::string Entity::get_name() const {
 // def __init__(self, name: str, id: int32, age: int32) -> None:
 //     super().__init__(name, id)
 //     self.age = age
-inline Person::Person(std::string_view name, int32_t id, int32_t age) : Entity(name, id), age(age) {}
+inline Person::Person(std::string_view name, int32_t id, int32_t age)
+    : Entity(name, id),
+      age(age) {}
 
 // def __str__(self) -> str:
 //     return self.name

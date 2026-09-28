@@ -54,7 +54,9 @@ struct __coro_fill {
     };
 
     __coro_fill(::tpy::ordered_map<std::string, int32_t>* d_)
-        : __state(S_INITIAL), __cancel_pending(false), d(d_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          d(d_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -77,7 +79,8 @@ struct __gen_twice : public ::tpy::next_iter_mixin<__gen_twice, int32_t> {
     };
 
     __gen_twice(::tpy::ByteArray* b_)
-        : __state(S_INITIAL), b(b_) {}
+        : __state(S_INITIAL),
+          b(b_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_twice& __iter__() { return *this; }
@@ -100,7 +103,8 @@ struct __gen_twice_r : public ::tpy::next_iter_mixin<__gen_twice_r, int32_t> {
     };
 
     __gen_twice_r(R* r_)
-        : __state(S_INITIAL), r(r_) {}
+        : __state(S_INITIAL),
+          r(r_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_twice_r& __iter__() { return *this; }

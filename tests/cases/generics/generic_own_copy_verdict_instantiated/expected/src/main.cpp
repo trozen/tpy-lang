@@ -176,7 +176,7 @@ void body_positions() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        total = ::tpy::add_check<int32_t>(total, v);
+            total = ::tpy::add_check<int32_t>(total, v);
         }
     }
     {
@@ -186,7 +186,7 @@ void body_positions() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        total = ::tpy::add_check<int32_t>(total, v);
+            total = ::tpy::add_check<int32_t>(total, v);
         }
     }
     std::cout << "gen" << " " << total << "\n";

@@ -102,7 +102,8 @@ struct __gen_Pet_ro_names : public ::tpy::next_iter_mixin<__gen_Pet_ro_names, st
     };
 
     __gen_Pet_ro_names(const Pet& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_Pet_ro_names& __iter__() { return *this; }
@@ -131,7 +132,8 @@ struct __gen_Pet_counts : public ::tpy::next_iter_mixin<__gen_Pet_counts, ::tpy:
     };
 
     __gen_Pet_counts(Pet& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_Pet_counts& __iter__() { return *this; }
@@ -149,7 +151,9 @@ inline __gen_Pet_counts Pet::counts() {
 // def __init__(self, nm: str) -> None:
 //     self._name = nm
 //     self._n = 0
-inline Pet::Pet(std::string_view nm) : _name(nm), _n(::tpy::BigInt(0)) {}
+inline Pet::Pet(std::string_view nm)
+    : _name(nm),
+      _n(::tpy::BigInt(0)) {}
 
 // def __init__(self, nm: str) -> None:
 //     super().__init__(nm)

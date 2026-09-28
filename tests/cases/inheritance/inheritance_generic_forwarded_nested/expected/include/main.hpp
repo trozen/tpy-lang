@@ -50,7 +50,9 @@ struct Child : Container<std::vector<T>> {
     //     super().__init__(value)
     //     self.extra = extra
     Child() = default;
-    explicit Child(std::vector<T>& value, int32_t extra) : Container<std::vector<T>>(value), extra(extra) {}
+    explicit Child(std::vector<T>& value, int32_t extra)
+        : Container<std::vector<T>>(value),
+          extra(extra) {}
 
     // def get_extra(self) -> int32:
     //     return self.extra

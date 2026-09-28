@@ -57,7 +57,8 @@ struct __gen_gen_for : public ::tpy::next_iter_mixin<__gen_gen_for, std::tuple<P
     };
 
     __gen_gen_for(std::vector<P>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
     __gen_gen_for& __iter__() { return *this; }
@@ -83,7 +84,8 @@ struct __gen_gen_range : public ::tpy::next_iter_mixin<__gen_gen_range, std::tup
     };
 
     __gen_gen_range(std::vector<P>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
     __gen_gen_range& __iter__() { return *this; }
@@ -108,7 +110,9 @@ struct __gen_gen_while : public ::tpy::next_iter_mixin<__gen_gen_while, std::tup
     };
 
     __gen_gen_while(std::vector<P>& items, int32_t n_)
-        : __state(S_INITIAL), items(items), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          items(items),
+          n(std::move(n_)) {}
 
     std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
     __gen_gen_while& __iter__() { return *this; }

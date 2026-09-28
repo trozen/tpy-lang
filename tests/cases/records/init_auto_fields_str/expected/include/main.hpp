@@ -36,6 +36,8 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
 // def __init__(self, name: str, city: str):
 //     self.name = name
 //     self.city = city
-inline Person::Person(std::string_view name, std::string_view city) : name(name), city(city) {}
+inline Person::Person(std::string_view name, std::string_view city)
+    : name(name),
+      city(city) {}
 void __tpy_init();
 } // namespace tpyapp::main

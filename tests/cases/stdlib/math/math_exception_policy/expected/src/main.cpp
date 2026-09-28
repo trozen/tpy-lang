@@ -912,9 +912,9 @@ void positions() {
                     auto __r_1 = __itr_0.__next__();
                     if (!__r_1.has_value()) break;
                     double result = ::tpy::unwrap_ref(*__r_1);
-                if (!((result == 2.0))) ::tpy::raise_assertion_error();
-                seen = ::tpy::add_check<int32_t>(seen, 1);
-                std::cout << "generator: first yield" << "\n";
+                    if (!((result == 2.0))) ::tpy::raise_assertion_error();
+                    seen = ::tpy::add_check<int32_t>(seen, 1);
+                    std::cout << "generator: first yield" << "\n";
                 }
             }
         } catch (const ::tpy::ValueError&) {

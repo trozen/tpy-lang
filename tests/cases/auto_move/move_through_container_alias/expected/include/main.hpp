@@ -81,8 +81,7 @@ struct __gen_in_generator : public ::tpy::next_iter_mixin<__gen_in_generator, in
         S_DONE = 2,
     };
 
-    __gen_in_generator()
-        : __state(S_INITIAL) {}
+    __gen_in_generator() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_in_generator& __iter__() { return *this; }

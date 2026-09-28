@@ -33,8 +33,8 @@ std::string or_chain(std::vector<std::string>& c, const std::vector<std::string>
 //     d.append("padding long enough to force the backing vector to reallocate")
 //     return x
 std::string and_chain(std::vector<std::string>& c, std::vector<std::string>& d) {
-    auto&& __tmp_2 = ::tpy::__getitem__(c, 0);
-    std::string x = ((!__tmp_2.empty()) ? ::tpy::__getitem__(d, 0) : __tmp_2);
+    auto&& __tmp_1 = ::tpy::__getitem__(c, 0);
+    std::string x = ((!__tmp_1.empty()) ? ::tpy::__getitem__(d, 0) : __tmp_1);
     c.push_back("padding long enough to force the backing vector to reallocate");
     d.push_back("padding long enough to force the backing vector to reallocate");
     return x;
@@ -45,8 +45,8 @@ std::string and_chain(std::vector<std::string>& c, std::vector<std::string>& d) 
 //     d.append("padding long enough to force the backing vector to reallocate")
 //     return x
 std::string nested(const std::vector<std::string>& c, std::vector<std::string>& d, const std::vector<std::string>& e, bool cond) {
-    auto&& __tmp_3 = ((cond) ? (::tpy::__getitem__(c, 0)) : (::tpy::__getitem__(d, 0)));
-    std::string x = ((!__tmp_3.empty()) ? __tmp_3 : ::tpy::__getitem__(e, 0));
+    auto&& __tmp_1 = ((cond) ? (::tpy::__getitem__(c, 0)) : (::tpy::__getitem__(d, 0)));
+    std::string x = ((!__tmp_1.empty()) ? __tmp_1 : ::tpy::__getitem__(e, 0));
     d.push_back("padding long enough to force the backing vector to reallocate");
     return x;
 }
@@ -79,25 +79,25 @@ std::string field_arm(Rec& r, const Rec& t, bool cond) {
 //     print(field_arm(Rec("eta"), Rec("theta"), True))
 //     print(bytes_ternary([b"abcd"], [b"ef"], True))
 void main() {
-    std::vector<std::string> __tmp_4 = {"alpha"};
-    std::vector<std::string> __tmp_5 = {"beta"};
-    std::cout << ::tpyapp::main::ternary(__tmp_4, __tmp_5, true) << "\n";
-    std::vector<std::string> __tmp_6 = {"gamma"};
-    std::vector<std::string> __tmp_7 = {"delta"};
-    std::cout << ::tpyapp::main::or_chain(__tmp_6, __tmp_7) << "\n";
-    std::vector<std::string> __tmp_8 = {"epsilon"};
-    std::vector<std::string> __tmp_9 = {"zeta"};
-    std::cout << ::tpyapp::main::and_chain(__tmp_8, __tmp_9) << "\n";
-    std::vector<std::string> __tmp_10 = {"one"};
-    std::vector<std::string> __tmp_11 = {"two"};
-    std::vector<std::string> __tmp_12 = {"three"};
-    std::cout << ::tpyapp::main::nested(__tmp_10, __tmp_11, __tmp_12, false) << "\n";
-    Rec __tmp_13 = Rec("eta");
-    Rec __tmp_14 = Rec("theta");
-    std::cout << ::tpyapp::main::field_arm(__tmp_13, __tmp_14, true) << "\n";
-    std::vector<::tpy::Bytes> __tmp_15 = {::tpy::bytes_literal_owned("abcd", 4)};
-    std::vector<::tpy::Bytes> __tmp_16 = {::tpy::bytes_literal_owned("ef", 2)};
-    std::cout << ::tpyapp::main::bytes_ternary(__tmp_15, __tmp_16, true) << "\n";
+    std::vector<std::string> __tmp_1 = {"alpha"};
+    std::vector<std::string> __tmp_2 = {"beta"};
+    std::cout << ::tpyapp::main::ternary(__tmp_1, __tmp_2, true) << "\n";
+    std::vector<std::string> __tmp_3 = {"gamma"};
+    std::vector<std::string> __tmp_4 = {"delta"};
+    std::cout << ::tpyapp::main::or_chain(__tmp_3, __tmp_4) << "\n";
+    std::vector<std::string> __tmp_5 = {"epsilon"};
+    std::vector<std::string> __tmp_6 = {"zeta"};
+    std::cout << ::tpyapp::main::and_chain(__tmp_5, __tmp_6) << "\n";
+    std::vector<std::string> __tmp_7 = {"one"};
+    std::vector<std::string> __tmp_8 = {"two"};
+    std::vector<std::string> __tmp_9 = {"three"};
+    std::cout << ::tpyapp::main::nested(__tmp_7, __tmp_8, __tmp_9, false) << "\n";
+    Rec __tmp_10 = Rec("eta");
+    Rec __tmp_11 = Rec("theta");
+    std::cout << ::tpyapp::main::field_arm(__tmp_10, __tmp_11, true) << "\n";
+    std::vector<::tpy::Bytes> __tmp_12 = {::tpy::bytes_literal_owned("abcd", 4)};
+    std::vector<::tpy::Bytes> __tmp_13 = {::tpy::bytes_literal_owned("ef", 2)};
+    std::cout << ::tpyapp::main::bytes_ternary(__tmp_12, __tmp_13, true) << "\n";
 }
 
 // main()

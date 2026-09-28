@@ -78,7 +78,9 @@ struct __gen_Owner_voices : public ::tpy::next_iter_mixin<__gen_Owner_voices, st
     };
 
     __gen_Owner_voices(const Owner& __self, ::tpy::Union<Cat*, Dog*> a_)
-        : __state(S_INITIAL), __self(__self), a(a_) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          a(a_) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_Owner_voices& __iter__() { return *this; }
@@ -107,7 +109,9 @@ struct __gen_Owner_first : public ::tpy::next_iter_mixin<__gen_Owner_first, std:
     };
 
     __gen_Owner_first(const Owner& __self, ::tpy::Union<Cat*, Dog*> a_)
-        : __state(S_INITIAL), __self(__self), a(a_) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          a(a_) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_Owner_first& __iter__() { return *this; }

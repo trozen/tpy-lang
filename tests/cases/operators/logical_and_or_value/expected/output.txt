@@ -38,3 +38,10 @@ default
 0
 1
 0
+free: 2.5
+free: 0
+free: 2.5 5 7
+free: 123456789012345678901234567890
+method: 4
+generator: 3
+generator: 3

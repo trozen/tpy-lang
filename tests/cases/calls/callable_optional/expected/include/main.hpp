@@ -65,7 +65,9 @@ struct __gen_scan : public ::tpy::next_iter_mixin<__gen_scan, int32_t> {
     };
 
     __gen_scan(int32_t n_, std::optional<std::function<void(int32_t)>> onerror_ = std::nullopt)
-        : __state(S_INITIAL), n(std::move(n_)), onerror(std::move(onerror_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)),
+          onerror(std::move(onerror_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_scan& __iter__() { return *this; }

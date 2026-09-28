@@ -59,11 +59,15 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 // def __init__(self, val: int32) -> None:
 //     self.val = val
 //     self.bs = []
-inline A::A(int32_t val) : val(val), bs(std::vector<B>{}) {}
+inline A::A(int32_t val)
+    : val(val),
+      bs(std::vector<B>{}) {}
 
 // def __init__(self, val: int32) -> None:
 //     self.val = val
 //     self.as_ = []
-inline B::B(int32_t val) : val(val), as_(std::vector<A>{}) {}
+inline B::B(int32_t val)
+    : val(val),
+      as_(std::vector<A>{}) {}
 void __tpy_init();
 } // namespace tpyapp::main

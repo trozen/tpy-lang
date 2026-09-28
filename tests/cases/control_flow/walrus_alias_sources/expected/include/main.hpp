@@ -76,6 +76,8 @@ inline ::tpy::BigInt Rec::get() const {
 // def __init__(self) -> None:
 //     self.inner = Rec(1)
 //     self.kid = [1]
-inline Holder::Holder() : inner(Rec(::tpy::BigInt(1))), kid(std::vector<::tpy::BigInt>{1}) {}
+inline Holder::Holder()
+    : inner(Rec(::tpy::BigInt(1))),
+      kid(std::vector<::tpy::BigInt>{1}) {}
 void __tpy_init();
 } // namespace tpyapp::main

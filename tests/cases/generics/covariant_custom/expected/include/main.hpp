@@ -100,7 +100,10 @@ struct Tagged {
     }
     Tagged(const Tagged&) = delete;
     Tagged& operator=(const Tagged&) = delete;
-    Tagged(Tagged&& other) noexcept : _ptr(std::move(other._ptr)), _tag(std::move(other._tag)), _owned(std::move(other._owned)) {
+    Tagged(Tagged&& other) noexcept
+        : _ptr(std::move(other._ptr)),
+          _tag(std::move(other._tag)),
+          _owned(std::move(other._owned)) {
         other.__tpy_owned_ = false;
     }
     Tagged& operator=(Tagged&& other) noexcept {
@@ -125,7 +128,10 @@ struct Tagged {
 
     template<typename __CovU_T, typename __CovU_N>
         requires (std::is_base_of_v<T, __CovU_T> && std::is_same_v<N, __CovU_N>)
-    Tagged(Tagged<__CovU_T, __CovU_N>&& __other) noexcept : _ptr(std::move(__other._ptr)), _tag(std::move(__other._tag)), _owned(std::move(__other._owned)) {
+    Tagged(Tagged<__CovU_T, __CovU_N>&& __other) noexcept
+        : _ptr(std::move(__other._ptr)),
+          _tag(std::move(__other._tag)),
+          _owned(std::move(__other._owned)) {
         __other.__tpy_owned_ = false;
     }
     template<typename, typename> friend struct Tagged;

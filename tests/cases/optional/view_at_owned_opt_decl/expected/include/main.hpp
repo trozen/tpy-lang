@@ -117,7 +117,11 @@ inline Inner::Inner(std::string_view name) : name(name) {}
 //     self.tag = b"bb"
 //     self.sv = "vv"
 //     self.inner = Inner(name)
-inline Rec::Rec(std::string_view name) : name(name), tag(::tpy::bytes_literal_owned("bb", 2)), sv("vv"), inner(Inner(name)) {}
+inline Rec::Rec(std::string_view name)
+    : name(name),
+      tag(::tpy::bytes_literal_owned("bb", 2)),
+      sv("vv"),
+      inner(Inner(name)) {}
 
 // def label(self) -> str:
 //     return self.name + "!"
@@ -128,7 +132,9 @@ inline std::string Rec::label() const {
 // def __init__(self, name: str) -> None:
 //     self.name = name
 //     self.rec = Rec(name)
-inline Holder::Holder(std::string_view name) : name(name), rec(Rec(name)) {}
+inline Holder::Holder(std::string_view name)
+    : name(name),
+      rec(Rec(name)) {}
 
 // # method position
 // def tagged(self, s: str) -> int32:

@@ -135,7 +135,9 @@ inline std::ostream& operator<<(std::ostream& os, const Registry& obj) {
 }
 
 
-inline Msg::Msg(std::string_view color, int32_t value) : color(color), value(value) {}
+inline Msg::Msg(std::string_view color, int32_t value)
+    : color(color),
+      value(value) {}
 
 inline bool Msg::__eq__(const Msg& other) const {
     return ((this->color == other.color) && (this->value == other.value));

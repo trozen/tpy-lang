@@ -36,7 +36,9 @@ struct __coro_cleanup_task {
     };
 
     __coro_cleanup_task(std::string_view label_)
-        : __state(S_INITIAL), __cancel_pending(false), label(std::string(label_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          label(std::string(label_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -66,7 +68,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

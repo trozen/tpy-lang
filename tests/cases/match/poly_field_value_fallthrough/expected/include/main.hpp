@@ -79,7 +79,9 @@ namespace tpyapp::main {
 // def __init__(self, legs: int, weight: int) -> None:
 //     self.legs = legs
 //     self.weight = weight
-inline Dog::Dog(const ::tpy::BigInt& legs, const ::tpy::BigInt& weight) : legs(legs), weight(weight) {}
+inline Dog::Dog(const ::tpy::BigInt& legs, const ::tpy::BigInt& weight)
+    : legs(legs),
+      weight(weight) {}
 
 // def speak(self) -> str:
 //     return "woof"

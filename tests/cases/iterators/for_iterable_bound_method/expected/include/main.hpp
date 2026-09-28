@@ -101,7 +101,9 @@ inline std::ostream& operator<<(std::ostream& os, const Summer<T>& obj) {
 // def __init__(self, start: int32, limit: int32) -> None:
 //     self.current = start
 //     self.limit = limit
-inline RangeIter::RangeIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
+inline RangeIter::RangeIter(int32_t start, int32_t limit)
+    : current(start),
+      limit(limit) {}
 
 // def __next__(self) -> int32:
 //     if self.current < self.limit:
@@ -121,7 +123,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> RangeIter::__next__() {
 // def __init__(self, start: int32, limit: int32) -> None:
 //     self.start = start
 //     self.limit = limit
-inline MyRange::MyRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
+inline MyRange::MyRange(int32_t start, int32_t limit)
+    : start(start),
+      limit(limit) {}
 
 // def __iter__(self) -> Own[RangeIter]:
 //     return RangeIter(self.start, self.limit)

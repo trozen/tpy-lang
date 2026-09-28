@@ -926,6 +926,22 @@ class TempState:
         self._auto_named: set[str] = set()
         self._counter: int = 0
 
+    def _draw(self) -> int:
+        self._counter += 1
+        return self._counter
+
+    @contextmanager
+    def function_scope(self) -> Iterator[None]:
+        """Number `__tmp_N` / `__select_slot_N` from 1 per emitted C++ function.
+        A nested def or lambda renders inside its parent's scope and keeps
+        the parent's stream, so its names cannot collide with the parent's."""
+        saved = self._counter
+        self._counter = 0
+        try:
+            yield
+        finally:
+            self._counter = saved
+
     @contextmanager
     def conditional_region(self) -> Iterator[CondRegion]:
         """Defer temps created inside to the operand instead of the statement.
@@ -973,8 +989,7 @@ class TempState:
     def create(self, param_type: TpyType, init_expr: str) -> str:
         """Create a temp variable and return its name for use in the call."""
         param_type = unwrap_ref_type(param_type)
-        self._counter += 1
-        temp_name = f"__tmp_{self._counter}"
+        temp_name = f"__tmp_{self._draw()}"
         is_protocol = is_protocol_type(param_type)
         type_cpp = "auto" if is_protocol or isinstance(param_type, TypeParamRef) else param_type.to_cpp()
         return self._register(temp_name, type_cpp, init_expr, False,
@@ -991,8 +1006,7 @@ class TempState:
         eager `T t = T(...);` form does not (it gets guaranteed elision). A
         caller holding the TpyType can opt back in with `type.is_movable()`.
         """
-        self._counter += 1
-        temp_name = f"__tmp_{self._counter}"
+        temp_name = f"__tmp_{self._draw()}"
         return self._register(temp_name, cpp_type, init_expr, brace_init,
                               movable, planned_optional)
 
@@ -1002,8 +1016,7 @@ class TempState:
         For a block-scoped slot that must outlive the expression referencing it
         (e.g. the optional<T> backing a short-circuit pointer-select), where the
         caller needs the generated name back rather than supplying it."""
-        self._counter += 1
-        name = f"{prefix}_{self._counter}"
+        name = f"{prefix}_{self._draw()}"
         self._pending_named.append((name, cpp_type, init, ""))
         self._auto_named.add(name)
         return name

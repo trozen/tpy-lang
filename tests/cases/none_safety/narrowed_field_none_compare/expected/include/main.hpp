@@ -55,6 +55,8 @@ inline Pod::Pod() : x(::tpy::BigInt(0)) {}
 // def __init__(self) -> None:
 //     self.o = None
 //     self.v = None
-inline T::T() : o(std::nullopt), v(std::nullopt) {}
+inline T::T()
+    : o(std::nullopt),
+      v(std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

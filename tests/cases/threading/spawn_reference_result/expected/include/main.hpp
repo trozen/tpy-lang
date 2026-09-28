@@ -161,7 +161,9 @@ inline std::vector<std::string> Rows::run() const {
 // def __init__(self, total: int32, tags: Own[list[str]]) -> None:
 //     self.total = total
 //     self.tags = tags
-inline Tally::Tally(int32_t total, std::vector<std::string>&& tags) : total(total), tags(std::move(tags)) {}
+inline Tally::Tally(int32_t total, std::vector<std::string>&& tags)
+    : total(total),
+      tags(std::move(tags)) {}
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n

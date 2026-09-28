@@ -86,7 +86,9 @@ inline std::ostream& operator<<(std::ostream& os, const Copied& obj) {
 // def __init__(self) -> None:
 //     self.buf = bytearray()  # tpyc: ok
 //     self.tags = list()  # tpyc: ok
-inline Empty::Empty() : buf(::tpy::ByteArray()), tags(std::vector<int32_t>()) {}
+inline Empty::Empty()
+    : buf(::tpy::ByteArray()),
+      tags(std::vector<int32_t>()) {}
 
 // def __init__(self, seed: bytes) -> None:
 //     self.buf = bytearray(seed)  # tpyc: ok

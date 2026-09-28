@@ -43,7 +43,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-inline Counter::Counter(int32_t count, std::string_view label) : count(count), label(label) {}
+inline Counter::Counter(int32_t count, std::string_view label)
+    : count(count),
+      label(label) {}
 
 inline bool Counter::__eq__(const Counter& other) const {
     return ((this->count == other.count) && (this->label == other.label));

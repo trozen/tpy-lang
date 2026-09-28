@@ -37,7 +37,10 @@ struct __coro_fetch {
     };
 
     __coro_fetch(int32_t n_, double delay_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)), delay(std::move(delay_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)),
+          delay(std::move(delay_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -63,7 +66,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

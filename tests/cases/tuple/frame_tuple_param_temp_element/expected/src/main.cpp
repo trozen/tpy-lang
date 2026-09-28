@@ -83,15 +83,15 @@ __coro_co co(std::tuple<A*, A*> p) {
 void free_call() {
     A r = A(::tpy::BigInt(5));
     {
-        A __tmp_2 = A(::tpy::BigInt(7));
-        auto __src_0 = ::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_2), &(r)});
+        A __tmp_1 = A(::tpy::BigInt(7));
+        auto __src_0 = ::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_1), &(r)});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "free" << " " << x << "\n";
-        r.v = (r.v) + (::tpy::BigInt(10));
+            std::cout << "free" << " " << x << "\n";
+            r.v = (r.v) + (::tpy::BigInt(10));
         }
     }
     std::cout << "free r" << " " << r.v << "\n";
@@ -107,16 +107,16 @@ void free_call() {
 void factory_method() {
     A r = A(::tpy::BigInt(5));
     {
-        G __tmp_3 = G();
-        A __tmp_4 = A(::tpy::BigInt(15));
-        auto __src_0 = __tmp_3.pair(std::tuple<A*, A*>{&(__tmp_4), &(r)});
+        G __tmp_1 = G();
+        A __tmp_2 = A(::tpy::BigInt(15));
+        auto __src_0 = __tmp_1.pair(std::tuple<A*, A*>{&(__tmp_2), &(r)});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "method" << " " << x << "\n";
-        r.v = (r.v) + (::tpy::BigInt(10));
+            std::cout << "method" << " " << x << "\n";
+            r.v = (r.v) + (::tpy::BigInt(10));
         }
     }
     std::cout << "method r" << " " << r.v << "\n";
@@ -131,14 +131,14 @@ void factory_method() {
 void optional_element() {
     A r = A(::tpy::BigInt(5));
     {
-        A __tmp_5 = A(::tpy::BigInt(9));
-        auto __src_0 = ::tpyapp::main::opt_pair(std::tuple<A*, A*>{&(__tmp_5), &(r)});
+        A __tmp_1 = A(::tpy::BigInt(9));
+        auto __src_0 = ::tpyapp::main::opt_pair(std::tuple<A*, A*>{&(__tmp_1), &(r)});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "opt" << " " << x << "\n";
+            std::cout << "opt" << " " << x << "\n";
         }
     }
     std::cout << "opt r" << " " << r.v << "\n";
@@ -151,10 +151,10 @@ void optional_element() {
 //     print("comp", xs, r.v)
 void comprehension_iterable() {
     A r = A(::tpy::BigInt(5));
-    A __tmp_6 = A(::tpy::BigInt(17));
+    A __tmp_1 = A(::tpy::BigInt(17));
     std::vector<::tpy::BigInt> xs = ({
         std::vector<::tpy::BigInt> __result;
-        auto __obj_0 = ::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_6), &(r)});
+        auto __obj_0 = ::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_1), &(r)});
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -177,8 +177,8 @@ void comprehension_iterable() {
 //     print("held r", r.v)
 void held_handle() {
     A r = A(::tpy::BigInt(5));
-    A __tmp_7 = A(::tpy::BigInt(4));
-    __gen_pair it = ::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_7), &(r)});
+    A __tmp_1 = A(::tpy::BigInt(4));
+    __gen_pair it = ::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_1), &(r)});
     std::array<A, 50> junk = ::tpy::array_from_index<A, 50>([&](std::size_t __i_0) -> A {
         int32_t i = int32_t(__i_0);
         return A(::tpy::BigInt(i));
@@ -212,7 +212,7 @@ void generator_body() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen-body" << " " << x << "\n";
+            std::cout << "gen-body" << " " << x << "\n";
         }
     }
 }
@@ -307,8 +307,8 @@ void async_positions() {
     std::cout << "await" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::await_caller())) << "\n";
     std::cout << "task" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::task_caller())) << "\n";
     A r = A(::tpy::BigInt(5));
-    A __tmp_8 = A(::tpy::BigInt(19));
-    std::cout << "run" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::co(std::tuple<A*, A*>{&(__tmp_8), &(r)}))) << " " << r.v << "\n";
+    A __tmp_1 = A(::tpy::BigInt(19));
+    std::cout << "run" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::co(std::tuple<A*, A*>{&(__tmp_1), &(r)}))) << " " << r.v << "\n";
 }
 
 // def sync_callee() -> None:
@@ -332,8 +332,8 @@ void ctor_and_closure() {
     std::cout << "ctor" << " " << ::tpy::ListPrinter(H().xs) << "\n";
     A r = A(::tpy::BigInt(1));
     auto f = [&r]() -> std::vector<::tpy::BigInt> {
-        A __tmp_9 = A(::tpy::BigInt(23));
-        return ::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_9), &(r)}));
+        A __tmp_1 = A(::tpy::BigInt(23));
+        return ::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_1), &(r)}));
     };
     std::cout << "closure" << " " << ::tpy::ListPrinter(f()) << " " << r.v << "\n";
 }
@@ -407,8 +407,8 @@ __gen_edge_gen edge_gen(A& a) {
 //     # the mutating callee is itself a generator frame
 //     return sum(pair((A(1), a)))  # tpyc: ok
 ::tpy::BigInt edge_frame(A& a) {
-    A __tmp_10 = A(::tpy::BigInt(1));
-    return ::tpy::builtin_sum_bigint(::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_10), &(a)}));
+    A __tmp_1 = A(::tpy::BigInt(1));
+    return ::tpy::builtin_sum_bigint(::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_1), &(a)}));
 }
 
 // def mutation_edge() -> None:
@@ -545,8 +545,8 @@ __coro_async_callee async_callee(A& a) {
 //     print("callee async", asyncio.run(async_callee(a)), a.v)
 void callee_kinds() {
     A a = A(::tpy::BigInt(0));
-    K __tmp_11 = K();
-    std::cout << "callee method" << " " << ::tpyapp::main::meth_callee(__tmp_11, a) << " " << a.v << "\n";
+    K __tmp_1 = K();
+    std::cout << "callee method" << " " << ::tpyapp::main::meth_callee(__tmp_1, a) << " " << a.v << "\n";
     std::cout << "callee async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::async_callee(a))) << " " << a.v << "\n";
 }
 
@@ -729,8 +729,8 @@ void unbacked_local(Named& n, std::string_view s) {
 //     a = A(5)
 //     print("unbacked method", U().bump(a, "s"), a.v)
 void unbacked_elements() {
-    Named __tmp_12 = Named("unbacked-name-long-enough-to-defeat-sso");
-    ::tpyapp::main::unbacked_local(__tmp_12, "s");
+    Named __tmp_1 = Named("unbacked-name-long-enough-to-defeat-sso");
+    ::tpyapp::main::unbacked_local(__tmp_1, "s");
     A a = A(::tpy::BigInt(5));
     std::cout << "unbacked method" << " " << U().bump(a, "s") << " " << a.v << "\n";
 }
@@ -799,14 +799,14 @@ void __tpy_init() {
     static A __global_slot_1 = A(::tpy::BigInt(5));
     MR = &__global_slot_1;
     {
-        A __tmp_13 = A(::tpy::BigInt(25));
-        auto __src_0 = ::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_13), MR});
+        A __tmp_1 = A(::tpy::BigInt(25));
+        auto __src_0 = ::tpyapp::main::pair(std::tuple<A*, A*>{&(__tmp_1), MR});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& MX = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "module" << " " << MX << "\n";
+            std::cout << "module" << " " << MX << "\n";
         }
     }
     std::cout << "module r" << " " << MR->v << "\n";

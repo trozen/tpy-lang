@@ -50,7 +50,12 @@ inline std::ostream& operator<<(std::ostream& os, const R& obj) {
 }
 
 
-inline R::R(const ::tpy::BigInt& big, const ::tpy::BigInt& neg, const ::tpy::BigInt& small, int64_t wide, const ::tpy::BigInt& wrapped) : big(big), neg(neg), small(small), wide(wide), wrapped(wrapped) {}
+inline R::R(const ::tpy::BigInt& big, const ::tpy::BigInt& neg, const ::tpy::BigInt& small, int64_t wide, const ::tpy::BigInt& wrapped)
+    : big(big),
+      neg(neg),
+      small(small),
+      wide(wide),
+      wrapped(wrapped) {}
 
 inline bool R::__eq__(const R& other) const {
     return (((((this->big == other.big) && (this->neg == other.neg)) && (this->small == other.small)) && (this->wide == other.wide)) && (this->wrapped == other.wrapped));

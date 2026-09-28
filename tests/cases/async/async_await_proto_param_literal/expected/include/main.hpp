@@ -44,7 +44,9 @@ struct __coro_consume {
     };
 
     __coro_consume(T_it&& it_)
-        : __state(S_INITIAL), __cancel_pending(false), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          it(std::forward<T_it>(it_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -112,7 +114,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

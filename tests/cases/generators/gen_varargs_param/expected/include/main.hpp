@@ -191,7 +191,8 @@ struct __gen_scalars : public ::tpy::next_iter_mixin<__gen_scalars, int32_t> {
     };
 
     __gen_scalars(::tpy::varargs<const int32_t> xs_)
-        : __state(S_INITIAL), xs(std::move(xs_)) {}
+        : __state(S_INITIAL),
+          xs(std::move(xs_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_scalars& __iter__() { return *this; }
@@ -220,7 +221,8 @@ struct __gen_strings : public ::tpy::next_iter_mixin<__gen_strings, int32_t> {
     };
 
     __gen_strings(::tpy::varargs<const std::string> ss_)
-        : __state(S_INITIAL), ss(std::move(ss_)) {}
+        : __state(S_INITIAL),
+          ss(std::move(ss_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_strings& __iter__() { return *this; }
@@ -248,7 +250,8 @@ struct __gen_merge_shape : public ::tpy::next_iter_mixin<__gen_merge_shape<T>, i
     };
 
     __gen_merge_shape(::tpy::varargs<const std::vector<T>> xs_)
-        : __state(S_INITIAL), xs(std::move(xs_)) {}
+        : __state(S_INITIAL),
+          xs(std::move(xs_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_merge_shape& __iter__() { return *this; }
@@ -333,7 +336,8 @@ struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
     };
 
     __gen_bump(::tpy::varargs<Point> ps_)
-        : __state(S_INITIAL), ps(std::move(ps_)) {}
+        : __state(S_INITIAL),
+          ps(std::move(ps_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_bump& __iter__() { return *this; }
@@ -361,7 +365,8 @@ struct __gen_read_pack : public ::tpy::next_iter_mixin<__gen_read_pack, int32_t>
     };
 
     __gen_read_pack(::tpy::varargs<const Point> ps_)
-        : __state(S_INITIAL), ps(std::move(ps_)) {}
+        : __state(S_INITIAL),
+          ps(std::move(ps_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_read_pack& __iter__() { return *this; }
@@ -384,7 +389,8 @@ struct __gen_forward : public ::tpy::next_iter_mixin<__gen_forward, int32_t> {
     };
 
     __gen_forward(::tpy::varargs<const int32_t> xs_)
-        : __state(S_INITIAL), xs(std::move(xs_)) {}
+        : __state(S_INITIAL),
+          xs(std::move(xs_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_forward& __iter__() { return *this; }
@@ -409,7 +415,8 @@ struct __gen_indexed : public ::tpy::next_iter_mixin<__gen_indexed, int32_t> {
     };
 
     __gen_indexed(::tpy::varargs<const int32_t> xs_)
-        : __state(S_INITIAL), xs(std::move(xs_)) {}
+        : __state(S_INITIAL),
+          xs(std::move(xs_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_indexed& __iter__() { return *this; }
@@ -439,7 +446,8 @@ struct __gen_in_finally : public ::tpy::next_iter_mixin<__gen_in_finally, int32_
     };
 
     __gen_in_finally(::tpy::varargs<const std::vector<int32_t>> xs_)
-        : __state(S_INITIAL), xs(std::move(xs_)) {}
+        : __state(S_INITIAL),
+          xs(std::move(xs_)) {}
 
     __gen_in_finally(__gen_in_finally&&) = default;
     ~__gen_in_finally() {
@@ -485,7 +493,8 @@ struct __gen_in_with : public ::tpy::next_iter_mixin<__gen_in_with, int32_t> {
     };
 
     __gen_in_with(::tpy::varargs<const std::vector<int32_t>> xs_)
-        : __state(S_INITIAL), xs(std::move(xs_)) {}
+        : __state(S_INITIAL),
+          xs(std::move(xs_)) {}
 
     __gen_in_with(__gen_in_with&&) = default;
     ~__gen_in_with() {
@@ -528,7 +537,8 @@ struct __gen_readonly_param : public ::tpy::next_iter_mixin<__gen_readonly_param
     };
 
     __gen_readonly_param(const std::vector<Point>& ps)
-        : __state(S_INITIAL), ps(ps) {}
+        : __state(S_INITIAL),
+          ps(ps) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_readonly_param& __iter__() { return *this; }
@@ -557,7 +567,8 @@ struct __gen_bump_generic : public ::tpy::next_iter_mixin<__gen_bump_generic<T>,
     };
 
     __gen_bump_generic(::tpy::varargs<T> xs_)
-        : __state(S_INITIAL), xs(std::move(xs_)) {}
+        : __state(S_INITIAL),
+          xs(std::move(xs_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_bump_generic& __iter__() { return *this; }
@@ -632,7 +643,8 @@ struct __gen_points : public ::tpy::next_iter_mixin<__gen_points, ::tpy::val_or_
     };
 
     __gen_points(const std::vector<Point>& ps)
-        : __state(S_INITIAL), ps(ps) {}
+        : __state(S_INITIAL),
+          ps(ps) {}
 
     std::expected<::tpy::val_or_ref<const Point>, ::tpy::StopIteration> __next__();
     __gen_points& __iter__() { return *this; }
@@ -663,7 +675,8 @@ struct __gen_readonly_next : public ::tpy::next_iter_mixin<__gen_readonly_next<T
     };
 
     __gen_readonly_next(T_it&& it_)
-        : __state(S_INITIAL), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_readonly_next& __iter__() { return *this; }
@@ -742,7 +755,8 @@ struct __gen_each_pack : public ::tpy::next_iter_mixin<__gen_each_pack, ::tpy::v
     };
 
     __gen_each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>> xs_)
-        : __state(S_INITIAL), xs(std::move(xs_)) {}
+        : __state(S_INITIAL),
+          xs(std::move(xs_)) {}
 
     std::expected<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>, ::tpy::StopIteration> __next__();
     __gen_each_pack& __iter__() { return *this; }
@@ -771,7 +785,9 @@ struct __gen_Collector_sizes : public ::tpy::next_iter_mixin<__gen_Collector_siz
     };
 
     __gen_Collector_sizes(const Collector& __self, ::tpy::varargs<const std::vector<int32_t>> xs_)
-        : __state(S_INITIAL), __self(__self), xs(std::move(xs_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          xs(std::move(xs_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Collector_sizes& __iter__() { return *this; }
@@ -803,7 +819,8 @@ struct __gen_Album_each : public ::tpy::next_iter_mixin<__gen_Album_each, int32_
     };
 
     __gen_Album_each(const Album& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Album_each& __iter__() { return *this; }
@@ -835,7 +852,9 @@ struct __gen_Grower_each_pack : public ::tpy::next_iter_mixin<__gen_Grower_each_
     };
 
     __gen_Grower_each_pack(const Grower& __self, ::tpy::varargs<std::vector<std::vector<int32_t>>> xs_)
-        : __state(S_INITIAL), __self(__self), xs(std::move(xs_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          xs(std::move(xs_)) {}
 
     std::expected<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>, ::tpy::StopIteration> __next__();
     __gen_Grower_each_pack& __iter__() { return *this; }
@@ -900,7 +919,7 @@ inline void Grower::grow_both(std::vector<std::vector<int32_t>>& p, std::vector<
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& v = ::tpy::unwrap_ref(*__r_1);
-        v.push_back({this->tag});
+            v.push_back({this->tag});
         }
     }
 }

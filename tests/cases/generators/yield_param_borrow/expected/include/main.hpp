@@ -66,7 +66,9 @@ struct __coro_step {
     };
 
     __coro_step(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -91,7 +93,8 @@ struct __coro_late {
     };
 
     __coro_late()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -115,7 +118,8 @@ struct __coro_amain {
     };
 
     __coro_amain()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -138,7 +142,8 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each, ::tpy::val_or_ref<
     };
 
     __gen_each(std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_each& __iter__() { return *this; }
@@ -161,7 +166,8 @@ struct __gen_rep : public ::tpy::next_iter_mixin<__gen_rep, ::tpy::val_or_ref<P>
     };
 
     __gen_rep(P& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     std::expected<::tpy::val_or_ref<P>, ::tpy::StopIteration> __next__();
     __gen_rep& __iter__() { return *this; }
@@ -184,7 +190,8 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, ::tpy::val_or_re
     };
 
     __gen_pairs(::tpy::ordered_map<std::string, int32_t>& d)
-        : __state(S_INITIAL), d(d) {}
+        : __state(S_INITIAL),
+          d(d) {}
 
     std::expected<::tpy::val_or_ref<::tpy::ordered_map<std::string, int32_t>>, ::tpy::StopIteration> __next__();
     __gen_pairs& __iter__() { return *this; }
@@ -206,8 +213,7 @@ struct __gen_late_gen : public ::tpy::next_iter_mixin<__gen_late_gen, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_late_gen()
-        : __state(S_INITIAL) {}
+    __gen_late_gen() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_late_gen& __iter__() { return *this; }

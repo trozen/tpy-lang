@@ -59,7 +59,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t a = ::tpy::unwrap_ref(*__r_1);
-        std::cout << a << "\n";
+            std::cout << a << "\n";
         }
     }
     std::cout << ::tpy::__getitem__(nodes, 0).v << " " << ::tpy::__getitem__(nodes, 1).v << "\n";

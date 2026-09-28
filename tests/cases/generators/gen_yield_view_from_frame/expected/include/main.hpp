@@ -67,8 +67,7 @@ struct __gen_static_source_view : public ::tpy::next_iter_mixin<__gen_static_sou
         S_DONE = 3,
     };
 
-    __gen_static_source_view()
-        : __state(S_INITIAL) {}
+    __gen_static_source_view() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_static_source_view& __iter__() { return *this; }
@@ -90,8 +89,7 @@ struct __gen_static_bytes_view : public ::tpy::next_iter_mixin<__gen_static_byte
         S_DONE = 3,
     };
 
-    __gen_static_bytes_view()
-        : __state(S_INITIAL) {}
+    __gen_static_bytes_view() : __state(S_INITIAL) {}
 
     std::expected<::tpy::Bytes, ::tpy::StopIteration> __next__();
     __gen_static_bytes_view& __iter__() { return *this; }
@@ -115,7 +113,8 @@ struct __gen_explicit_view_local : public ::tpy::next_iter_mixin<__gen_explicit_
     };
 
     __gen_explicit_view_local(std::string_view s_)
-        : __state(S_INITIAL), s(std::move(s_)) {}
+        : __state(S_INITIAL),
+          s(std::move(s_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_explicit_view_local& __iter__() { return *this; }
@@ -142,7 +141,8 @@ struct __gen_with_view_target : public ::tpy::next_iter_mixin<__gen_with_view_ta
     };
 
     __gen_with_view_target(Holder& h)
-        : __state(S_INITIAL), h(h) {}
+        : __state(S_INITIAL),
+          h(h) {}
 
     __gen_with_view_target(__gen_with_view_target&&) = default;
     ~__gen_with_view_target() {
@@ -183,7 +183,8 @@ struct __gen_peephole_view : public ::tpy::next_iter_mixin<__gen_peephole_view, 
     };
 
     __gen_peephole_view(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_peephole_view& __iter__() { return *this; }
@@ -206,7 +207,8 @@ struct __gen_owned_param_stays_bare : public ::tpy::next_iter_mixin<__gen_owned_
     };
 
     __gen_owned_param_stays_bare(std::string_view s_)
-        : __state(S_INITIAL), s(std::string(s_)) {}
+        : __state(S_INITIAL),
+          s(std::string(s_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_owned_param_stays_bare& __iter__() { return *this; }

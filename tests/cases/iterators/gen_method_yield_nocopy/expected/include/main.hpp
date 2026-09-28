@@ -78,7 +78,8 @@ struct __gen_Box_each : public ::tpy::next_iter_mixin<__gen_Box_each, ::tpy::val
     };
 
     __gen_Box_each(Box& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::val_or_ref<Handle>, ::tpy::StopIteration> __next__();
     __gen_Box_each& __iter__() { return *this; }

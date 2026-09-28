@@ -51,7 +51,8 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, std::tuple<P*, P
     };
 
     __gen_pairs(std::vector<P>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
     __gen_pairs& __iter__() { return *this; }

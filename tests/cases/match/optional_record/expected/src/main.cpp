@@ -87,11 +87,9 @@ std::string check_color(std::optional<Color> c) {
         switch (__match_inner_1) {
         case Color::Red: {
             return "red";
-            break;
         }
         default: {
             return "other";
-            break;
         }
         }
     }

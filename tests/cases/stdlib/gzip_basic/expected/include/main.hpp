@@ -90,7 +90,8 @@ struct __gen_lines_of : public ::tpy::next_iter_mixin<__gen_lines_of, ::tpy::Byt
     };
 
     __gen_lines_of(std::string_view path_)
-        : __state(S_INITIAL), path(std::string(path_)) {}
+        : __state(S_INITIAL),
+          path(std::string(path_)) {}
 
     __gen_lines_of(__gen_lines_of&&) = default;
     ~__gen_lines_of() {

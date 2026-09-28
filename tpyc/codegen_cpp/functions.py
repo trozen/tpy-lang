@@ -1788,13 +1788,14 @@ class FunctionGenerator:
         if thir_fn is None:
             raise CodeGenError(
                 f"internal error: no lowered body for '{func.name}'", func.loc)
-        emit_thir_body(out, thir_fn, indent_level,
-                       temps=TempSink(self.ctx),
-                       with_counter=ModuleCounter(self.ctx, "with_counter"),
-                       try_counter=ModuleCounter(self.ctx, "try_except_counter"),
-                       finally_guard_counter=ModuleCounter(
-                           self.ctx, "finally_guard_counter"),
-                       return_cpp=return_cpp)
+        with self.ctx.temps.function_scope():
+            emit_thir_body(out, thir_fn, indent_level,
+                           temps=TempSink(self.ctx),
+                           with_counter=ModuleCounter(self.ctx, "with_counter"),
+                           try_counter=ModuleCounter(self.ctx, "try_except_counter"),
+                           finally_guard_counter=ModuleCounter(
+                               self.ctx, "finally_guard_counter"),
+                           return_cpp=return_cpp)
 
     def seed_param_locals(self, *args, **kwargs) -> None:
         """Delegate to the shared emit primitive."""
@@ -2030,13 +2031,14 @@ class FunctionGenerator:
         # `global_scope`: slots spell `static __global_slot_N` at this scope.
         # The ctx seeding above still runs -- gen_main and the record/global
         # emitters read it after this call.
-        emit_thir_body(out, self.ctx.thir_top_level, 1,
-                       temps=TempSink(self.ctx),
-                       with_counter=ModuleCounter(self.ctx, "with_counter"),
-                       try_counter=ModuleCounter(self.ctx, "try_except_counter"),
-                       finally_guard_counter=ModuleCounter(
-                           self.ctx, "finally_guard_counter"),
-                       global_scope=True)
+        with self.ctx.temps.function_scope():
+            emit_thir_body(out, self.ctx.thir_top_level, 1,
+                           temps=TempSink(self.ctx),
+                           with_counter=ModuleCounter(self.ctx, "with_counter"),
+                           try_counter=ModuleCounter(self.ctx, "try_except_counter"),
+                           finally_guard_counter=ModuleCounter(
+                               self.ctx, "finally_guard_counter"),
+                           global_scope=True)
 
         self.ctx.current_ns = None
         if has_user_main:

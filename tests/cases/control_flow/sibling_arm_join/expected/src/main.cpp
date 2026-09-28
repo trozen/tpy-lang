@@ -378,7 +378,6 @@ void match_nested(int32_t k) {
         std::string_view r = "two";
         std::cout << "match_nested" << " " << r << "\n";
         return;
-        break;
     }
     default: {
         std::string_view r;
@@ -389,7 +388,6 @@ void match_nested(int32_t k) {
         }
         std::cout << "match_nested" << " " << r << "\n";
         return;
-        break;
     }
     }
     ::std::unreachable();
@@ -522,7 +520,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int64_t g = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen_arms" << " " << g << "\n";
+            std::cout << "gen_arms" << " " << g << "\n";
         }
     }
     {
@@ -532,7 +530,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int64_t g = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "gen_arms" << " " << g << "\n";
+            std::cout << "gen_arms" << " " << g << "\n";
         }
     }
     std::cout << "async_arms" << " " << ::tpystd::asyncio::run<int64_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int64_t>>(::tpyapp::main::async_arms(1, static_cast<int64_t>(10000000000)))) << "\n";

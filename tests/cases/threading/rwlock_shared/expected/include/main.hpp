@@ -56,7 +56,10 @@ inline std::ostream& operator<<(std::ostream& os, const Writer& obj) {
 //     self.shared = shared
 //     self.id = id
 //     self.iters = iters
-inline Writer::Writer(::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::RwLock<std::vector<int32_t>>>&& shared, int32_t id, int32_t iters) : shared(std::move(shared)), id(id), iters(iters) {}
+inline Writer::Writer(::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::RwLock<std::vector<int32_t>>>&& shared, int32_t id, int32_t iters)
+    : shared(std::move(shared)),
+      id(id),
+      iters(iters) {}
 
 // def run(self) -> None:
 //     i = 0

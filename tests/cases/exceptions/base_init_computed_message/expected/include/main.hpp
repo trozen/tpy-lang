@@ -99,7 +99,9 @@ inline std::ostream& operator<<(std::ostream& os, const Formatted& obj) {
 // def __init__(self, n: int32) -> None:
 //     super().__init__("tag" + str(n))  # concat + conversion in the base cell
 //     self.n = n
-inline Tagged::Tagged(int32_t n) : ::tpy::Exception((::tpy::str_concat("tag", ::tpy::fixed_to_str<int32_t>(n)))), n(n) {}
+inline Tagged::Tagged(int32_t n)
+    : ::tpy::Exception((::tpy::str_concat("tag", ::tpy::fixed_to_str<int32_t>(n)))),
+      n(n) {}
 
 // def __init__(self, prefix: str, t: Tagged) -> None:
 //     # A field read of a record param is a scalar operand like any other.
@@ -110,13 +112,17 @@ inline Labelled::Labelled(std::string_view prefix, const Tagged& t) : ::tpy::Exc
 //     # The conversion standing alone, with no concat around it.
 //     super().__init__(str(n))
 //     self.n = n
-inline Numbered::Numbered(int32_t n) : ::tpy::Exception(::tpy::fixed_to_str<int32_t>(n)), n(n) {}
+inline Numbered::Numbered(int32_t n)
+    : ::tpy::Exception(::tpy::fixed_to_str<int32_t>(n)),
+      n(n) {}
 
 // def __init__(self, n: int32) -> None:
 //     # std::format is a pure expression too, so the f-string spelling of
 //     # the same message lands in the member-init list as well.
 //     super().__init__(f"tag{n}")
 //     self.n = n
-inline Formatted::Formatted(int32_t n) : ::tpy::Exception(std::format("tag{}", n)), n(n) {}
+inline Formatted::Formatted(int32_t n)
+    : ::tpy::Exception(std::format("tag{}", n)),
+      n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -35,8 +35,7 @@ struct __gen_gen_return_normal : public ::tpy::next_iter_mixin<__gen_gen_return_
         S_DONE = 4,
     };
 
-    __gen_gen_return_normal()
-        : __state(S_INITIAL) {}
+    __gen_gen_return_normal() : __state(S_INITIAL) {}
 
     __gen_gen_return_normal(__gen_gen_return_normal&&) = default;
     ~__gen_gen_return_normal() {
@@ -73,8 +72,7 @@ struct __gen_gen_return_suppresses_exc : public ::tpy::next_iter_mixin<__gen_gen
         S_DONE = 3,
     };
 
-    __gen_gen_return_suppresses_exc()
-        : __state(S_INITIAL) {}
+    __gen_gen_return_suppresses_exc() : __state(S_INITIAL) {}
 
     __gen_gen_return_suppresses_exc(__gen_gen_return_suppresses_exc&&) = default;
     ~__gen_gen_return_suppresses_exc() {
@@ -116,8 +114,7 @@ struct __gen_gen_return_in_loop : public ::tpy::next_iter_mixin<__gen_gen_return
         S_DONE = 5,
     };
 
-    __gen_gen_return_in_loop()
-        : __state(S_INITIAL) {}
+    __gen_gen_return_in_loop() : __state(S_INITIAL) {}
 
     __gen_gen_return_in_loop(__gen_gen_return_in_loop&&) = default;
     ~__gen_gen_return_in_loop() {

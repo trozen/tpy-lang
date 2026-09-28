@@ -37,11 +37,9 @@ std::string float_lit_at_int(int32_t v) {
     switch (__match_subject_1) {
     case 2: {
         return "hit";
-        break;
     }
     default: {
         return "miss";
-        break;
     }
     }
     ::std::unreachable();
@@ -134,11 +132,9 @@ std::string or_alt(int32_t v) {
     case 2:
     {
         return "hit";
-        break;
     }
     default: {
         return "miss";
-        break;
     }
     }
     ::std::unreachable();
@@ -157,11 +153,9 @@ std::string as_alt(int32_t v) {
     case 2: {
         auto x = __match_subject_1;
         return (::tpy::str_concat("hit-", ::tpy::fixed_to_str<int32_t>(x)));
-        break;
     }
     default: {
         return "miss";
-        break;
     }
     }
     ::std::unreachable();
@@ -186,11 +180,9 @@ std::string guarded_label(int32_t v, bool flag) {
         } else {
             return "plain";
         }
-        break;
     }
     default: {
         return "miss";
-        break;
     }
     }
     ::std::unreachable();
@@ -216,7 +208,6 @@ std::string guard_default(int32_t v, bool flag) {
     }
     default: __match_default_2: {
         return "fallthrough";
-        break;
     }
     }
     ::std::unreachable();
@@ -239,18 +230,14 @@ std::string or_overlap_int(int32_t v, bool flag) {
     if ((__match_subject_1 == 1 || __match_subject_1 == 2)) {
         if (flag) {
             return "or-guard";
-            goto __match_end_2;
         }
     }
     if (__match_subject_1 == 2) {
         return "two";
-        goto __match_end_2;
     }
     {
         return "other";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -269,18 +256,14 @@ std::string or_overlap_folded(int32_t v, bool flag) {
     if ((__match_subject_1 == 1 || __match_subject_1 == 2)) {
         if (flag) {
             return "or-guard";
-            goto __match_end_2;
         }
     }
     if (__match_subject_1 == 2) {
         return "two";
-        goto __match_end_2;
     }
     {
         return "other";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -382,11 +365,9 @@ std::string nested(int32_t outer, double inner) {
             return "1/?";
         }
         ::std::unreachable();
-        break;
     }
     default: {
         return "?";
-        break;
     }
     }
     ::std::unreachable();
@@ -411,11 +392,9 @@ std::string opt_lit(std::optional<int32_t> v) {
         switch (__match_inner_1) {
         case 1: {
             return "hit";
-            break;
         }
         default: {
             return "miss";
-            break;
         }
         }
     }

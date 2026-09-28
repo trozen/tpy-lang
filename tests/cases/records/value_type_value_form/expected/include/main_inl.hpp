@@ -195,8 +195,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_tagged_gen::__next__()
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        ::tpy::Union<int32_t, std::string> __tmp_10 = n;
-        t = Tagged(__tmp_10, 1);
+        ::tpy::Union<int32_t, std::string> __tmp_1 = n;
+        t = Tagged(__tmp_1, 1);
         __state = S_RESUME_0;
         return t.n;
     }
@@ -235,8 +235,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_tagged_pairs::__next__
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        ::tpy::Union<int32_t, std::string> __tmp_11 = n;
-        q = Pair<Tagged>(Tagged(__tmp_11, 4), Tagged(5, 5));
+        ::tpy::Union<int32_t, std::string> __tmp_1 = n;
+        q = Pair<Tagged>(Tagged(__tmp_1, 4), Tagged(5, 5));
         __state = S_RESUME_0;
         return n;
     }
@@ -293,8 +293,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_tuple_gen::__next__() 
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        ::tpy::Union<int32_t, std::string> __tmp_13 = n;
-        tg = Tagged(__tmp_13, n);
+        ::tpy::Union<int32_t, std::string> __tmp_1 = n;
+        tg = Tagged(__tmp_1, n);
         t = std::tuple<Tagged, int32_t>{tg, n};
         u = std::tuple<Calm, int32_t>{Calm(n), n};
         __state = S_RESUME_0;

@@ -84,7 +84,9 @@ namespace tpyapp::main {
 // def __init__(self, name: str, id: int32) -> None:
 //     self._name = name
 //     self._id = id
-inline Item::Item(std::string_view name, int32_t id) : _name(name), _id(id) {}
+inline Item::Item(std::string_view name, int32_t id)
+    : _name(name),
+      _id(id) {}
 
 // def describe(self) -> str:
 //     return self._name

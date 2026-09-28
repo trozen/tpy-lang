@@ -80,7 +80,9 @@ struct __coro_coro {
     };
 
     __coro_coro(H& h)
-        : __state(S_INITIAL), __cancel_pending(false), h(h) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          h(h) {}
 
     __coro_coro(__coro_coro&&) = default;
     ~__coro_coro() {
@@ -122,7 +124,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     };
 
     __gen_gen(H& h)
-        : __state(S_INITIAL), h(h) {}
+        : __state(S_INITIAL),
+          h(h) {}
 
     __gen_gen(__gen_gen&&) = default;
     ~__gen_gen() {

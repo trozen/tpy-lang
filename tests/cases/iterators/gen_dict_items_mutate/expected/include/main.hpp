@@ -57,7 +57,8 @@ struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
     };
 
     __gen_bump(::tpy::ordered_map<int32_t, C>& d)
-        : __state(S_INITIAL), d(d) {}
+        : __state(S_INITIAL),
+          d(d) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_bump& __iter__() { return *this; }
@@ -85,7 +86,8 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, int32_t> {
     };
 
     __gen_pairs(::tpy::ordered_map<int32_t, C>& d)
-        : __state(S_INITIAL), d(d) {}
+        : __state(S_INITIAL),
+          d(d) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_pairs& __iter__() { return *this; }

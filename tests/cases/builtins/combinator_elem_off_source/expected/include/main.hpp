@@ -191,7 +191,9 @@ struct __coro_async_mut {
     };
 
     __coro_async_mut(std::vector<Cell>& cells)
-        : __state(S_INITIAL), __cancel_pending(false), cells(cells) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          cells(cells) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -218,7 +220,8 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each, ::tpy::val_or_ref<
     };
 
     __gen_each(std::vector<Cell>& cells)
-        : __state(S_INITIAL), cells(cells) {}
+        : __state(S_INITIAL),
+          cells(cells) {}
 
     std::expected<::tpy::val_or_ref<Cell>, ::tpy::StopIteration> __next__();
     __gen_each& __iter__() { return *this; }
@@ -247,7 +250,8 @@ struct __gen_gen_ro : public ::tpy::next_iter_mixin<__gen_gen_ro, int32_t> {
     };
 
     __gen_gen_ro(const std::vector<Cell>& cells)
-        : __state(S_INITIAL), cells(cells) {}
+        : __state(S_INITIAL),
+          cells(cells) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_ro& __iter__() { return *this; }
@@ -276,7 +280,8 @@ struct __gen_gen_mut : public ::tpy::next_iter_mixin<__gen_gen_mut, int32_t> {
     };
 
     __gen_gen_mut(std::vector<Cell>& cells)
-        : __state(S_INITIAL), cells(cells) {}
+        : __state(S_INITIAL),
+          cells(cells) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_mut& __iter__() { return *this; }
@@ -306,7 +311,9 @@ struct __gen_gen_zip_mut : public ::tpy::next_iter_mixin<__gen_gen_zip_mut, int3
     };
 
     __gen_gen_zip_mut(std::vector<Cell>& cells, const std::vector<int32_t>& ws)
-        : __state(S_INITIAL), cells(cells), ws(ws) {}
+        : __state(S_INITIAL),
+          cells(cells),
+          ws(ws) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_zip_mut& __iter__() { return *this; }
@@ -358,10 +365,10 @@ inline int32_t Bag::total() const {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_11 = ::tpy::unwrap_ref(*__r_1);
-        auto& __tup_1 = __for_tup_11;
-        int32_t i = std::get<0>(__tup_1);
-        auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        t = ::tpy::add_check<int32_t>(t, (::tpy::add_check<int32_t>(c.v, i)));
+            auto& __tup_1 = __for_tup_11;
+            int32_t i = std::get<0>(__tup_1);
+            auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            t = ::tpy::add_check<int32_t>(t, (::tpy::add_check<int32_t>(c.v, i)));
         }
     }
     return t;
@@ -378,10 +385,10 @@ inline void Bag::bump_all() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_12 = ::tpy::unwrap_ref(*__r_1);
-        auto& __tup_1 = __for_tup_12;
-        int32_t i = std::get<0>(__tup_1);
-        auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        c.bump((::tpy::add_check<int32_t>(i, 5)));
+            auto& __tup_1 = __for_tup_12;
+            int32_t i = std::get<0>(__tup_1);
+            auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            c.bump((::tpy::add_check<int32_t>(i, 5)));
         }
     }
 }

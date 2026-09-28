@@ -50,7 +50,9 @@ struct Holder {
     //     self._k = k
     //     self._v = v
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v) : _k(k), _v(v) {}
+    explicit Holder(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v)
+        : _k(k),
+          _v(v) {}
 
     // @property
     // def key(self) -> K:
@@ -135,7 +137,8 @@ struct __gen_bump_gen : public ::tpy::next_iter_mixin<__gen_bump_gen, int32_t> {
     };
 
     __gen_bump_gen(Holder<int32_t, std::vector<Rec>>& h)
-        : __state(S_INITIAL), h(h) {}
+        : __state(S_INITIAL),
+          h(h) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_bump_gen& __iter__() { return *this; }

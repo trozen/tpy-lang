@@ -51,7 +51,9 @@ struct __coro_C_snapshot {
     };
 
     __coro_C_snapshot(const C& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<C> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -81,7 +83,8 @@ struct __coro_main {
     };
 
     __coro_main()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

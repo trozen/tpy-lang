@@ -34,7 +34,8 @@ struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
     };
 
     __gen_bump(::tpy::ordered_map<std::string, std::vector<int32_t>>& d)
-        : __state(S_INITIAL), d(d) {}
+        : __state(S_INITIAL),
+          d(d) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_bump& __iter__() { return *this; }

@@ -61,7 +61,9 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // def create_point(self, x: int32, y: int32) -> Own[Point]:
 //     return Point(x, y)

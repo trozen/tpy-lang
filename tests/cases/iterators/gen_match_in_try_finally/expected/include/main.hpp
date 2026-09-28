@@ -34,7 +34,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     };
 
     __gen_gen(::tpy::BigInt n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     __gen_gen(__gen_gen&&) = default;
     ~__gen_gen() {

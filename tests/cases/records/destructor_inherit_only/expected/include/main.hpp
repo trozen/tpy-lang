@@ -81,6 +81,8 @@ inline Base::~Base() {
 // def __init__(self, name: str, tag: str):
 //     super().__init__(name)
 //     self.tag = tag
-inline Child::Child(std::string_view name, std::string_view tag) : Base(name), tag(tag) {}
+inline Child::Child(std::string_view name, std::string_view tag)
+    : Base(name),
+      tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

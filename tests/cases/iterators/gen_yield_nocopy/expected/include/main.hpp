@@ -57,7 +57,8 @@ struct __gen_handles : public ::tpy::next_iter_mixin<__gen_handles, ::tpy::val_o
     };
 
     __gen_handles(std::vector<Handle>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<::tpy::val_or_ref<Handle>, ::tpy::StopIteration> __next__();
     __gen_handles& __iter__() { return *this; }

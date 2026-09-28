@@ -66,7 +66,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point3D& obj) {
 }
 
 
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 inline bool Point::__eq__(const Point& other) const {
     return ((this->x == other.x) && (this->y == other.y));
@@ -76,7 +78,9 @@ inline std::string Point::__repr__() const {
     return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 
-inline Point3D::Point3D(int32_t x, int32_t y, int32_t z) : Point(x, y), z(z) {}
+inline Point3D::Point3D(int32_t x, int32_t y, int32_t z)
+    : Point(x, y),
+      z(z) {}
 
 inline bool Point3D::__eq__(const Point3D& other) const {
     return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));

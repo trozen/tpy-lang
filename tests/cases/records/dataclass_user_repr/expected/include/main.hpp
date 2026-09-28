@@ -42,7 +42,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // def __repr__(self) -> str:
 //     return f"Point[{self.x},{self.y}]"

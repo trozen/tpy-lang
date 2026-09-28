@@ -65,7 +65,9 @@ struct __coro_Container_last_n {
     };
 
     __coro_Container_last_n(const Container& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -94,7 +96,8 @@ struct __coro_driver {
     };
 
     __coro_driver()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

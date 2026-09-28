@@ -106,7 +106,9 @@ inline Jar::Jar(int32_t x) : x(x) {}
 // def __init__(self, t: int32) -> None:
 //     self.jar = Jar(t)
 //     self.items = [t]
-inline Mid::Mid(int32_t t) : jar(Jar(t)), items(std::vector<int32_t>{t}) {}
+inline Mid::Mid(int32_t t)
+    : jar(Jar(t)),
+      items(std::vector<int32_t>{t}) {}
 
 // def __init__(self, t: int32) -> None:
 //     self.mid = Mid(t)

@@ -50,7 +50,9 @@ struct __gen_counts : public ::tpy::next_iter_mixin<__gen_counts, ::tpy::BigInt>
     };
 
     __gen_counts(const Cat& a, const Cat& b)
-        : __state(S_INITIAL), a(a), b(b) {}
+        : __state(S_INITIAL),
+          a(a),
+          b(b) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_counts& __iter__() { return *this; }

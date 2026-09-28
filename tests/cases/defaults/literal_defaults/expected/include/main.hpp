@@ -69,7 +69,9 @@ struct __coro_async_fn {
     };
 
     __coro_async_fn(std::string mode_ = "rb")
-        : __state(S_INITIAL), __cancel_pending(false), mode(std::move(mode_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          mode(std::move(mode_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -97,7 +99,8 @@ struct __coro_run_async {
     };
 
     __coro_run_async()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -119,7 +122,8 @@ struct __gen_generator : public ::tpy::next_iter_mixin<__gen_generator, std::str
     };
 
     __gen_generator(std::string mode_ = "rb")
-        : __state(S_INITIAL), mode(std::move(mode_)) {}
+        : __state(S_INITIAL),
+          mode(std::move(mode_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_generator& __iter__() { return *this; }

@@ -284,7 +284,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << x << "\n";
+            std::cout << x << "\n";
         }
     }
     std::cout << "--- gen_nested_with_return_in_finally ---" << "\n";
@@ -295,7 +295,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_3);
-        std::cout << x << "\n";
+            std::cout << x << "\n";
         }
     }
 }

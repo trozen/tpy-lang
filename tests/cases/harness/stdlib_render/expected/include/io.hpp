@@ -399,7 +399,8 @@ struct __gen_StringIO___iter__ : public ::tpy::next_iter_mixin<__gen_StringIO___
     };
 
     __gen_StringIO___iter__(StringIO& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_StringIO___iter__& __iter__() { return *this; }
@@ -427,7 +428,8 @@ struct __gen_BytesIO___iter__ : public ::tpy::next_iter_mixin<__gen_BytesIO___it
     };
 
     __gen_BytesIO___iter__(BytesIO& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::Bytes, ::tpy::StopIteration> __next__();
     __gen_BytesIO___iter__& __iter__() { return *this; }
@@ -455,7 +457,8 @@ struct __gen_BufferedReader___iter__ : public ::tpy::next_iter_mixin<__gen_Buffe
     };
 
     __gen_BufferedReader___iter__(BufferedReader& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::Bytes, ::tpy::StopIteration> __next__();
     __gen_BufferedReader___iter__& __iter__() { return *this; }
@@ -626,7 +629,10 @@ inline void StringIO::_check_open() const {
 //         self._chunks.append(bytes(initial))
 //         self._total = int32(len(initial))
 //     self._closed = False
-inline BytesIO::BytesIO(std::optional<::tpy::BytesView> initial) : _chunks(std::vector<::tpy::Bytes>{}), _pos(0), _total(0) {
+inline BytesIO::BytesIO(std::optional<::tpy::BytesView> initial)
+    : _chunks(std::vector<::tpy::Bytes>{}),
+      _pos(0),
+      _total(0) {
     if (((initial.has_value()) && (::tpy::__len__((*initial)) > 0))) {
         this->_chunks.push_back(::tpy::Bytes((*initial)));
         this->_total = ::tpy::__len__((*initial));
@@ -775,7 +781,11 @@ inline FileIO::FileIO(int64_t fd, bool closefd, bool timeout_mode) {
     this->_timeout_mode = timeout_mode;
 }
 
-inline FileIO::FileIO(FileIO&& other) noexcept : _fd(std::move(other._fd)), _closefd(std::move(other._closefd)), _closed(std::move(other._closed)), _timeout_mode(std::move(other._timeout_mode)) {
+inline FileIO::FileIO(FileIO&& other) noexcept
+    : _fd(std::move(other._fd)),
+      _closefd(std::move(other._closefd)),
+      _closed(std::move(other._closed)),
+      _timeout_mode(std::move(other._timeout_mode)) {
     other.__tpy_owned_ = false;
 }
 inline FileIO& FileIO::operator=(FileIO&& other) noexcept {

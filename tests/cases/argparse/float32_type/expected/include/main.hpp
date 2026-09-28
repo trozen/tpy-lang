@@ -38,6 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 
 
 // args = parser.parse_args(["2.5", "--gain", "1.25"])
-inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(float scale, float bias, std::optional<float> gain) : scale(scale), bias(bias), gain(gain) {}
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(float scale, float bias, std::optional<float> gain)
+    : scale(scale),
+      bias(bias),
+      gain(gain) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -161,6 +161,8 @@ inline int32_t Cell::peek() const {
 // def __init__(self, v: int32):
 //     self.b = Box(Inner(v))
 //     self.items = [Inner(v)]
-inline Outer::Outer(int32_t v) : b(::tpystd::tplib::box::Box<Inner>(Inner(v))), items(std::vector<Inner>{Inner(v)}) {}
+inline Outer::Outer(int32_t v)
+    : b(::tpystd::tplib::box::Box<Inner>(Inner(v))),
+      items(std::vector<Inner>{Inner(v)}) {}
 void __tpy_init();
 } // namespace tpyapp::main

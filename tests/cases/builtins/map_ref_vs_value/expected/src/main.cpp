@@ -54,7 +54,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_1);
-        p.x = (::tpy::add_check<int32_t>(p.x, 100));
+            p.x = (::tpy::add_check<int32_t>(p.x, 100));
         }
     }
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
@@ -66,7 +66,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_3);
-        p.x = 999;
+            p.x = 999;
         }
     }
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";

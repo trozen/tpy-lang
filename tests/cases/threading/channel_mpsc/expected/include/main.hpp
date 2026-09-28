@@ -82,7 +82,9 @@ inline Item::Item(int32_t v) : v(v) {}
 // def __init__(self, tx: Own[Sender[Item]], base: int32) -> None:
 //     self.tx = tx
 //     self.base = base
-inline Producer::Producer(::tpystd::tplib::channel::Sender<Item>&& tx, int32_t base) : tx(std::move(tx)), base(base) {}
+inline Producer::Producer(::tpystd::tplib::channel::Sender<Item>&& tx, int32_t base)
+    : tx(std::move(tx)),
+      base(base) {}
 
 // def run(self) -> None:
 //     i = 0

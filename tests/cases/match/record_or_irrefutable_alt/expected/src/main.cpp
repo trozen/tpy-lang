@@ -16,13 +16,10 @@ std::string plain(const Cat& c) {
     auto& __match_subject_1 = c;
     {
         return "hit";
-        goto __match_end_2;
     }
     {
         return "miss";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -40,17 +37,13 @@ std::string nonfinal(const Cat& c) {
     auto& __match_subject_1 = c;
     {
         return "first";
-        goto __match_end_2;
     }
     if (__match_subject_1.lives == 5) {
         return "second";
-        goto __match_end_2;
     }
     {
         return "other";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -178,7 +171,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen_one:" << " " << v << "\n";
+            std::cout << "gen_one:" << " " << v << "\n";
         }
     }
     {
@@ -189,7 +182,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "gen_five:" << " " << v << "\n";
+            std::cout << "gen_five:" << " " << v << "\n";
         }
     }
     {
@@ -200,7 +193,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        std::cout << "gen_guarded:" << " " << v << "\n";
+            std::cout << "gen_guarded:" << " " << v << "\n";
         }
     }
     {
@@ -211,7 +204,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        std::cout << "gen_unguarded:" << " " << v << "\n";
+            std::cout << "gen_unguarded:" << " " << v << "\n";
         }
     }
 }

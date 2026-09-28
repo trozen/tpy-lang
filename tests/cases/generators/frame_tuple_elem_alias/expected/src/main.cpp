@@ -158,7 +158,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "ro_param" << " " << v << "\n";
+            std::cout << "ro_param" << " " << v << "\n";
         }
     }
     {
@@ -168,7 +168,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "mut_param" << " " << v << "\n";
+            std::cout << "mut_param" << " " << v << "\n";
         }
     }
     std::cout << "mut_param after" << " " << r0.x << "\n";
@@ -181,7 +181,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        std::cout << "method" << " " << v << "\n";
+            std::cout << "method" << " " << v << "\n";
         }
     }
     std::cout << "method after" << " " << r1.x << "\n";
@@ -192,7 +192,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        std::cout << "nested" << " " << v << "\n";
+            std::cout << "nested" << " " << v << "\n";
         }
     }
     std::cout << "nested after" << " " << r0.x << "\n";
@@ -203,7 +203,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        std::cout << "frame_local" << " " << v << "\n";
+            std::cout << "frame_local" << " " << v << "\n";
         }
     }
     std::cout << "frame_local after" << " " << r0.x << "\n";
@@ -215,7 +215,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-        std::cout << "mixed_borrowed" << " " << v << "\n";
+            std::cout << "mixed_borrowed" << " " << v << "\n";
         }
     }
     std::cout << "mixed_borrowed after" << " " << b.x << "\n";
@@ -226,7 +226,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-        std::cout << "owning_no_rebind" << " " << v << "\n";
+            std::cout << "owning_no_rebind" << " " << v << "\n";
         }
     }
     {
@@ -237,7 +237,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-        std::cout << "mixed_owned_no_rebind" << " " << v << "\n";
+            std::cout << "mixed_owned_no_rebind" << " " << v << "\n";
         }
     }
     A mb = A(5);
@@ -249,7 +249,7 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
-        std::cout << "mixed_borrowed_rebound" << " " << v << "\n";
+            std::cout << "mixed_borrowed_rebound" << " " << v << "\n";
         }
     }
     {
@@ -259,7 +259,7 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_19);
-        std::cout << "rebind_before_alias" << " " << v << "\n";
+            std::cout << "rebind_before_alias" << " " << v << "\n";
         }
     }
     {
@@ -269,7 +269,7 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_21);
-        std::cout << "alias_after_last_rebind" << " " << v << "\n";
+            std::cout << "alias_after_last_rebind" << " " << v << "\n";
         }
     }
     {
@@ -279,7 +279,7 @@ void main() {
             auto __r_23 = __itr_22.__next__();
             if (!__r_23.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_23);
-        std::cout << "orelse_alias" << " " << v << "\n";
+            std::cout << "orelse_alias" << " " << v << "\n";
         }
     }
 }

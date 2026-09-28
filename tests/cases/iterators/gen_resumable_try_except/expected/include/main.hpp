@@ -36,7 +36,8 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, ::tpy::BigIn
     };
 
     __gen_guarded(const std::vector<::tpy::BigInt>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_guarded& __iter__() { return *this; }

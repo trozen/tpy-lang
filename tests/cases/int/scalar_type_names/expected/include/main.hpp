@@ -107,7 +107,8 @@ struct __gen_bytes_of : public ::tpy::next_iter_mixin<__gen_bytes_of, uint8_t> {
     };
 
     __gen_bytes_of(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<uint8_t, ::tpy::StopIteration> __next__();
     __gen_bytes_of& __iter__() { return *this; }

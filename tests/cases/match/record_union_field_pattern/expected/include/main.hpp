@@ -107,6 +107,8 @@ inline Wrapper::Wrapper(::tpy::Union<const Cat*, const Dog*> pet) : pet(::tpy::t
 // def __init__(self, tag: str, value: str | int32) -> None:
 //     self.tag = tag
 //     self.value = value
-inline Tagged::Tagged(std::string_view tag, const ::tpy::Union<int32_t, std::string>& value) : tag(tag), value(value) {}
+inline Tagged::Tagged(std::string_view tag, const ::tpy::Union<int32_t, std::string>& value)
+    : tag(tag),
+      value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

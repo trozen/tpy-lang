@@ -120,7 +120,10 @@ struct __coro_async_arms {
     };
 
     __coro_async_arms(int32_t k_, int64_t big_)
-        : __state(S_INITIAL), __cancel_pending(false), k(std::move(k_)), big(std::move(big_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          k(std::move(k_)),
+          big(std::move(big_)) {}
 
     ::tpystd::tpy::Poll<int64_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -145,7 +148,9 @@ struct __gen_gen_arms : public ::tpy::next_iter_mixin<__gen_gen_arms, int64_t> {
     };
 
     __gen_gen_arms(int32_t k_, int64_t big_)
-        : __state(S_INITIAL), k(std::move(k_)), big(std::move(big_)) {}
+        : __state(S_INITIAL),
+          k(std::move(k_)),
+          big(std::move(big_)) {}
 
     std::expected<int64_t, ::tpy::StopIteration> __next__();
     __gen_gen_arms& __iter__() { return *this; }

@@ -45,7 +45,9 @@ struct Pair {
     //     self.first_val = copy(a)
     //     self.second_val = copy(b)
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b) : first_val(a), second_val(b) {}
+    explicit Pair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b)
+        : first_val(a),
+          second_val(b) {}
 
     // def first(self: auto_own[Self]) -> auto_own[T]:
     //     return self.first_val

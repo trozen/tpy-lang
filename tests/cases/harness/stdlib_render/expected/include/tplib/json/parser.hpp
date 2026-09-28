@@ -193,7 +193,9 @@ inline std::ostream& operator<<(std::ostream& os, const JsonReader& obj) {
 //     self.pos = pos
 //     # CPython keeps the message only in `args`; `describe()` reads the attribute.
 //     self.message = message
-inline JsonError::JsonError(std::string_view message, int32_t pos) : pos(pos), message(message) {
+inline JsonError::JsonError(std::string_view message, int32_t pos)
+    : pos(pos),
+      message(message) {
     this->message = message;
 }
 
@@ -201,7 +203,10 @@ inline JsonError::JsonError(std::string_view message, int32_t pos) : pos(pos), m
 //     self._data = data
 //     self._pos = 0
 //     self._len = len(data)
-inline JsonReader::JsonReader(std::string_view data) : _data(data), _pos(0), _len(::tpy::__len__(data)) {}
+inline JsonReader::JsonReader(std::string_view data)
+    : _data(data),
+      _pos(0),
+      _len(::tpy::__len__(data)) {}
 
 // def position(self) -> int32:
 //     """Current byte offset into the input. Used for error reporting."""

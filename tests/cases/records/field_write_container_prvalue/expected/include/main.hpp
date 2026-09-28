@@ -47,7 +47,10 @@ inline std::ostream& operator<<(std::ostream& os, const Canvas& obj) {
 //     self.pixels = []
 //     self.lines = []
 //     self.tags = set()
-inline Canvas::Canvas() : pixels(std::vector<int32_t>{}), lines(std::vector<std::string>{}), tags(::tpy::ordered_set<int32_t>()) {}
+inline Canvas::Canvas()
+    : pixels(std::vector<int32_t>{}),
+      lines(std::vector<std::string>{}),
+      tags(::tpy::ordered_set<int32_t>()) {}
 
 // def fill(self, n: int32, v: int32) -> None:
 //     self.pixels = [v] * n  # tpyc: ok -- the repeat materializes the list

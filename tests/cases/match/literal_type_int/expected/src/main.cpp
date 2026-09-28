@@ -17,15 +17,12 @@ std::string priority_label(int32_t level) {
     switch (__match_subject_1) {
     case 1: {
         return "low";
-        break;
     }
     case 2: {
         return "medium";
-        break;
     }
     case 3: {
         return "high";
-        break;
     }
     }
     ::std::unreachable();

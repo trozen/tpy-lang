@@ -64,7 +64,9 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 // def __init__(self, key: int32, tag: int32) -> None:
 //     self.key = key
 //     self.tag = tag
-inline Pair::Pair(int32_t key, int32_t tag) : key(key), tag(tag) {}
+inline Pair::Pair(int32_t key, int32_t tag)
+    : key(key),
+      tag(tag) {}
 
 // def __lt__(self, other: Pair) -> bool:
 //     return self.key < other.key

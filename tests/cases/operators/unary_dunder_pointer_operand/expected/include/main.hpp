@@ -160,7 +160,9 @@ struct __coro_coro {
     };
 
     __coro_coro(const Holder& h)
-        : __state(S_INITIAL), __cancel_pending(false), h(h) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          h(h) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -184,7 +186,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     };
 
     __gen_gen(Cell* o_)
-        : __state(S_INITIAL), o(o_) {}
+        : __state(S_INITIAL),
+          o(o_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -202,7 +205,9 @@ inline Tag::Tag(int32_t k) : k(k) {}
 // def __init__(self, n: int32) -> None:
 //     self.n = n
 //     self.tag = Tag(n)
-inline Cell::Cell(int32_t n) : n(n), tag(Tag(n)) {}
+inline Cell::Cell(int32_t n)
+    : n(n),
+      tag(Tag(n)) {}
 
 // def __neg__(self) -> int32:
 //     return -self.n

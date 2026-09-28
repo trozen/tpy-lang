@@ -140,7 +140,9 @@ namespace tpyapp::main {
 // def __init__(self, num: int, den: int) -> None:
 //     self.num = num
 //     self.den = den
-inline Frac::Frac(const ::tpy::BigInt& num, const ::tpy::BigInt& den) : num(num), den(den) {}
+inline Frac::Frac(const ::tpy::BigInt& num, const ::tpy::BigInt& den)
+    : num(num),
+      den(den) {}
 
 // def __str__(self) -> str:
 //     return str(self.num) + "/" + str(self.den)
@@ -151,7 +153,9 @@ inline std::string Frac::__str__() const {
 // def __init__(self, x: float, y: float) -> None:
 //     self.x = x
 //     self.y = y
-inline Vec::Vec(double x, double y) : x(x), y(y) {}
+inline Vec::Vec(double x, double y)
+    : x(x),
+      y(y) {}
 
 // def __mul__(self, k: float) -> Vec:
 //     return Vec(self.x * k, self.y * k)

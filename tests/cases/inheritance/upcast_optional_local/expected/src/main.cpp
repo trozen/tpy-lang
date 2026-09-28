@@ -278,7 +278,7 @@ void same_type(Pet& x, Pet& y) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view n = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "same" << " " << n << "\n";
+            std::cout << "same" << " " << n << "\n";
         }
     }
 }
@@ -311,7 +311,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view n = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "frame" << " " << n << "\n";
+            std::cout << "frame" << " " << n << "\n";
         }
     }
     Dog __tmp_2 = Dog("rd");

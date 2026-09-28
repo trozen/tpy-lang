@@ -76,7 +76,8 @@ struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__, ::
     };
 
     __gen_Bag___iter__(Bag& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __next__();
     __gen_Bag___iter__& __iter__() { return *this; }
@@ -110,7 +111,9 @@ struct __coro_bump {
     };
 
     __coro_bump(Bag& bag)
-        : __state(S_INITIAL), __cancel_pending(false), bag(bag) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          bag(bag) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -135,7 +138,8 @@ struct __coro_amain {
     };
 
     __coro_amain()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

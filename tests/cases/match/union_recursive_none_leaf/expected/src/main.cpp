@@ -18,7 +18,6 @@ int32_t branch_count(const Tree<std::monostate>& t) {
     switch (__match_subject_1.value.index()) {
     case 0: {
         return 0;
-        break;
     }
     case 1: {
         auto& branches = std::get<1>(__match_subject_1.value);
@@ -31,7 +30,6 @@ int32_t branch_count(const Tree<std::monostate>& t) {
             total = ::tpy::add_check<int32_t>(total, ::tpyapp::main::branch_count(child));
         }
         return total;
-        break;
     }
     }
     ::std::unreachable();

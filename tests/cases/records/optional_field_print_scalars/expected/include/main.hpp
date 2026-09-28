@@ -44,7 +44,11 @@ inline std::ostream& operator<<(std::ostream& os, const Settings& obj) {
 }
 
 
-inline Settings::Settings(std::optional<int32_t> count, std::optional<bool> flag, std::optional<double> ratio, std::optional<std::string_view> label) : count(count), flag(flag), ratio(ratio), label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
+inline Settings::Settings(std::optional<int32_t> count, std::optional<bool> flag, std::optional<double> ratio, std::optional<std::string_view> label)
+    : count(count),
+      flag(flag),
+      ratio(ratio),
+      label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
 
 inline bool Settings::__eq__(const Settings& other) const {
     return ((((this->count == other.count) && (this->flag == other.flag)) && (this->ratio == other.ratio)) && (this->label == other.label));

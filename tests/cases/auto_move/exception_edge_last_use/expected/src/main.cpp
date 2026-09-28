@@ -90,8 +90,8 @@ void outer_handler_reads() {
                 try {
                     ::tpyapp::main::boom(true);
                 } catch (const ::tpy::ValueError&) {
-                    P __tmp_2 = (*p);
-                    ::tpyapp::main::take(std::move(__tmp_2));
+                    P __tmp_1 = (*p);
+                    ::tpyapp::main::take(std::move(__tmp_1));
                     ::tpyapp::main::boom(true);
                     (*p) = P(5);
                 }
@@ -114,8 +114,8 @@ void swallowed_raise() {
     auto __ctx_1 = Swallow();
     __ctx_1.__enter__();
     try {
-        P __tmp_3 = p;
-        ::tpyapp::main::take(std::move(__tmp_3));
+        P __tmp_1 = p;
+        ::tpyapp::main::take(std::move(__tmp_1));
         throw ::tpy::ValueError("x");
     } catch (::tpy::BaseException& __exc_1) {
         if (!__ctx_1.__exit__({}, &__exc_1, {})) throw;
@@ -140,8 +140,8 @@ void swallowed_call() {
     auto __ctx_2 = Swallow();
     __ctx_2.__enter__();
     try {
-        P __tmp_4 = (*p);
-        ::tpyapp::main::take(std::move(__tmp_4));
+        P __tmp_1 = (*p);
+        ::tpyapp::main::take(std::move(__tmp_1));
         ::tpyapp::main::boom(true);
         (*p) = P(5);
         goto __with_exit_2;
@@ -203,8 +203,8 @@ __gen_gen_handler_raise_finally gen_handler_raise_finally() {
             if (__fin_ran_5) throw;
             bool __fin_ran_6 = false;
             try {
-                P __tmp_6 = (*p);
-                ::tpyapp::main::take(std::move(__tmp_6));
+                P __tmp_1 = (*p);
+                ::tpyapp::main::take(std::move(__tmp_1));
                 ::tpyapp::main::boom(true);
                 p.emplace(P(5));
                 __fin_ran_6 = true;
@@ -238,8 +238,8 @@ __gen_gen_handler_raise_finally gen_handler_raise_finally() {
         } catch (const ::tpy::ValueError&) {
             bool __fin_ran_8 = false;
             try {
-                P __tmp_7 = (*p);
-                ::tpyapp::main::take(std::move(__tmp_7));
+                P __tmp_2 = (*p);
+                ::tpyapp::main::take(std::move(__tmp_2));
                 ::tpyapp::main::boom(true);
                 p.emplace(P(5));
                 __fin_ran_8 = true;
@@ -292,8 +292,8 @@ std::expected<int32_t, Fail> error_return_finally() {
     {
         bool __fin_ran_9 = false;
         try {
-            P __tmp_8 = (*p);
-            ::tpyapp::main::take(std::move(__tmp_8));
+            P __tmp_1 = (*p);
+            ::tpyapp::main::take(std::move(__tmp_1));
             {
                 auto __try_tmp_1 = ::tpyapp::main::check(true);
                 if (!__try_tmp_1.has_value()) {
@@ -334,8 +334,8 @@ void loop_handler_finally() {
                 try {
                     ::tpyapp::main::boom(true);
                 } catch (const ::tpy::ValueError&) {
-                    P __tmp_9 = p;
-                    ::tpyapp::main::take(std::move(__tmp_9));
+                    P __tmp_1 = p;
+                    ::tpyapp::main::take(std::move(__tmp_1));
                     ::tpyapp::main::boom((i == 1));
                 }
             } catch (...) {
@@ -361,8 +361,8 @@ void if_with_swallow(bool c) {
         auto __ctx_3 = Swallow();
         __ctx_3.__enter__();
         try {
-            P __tmp_10 = p;
-            ::tpyapp::main::take(std::move(__tmp_10));
+            P __tmp_1 = p;
+            ::tpyapp::main::take(std::move(__tmp_1));
             throw ::tpy::ValueError("x");
         } catch (::tpy::BaseException& __exc_3) {
             if (!__ctx_3.__exit__({}, &__exc_3, {})) throw;
@@ -387,8 +387,8 @@ void plain_with() {
     auto __ctx_4 = Plain();
     __ctx_4.__enter__();
     try {
-        P __tmp_11 = (*p);
-        ::tpyapp::main::take(std::move(__tmp_11));
+        P __tmp_1 = (*p);
+        ::tpyapp::main::take(std::move(__tmp_1));
         (*p) = P(5);
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
@@ -423,19 +423,19 @@ P handler_return_finally() {
             } catch (const ::tpy::ValueError&) {
                 auto* __tpy_retp_0 = &(p);
                 __fin_ran_13 = true;
-                P __tmp_12 = p;
-                ::tpyapp::main::take(std::move(__tmp_12));
+                P __tmp_1 = p;
+                ::tpyapp::main::take(std::move(__tmp_1));
                 return std::move(*__tpy_retp_0);
             }
         } catch (...) {
             if (!__fin_ran_13) {
-                P __tmp_13 = p;
-                ::tpyapp::main::take(std::move(__tmp_13));
+                P __tmp_2 = p;
+                ::tpyapp::main::take(std::move(__tmp_2));
             }
             throw;
         }
-        P __tmp_14 = p;
-        ::tpyapp::main::take(std::move(__tmp_14));
+        P __tmp_3 = p;
+        ::tpyapp::main::take(std::move(__tmp_3));
     }
     return P(0);
 }
@@ -492,13 +492,13 @@ P finally_consumes_return() {
         try {
             auto* __tpy_retp_0 = &(p);
             __fin_ran_15 = true;
-            P __tmp_15 = p;
-            ::tpyapp::main::take(std::move(__tmp_15));
+            P __tmp_1 = p;
+            ::tpyapp::main::take(std::move(__tmp_1));
             return std::move(*__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_15) {
-                P __tmp_16 = p;
-                ::tpyapp::main::take(std::move(__tmp_16));
+                P __tmp_2 = p;
+                ::tpyapp::main::take(std::move(__tmp_2));
             }
             throw;
         }
@@ -667,7 +667,7 @@ void main() {
                     auto __r_1 = __itr_0.__next__();
                     if (!__r_1.has_value()) break;
                     int32_t v = ::tpy::unwrap_ref(*__r_1);
-                std::cout << "gen_handler_raise_finally yield" << " " << v << "\n";
+                    std::cout << "gen_handler_raise_finally yield" << " " << v << "\n";
                 }
             }
         } catch (const ::tpy::ValueError&) {

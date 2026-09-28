@@ -40,6 +40,8 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 // def __init__(self, first: str, second: str) -> None:
 //     self.first = first
 //     self.second = second
-inline Pair::Pair(std::string_view first, std::string_view second) : first(first), second(second) {}
+inline Pair::Pair(std::string_view first, std::string_view second)
+    : first(first),
+      second(second) {}
 void __tpy_init();
 } // namespace tpyapp::main

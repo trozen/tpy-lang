@@ -27,7 +27,9 @@ struct __genexpr_bump_1_frame : public ::tpy::next_iter_mixin<__genexpr_bump_1_f
     };
 
     __genexpr_bump_1_frame(int32_t __r0_, F_limit&& limit_)
-        : __state(S_INITIAL), __r0(std::move(__r0_)), limit(std::forward<F_limit>(limit_)) {}
+        : __state(S_INITIAL),
+          __r0(std::move(__r0_)),
+          limit(std::forward<F_limit>(limit_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_bump_1_frame& __iter__() { return *this; }

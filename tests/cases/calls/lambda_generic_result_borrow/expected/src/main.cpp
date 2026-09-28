@@ -69,7 +69,7 @@ void main() {
             auto __r_2 = __itr_1.__next__();
             if (!__r_2.has_value()) break;
             auto&& i = ::tpy::unwrap_ref(*__r_2);
-        i.v = ::tpy::add_check<int32_t>(i.v, 100);
+            i.v = ::tpy::add_check<int32_t>(i.v, 100);
         }
     }
     std::cout << "map_alias" << " " << ::tpy::ListPrinter(({
@@ -92,7 +92,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& j = ::tpy::unwrap_ref(*__r_5);
-        j.v = ::tpy::add_check<int32_t>(j.v, 1);
+            j.v = ::tpy::add_check<int32_t>(j.v, 1);
         }
     }
     std::cout << "map_arg_rooted" << " " << h.inner.v << "\n";

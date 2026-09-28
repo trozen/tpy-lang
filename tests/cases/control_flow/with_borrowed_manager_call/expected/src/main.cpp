@@ -178,7 +178,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen after" << " " << v << "\n";
+            std::cout << "gen after" << " " << v << "\n";
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::coro(b)));

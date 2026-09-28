@@ -231,7 +231,8 @@ struct __gen_count : public ::tpy::next_iter_mixin<__gen_count, int32_t> {
     };
 
     __gen_count(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_count& __iter__() { return *this; }
@@ -256,7 +257,8 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs<T_it>, int32_t> {
     };
 
     __gen_pairs(T_it&& it_)
-        : __state(S_INITIAL), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_pairs& __iter__() { return *this; }
@@ -319,14 +321,18 @@ inline Missing::Missing(std::string_view message) : message(message) {}
 //     super().__init__()
 //     self.line = line
 //     self.detail = detail
-inline ParseError::ParseError(int32_t line, std::string_view detail) : line(line), detail(detail) {}
+inline ParseError::ParseError(int32_t line, std::string_view detail)
+    : line(line),
+      detail(detail) {}
 
 // def __init__(self, code: int32) -> None:
 //     super().__init__()
 //     self.code = code
 inline Tracked::Tracked(int32_t code) : code(code) {}
 
-inline Tracked::Tracked(Tracked&& other) noexcept : ::tpy::ReturnException(std::move(other)), code(std::move(other.code)) {
+inline Tracked::Tracked(Tracked&& other) noexcept
+    : ::tpy::ReturnException(std::move(other)),
+      code(std::move(other.code)) {
     other.__tpy_owned_ = false;
 }
 inline Tracked& Tracked::operator=(Tracked&& other) noexcept {
@@ -359,7 +365,9 @@ inline std::string Labelled::__str__() const {
 // def __init__(self, code: int32, why: str) -> None:
 //     super().__init__(why)  # tpyc: ok
 //     self.code = code
-inline Coded::Coded(int32_t code, std::string_view why) : code(code), message(why) {}
+inline Coded::Coded(int32_t code, std::string_view why)
+    : code(code),
+      message(why) {}
 
 // def __init__(self, why: str) -> None:
 //     Exception.__init__(self, why)  # tpyc: ok

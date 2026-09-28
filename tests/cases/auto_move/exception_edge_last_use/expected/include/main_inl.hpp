@@ -32,8 +32,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_handler_raise_fina
                 try {
                     ::tpyapp::main::boom(true);
                 } catch (const ::tpy::ValueError&) {
-                    P __tmp_5 = (*p);
-                    ::tpyapp::main::take(std::move(__tmp_5));
+                    P __tmp_1 = (*p);
+                    ::tpyapp::main::take(std::move(__tmp_1));
                     ::tpyapp::main::boom(true);
                     p.emplace(P(5));
                 }

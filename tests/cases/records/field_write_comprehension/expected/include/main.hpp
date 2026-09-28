@@ -91,7 +91,9 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     };
 
     __gen_gen(Pic& p, int32_t k_)
-        : __state(S_INITIAL), p(p), k(std::move(k_)) {}
+        : __state(S_INITIAL),
+          p(p),
+          k(std::move(k_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -108,7 +110,12 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 //     self.d = {}
 //     self.s = set()
 //     self.opt = None
-inline Pic::Pic() : data(std::vector<std::vector<int32_t>>{}), flat(std::vector<int32_t>{}), d(::tpy::ordered_map<std::string, int32_t>()), s(::tpy::ordered_set<int32_t>()), opt(std::nullopt) {}
+inline Pic::Pic()
+    : data(std::vector<std::vector<int32_t>>{}),
+      flat(std::vector<int32_t>{}),
+      d(::tpy::ordered_map<std::string, int32_t>()),
+      s(::tpy::ordered_set<int32_t>()),
+      opt(std::nullopt) {}
 
 // # Method body, a nested comprehension.
 // def fill(self, w: int32, h: int32) -> None:

@@ -259,7 +259,7 @@ def _expr(e: THIRExpr) -> str:
         return f"union_lift[{e.variant_cpp}]{{{inner}}}"
     if isinstance(e, THIRArgTemp):
         # Number-free by design: the real __tmp_N is drawn at emission from
-        # the module-cumulative sink.
+        # the ctx sink.
         mods = (" move" if e.move else "") + (" addr" if e.addr_of else "")
         return f"%argtmp({e.cpp_type or 'auto'}{mods}){{{_expr(e.init)}}}"
     if isinstance(e, THIRSlotEmplace):

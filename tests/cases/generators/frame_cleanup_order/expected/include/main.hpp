@@ -212,7 +212,8 @@ struct __coro_async_fin_raises_caught {
     };
 
     __coro_async_fin_raises_caught()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     __coro_async_fin_raises_caught(__coro_async_fin_raises_caught&&) = default;
     ~__coro_async_fin_raises_caught() {
@@ -255,7 +256,8 @@ struct __coro_async_own_handler_normal {
     };
 
     __coro_async_own_handler_normal()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     __coro_async_own_handler_normal(__coro_async_own_handler_normal&&) = default;
     ~__coro_async_own_handler_normal() {
@@ -295,7 +297,8 @@ struct __gen_src : public ::tpy::next_iter_mixin<__gen_src, int32_t> {
     };
 
     __gen_src(std::string_view tag_)
-        : __state(S_INITIAL), tag(std::string(tag_)) {}
+        : __state(S_INITIAL),
+          tag(std::string(tag_)) {}
 
     __gen_src(__gen_src&&) = default;
     ~__gen_src() {
@@ -343,7 +346,8 @@ struct __coro_async_unwind {
     };
 
     __coro_async_unwind()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     __coro_async_unwind(__coro_async_unwind&&) = default;
     ~__coro_async_unwind() {
@@ -388,8 +392,7 @@ struct __gen_gen_unwind : public ::tpy::next_iter_mixin<__gen_gen_unwind, int32_
         S_DONE = 7,
     };
 
-    __gen_gen_unwind()
-        : __state(S_INITIAL) {}
+    __gen_gen_unwind() : __state(S_INITIAL) {}
 
     __gen_gen_unwind(__gen_gen_unwind&&) = default;
     ~__gen_gen_unwind() {
@@ -432,8 +435,7 @@ struct __gen_with_unwind : public ::tpy::next_iter_mixin<__gen_with_unwind, int3
         S_DONE = 6,
     };
 
-    __gen_with_unwind()
-        : __state(S_INITIAL) {}
+    __gen_with_unwind() : __state(S_INITIAL) {}
 
     __gen_with_unwind(__gen_with_unwind&&) = default;
     ~__gen_with_unwind() {
@@ -476,8 +478,7 @@ struct __gen_once_unwind : public ::tpy::next_iter_mixin<__gen_once_unwind, int3
         S_DONE = 7,
     };
 
-    __gen_once_unwind()
-        : __state(S_INITIAL) {}
+    __gen_once_unwind() : __state(S_INITIAL) {}
 
     __gen_once_unwind(__gen_once_unwind&&) = default;
     ~__gen_once_unwind() {
@@ -517,8 +518,7 @@ struct __gen_fin_raises_caught : public ::tpy::next_iter_mixin<__gen_fin_raises_
         S_DONE = 6,
     };
 
-    __gen_fin_raises_caught()
-        : __state(S_INITIAL) {}
+    __gen_fin_raises_caught() : __state(S_INITIAL) {}
 
     __gen_fin_raises_caught(__gen_fin_raises_caught&&) = default;
     ~__gen_fin_raises_caught() {
@@ -559,8 +559,7 @@ struct __gen_fin_raises_in_with : public ::tpy::next_iter_mixin<__gen_fin_raises
         S_DONE = 6,
     };
 
-    __gen_fin_raises_in_with()
-        : __state(S_INITIAL) {}
+    __gen_fin_raises_in_with() : __state(S_INITIAL) {}
 
     __gen_fin_raises_in_with(__gen_fin_raises_in_with&&) = default;
     ~__gen_fin_raises_in_with() {
@@ -602,8 +601,7 @@ struct __gen_fin_raises_outer_finally : public ::tpy::next_iter_mixin<__gen_fin_
         S_DONE = 6,
     };
 
-    __gen_fin_raises_outer_finally()
-        : __state(S_INITIAL) {}
+    __gen_fin_raises_outer_finally() : __state(S_INITIAL) {}
 
     __gen_fin_raises_outer_finally(__gen_fin_raises_outer_finally&&) = default;
     ~__gen_fin_raises_outer_finally() {
@@ -650,8 +648,7 @@ struct __gen_fin_raises_catch_all : public ::tpy::next_iter_mixin<__gen_fin_rais
         S_DONE = 7,
     };
 
-    __gen_fin_raises_catch_all()
-        : __state(S_INITIAL) {}
+    __gen_fin_raises_catch_all() : __state(S_INITIAL) {}
 
     __gen_fin_raises_catch_all(__gen_fin_raises_catch_all&&) = default;
     ~__gen_fin_raises_catch_all() {
@@ -692,8 +689,7 @@ struct __gen_fin_returns_outer_finally : public ::tpy::next_iter_mixin<__gen_fin
         S_DONE = 6,
     };
 
-    __gen_fin_returns_outer_finally()
-        : __state(S_INITIAL) {}
+    __gen_fin_returns_outer_finally() : __state(S_INITIAL) {}
 
     __gen_fin_returns_outer_finally(__gen_fin_returns_outer_finally&&) = default;
     ~__gen_fin_returns_outer_finally() {
@@ -737,8 +733,7 @@ struct __gen_fin_returns_in_with : public ::tpy::next_iter_mixin<__gen_fin_retur
         S_DONE = 6,
     };
 
-    __gen_fin_returns_in_with()
-        : __state(S_INITIAL) {}
+    __gen_fin_returns_in_with() : __state(S_INITIAL) {}
 
     __gen_fin_returns_in_with(__gen_fin_returns_in_with&&) = default;
     ~__gen_fin_returns_in_with() {
@@ -777,8 +772,7 @@ struct __gen_handler_finally_unguarded : public ::tpy::next_iter_mixin<__gen_han
         S_DONE = 3,
     };
 
-    __gen_handler_finally_unguarded()
-        : __state(S_INITIAL) {}
+    __gen_handler_finally_unguarded() : __state(S_INITIAL) {}
 
     __gen_handler_finally_unguarded(__gen_handler_finally_unguarded&&) = default;
     ~__gen_handler_finally_unguarded() {
@@ -817,8 +811,7 @@ struct __gen_own_handler_normal : public ::tpy::next_iter_mixin<__gen_own_handle
         S_DONE = 6,
     };
 
-    __gen_own_handler_normal()
-        : __state(S_INITIAL) {}
+    __gen_own_handler_normal() : __state(S_INITIAL) {}
 
     __gen_own_handler_normal(__gen_own_handler_normal&&) = default;
     ~__gen_own_handler_normal() {
@@ -860,8 +853,7 @@ struct __gen_own_handler_unwind : public ::tpy::next_iter_mixin<__gen_own_handle
         S_DONE = 8,
     };
 
-    __gen_own_handler_unwind()
-        : __state(S_INITIAL) {}
+    __gen_own_handler_unwind() : __state(S_INITIAL) {}
 
     __gen_own_handler_unwind(__gen_own_handler_unwind&&) = default;
     ~__gen_own_handler_unwind() {
@@ -907,8 +899,7 @@ struct __gen_stale_unwind : public ::tpy::next_iter_mixin<__gen_stale_unwind, in
         S_DONE = 9,
     };
 
-    __gen_stale_unwind()
-        : __state(S_INITIAL) {}
+    __gen_stale_unwind() : __state(S_INITIAL) {}
 
     __gen_stale_unwind(__gen_stale_unwind&&) = default;
     ~__gen_stale_unwind() {
@@ -954,8 +945,7 @@ struct __gen_stale_normal : public ::tpy::next_iter_mixin<__gen_stale_normal, in
         S_DONE = 9,
     };
 
-    __gen_stale_normal()
-        : __state(S_INITIAL) {}
+    __gen_stale_normal() : __state(S_INITIAL) {}
 
     __gen_stale_normal(__gen_stale_normal&&) = default;
     ~__gen_stale_normal() {
@@ -1000,8 +990,7 @@ struct __gen_stale_exit_raises : public ::tpy::next_iter_mixin<__gen_stale_exit_
         S_DONE = 8,
     };
 
-    __gen_stale_exit_raises()
-        : __state(S_INITIAL) {}
+    __gen_stale_exit_raises() : __state(S_INITIAL) {}
 
     __gen_stale_exit_raises(__gen_stale_exit_raises&&) = default;
     ~__gen_stale_exit_raises() {
@@ -1045,8 +1034,7 @@ struct __gen_noisy_items : public ::tpy::next_iter_mixin<__gen_noisy_items, ::tp
         S_DONE = 3,
     };
 
-    __gen_noisy_items()
-        : __state(S_INITIAL) {}
+    __gen_noisy_items() : __state(S_INITIAL) {}
 
     std::expected<::tpy::val_or_ref<Noisy>, ::tpy::StopIteration> __next__();
     __gen_noisy_items& __iter__() { return *this; }
@@ -1077,7 +1065,8 @@ struct __gen_Walker_walk : public ::tpy::next_iter_mixin<__gen_Walker_walk, int3
     };
 
     __gen_Walker_walk(const Walker& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     __gen_Walker_walk(__gen_Walker_walk&&) = default;
     ~__gen_Walker_walk() {

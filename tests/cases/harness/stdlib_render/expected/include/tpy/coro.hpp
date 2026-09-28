@@ -143,7 +143,10 @@ namespace tpystd::coro {
 //     self.awaker = awaker
 //     self.task_id = task_id
 //     self.generation = generation
-inline Waker::Waker(Awaker* awaker, int32_t task_id, int32_t generation) : awaker(awaker), task_id(task_id), generation(generation) {}
+inline Waker::Waker(Awaker* awaker, int32_t task_id, int32_t generation)
+    : awaker(awaker),
+      task_id(task_id),
+      generation(generation) {}
 
 // # Not @readonly: wake() doesn't mutate self, but it dispatches into
 // # the awaker's `mark_runnable`, which mutates the executor's runnable

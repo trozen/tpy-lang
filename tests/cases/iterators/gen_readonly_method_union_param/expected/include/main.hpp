@@ -77,7 +77,9 @@ struct __gen_Zoo_codes : public ::tpy::next_iter_mixin<__gen_Zoo_codes, ::tpy::B
     };
 
     __gen_Zoo_codes(const Zoo& __self, ::tpy::Union<const Cat*, const Dog*> a_)
-        : __state(S_INITIAL), __self(__self), a(a_) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          a(a_) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_Zoo_codes& __iter__() { return *this; }

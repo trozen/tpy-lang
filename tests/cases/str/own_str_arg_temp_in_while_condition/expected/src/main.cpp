@@ -9,8 +9,8 @@ namespace tpyapp::main {
 //         break
 void drain(Sink& s, const Row& r) {
     while (true) {
-        std::string __tmp_2{r.label};
-        if (!(s.check(std::move(__tmp_2)))) break;
+        std::string __tmp_1{r.label};
+        if (!(s.check(std::move(__tmp_1)))) break;
         break;
     }
 }
@@ -21,8 +21,8 @@ void drain(Sink& s, const Row& r) {
 //     print(len(s.kept), s.kept[0])
 void main() {
     Sink s = Sink();
-    Row __tmp_3 = Row("a");
-    ::tpyapp::main::drain(s, __tmp_3);
+    Row __tmp_1 = Row("a");
+    ::tpyapp::main::drain(s, __tmp_1);
     std::cout << ::tpy::__len__(s.kept) << " " << ::tpy::__getitem__(s.kept, 0) << "\n";
 }
 

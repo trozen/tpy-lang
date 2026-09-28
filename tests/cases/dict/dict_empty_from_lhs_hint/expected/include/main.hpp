@@ -39,6 +39,8 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // def __init__(self) -> None:
 //     self.by_name = {}
 //     self.by_pair = {"first": {}}
-inline Box::Box() : by_name(::tpy::ordered_map<std::string, ::tpy::BigInt>()), by_pair(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::BigInt>>({{"first", ::tpy::ordered_map<std::string, ::tpy::BigInt>()}})) {}
+inline Box::Box()
+    : by_name(::tpy::ordered_map<std::string, ::tpy::BigInt>()),
+      by_pair(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::BigInt>>({{"first", ::tpy::ordered_map<std::string, ::tpy::BigInt>()}})) {}
 void __tpy_init();
 } // namespace tpyapp::main

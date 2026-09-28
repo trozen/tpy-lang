@@ -64,7 +64,6 @@ void break_plain() {
         switch (__match_subject_1) {
         case Color::Green: {
             goto __loop_break_1;
-            break;
         }
         default: {
             std::cout << "p" << " " << ::tpy::EnumUtil<Color>::name(c) << "\n";
@@ -96,7 +95,6 @@ void break_with_else() {
         switch (__match_subject_1) {
         case Color::Green: {
             goto __after_else_0;
-            break;
         }
         default: {
             std::cout << "e" << " " << ::tpy::EnumUtil<Color>::name(c) << "\n";
@@ -155,7 +153,6 @@ void break_in_while() {
         switch (__match_subject_1) {
         case 3: {
             goto __loop_break_0;
-            break;
         }
         default: {
             std::cout << "w" << " " << i << "\n";
@@ -224,7 +221,6 @@ void break_in_str_switch() {
             case 's': {
                 if (__match_subject_1 == "stop") {
                     goto __loop_break_1;
-                    goto __match_end_2;
                 }
                 break;
             }

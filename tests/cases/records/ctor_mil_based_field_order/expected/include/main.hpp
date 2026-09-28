@@ -57,6 +57,9 @@ inline Base::Base() : tag(1) {}
 //     self.a = int32(5)
 //     # The subject: `a` is laid out before `b`, so its value is in place.
 //     self.b = self.a + int32(1)  # tpyc: ok
-inline Derived::Derived() : Base(), a(5), b((::tpy::add_check<int32_t>(this->a, 1))) {}
+inline Derived::Derived()
+    : Base(),
+      a(5),
+      b((::tpy::add_check<int32_t>(this->a, 1))) {}
 void __tpy_init();
 } // namespace tpyapp::main

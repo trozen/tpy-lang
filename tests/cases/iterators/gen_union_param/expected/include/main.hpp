@@ -72,7 +72,8 @@ struct __gen_describe : public ::tpy::next_iter_mixin<__gen_describe, std::strin
     };
 
     __gen_describe(::tpy::Union<Cat*, Dog*> a_)
-        : __state(S_INITIAL), a(a_) {}
+        : __state(S_INITIAL),
+          a(a_) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_describe& __iter__() { return *this; }

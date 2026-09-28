@@ -96,7 +96,9 @@ struct __gen_bump_each : public ::tpy::next_iter_mixin<__gen_bump_each<T>, int32
     };
 
     __gen_bump_each(::tpy::param_val_or_ref_t<T> obj_, int32_t count_)
-        : __state(S_INITIAL), obj(obj_), count(std::move(count_)) {}
+        : __state(S_INITIAL),
+          obj(obj_),
+          count(std::move(count_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_bump_each& __iter__() { return *this; }
@@ -164,7 +166,9 @@ struct __gen_size_each : public ::tpy::next_iter_mixin<__gen_size_each<T>, int32
     };
 
     __gen_size_each(::tpy::readonly_form_t<T> obj_, int32_t count_)
-        : __state(S_INITIAL), obj(obj_), count(std::move(count_)) {}
+        : __state(S_INITIAL),
+          obj(obj_),
+          count(std::move(count_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_size_each& __iter__() { return *this; }
@@ -235,7 +239,9 @@ struct __gen_len_each : public ::tpy::next_iter_mixin<__gen_len_each<T>, int32_t
     };
 
     __gen_len_each(::tpy::readonly_form_t<T> obj_, int32_t count_)
-        : __state(S_INITIAL), obj(obj_), count(std::move(count_)) {}
+        : __state(S_INITIAL),
+          obj(obj_),
+          count(std::move(count_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_len_each& __iter__() { return *this; }
@@ -304,7 +310,9 @@ struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, ::tpy::yiel
     };
 
     __gen_repeat(::tpy::param_val_or_ref_t<T> value_, int32_t count_)
-        : __state(S_INITIAL), value(value_), count(std::move(count_)) {}
+        : __state(S_INITIAL),
+          value(value_),
+          count(std::move(count_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_repeat& __iter__() { return *this; }
@@ -372,7 +380,8 @@ struct __gen_enumerate : public ::tpy::next_iter_mixin<__gen_enumerate<T, T_iter
     };
 
     __gen_enumerate(T_iterable&& iterable_)
-        : __state(S_INITIAL), iterable(std::forward<T_iterable>(iterable_)) {}
+        : __state(S_INITIAL),
+          iterable(std::forward<T_iterable>(iterable_)) {}
 
     std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __next__();
     __gen_enumerate& __iter__() { return *this; }

@@ -1084,8 +1084,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& value = ::tpy::unwrap_ref(*__r_1);
-        count = ::tpy::add_check<int32_t>(count, 1);
-        total = ::tpy::add_check<int32_t>(total, (value).to_fixed_check<int32_t>());
+            count = ::tpy::add_check<int32_t>(count, 1);
+            total = ::tpy::add_check<int32_t>(total, (value).to_fixed_check<int32_t>());
         }
     }
     std::cout << "generator" << " " << count << " " << total << "\n";

@@ -235,14 +235,14 @@ __gen_each_pack each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>> xs) 
 //         v.append([9])
 void grow_both(std::vector<std::vector<int32_t>>& p, std::vector<std::vector<int32_t>>& q) {
     {
-        std::array<std::vector<std::vector<int32_t>>*, 2> __tmp_2{&p, &q};
-        auto __src_0 = ::tpyapp::main::each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>>(__tmp_2));
+        std::array<std::vector<std::vector<int32_t>>*, 2> __tmp_1{&p, &q};
+        auto __src_0 = ::tpyapp::main::each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>>(__tmp_1));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& v = ::tpy::unwrap_ref(*__r_1);
-        v.push_back({9});
+            v.push_back({9});
         }
     }
 }
@@ -359,131 +359,131 @@ void grow_both(std::vector<std::vector<int32_t>>& p, std::vector<std::vector<int
 //     print("method-multi-root:", len(ha), len(hb))
 void main() {
     {
-        std::array<const int32_t, 3> __tmp_3{1, 2, 3};
-        auto __src_0 = ::tpyapp::main::scalars(::tpy::varargs<const int32_t>(__tmp_3));
+        std::array<const int32_t, 3> __tmp_1{1, 2, 3};
+        auto __src_0 = ::tpyapp::main::scalars(::tpy::varargs<const int32_t>(__tmp_1));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "scalar:" << " " << v << "\n";
+            std::cout << "scalar:" << " " << v << "\n";
         }
     }
     {
-        std::array<const std::string, 2> __tmp_4{"ab", "cde"};
-        auto __src_2 = ::tpyapp::main::strings(::tpy::varargs<const std::string>(__tmp_4));
+        std::array<const std::string, 2> __tmp_2{"ab", "cde"};
+        auto __src_2 = ::tpyapp::main::strings(::tpy::varargs<const std::string>(__tmp_2));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "str:" << " " << v << "\n";
+            std::cout << "str:" << " " << v << "\n";
         }
     }
     std::vector<int32_t> la = {1, 2};
     std::vector<int32_t> lb = {3};
     {
-        std::array<const std::vector<int32_t>*, 2> __tmp_5{&la, &lb};
-        auto __src_4 = ::tpyapp::main::merge_shape<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_5));
+        std::array<const std::vector<int32_t>*, 2> __tmp_3{&la, &lb};
+        auto __src_4 = ::tpyapp::main::merge_shape<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_3));
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        std::cout << "container:" << " " << v << "\n";
+            std::cout << "container:" << " " << v << "\n";
         }
     }
     Point a = Point(1);
     Point b = Point(2);
     {
-        std::array<Point*, 2> __tmp_6{&a, &b};
-        auto __src_6 = ::tpyapp::main::bump(::tpy::varargs<Point>(__tmp_6));
+        std::array<Point*, 2> __tmp_4{&a, &b};
+        auto __src_6 = ::tpyapp::main::bump(::tpy::varargs<Point>(__tmp_4));
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        std::cout << "record-mut:" << " " << v << "\n";
+            std::cout << "record-mut:" << " " << v << "\n";
         }
     }
     std::cout << "record-mut: after" << " " << a.x << " " << b.x << "\n";
     Point c = Point(1);
     Point d = Point(2);
     {
-        std::array<const Point*, 2> __tmp_7{&c, &d};
-        auto __src_8 = ::tpyapp::main::read_pack(::tpy::varargs<const Point>(__tmp_7));
+        std::array<const Point*, 2> __tmp_5{&c, &d};
+        auto __src_8 = ::tpyapp::main::read_pack(::tpy::varargs<const Point>(__tmp_5));
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        std::cout << "record-ro:" << " " << v << "\n";
-        d.x = 20;
+            std::cout << "record-ro:" << " " << v << "\n";
+            d.x = 20;
         }
     }
     std::vector<int32_t> ma = {1};
     std::vector<int32_t> mb = {3};
     Collector coll = Collector(10);
     {
-        std::array<const std::vector<int32_t>*, 2> __tmp_8{&ma, &mb};
-        auto __src_10 = coll.sizes(::tpy::varargs<const std::vector<int32_t>>(__tmp_8));
+        std::array<const std::vector<int32_t>*, 2> __tmp_6{&ma, &mb};
+        auto __src_10 = coll.sizes(::tpy::varargs<const std::vector<int32_t>>(__tmp_6));
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-        std::cout << "method:" << " " << v << "\n";
-        mb.push_back(0);
+            std::cout << "method:" << " " << v << "\n";
+            mb.push_back(0);
         }
     }
     {
-        std::array<const int32_t, 2> __tmp_9{4, 6};
-        auto __src_12 = ::tpyapp::main::forward(::tpy::varargs<const int32_t>(__tmp_9));
+        std::array<const int32_t, 2> __tmp_7{4, 6};
+        auto __src_12 = ::tpyapp::main::forward(::tpy::varargs<const int32_t>(__tmp_7));
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
         for (;;) {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-        std::cout << "forward:" << " " << v << "\n";
+            std::cout << "forward:" << " " << v << "\n";
         }
     }
     {
-        std::array<const int32_t, 2> __tmp_10{7, 8};
-        auto __src_14 = ::tpyapp::main::indexed(::tpy::varargs<const int32_t>(__tmp_10));
+        std::array<const int32_t, 2> __tmp_8{7, 8};
+        auto __src_14 = ::tpyapp::main::indexed(::tpy::varargs<const int32_t>(__tmp_8));
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
         for (;;) {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-        std::cout << "subscript:" << " " << v << "\n";
+            std::cout << "subscript:" << " " << v << "\n";
         }
     }
     std::vector<int32_t> fa = {1};
     std::vector<int32_t> fb = {3};
     {
-        std::array<const std::vector<int32_t>*, 2> __tmp_11{&fa, &fb};
-        auto __src_16 = ::tpyapp::main::in_finally(::tpy::varargs<const std::vector<int32_t>>(__tmp_11));
+        std::array<const std::vector<int32_t>*, 2> __tmp_9{&fa, &fb};
+        auto __src_16 = ::tpyapp::main::in_finally(::tpy::varargs<const std::vector<int32_t>>(__tmp_9));
         auto&& __itr_16 = ::tpy::__iter__(__src_16);
         for (;;) {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
-        std::cout << "tryfinally:" << " " << v << "\n";
-        fb.push_back(0);
+            std::cout << "tryfinally:" << " " << v << "\n";
+            fb.push_back(0);
         }
     }
     std::vector<int32_t> wa = {1};
     std::vector<int32_t> wb = {3};
     {
-        std::array<const std::vector<int32_t>*, 2> __tmp_12{&wa, &wb};
-        auto __src_18 = ::tpyapp::main::in_with(::tpy::varargs<const std::vector<int32_t>>(__tmp_12));
+        std::array<const std::vector<int32_t>*, 2> __tmp_10{&wa, &wb};
+        auto __src_18 = ::tpyapp::main::in_with(::tpy::varargs<const std::vector<int32_t>>(__tmp_10));
         auto&& __itr_18 = ::tpy::__iter__(__src_18);
         for (;;) {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_19);
-        std::cout << "with:" << " " << v << "\n";
-        wb.push_back(0);
+            std::cout << "with:" << " " << v << "\n";
+            wb.push_back(0);
         }
     }
     std::vector<Point> pts = {Point(5), Point(6)};
@@ -494,21 +494,21 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_21);
-        std::cout << "readonly-param:" << " " << v << "\n";
-        ::tpy::__getitem__(pts, 1).x = 60;
+            std::cout << "readonly-param:" << " " << v << "\n";
+            ::tpy::__getitem__(pts, 1).x = 60;
         }
     }
     Point e = Point(1);
     Point f = Point(2);
     {
-        std::array<Point*, 2> __tmp_13{&e, &f};
-        auto __src_22 = ::tpyapp::main::bump_generic<Point>(::tpy::varargs<Point>(__tmp_13));
+        std::array<Point*, 2> __tmp_11{&e, &f};
+        auto __src_22 = ::tpyapp::main::bump_generic<Point>(::tpy::varargs<Point>(__tmp_11));
         auto&& __itr_22 = ::tpy::__iter__(__src_22);
         for (;;) {
             auto __r_23 = __itr_22.__next__();
             if (!__r_23.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_23);
-        std::cout << "generic:" << " " << v << "\n";
+            std::cout << "generic:" << " " << v << "\n";
         }
     }
     std::cout << "generic: after" << " " << e.x << " " << f.x << "\n";
@@ -520,25 +520,25 @@ void main() {
             auto __r_25 = __itr_24.__next__();
             if (!__r_25.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_25);
-        std::cout << "self-field:" << " " << v << "\n";
-        ::tpy::__getitem__(alb.items, 1).x = 60;
+            std::cout << "self-field:" << " " << v << "\n";
+            ::tpy::__getitem__(alb.items, 1).x = 60;
         }
     }
     std::vector<Point> rp = {Point(7)};
     int32_t pulls = 0;
     {
-        auto __tmp_14 = ::tpyapp::main::points(rp);
-        auto __src_26 = ::tpyapp::main::readonly_next(__tmp_14);
+        auto __tmp_12 = ::tpyapp::main::points(rp);
+        auto __src_26 = ::tpyapp::main::readonly_next(__tmp_12);
         auto&& __itr_26 = ::tpy::__iter__(__src_26);
         for (;;) {
             auto __r_27 = __itr_26.__next__();
             if (!__r_27.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_27);
-        std::cout << "readonly-next:" << " " << v << "\n";
-        pulls = ::tpy::add_check<int32_t>(pulls, 1);
-        if ((pulls == 1)) {
-            ::tpy::__getitem__(rp, 0).x = 70;
-        }
+            std::cout << "readonly-next:" << " " << v << "\n";
+            pulls = ::tpy::add_check<int32_t>(pulls, 1);
+            if ((pulls == 1)) {
+                ::tpy::__getitem__(rp, 0).x = 70;
+            }
         }
     }
     std::vector<std::vector<int32_t>> ga = {{1}};

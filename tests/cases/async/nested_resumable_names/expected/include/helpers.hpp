@@ -56,7 +56,10 @@ struct __coro_2_7_Library_6_Worker_7_compute {
     };
 
     __coro_2_7_Library_6_Worker_7_compute(Library::Worker& __self, ::tpy::BigInt delta_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), delta(std::move(delta_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          delta(std::move(delta_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

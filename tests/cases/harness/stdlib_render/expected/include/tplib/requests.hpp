@@ -711,7 +711,8 @@ struct __gen_CaseInsensitiveDict___iter__ : public ::tpy::next_iter_mixin<__gen_
     };
 
     __gen_CaseInsensitiveDict___iter__(const CaseInsensitiveDict& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_CaseInsensitiveDict___iter__& __iter__() { return *this; }
@@ -743,7 +744,8 @@ struct __gen_CookieJar___iter__ : public ::tpy::next_iter_mixin<__gen_CookieJar_
     };
 
     __gen_CookieJar___iter__(const CookieJar& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_CookieJar___iter__& __iter__() { return *this; }
@@ -781,7 +783,9 @@ struct __gen_Response_iter_content : public ::tpy::next_iter_mixin<__gen_Respons
     };
 
     __gen_Response_iter_content(Response& __self, int32_t chunk_size_)
-        : __state(S_INITIAL), __self(__self), chunk_size(std::move(chunk_size_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          chunk_size(std::move(chunk_size_)) {}
 
     std::expected<::tpy::Bytes, ::tpy::StopIteration> __next__();
     __gen_Response_iter_content& __iter__() { return *this; }
@@ -821,7 +825,8 @@ struct __gen_Response_iter_lines : public ::tpy::next_iter_mixin<__gen_Response_
     };
 
     __gen_Response_iter_lines(Response& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::Bytes, ::tpy::StopIteration> __next__();
     __gen_Response_iter_lines& __iter__() { return *this; }
@@ -841,7 +846,10 @@ inline __gen_Response_iter_lines Response::iter_lines() {
 //     self.filename = filename
 //     self.content = content
 //     self.content_type = content_type
-inline FileField::FileField(std::string_view filename, ::tpy::Bytes content, std::string_view content_type) : filename(filename), content(std::move(content)), content_type(content_type) {}
+inline FileField::FileField(std::string_view filename, ::tpy::Bytes content, std::string_view content_type)
+    : filename(filename),
+      content(std::move(content)),
+      content_type(content_type) {}
 
 // def __init__(self, message: String = "") -> None:
 //     super().__init__(message)
@@ -1030,7 +1038,14 @@ inline void CaseInsensitiveDict::clear() {
 //     self.secure = secure
 //     self.deleted = deleted
 //     self.expires_at = expires_at
-inline Cookie::Cookie(std::string_view name, std::string_view value, std::string_view domain, std::string_view path, bool secure, bool deleted, double expires_at) : name(name), value(value), domain(domain), path(path), secure(secure), deleted(deleted), expires_at(expires_at) {}
+inline Cookie::Cookie(std::string_view name, std::string_view value, std::string_view domain, std::string_view path, bool secure, bool deleted, double expires_at)
+    : name(name),
+      value(value),
+      domain(domain),
+      path(path),
+      secure(secure),
+      deleted(deleted),
+      expires_at(expires_at) {}
 
 // def copy(self) -> Own[Cookie]:
 //     return Cookie(self.name, self.value, self.domain, self.path,

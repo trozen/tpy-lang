@@ -43,7 +43,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view t = ::tpy::unwrap_ref(*__r_1);
-        std::cout << t << "\n";
+            std::cout << t << "\n";
         }
     }
     {
@@ -53,7 +53,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view x = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "owned_local:" << " " << x << "\n";
+            std::cout << "owned_local:" << " " << x << "\n";
         }
     }
     ::tpy::ByteArray buf = ::tpy::ByteArray(::tpy::bytes_literal("0123456789", 10));
@@ -64,11 +64,11 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t step = ::tpy::unwrap_ref(*__r_5);
-        if ((step == 0)) {
-            for (int32_t _ = 0; _ < 2000; ++_) {
-                buf.push_back(65);
+            if ((step == 0)) {
+                for (int32_t _ = 0; _ < 2000; ++_) {
+                    buf.push_back(65);
+                }
             }
-        }
         }
     }
 }

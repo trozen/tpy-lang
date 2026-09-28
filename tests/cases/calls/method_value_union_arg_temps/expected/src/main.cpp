@@ -20,8 +20,8 @@ int32_t use(A& a, int32_t k, double f) {
 // def use_inherited(c: Child, k: int32) -> int32:
 //     return c.tag(k)
 int32_t use_inherited(Child& c, int32_t k) {
-    ::tpy::Union<double, int32_t> __tmp_3 = k;
-    return c.tag(__tmp_3);
+    ::tpy::Union<double, int32_t> __tmp_1 = k;
+    return c.tag(__tmp_1);
 }
 
 // def use_lit(a: A) -> int32:
@@ -40,8 +40,8 @@ int32_t use_lit(A& a) {
 void main() {
     A a = A(10);
     std::cout << ::tpyapp::main::use(a, 2, 0.5) << "\n";
-    Child __tmp_4 = Child(3);
-    std::cout << ::tpyapp::main::use_inherited(__tmp_4, 4) << "\n";
+    Child __tmp_1 = Child(3);
+    std::cout << ::tpyapp::main::use_inherited(__tmp_1, 4) << "\n";
     std::cout << ::tpyapp::main::use_lit(a) << "\n";
     std::cout << a.outer() << "\n";
 }

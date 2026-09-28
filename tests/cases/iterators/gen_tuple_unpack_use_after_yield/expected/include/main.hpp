@@ -37,7 +37,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     };
 
     __gen_gen(const std::vector<std::tuple<int32_t, int32_t>>& pairs)
-        : __state(S_INITIAL), pairs(pairs) {}
+        : __state(S_INITIAL),
+          pairs(pairs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

@@ -83,7 +83,9 @@ inline std::ostream& operator<<(std::ostream& os, const ListStr& obj) {
 // def __init__(self, a: int, b: str):
 //     self.a = a
 //     self.b = b
-inline IntStr::IntStr(const ::tpy::BigInt& a, std::string_view b) : a(a), b(b) {}
+inline IntStr::IntStr(const ::tpy::BigInt& a, std::string_view b)
+    : a(a),
+      b(b) {}
 
 // def first(self) -> int:
 //     return self.a
@@ -100,7 +102,9 @@ inline std::string IntStr::second() const {
 // def __init__(self, xs: list[int], s: str):
 //     self.xs = xs
 //     self.s = s
-inline ListStr::ListStr(const std::vector<::tpy::BigInt>& xs, std::string_view s) : xs(xs), s(s) {}
+inline ListStr::ListStr(const std::vector<::tpy::BigInt>& xs, std::string_view s)
+    : xs(xs),
+      s(s) {}
 
 // def first(self) -> list[int]:
 //     return self.xs

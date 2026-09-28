@@ -75,7 +75,9 @@ inline Data::Data(int32_t v) : value(v) {}
 // def __init__(self) -> None:
 //     self.a = Data(0)
 //     self.b = Data(0)
-inline Slots::Slots() : a(Data(0)), b(Data(0)) {}
+inline Slots::Slots()
+    : a(Data(0)),
+      b(Data(0)) {}
 
 // def __setitem__(self, index: int32, value: Data) -> None:
 //     if index == 0:

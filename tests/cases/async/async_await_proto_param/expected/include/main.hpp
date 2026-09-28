@@ -99,7 +99,9 @@ struct __coro_consume {
     };
 
     __coro_consume(T_it&& it_)
-        : __state(S_INITIAL), __cancel_pending(false), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          it(std::forward<T_it>(it_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -168,7 +170,9 @@ struct __coro_driver {
     };
 
     __coro_driver(T_it&& it_)
-        : __state(S_INITIAL), __cancel_pending(false), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          it(std::forward<T_it>(it_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -212,7 +216,9 @@ __coro_driver<T_it> driver(T_it&& it) {
 // def __init__(self, start: int32, limit: int32) -> None:
 //     self.current = start
 //     self.limit = limit
-inline CounterIter::CounterIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
+inline CounterIter::CounterIter(int32_t start, int32_t limit)
+    : current(start),
+      limit(limit) {}
 
 // def __next__(self) -> int32:
 //     if self.current < self.limit:
@@ -232,7 +238,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> CounterIter::__next__() {
 // def __init__(self, start: int32, limit: int32) -> None:
 //     self.start = start
 //     self.limit = limit
-inline Counter::Counter(int32_t start, int32_t limit) : start(start), limit(limit) {}
+inline Counter::Counter(int32_t start, int32_t limit)
+    : start(start),
+      limit(limit) {}
 
 // def __iter__(self) -> Own[CounterIter]:
 //     return CounterIter(self.start, self.limit)

@@ -75,7 +75,9 @@ inline V3::V3(double x_) : x(x_) {}
 //     self.color = copy(color)
 //     # The subject: a ctor rvalue arm beside a narrowed-Optional NAME arm.
 //     self.emission = V3(0.0) if emission is None else emission  # tpyc: warning(/copies .* into field/)
-inline Material::Material(const V3& color, const V3* emission) : color(color), emission((((emission == nullptr)) ? (V3(0.0)) : ((*emission)))) {}
+inline Material::Material(const V3& color, const V3* emission)
+    : color(color),
+      emission((((emission == nullptr)) ? (V3(0.0)) : ((*emission)))) {}
 
 // def __init__(self, given: V3, use_given: bool) -> None:
 //     # The same shape with a plain (never-Optional) name arm.

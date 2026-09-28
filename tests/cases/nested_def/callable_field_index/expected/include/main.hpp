@@ -147,7 +147,9 @@ struct __coro_async_read {
     };
 
     __coro_async_read(const App& app)
-        : __state(S_INITIAL), __cancel_pending(false), app(app) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          app(app) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -170,7 +172,8 @@ struct __gen_generate : public ::tpy::next_iter_mixin<__gen_generate, int32_t> {
     };
 
     __gen_generate(const App& app)
-        : __state(S_INITIAL), app(app) {}
+        : __state(S_INITIAL),
+          app(app) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_generate& __iter__() { return *this; }
@@ -190,7 +193,12 @@ struct __gen_generate : public ::tpy::next_iter_mixin<__gen_generate, int32_t> {
 //     self.direct_writer = touch
 //     # Constructor invokes the indexed field through its inferred signature.
 //     print("constructor", self.commands["inc"](1))  # tpyc: ok
-inline App::App() : commands(::tpy::ordered_map<std::string, std::function<int32_t(int32_t)>>({{"inc", inc}})), callbacks(std::vector<std::function<int32_t(int32_t)>>{inc}), groups(std::vector<std::vector<std::function<int32_t(int32_t)>>>{{inc}}), writers(::tpy::ordered_map<std::string, std::function<int32_t(std::vector<int32_t>&)>>({{"touch", touch}})), notifications(::tpy::ordered_map<std::string, std::function<void(int32_t)>>({{"run", notify}})) {
+inline App::App()
+    : commands(::tpy::ordered_map<std::string, std::function<int32_t(int32_t)>>({{"inc", inc}})),
+      callbacks(std::vector<std::function<int32_t(int32_t)>>{inc}),
+      groups(std::vector<std::vector<std::function<int32_t(int32_t)>>>{{inc}}),
+      writers(::tpy::ordered_map<std::string, std::function<int32_t(std::vector<int32_t>&)>>({{"touch", touch}})),
+      notifications(::tpy::ordered_map<std::string, std::function<void(int32_t)>>({{"run", notify}})) {
     this->direct_writer = touch;
     std::cout << "constructor" << " " << (::tpy::__getitem__(this->commands, "inc"))(1) << "\n";
 }

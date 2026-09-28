@@ -48,7 +48,8 @@ struct __gen_Counter___iter__ : public ::tpy::next_iter_mixin<__gen_Counter___it
     };
 
     __gen_Counter___iter__(const Counter& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Counter___iter__& __iter__() { return *this; }

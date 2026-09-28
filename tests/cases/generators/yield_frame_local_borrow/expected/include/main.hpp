@@ -40,8 +40,7 @@ struct __gen_counter : public ::tpy::next_iter_mixin<__gen_counter, ::tpy::val_o
         S_DONE = 3,
     };
 
-    __gen_counter()
-        : __state(S_INITIAL) {}
+    __gen_counter() : __state(S_INITIAL) {}
 
     std::expected<::tpy::val_or_ref<std::vector<::tpy::BigInt>>, ::tpy::StopIteration> __next__();
     __gen_counter& __iter__() { return *this; }
@@ -63,8 +62,7 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<std::st
         S_DONE = 2,
     };
 
-    __gen_walk()
-        : __state(S_INITIAL) {}
+    __gen_walk() : __state(S_INITIAL) {}
 
     std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>, ::tpy::StopIteration> __next__();
     __gen_walk& __iter__() { return *this; }
@@ -85,8 +83,7 @@ struct __gen_no_later_read : public ::tpy::next_iter_mixin<__gen_no_later_read, 
         S_DONE = 2,
     };
 
-    __gen_no_later_read()
-        : __state(S_INITIAL) {}
+    __gen_no_later_read() : __state(S_INITIAL) {}
 
     std::expected<::tpy::val_or_ref<std::vector<::tpy::BigInt>>, ::tpy::StopIteration> __next__();
     __gen_no_later_read& __iter__() { return *this; }

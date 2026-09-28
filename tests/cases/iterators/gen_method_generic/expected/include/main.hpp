@@ -52,7 +52,8 @@ struct __gen_Box_items : public ::tpy::next_iter_mixin<__gen_Box_items<T>, ::tpy
     };
 
     __gen_Box_items(Box<T>& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Box_items& __iter__() { return *this; }

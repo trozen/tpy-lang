@@ -86,7 +86,9 @@ struct __coro_coro {
     };
 
     __coro_coro(std::string_view d_)
-        : __state(S_INITIAL), __cancel_pending(false), d(std::string(d_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          d(std::string(d_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -108,7 +110,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     };
 
     __gen_gen(std::string_view d_)
-        : __state(S_INITIAL), d(std::string(d_)) {}
+        : __state(S_INITIAL),
+          d(std::string(d_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -136,7 +139,9 @@ inline std::string Sep::tick() {
 // def __init__(self, a: str, b: str) -> None:
 //     self.a = a
 //     self.b = b
-inline Row::Row(std::string_view a, std::string_view b) : a(a), b(b) {}
+inline Row::Row(std::string_view a, std::string_view b)
+    : a(a),
+      b(b) {}
 
 // # method position: plain member reads are inert arguments, so the kwarg
 // # temp keeps CPython's evaluation order

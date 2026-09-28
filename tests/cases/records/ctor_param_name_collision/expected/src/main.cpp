@@ -28,7 +28,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             bool b = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::print_bool(b) << "\n";
+            std::cout << ::tpy::print_bool(b) << "\n";
         }
     }
     H h = H(B(7));

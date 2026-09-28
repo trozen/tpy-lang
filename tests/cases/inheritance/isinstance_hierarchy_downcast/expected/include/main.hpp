@@ -78,11 +78,15 @@ inline Animal::Animal(std::string_view name) : name(name) {}
 // def __init__(self, name: str, breed: str) -> None:
 //     super().__init__(name)
 //     self.breed = breed
-inline Dog::Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
+inline Dog::Dog(std::string_view name, std::string_view breed)
+    : Animal(name),
+      breed(breed) {}
 
 // def __init__(self, name: str) -> None:
 //     super().__init__(name)
 //     self.whiskers = 6
-inline Cat::Cat(std::string_view name) : Animal(name), whiskers(::tpy::BigInt(6)) {}
+inline Cat::Cat(std::string_view name)
+    : Animal(name),
+      whiskers(::tpy::BigInt(6)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -68,7 +68,9 @@ struct __coro_step {
     };
 
     __coro_step(int32_t i_)
-        : __state(S_INITIAL), __cancel_pending(false), i(std::move(i_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          i(std::move(i_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -97,7 +99,8 @@ struct __coro_val_scalar {
     };
 
     __coro_val_scalar()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -123,7 +126,8 @@ struct __coro_owning {
     };
 
     __coro_owning()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -150,7 +154,9 @@ struct __coro_borrow_alias {
     };
 
     __coro_borrow_alias(std::vector<std::vector<int32_t>>& rows)
-        : __state(S_INITIAL), __cancel_pending(false), rows(rows) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          rows(rows) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -178,7 +184,9 @@ struct __coro_opt_ptr {
     };
 
     __coro_opt_ptr(std::vector<Node>& nodes)
-        : __state(S_INITIAL), __cancel_pending(false), nodes(nodes) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          nodes(nodes) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -209,7 +217,8 @@ struct __coro_drive {
     };
 
     __coro_drive()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

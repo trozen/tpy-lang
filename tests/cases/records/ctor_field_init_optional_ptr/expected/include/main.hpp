@@ -57,6 +57,8 @@ inline Node::Node(const ::tpy::BigInt& v) : v(v) {}
 // def __init__(self, n: Node | None) -> None:
 //     self.found = n.v if n is not None else -1
 //     self.present = n is not None
-inline Holder::Holder(const Node* n) : found((((n != nullptr)) ? (n->v) : (::tpy::BigInt(-1)))), present((n != nullptr)) {}
+inline Holder::Holder(const Node* n)
+    : found((((n != nullptr)) ? (n->v) : (::tpy::BigInt(-1)))),
+      present((n != nullptr)) {}
 void __tpy_init();
 } // namespace tpyapp::main

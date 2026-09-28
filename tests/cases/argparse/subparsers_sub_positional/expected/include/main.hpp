@@ -80,6 +80,9 @@ inline __tpy_builder_argparse_show_args_1::__tpy_builder_argparse_show_args_1(st
 inline __tpy_builder_argparse_set_args_1::__tpy_builder_argparse_set_args_1(std::optional<std::string_view> value) : value(value ? std::make_optional(std::string(*value)) : std::nullopt) {}
 
 // args = parser.parse_args(["show", "config.toml"])
-inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::string_view cmd, std::optional<std::string_view> filename, std::optional<std::string_view> value) : cmd(cmd), filename(filename ? std::make_optional(std::string(*filename)) : std::nullopt), value(value ? std::make_optional(std::string(*value)) : std::nullopt) {}
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::string_view cmd, std::optional<std::string_view> filename, std::optional<std::string_view> value)
+    : cmd(cmd),
+      filename(filename ? std::make_optional(std::string(*filename)) : std::nullopt),
+      value(value ? std::make_optional(std::string(*value)) : std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -73,6 +73,8 @@ inline void Counter::bump() {
 // def __init__(self, name: str, shared: Own[Rc[Counter]]) -> None:
 //     self.name = name
 //     self.shared = shared
-inline Holder::Holder(std::string_view name, ::tpystd::tplib::rc::Rc<Counter>&& shared) : name(name), shared(std::move(shared)) {}
+inline Holder::Holder(std::string_view name, ::tpystd::tplib::rc::Rc<Counter>&& shared)
+    : name(name),
+      shared(std::move(shared)) {}
 void __tpy_init();
 } // namespace tpyapp::main

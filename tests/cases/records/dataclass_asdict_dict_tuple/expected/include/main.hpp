@@ -116,7 +116,9 @@ inline std::ostream& operator<<(std::ostream& os, const TupleAllDC& obj) {
 }
 
 
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 inline bool Point::__eq__(const Point& other) const {
     return ((this->x == other.x) && (this->y == other.y));

@@ -90,9 +90,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_scores::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         i = ((*__for_i_0))++;
-        Node __tmp_2 = Node(i);
+        Node __tmp_1 = Node(i);
         __state = S_RESUME_0;
-        return ::tpyapp::main::score(__tmp_2);
+        return ::tpyapp::main::score(__tmp_1);
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

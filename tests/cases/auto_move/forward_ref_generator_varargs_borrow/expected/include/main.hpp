@@ -77,7 +77,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     };
 
     __gen_gen(::tpy::varargs<const std::vector<int32_t>> xs_)
-        : __state(S_INITIAL), xs(std::move(xs_)) {}
+        : __state(S_INITIAL),
+          xs(std::move(xs_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -107,7 +108,9 @@ struct __gen_kwgen : public ::tpy::next_iter_mixin<__gen_kwgen, int32_t> {
     };
 
     __gen_kwgen(::tpy::varargs<const std::vector<int32_t>> xs_, const std::vector<int32_t>& extra)
-        : __state(S_INITIAL), xs(std::move(xs_)), extra(extra) {}
+        : __state(S_INITIAL),
+          xs(std::move(xs_)),
+          extra(extra) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_kwgen& __iter__() { return *this; }
@@ -137,7 +140,9 @@ struct __gen_Collector_sizes : public ::tpy::next_iter_mixin<__gen_Collector_siz
     };
 
     __gen_Collector_sizes(const Collector& __self, ::tpy::varargs<const std::vector<int32_t>> xs_)
-        : __state(S_INITIAL), __self(__self), xs(std::move(xs_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          xs(std::move(xs_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Collector_sizes& __iter__() { return *this; }

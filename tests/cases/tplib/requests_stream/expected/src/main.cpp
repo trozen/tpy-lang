@@ -51,8 +51,8 @@ void stream_content_length() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "chunk:" << " " << ::tpy::bytes_decode(chunk) << "\n";
-        got = ::tpy::bytearray_concat(got, chunk);
+            std::cout << "chunk:" << " " << ::tpy::bytes_decode(chunk) << "\n";
+            got = ::tpy::bytearray_concat(got, chunk);
         }
     }
     std::cout << "full:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";
@@ -85,12 +85,12 @@ void stream_chunked() {
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn.sock = std::move(a);
-    ::tpy::Union<bool, std::string> __tmp_3 = true;
-    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/chunked", __tmp_3);
+    ::tpy::Union<bool, std::string> __tmp_1 = true;
+    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/chunked", __tmp_1);
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n", 73));
-    ::tpy::Union<bool, std::string> __tmp_4 = true;
-    ::tpystd::tplib::requests::Response r = s.get("http://api.test/chunked", nullptr, nullptr, std::nullopt, true, __tmp_4, nullptr, true);
+    ::tpy::Union<bool, std::string> __tmp_2 = true;
+    ::tpystd::tplib::requests::Response r = s.get("http://api.test/chunked", nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, true);
     ::tpy::ByteArray got = ::tpy::ByteArray();
     {
         auto __src_0 = r.iter_content(8);
@@ -99,7 +99,7 @@ void stream_chunked() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
-        got = ::tpy::bytearray_concat(got, chunk);
+            got = ::tpy::bytearray_concat(got, chunk);
         }
     }
     std::cout << "chunked:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";
@@ -131,12 +131,12 @@ void stream_raw() {
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn.sock = std::move(a);
-    ::tpy::Union<bool, std::string> __tmp_5 = true;
-    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/raw", __tmp_5);
+    ::tpy::Union<bool, std::string> __tmp_1 = true;
+    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/raw", __tmp_1);
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 11\r\n\r\nraw payload", 50));
-    ::tpy::Union<bool, std::string> __tmp_6 = true;
-    ::tpystd::tplib::requests::Response r = s.get("http://api.test/raw", nullptr, nullptr, std::nullopt, true, __tmp_6, nullptr, true);
+    ::tpy::Union<bool, std::string> __tmp_2 = true;
+    ::tpystd::tplib::requests::Response r = s.get("http://api.test/raw", nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, true);
     ::tpystd::http::client::HTTPResponse* raw = ::tpy::optional_to_ptr(r.raw());
     if ((raw != nullptr)) {
         std::cout << "raw.read:" << " " << ::tpy::bytes_decode(raw->read(-1)) << "\n";
@@ -178,12 +178,12 @@ void stream_context_manager() {
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn.sock = std::move(a);
-    ::tpy::Union<bool, std::string> __tmp_7 = true;
-    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/ctx", __tmp_7);
+    ::tpy::Union<bool, std::string> __tmp_1 = true;
+    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/ctx", __tmp_1);
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nabcd", 42));
-    ::tpy::Union<bool, std::string> __tmp_8 = true;
-    ::tpystd::tplib::requests::Response r = s.get("http://api.test/ctx", nullptr, nullptr, std::nullopt, true, __tmp_8, nullptr, true);
+    ::tpy::Union<bool, std::string> __tmp_2 = true;
+    ::tpystd::tplib::requests::Response r = s.get("http://api.test/ctx", nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, true);
     ::tpy::ByteArray got = ::tpy::ByteArray();
     auto& __ctx_1 = r;
     __ctx_1.__enter__();
@@ -195,7 +195,7 @@ void stream_context_manager() {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
-            got = ::tpy::bytearray_concat(got, chunk);
+                got = ::tpy::bytearray_concat(got, chunk);
             }
         }
         std::cout << "ctx body:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";
@@ -239,12 +239,12 @@ void stream_empty_body() {
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn.sock = std::move(a);
-    ::tpy::Union<bool, std::string> __tmp_9 = true;
-    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/empty", __tmp_9);
+    ::tpy::Union<bool, std::string> __tmp_1 = true;
+    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/empty", __tmp_1);
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n", 46));
-    ::tpy::Union<bool, std::string> __tmp_10 = true;
-    ::tpystd::tplib::requests::Response r = s.get("http://api.test/empty", nullptr, nullptr, std::nullopt, true, __tmp_10, nullptr, true);
+    ::tpy::Union<bool, std::string> __tmp_2 = true;
+    ::tpystd::tplib::requests::Response r = s.get("http://api.test/empty", nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, true);
     int32_t chunks = 0;
     {
         auto __src_0 = r.iter_content(8);
@@ -253,7 +253,7 @@ void stream_empty_body() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
-        chunks = ::tpy::add_check<int32_t>(chunks, 1);
+            chunks = ::tpy::add_check<int32_t>(chunks, 1);
         }
     }
     std::cout << "empty chunks:" << " " << chunks << "\n";
@@ -287,8 +287,8 @@ void non_streamed_iter_content() {
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn.sock = std::move(a);
-    ::tpy::Union<bool, std::string> __tmp_11 = true;
-    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/full", __tmp_11);
+    ::tpy::Union<bool, std::string> __tmp_1 = true;
+    std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/full", __tmp_1);
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\n0123456789", 49));
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/full");
@@ -300,7 +300,7 @@ void non_streamed_iter_content() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
-        got = ::tpy::bytearray_concat(got, chunk);
+            got = ::tpy::bytearray_concat(got, chunk);
         }
     }
     std::cout << "non-stream iter_content:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";

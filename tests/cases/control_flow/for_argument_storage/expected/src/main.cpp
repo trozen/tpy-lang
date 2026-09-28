@@ -29,9 +29,9 @@ int32_t ranges(int32_t n, bool stop) {
     bool flag = true;
     int32_t __stop_1 = n;
     for (int32_t i = 0; i < __stop_1; ++i) {
-        std::optional<Cell> __tmp_3;
-        std::optional<Cell> __tmp_4;
-        result = ((flag) ? (__tmp_3.emplace(Cell(i)), ::tpyapp::main::read((*__tmp_3))) : (__tmp_4.emplace(Cell(9)), ::tpyapp::main::read((*__tmp_4))));
+        std::optional<Cell> __tmp_1;
+        std::optional<Cell> __tmp_2;
+        result = ((flag) ? (__tmp_1.emplace(Cell(i)), ::tpyapp::main::read((*__tmp_1))) : (__tmp_2.emplace(Cell(9)), ::tpyapp::main::read((*__tmp_2))));
         flag = (!(flag));
         if (stop) {
             goto __after_else_0;
@@ -39,8 +39,8 @@ int32_t ranges(int32_t n, bool stop) {
         continue;
     }
     {
-        Cell __tmp_5 = Cell(result);
-        result = (::tpy::add_check<int32_t>(::tpyapp::main::read(__tmp_5), 1));
+        Cell __tmp_3 = Cell(result);
+        result = (::tpy::add_check<int32_t>(::tpyapp::main::read(__tmp_3), 1));
     }
     __after_else_0:;
     return result;
@@ -56,8 +56,8 @@ void update(std::vector<Cell>& values, int32_t n) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& cell = *__beg_0;
-        Cell __tmp_6 = Cell(n);
-        cell.value = ::tpyapp::main::read(__tmp_6);
+        Cell __tmp_1 = Cell(n);
+        cell.value = ::tpyapp::main::read(__tmp_1);
     }
 }
 
@@ -83,12 +83,12 @@ int32_t nested(int32_t n, bool skip) {
     int32_t __stop_1 = n;
     for (int32_t i = 0; i < __stop_1; ++i) {
         for (int32_t j = 0; j < 0; ++j) {
-            Cell __tmp_7 = Cell(j);
-            result = ::tpyapp::main::read(__tmp_7);
+            Cell __tmp_1 = Cell(j);
+            result = ::tpyapp::main::read(__tmp_1);
         }
         {
-            Cell __tmp_8 = Cell(i);
-            result = ::tpyapp::main::read(__tmp_8);
+            Cell __tmp_2 = Cell(i);
+            result = ::tpyapp::main::read(__tmp_2);
             if (skip) {
                 continue;
             }
@@ -98,8 +98,8 @@ int32_t nested(int32_t n, bool skip) {
         result = 99;
     }
     {
-        Cell __tmp_9 = Cell(7);
-        result = ::tpyapp::main::read(__tmp_9);
+        Cell __tmp_3 = Cell(7);
+        result = ::tpyapp::main::read(__tmp_3);
     }
     __after_else_0:;
     return result;

@@ -158,7 +158,9 @@ inline Point::Point(int32_t v) : value(v) {}
 // def __init__(self, x: int32, y: int32):
 //     self.x = x
 //     self.y = y
-inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+inline Vec2::Vec2(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // def __init__(self, c: int32):
 //     self.count = c

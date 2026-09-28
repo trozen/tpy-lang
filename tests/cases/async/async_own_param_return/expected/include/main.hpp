@@ -60,7 +60,9 @@ struct __coro_relay {
     };
 
     __coro_relay(Box&& b_)
-        : __state(S_INITIAL), __cancel_pending(false), b(std::move(b_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          b(std::move(b_)) {}
 
     ::tpystd::tpy::Poll<Box> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -84,7 +86,8 @@ struct __coro_driver {
     };
 
     __coro_driver()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

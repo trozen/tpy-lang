@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 struct Counter;
 struct Point;
+struct LiteralLhs;
 
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_gen_literal_lhs;
 
 // def test_or_int() -> None:
 void test_or_int();
@@ -52,6 +55,10 @@ void test_record_or_constructor();
 void test_annotated();
 // def test_literal_or_literal() -> None:
 void test_literal_or_literal();
+// def test_literal_lhs_free(a: float) -> None:
+void test_literal_lhs_free(double a);
+// def gen_literal_lhs(v: int32) -> Iterator[int32]:
+__gen_gen_literal_lhs gen_literal_lhs(int32_t v);
 // def main() -> None:
 void main();
 
@@ -92,6 +99,50 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+// class LiteralLhs:
+struct LiteralLhs {
+    // self.v = v
+    int32_t v;
+
+    // def __init__(self, v: int32) -> None:
+    LiteralLhs() = default;
+    explicit LiteralLhs(int32_t v);
+
+    // def pick(self) -> int32:
+    int32_t pick() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.LiteralLhs";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const LiteralLhs& obj) {
+    ::tpy::print_object_default(os, "LiteralLhs", obj);
+    return os;
+}
+
+// def gen_literal_lhs(v: int32) -> Iterator[int32]:
+struct __gen_gen_literal_lhs : public ::tpy::next_iter_mixin<__gen_gen_literal_lhs, int32_t> {
+    ::tpy::frame_state __state;
+    int32_t v;
+    int32_t w;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_literal_lhs(int32_t v_)
+        : __state(S_INITIAL),
+          v(std::move(v_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_literal_lhs& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_literal_lhs&) {
+        return os << "<generator gen_literal_lhs>";
+    }
+};
+
 
 // def __init__(self, n: int32) -> None:
 //     self.count = n
@@ -106,6 +157,20 @@ inline bool Counter::__bool__() const {
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
+
+// def __init__(self, v: int32) -> None:
+//     self.v = v
+inline LiteralLhs::LiteralLhs(int32_t v) : v(v) {}
+
+// def pick(self) -> int32:
+//     # method: literal LHS against a field
+//     return 0 or self.v  # tpyc: ok
+inline int32_t LiteralLhs::pick() const {
+    auto&& __tmp_1 = 0;
+    return (__tmp_1 ? __tmp_1 : this->v);
+}
 void __tpy_init();
 } // namespace tpyapp::main

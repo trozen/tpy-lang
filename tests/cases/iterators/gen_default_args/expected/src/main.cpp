@@ -139,7 +139,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     std::cout << "--" << "\n";
@@ -150,7 +150,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     std::cout << "--" << "\n";
@@ -161,7 +161,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     std::cout << "--" << "\n";
@@ -172,7 +172,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     std::cout << "--" << "\n";
@@ -183,7 +183,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     std::cout << "--" << "\n";
@@ -194,7 +194,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     std::cout << "--" << "\n";
@@ -206,7 +206,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     std::cout << "--" << "\n";
@@ -217,7 +217,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     std::cout << "--" << "\n";
@@ -229,7 +229,7 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     std::cout << "--" << "\n";
@@ -240,7 +240,7 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_19);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     std::cout << "--" << "\n";
@@ -251,7 +251,7 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_21);
-        std::cout << "meth" << " " << v << "\n";
+            std::cout << "meth" << " " << v << "\n";
         }
     }
     {
@@ -261,7 +261,7 @@ void main() {
             auto __r_23 = __itr_22.__next__();
             if (!__r_23.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_23);
-        std::cout << "meth-explicit" << " " << v << "\n";
+            std::cout << "meth-explicit" << " " << v << "\n";
         }
     }
     Box2<int32_t> g = Box2<int32_t>({10, 20, 30, 40});
@@ -272,7 +272,7 @@ void main() {
             auto __r_25 = __itr_24.__next__();
             if (!__r_25.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_25);
-        std::cout << "gmeth" << " " << v << "\n";
+            std::cout << "gmeth" << " " << v << "\n";
         }
     }
     {
@@ -282,7 +282,7 @@ void main() {
             auto __r_27 = __itr_26.__next__();
             if (!__r_27.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_27);
-        std::cout << "gmeth-explicit" << " " << v << "\n";
+            std::cout << "gmeth-explicit" << " " << v << "\n";
         }
     }
     {
@@ -292,7 +292,7 @@ void main() {
             auto __r_29 = __itr_28.__next__();
             if (!__r_29.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_29);
-        std::cout << "shapes-v" << " " << v << "\n";
+            std::cout << "shapes-v" << " " << v << "\n";
         }
     }
     {
@@ -302,7 +302,7 @@ void main() {
             auto __r_31 = __itr_30.__next__();
             if (!__r_31.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_31);
-        std::cout << "shapes-v" << " " << v << "\n";
+            std::cout << "shapes-v" << " " << v << "\n";
         }
     }
     {
@@ -312,7 +312,7 @@ void main() {
             auto __r_33 = __itr_32.__next__();
             if (!__r_33.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_33);
-        std::cout << "shapes-v" << " " << v << "\n";
+            std::cout << "shapes-v" << " " << v << "\n";
         }
     }
     {
@@ -322,7 +322,7 @@ void main() {
             auto __r_35 = __itr_34.__next__();
             if (!__r_35.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_35);
-        std::cout << "shapes-v" << " " << v << "\n";
+            std::cout << "shapes-v" << " " << v << "\n";
         }
     }
     {
@@ -332,7 +332,7 @@ void main() {
             auto __r_37 = __itr_36.__next__();
             if (!__r_37.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_37);
-        std::cout << "shapes-v" << " " << v << "\n";
+            std::cout << "shapes-v" << " " << v << "\n";
         }
     }
     Rec rec = Rec(9);
@@ -343,7 +343,7 @@ void main() {
             auto __r_39 = __itr_38.__next__();
             if (!__r_39.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_39);
-        std::cout << "shapes-v" << " " << v << "\n";
+            std::cout << "shapes-v" << " " << v << "\n";
         }
     }
     {
@@ -353,7 +353,7 @@ void main() {
             auto __r_41 = __itr_40.__next__();
             if (!__r_41.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_41);
-        std::cout << "shapes-v" << " " << v << "\n";
+            std::cout << "shapes-v" << " " << v << "\n";
         }
     }
     {
@@ -363,7 +363,7 @@ void main() {
             auto __r_43 = __itr_42.__next__();
             if (!__r_43.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_43);
-        std::cout << "shapes-v" << " " << v << "\n";
+            std::cout << "shapes-v" << " " << v << "\n";
         }
     }
     {
@@ -373,7 +373,7 @@ void main() {
             auto __r_45 = __itr_44.__next__();
             if (!__r_45.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_45);
-        std::cout << "shapes-v" << " " << v << "\n";
+            std::cout << "shapes-v" << " " << v << "\n";
         }
     }
 }

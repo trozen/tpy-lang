@@ -207,7 +207,10 @@ inline Inner::Inner(int64_t x) : x(x) {}
 //     self.v = v
 //     self._inner = Inner(v)
 //     self._alt = Inner(v)
-inline Box::Box(int64_t v) : v(v), _inner(Inner(v)), _alt(Inner(v)) {}
+inline Box::Box(int64_t v)
+    : v(v),
+      _inner(Inner(v)),
+      _alt(Inner(v)) {}
 
 // def me(self) -> "Box":
 //     return self  # tpyc: ok

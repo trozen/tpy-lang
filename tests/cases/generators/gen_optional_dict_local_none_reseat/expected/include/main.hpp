@@ -54,7 +54,8 @@ struct __gen_Holder_keys_of : public ::tpy::next_iter_mixin<__gen_Holder_keys_of
     };
 
     __gen_Holder_keys_of(Holder& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Holder_keys_of& __iter__() { return *this; }

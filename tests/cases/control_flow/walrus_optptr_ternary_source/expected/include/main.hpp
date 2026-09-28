@@ -72,7 +72,9 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
     };
 
     __gen_walk(std::vector<Node>& nodes, bool flag_)
-        : __state(S_INITIAL), nodes(nodes), flag(std::move(flag_)) {}
+        : __state(S_INITIAL),
+          nodes(nodes),
+          flag(std::move(flag_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_walk& __iter__() { return *this; }

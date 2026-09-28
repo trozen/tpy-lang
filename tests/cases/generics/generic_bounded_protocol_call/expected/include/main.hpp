@@ -193,7 +193,9 @@ inline int32_t MyValue::__len__() const {
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // def to_str(self) -> str:
 //     return "Point"
@@ -204,7 +206,9 @@ inline std::string Point::to_str() const {
 // def __init__(self, name: str, val: int32) -> None:
 //     self.name = name
 //     self.val = val
-inline Widget::Widget(std::string_view name, int32_t val) : name(name), val(val) {}
+inline Widget::Widget(std::string_view name, int32_t val)
+    : name(name),
+      val(val) {}
 
 // def get_name(self) -> str:
 //     return self.name

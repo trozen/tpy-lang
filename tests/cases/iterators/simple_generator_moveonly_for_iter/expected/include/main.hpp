@@ -59,7 +59,8 @@ struct __gen_ints : public ::tpy::next_iter_mixin<__gen_ints, int32_t> {
     };
 
     __gen_ints(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_ints& __iter__() { return *this; }
@@ -86,7 +87,8 @@ struct __gen_make_toks : public ::tpy::next_iter_mixin<__gen_make_toks<T_src>, T
     };
 
     __gen_make_toks(T_src&& src_)
-        : __state(S_INITIAL), src(std::forward<T_src>(src_)) {}
+        : __state(S_INITIAL),
+          src(std::forward<T_src>(src_)) {}
 
     std::expected<Tok, ::tpy::StopIteration> __next__();
     __gen_make_toks& __iter__() { return *this; }

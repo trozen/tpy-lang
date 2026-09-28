@@ -30,16 +30,13 @@ int32_t int_leaves(const Shape& s) {
             total = ::tpy::add_check<int32_t>(total, ::tpyapp::shapes::int_leaves(it));
         }
         return total;
-        break;
     }
     case 2: {
         auto& __case_1 = std::get<2>(__match_subject_1.value);
         return 0;
-        break;
     }
     default: {
         return 1;
-        break;
     }
     }
     ::std::unreachable();

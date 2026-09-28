@@ -43,7 +43,9 @@ struct __gen_repeat_list : public ::tpy::next_iter_mixin<__gen_repeat_list, ::tp
     };
 
     __gen_repeat_list(std::vector<int32_t>& xs, int32_t n_)
-        : __state(S_INITIAL), xs(xs), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          xs(xs),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_repeat_list& __iter__() { return *this; }
@@ -68,7 +70,9 @@ struct __gen_repeat_dict : public ::tpy::next_iter_mixin<__gen_repeat_dict, ::tp
     };
 
     __gen_repeat_dict(::tpy::ordered_map<std::string, int32_t>& d, int32_t n_)
-        : __state(S_INITIAL), d(d), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          d(d),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::val_or_ref<::tpy::ordered_map<std::string, int32_t>>, ::tpy::StopIteration> __next__();
     __gen_repeat_dict& __iter__() { return *this; }
@@ -93,7 +97,9 @@ struct __gen_repeat_set : public ::tpy::next_iter_mixin<__gen_repeat_set, ::tpy:
     };
 
     __gen_repeat_set(::tpy::ordered_set<int32_t>& s, int32_t n_)
-        : __state(S_INITIAL), s(s), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          s(s),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::val_or_ref<::tpy::ordered_set<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_repeat_set& __iter__() { return *this; }
@@ -118,7 +124,9 @@ struct __gen_repeat_buf : public ::tpy::next_iter_mixin<__gen_repeat_buf, ::tpy:
     };
 
     __gen_repeat_buf(::tpy::ByteArray& b, int32_t n_)
-        : __state(S_INITIAL), b(b), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          b(b),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::val_or_ref<::tpy::ByteArray>, ::tpy::StopIteration> __next__();
     __gen_repeat_buf& __iter__() { return *this; }
@@ -143,7 +151,9 @@ struct __gen_repeat_arr : public ::tpy::next_iter_mixin<__gen_repeat_arr, ::tpy:
     };
 
     __gen_repeat_arr(std::array<int32_t, 2>& a, int32_t n_)
-        : __state(S_INITIAL), a(a), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          a(a),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::val_or_ref<std::array<int32_t, 2>>, ::tpy::StopIteration> __next__();
     __gen_repeat_arr& __iter__() { return *this; }

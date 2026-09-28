@@ -179,13 +179,17 @@ inline Side::Side(int32_t s) {
 // def __init__(self, a: int32, b: int32) -> None:
 //     super().__init__(a)              # covers HasInitA (MRO-first)
 //     HasInitB.__init__(self, b)       # HasInitB still needs an explicit call
-inline Combined::Combined(int32_t a, int32_t b) : HasInitA(a), HasInitB(b) {}
+inline Combined::Combined(int32_t a, int32_t b)
+    : HasInitA(a),
+      HasInitB(b) {}
 
 // def __init__(self) -> None:
 //     super().__init__(1)  # tpyc: ok
 //     Side.__init__(self, 2)
 //     print("via-super: body")
-inline ViaSuper::ViaSuper() : Lane(1), Side(2) {
+inline ViaSuper::ViaSuper()
+    : Lane(1),
+      Side(2) {
     std::cout << "via-super: body" << "\n";
 }
 
@@ -193,7 +197,9 @@ inline ViaSuper::ViaSuper() : Lane(1), Side(2) {
 //     Lane.__init__(self, 3)  # tpyc: ok
 //     Side.__init__(self, 4)
 //     print("via-lane: body")
-inline ViaLane::ViaLane() : Lane(3), Side(4) {
+inline ViaLane::ViaLane()
+    : Lane(3),
+      Side(4) {
     std::cout << "via-lane: body" << "\n";
 }
 
@@ -201,7 +207,9 @@ inline ViaLane::ViaLane() : Lane(3), Side(4) {
 //     super().__init__(5)
 //     Root.__init__(self, 6)  # tpyc: ok
 //     print("via-root: body")
-inline ViaRoot::ViaRoot() : Side(5), Lane(6) {
+inline ViaRoot::ViaRoot()
+    : Side(5),
+      Lane(6) {
     std::cout << "via-root: body" << "\n";
 }
 void __tpy_init();

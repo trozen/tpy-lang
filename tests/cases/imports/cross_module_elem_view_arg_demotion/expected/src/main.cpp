@@ -155,7 +155,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen yield" << " " << n << "\n";
+            std::cout << "gen yield" << " " << n << "\n";
         }
     }
     std::vector<std::string> i = {"a1", "x"};

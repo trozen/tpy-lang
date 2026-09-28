@@ -78,7 +78,6 @@ std::string match_guard(int32_t x) {
         } else {
             return "other";
         }
-        break;
     }
     }
     ::std::unreachable();

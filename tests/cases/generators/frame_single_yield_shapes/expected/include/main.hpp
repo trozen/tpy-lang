@@ -64,7 +64,8 @@ struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain, int32_t> {
     };
 
     __gen_drain(std::vector<int32_t>&& items_)
-        : __state(S_INITIAL), items(std::move(items_)) {}
+        : __state(S_INITIAL),
+          items(std::move(items_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_drain& __iter__() { return *this; }
@@ -89,8 +90,7 @@ struct __gen_over_global : public ::tpy::next_iter_mixin<__gen_over_global, int3
         S_DONE = 3,
     };
 
-    __gen_over_global()
-        : __state(S_INITIAL) {}
+    __gen_over_global() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_over_global& __iter__() { return *this; }
@@ -115,7 +115,9 @@ struct __gen_Labels_gen_it : public ::tpy::next_iter_mixin<__gen_Labels_gen_it<T
     };
 
     __gen_Labels_gen_it(Labels<T>& __self, ::tpy::param_val_or_ref_t<T> v_)
-        : __state(S_INITIAL), __self(__self), v(v_) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          v(v_) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Labels_gen_it& __iter__() { return *this; }

@@ -396,7 +396,7 @@ __coro_flip_later flip_later(int32_t n) {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 Coord c = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "generator" << " " << ::tpyapp::main::use(c) << "\n";
+                std::cout << "generator" << " " << ::tpyapp::main::use(c) << "\n";
             }
         }
         std::cout << "generator generic" << " " << ::tpy::ListPrinter(({
@@ -721,18 +721,18 @@ void ternary(bool f) {
 void union_field_slots(int32_t n) {
     Tagged t{};
     if ((n > 0)) {
-        ::tpy::Union<int32_t, std::string> __tmp_4 = n;
-        t = Tagged(__tmp_4, 1);
+        ::tpy::Union<int32_t, std::string> __tmp_1 = n;
+        t = Tagged(__tmp_1, 1);
     } else {
-        ::tpy::Union<int32_t, std::string> __tmp_5 = ::tpy::neg_check<int32_t>(n);
-        t = Tagged(__tmp_5, 2);
+        ::tpy::Union<int32_t, std::string> __tmp_2 = ::tpy::neg_check<int32_t>(n);
+        t = Tagged(__tmp_2, 2);
     }
     std::cout << "union if" << " " << t.n << "\n";
     Tagged u{};
     {
         try {
-            ::tpy::Union<int32_t, std::string> __tmp_6 = n;
-            u = Tagged(__tmp_6, 3);
+            ::tpy::Union<int32_t, std::string> __tmp_3 = n;
+            u = Tagged(__tmp_3, 3);
         } catch (const ::tpy::ValueError&) {
             return;
         }
@@ -742,8 +742,8 @@ void union_field_slots(int32_t n) {
     auto __ctx_2 = Ctx();
     __ctx_2.__enter__();
     try {
-        ::tpy::Union<int32_t, std::string> __tmp_7 = n;
-        w = Tagged(__tmp_7, 4);
+        ::tpy::Union<int32_t, std::string> __tmp_4 = n;
+        w = Tagged(__tmp_4, 4);
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -767,8 +767,8 @@ void union_field_slots(int32_t n) {
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
     case 1: {
-        ::tpy::Union<int32_t, std::string> __tmp_8 = n;
-        m = Tagged(__tmp_8, 7);
+        ::tpy::Union<int32_t, std::string> __tmp_5 = n;
+        m = Tagged(__tmp_5, 7);
         break;
     }
     default: {
@@ -778,8 +778,8 @@ void union_field_slots(int32_t n) {
     }
     std::cout << "union match" << " " << m.n << "\n";
     Tagged k{};
-    ::tpy::Union<int32_t, std::string> __tmp_9 = n;
-    if (((k = Tagged(__tmp_9, 9)).n > 0)) {
+    ::tpy::Union<int32_t, std::string> __tmp_6 = n;
+    if (((k = Tagged(__tmp_6, 9)).n > 0)) {
         std::cout << "union walrus" << " " << k.n << "\n";
     }
 }
@@ -805,8 +805,8 @@ __gen_tagged_pairs tagged_pairs(int32_t n) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        ::tpy::Union<int32_t, std::string> __tmp_12 = n;
-        t = Tagged(__tmp_12, 6);
+        ::tpy::Union<int32_t, std::string> __tmp_1 = n;
+        t = Tagged(__tmp_1, 6);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -1770,8 +1770,8 @@ void main() {
     std::cout << "module" << " " << ORIGIN.n << " " << FAR.n << " " << near.n << " " << near_count << "\n";
     Calm r = ::tpyapp::main::calm_hoist(true);
     std::cout << "calm hoist return" << " " << r.n << "\n";
-    std::vector<Calm> __tmp_14 = {Calm(1), Calm(2)};
-    ::tpyapp::main::calm_subscript(__tmp_14, true);
+    std::vector<Calm> __tmp_1 = {Calm(1), Calm(2)};
+    ::tpyapp::main::calm_subscript(__tmp_1, true);
     ::tpyapp::main::calm_union(true);
     ::tpyapp::main::calm_union(false);
     ::tpyapp::main::calm_tuple(false);

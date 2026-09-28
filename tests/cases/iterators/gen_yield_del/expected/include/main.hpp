@@ -58,7 +58,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::val_or_ref<Re
     };
 
     __gen_gen(std::vector<Res>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<::tpy::val_or_ref<Res>, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

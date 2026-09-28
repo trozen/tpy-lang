@@ -112,7 +112,9 @@ inline std::ostream& operator<<(std::ostream& os, const RepeatSub& obj) {
 
 inline Node::Node(int32_t v) : v(v) {}
 
-inline Repeat::Repeat(int32_t v) : _cur(Node(v)), _n(0) {}
+inline Repeat::Repeat(int32_t v)
+    : _cur(Node(v)),
+      _n(0) {}
 
 inline Repeat& Repeat::__iter__() {
     return (*this);
@@ -126,7 +128,9 @@ inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> Repeat::__ne
     return this->_cur;
 }
 
-inline Peek::Peek(int32_t v) : _cur(Node(v)), _n(0) {}
+inline Peek::Peek(int32_t v)
+    : _cur(Node(v)),
+      _n(0) {}
 
 inline Peek& Peek::__iter__() {
     return (*this);
@@ -140,7 +144,9 @@ inline std::expected<::tpy::val_or_ref<const Node>, ::tpy::StopIteration> Peek::
     return this->_cur;
 }
 
-inline Rows::Rows() : _row(std::vector<int32_t>{1, 2, 3}), _n(0) {}
+inline Rows::Rows()
+    : _row(std::vector<int32_t>{1, 2, 3}),
+      _n(0) {}
 
 inline Rows& Rows::__iter__() {
     return (*this);

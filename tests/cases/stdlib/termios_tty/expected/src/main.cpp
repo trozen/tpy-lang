@@ -254,7 +254,8 @@ struct __genexpr_repr_str_1_frame : public ::tpy::next_iter_mixin<__genexpr_repr
     };
 
     __genexpr_repr_str_1_frame(const std::vector<std::string>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<bool, ::tpy::StopIteration> __next__();
     __genexpr_repr_str_1_frame& __iter__() { return *this; }

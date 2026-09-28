@@ -29,7 +29,9 @@ struct Pair {
     //     self.k = k
     //     self.v = v
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v) : k(k), v(v) {}
+    explicit Pair(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v)
+        : k(k),
+          v(v) {}
 
     __gen_Pair_stream<K, V> stream(::tpy::BigInt n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
@@ -57,7 +59,9 @@ struct __gen_Pair_stream : public ::tpy::next_iter_mixin<__gen_Pair_stream<K, V>
     };
 
     __gen_Pair_stream(Pair<K, V>& __self, ::tpy::BigInt n_)
-        : __state(S_INITIAL), __self(__self), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::yield_slot_t<V>, ::tpy::StopIteration> __next__();
     __gen_Pair_stream& __iter__() { return *this; }

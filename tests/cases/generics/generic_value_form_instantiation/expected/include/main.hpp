@@ -119,7 +119,9 @@ struct __coro_held {
     };
 
     __coro_held(::tpy::param_val_or_ref_t<T> x_)
-        : __state(S_INITIAL), __cancel_pending(false), x(x_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          x(x_) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -176,7 +178,8 @@ struct __coro_async_frame {
     };
 
     __coro_async_frame()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -201,7 +204,8 @@ struct __gen_hold : public ::tpy::next_iter_mixin<__gen_hold<T>, ::tpy::yield_sl
     };
 
     __gen_hold(::tpy::param_val_or_ref_t<T> x_)
-        : __state(S_INITIAL), x(x_) {}
+        : __state(S_INITIAL),
+          x(x_) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_hold& __iter__() { return *this; }

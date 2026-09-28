@@ -56,7 +56,9 @@ struct __coro_combine {
     };
 
     __coro_combine(T_xs&& xs_)
-        : __state(S_INITIAL), __cancel_pending(false), xs(std::forward<T_xs>(xs_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(std::forward<T_xs>(xs_)) {}
 
     ::tpystd::tpy::Poll<Box> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -147,7 +149,8 @@ struct __coro_main {
     };
 
     __coro_main()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

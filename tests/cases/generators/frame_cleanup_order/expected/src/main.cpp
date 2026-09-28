@@ -2449,7 +2449,7 @@ void main() {
                     auto __r_1 = __itr_0.__next__();
                     if (!__r_1.has_value()) break;
                     int32_t v = ::tpy::unwrap_ref(*__r_1);
-                std::cout << "gen got" << " " << v << "\n";
+                    std::cout << "gen got" << " " << v << "\n";
                 }
             }
         } catch (const ::tpy::KeyError&) {
@@ -2465,7 +2465,7 @@ void main() {
                     auto __r_3 = __itr_2.__next__();
                     if (!__r_3.has_value()) break;
                     int32_t v = ::tpy::unwrap_ref(*__r_3);
-                std::cout << "with got" << " " << v << "\n";
+                    std::cout << "with got" << " " << v << "\n";
                 }
             }
         } catch (const ::tpy::KeyError&) {
@@ -2479,7 +2479,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        std::cout << "once got" << " " << v << "\n";
+            std::cout << "once got" << " " << v << "\n";
         }
     }
     {
@@ -2490,7 +2490,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        std::cout << "method got" << " " << v << "\n";
+            std::cout << "method got" << " " << v << "\n";
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_unwind()));
@@ -2501,7 +2501,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        std::cout << "caught got" << " " << v << "\n";
+            std::cout << "caught got" << " " << v << "\n";
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_fin_raises_caught()));
@@ -2514,7 +2514,7 @@ void main() {
                     auto __r_11 = __itr_10.__next__();
                     if (!__r_11.has_value()) break;
                     int32_t v = ::tpy::unwrap_ref(*__r_11);
-                std::cout << "in-with got" << " " << v << "\n";
+                    std::cout << "in-with got" << " " << v << "\n";
                 }
             }
         } catch (const ::tpy::IndexError&) {
@@ -2530,7 +2530,7 @@ void main() {
                     auto __r_13 = __itr_12.__next__();
                     if (!__r_13.has_value()) break;
                     int32_t v = ::tpy::unwrap_ref(*__r_13);
-                std::cout << "outer-fin got" << " " << v << "\n";
+                    std::cout << "outer-fin got" << " " << v << "\n";
                 }
             }
         } catch (const ::tpy::IndexError&) {
@@ -2544,7 +2544,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-        std::cout << "catch-all got" << " " << v << "\n";
+            std::cout << "catch-all got" << " " << v << "\n";
         }
     }
     {
@@ -2554,7 +2554,7 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
-        std::cout << "ret got" << " " << v << "\n";
+            std::cout << "ret got" << " " << v << "\n";
         }
     }
     std::cout << "ret done" << "\n";
@@ -2565,7 +2565,7 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_19);
-        std::cout << "ret-with got" << " " << v << "\n";
+            std::cout << "ret-with got" << " " << v << "\n";
         }
     }
     std::cout << "ret-with done" << "\n";
@@ -2578,7 +2578,7 @@ void main() {
                     auto __r_21 = __itr_20.__next__();
                     if (!__r_21.has_value()) break;
                     int32_t v = ::tpy::unwrap_ref(*__r_21);
-                std::cout << "outermost got" << " " << v << "\n";
+                    std::cout << "outermost got" << " " << v << "\n";
                 }
             }
         } catch (const ::tpy::KeyError&) {

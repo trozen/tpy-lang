@@ -30,7 +30,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t p = ::tpy::unwrap_ref(*__r_3);
-        std::cout << p << "\n";
+            std::cout << p << "\n";
         }
     }
 }

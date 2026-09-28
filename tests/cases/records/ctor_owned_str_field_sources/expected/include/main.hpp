@@ -158,7 +158,9 @@ inline std::ostream& operator<<(std::ostream& os, const Viewer& obj) {
 // def __init__(self, name: str, data: bytes) -> None:
 //     self.name = name
 //     self.data = data
-inline Owner::Owner(std::string_view name, ::tpy::BytesView data) : name(name), data(::tpy::Bytes(data)) {}
+inline Owner::Owner(std::string_view name, ::tpy::BytesView data)
+    : name(name),
+      data(::tpy::Bytes(data)) {}
 
 // def reset(self, a: str, x: int, o: Owner) -> None:
 //     # Method-position twins of the member-init shapes.
@@ -175,7 +177,10 @@ inline void Tags::reset(std::string_view a, const ::tpy::BigInt& x, const Owner&
 //     self.joined = src + b"!"  # tpyc: ok
 //     self.copied = bytes(src)  # tpyc: ok
 //     self.from_field = o.data  # tpyc: ok
-inline Blob::Blob(::tpy::BytesView src, const Owner& o) : joined((::tpy::bytes_concat(src, ::tpy::bytes_literal_owned("!", 1)))), copied(::tpy::Bytes(src)), from_field(o.data) {}
+inline Blob::Blob(::tpy::BytesView src, const Owner& o)
+    : joined((::tpy::bytes_concat(src, ::tpy::bytes_literal_owned("!", 1)))),
+      copied(::tpy::Bytes(src)),
+      from_field(o.data) {}
 
 // def reset(self, o: Owner) -> None:
 //     self.from_field = o.data + b"?"  # tpyc: ok

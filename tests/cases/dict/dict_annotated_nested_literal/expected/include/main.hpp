@@ -110,8 +110,7 @@ struct __gen_rows : public ::tpy::next_iter_mixin<__gen_rows, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_rows()
-        : __state(S_INITIAL) {}
+    __gen_rows() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_rows& __iter__() { return *this; }

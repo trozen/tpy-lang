@@ -85,7 +85,9 @@ inline std::string Base::__repr__() const {
     return std::format("Base(a={})", ::tpy::repr_of(this->a));
 }
 
-inline Child::Child(int32_t a, int32_t b) : Base(a), b(b) {}
+inline Child::Child(int32_t a, int32_t b)
+    : Base(a),
+      b(b) {}
 
 inline bool Child::__eq__(const Child& other) const {
     return ((this->a == other.a) && (this->b == other.b));

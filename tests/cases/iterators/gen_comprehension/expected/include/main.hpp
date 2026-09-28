@@ -83,7 +83,8 @@ struct __gen_two_then : public ::tpy::next_iter_mixin<__gen_two_then, int32_t> {
     };
 
     __gen_two_then(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_two_then& __iter__() { return *this; }
@@ -114,7 +115,9 @@ struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, ::tpy::yi
     };
 
     __gen_head(T_it&& it_, int32_t n_)
-        : __state(S_INITIAL), it(std::forward<T_it>(it_)), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          it(std::forward<T_it>(it_)),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_head& __iter__() { return *this; }
@@ -191,7 +194,8 @@ struct __gen_simple : public ::tpy::next_iter_mixin<__gen_simple, int32_t> {
     };
 
     __gen_simple(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_simple& __iter__() { return *this; }
@@ -216,7 +220,8 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, std::tuple<int32
     };
 
     __gen_pairs(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __next__();
     __gen_pairs& __iter__() { return *this; }
@@ -241,7 +246,8 @@ struct __gen_make_nodes : public ::tpy::next_iter_mixin<__gen_make_nodes, Node> 
     };
 
     __gen_make_nodes(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<Node, ::tpy::StopIteration> __next__();
     __gen_make_nodes& __iter__() { return *this; }
@@ -265,7 +271,8 @@ struct __gen_Counter_around : public ::tpy::next_iter_mixin<__gen_Counter_around
     };
 
     __gen_Counter_around(const Counter& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Counter_around& __iter__() { return *this; }

@@ -72,7 +72,12 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 //     self.elems = elems
 //     self.data = data
 //     self.buf = buf
-inline Bag::Bag(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, int32_t>* by_key, const ::tpy::ordered_set<int32_t>* elems, std::optional<::tpy::BytesView> data, const ::tpy::ByteArray* buf) : items(::tpy::ptr_to_optional(items)), by_key(::tpy::ptr_to_optional(by_key)), elems(::tpy::ptr_to_optional(elems)), data(data ? std::make_optional(::tpy::Bytes(*data)) : std::nullopt), buf(::tpy::ptr_to_optional(buf)) {}
+inline Bag::Bag(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, int32_t>* by_key, const ::tpy::ordered_set<int32_t>* elems, std::optional<::tpy::BytesView> data, const ::tpy::ByteArray* buf)
+    : items(::tpy::ptr_to_optional(items)),
+      by_key(::tpy::ptr_to_optional(by_key)),
+      elems(::tpy::ptr_to_optional(elems)),
+      data(data ? std::make_optional(::tpy::Bytes(*data)) : std::nullopt),
+      buf(::tpy::ptr_to_optional(buf)) {}
 
 // def show_fields(self) -> None:
 //     print(self.items)

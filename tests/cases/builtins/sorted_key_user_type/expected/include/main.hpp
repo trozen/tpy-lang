@@ -70,6 +70,8 @@ inline bool Score::__lt__(const Score& other) const {
 // def __init__(self, name: str, score: Own[Score]) -> None:
 //     self.name = name
 //     self.score = score
-inline Item::Item(std::string_view name, Score&& score) : name(name), score(std::move(score)) {}
+inline Item::Item(std::string_view name, Score&& score)
+    : name(name),
+      score(std::move(score)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -66,7 +66,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
-        got = ::tpy::bytearray_concat(got, chunk);
+            got = ::tpy::bytearray_concat(got, chunk);
         }
     }
     std::cout << "streamed body:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";

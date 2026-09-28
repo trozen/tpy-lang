@@ -61,7 +61,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // def __init__(self, width: int32, height: int32) -> None:
 //     self.width = width
 //     self.height = height
-inline Box::Box(int32_t width, int32_t height) : width(width), height(height) {}
+inline Box::Box(int32_t width, int32_t height)
+    : width(width),
+      height(height) {}
 
 // def __str__(self) -> str:
 //     return "Box"

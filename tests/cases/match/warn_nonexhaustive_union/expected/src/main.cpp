@@ -17,12 +17,10 @@ std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
     case 2: {
         auto& __case_0 = *std::get<2>(__match_subject_1);
         return "dog";
-        break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         return "cat";
-        break;
     }
     }
     return "unknown";

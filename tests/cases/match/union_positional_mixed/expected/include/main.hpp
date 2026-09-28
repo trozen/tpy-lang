@@ -70,7 +70,10 @@ inline std::ostream& operator<<(std::ostream& os, const Label& obj) {
 }
 
 
-inline Point::Point(double x, double y, double z) : x(x), y(y), z(z) {}
+inline Point::Point(double x, double y, double z)
+    : x(x),
+      y(y),
+      z(z) {}
 
 inline bool Point::__eq__(const Point& other) const {
     return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));

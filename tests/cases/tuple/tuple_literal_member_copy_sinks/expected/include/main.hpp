@@ -125,7 +125,8 @@ struct __coro_adup {
     };
 
     __coro_adup()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<std::tuple<C, C>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -149,7 +150,8 @@ struct __coro_run_adup {
     };
 
     __coro_run_adup()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -171,7 +173,8 @@ struct __gen_yield_param : public ::tpy::next_iter_mixin<__gen_yield_param, std:
     };
 
     __gen_yield_param(const C& c)
-        : __state(S_INITIAL), c(c) {}
+        : __state(S_INITIAL),
+          c(c) {}
 
     std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __next__();
     __gen_yield_param& __iter__() { return *this; }
@@ -192,8 +195,7 @@ struct __gen_yield_live_local : public ::tpy::next_iter_mixin<__gen_yield_live_l
         S_DONE = 2,
     };
 
-    __gen_yield_live_local()
-        : __state(S_INITIAL) {}
+    __gen_yield_live_local() : __state(S_INITIAL) {}
 
     std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __next__();
     __gen_yield_live_local& __iter__() { return *this; }
@@ -214,8 +216,7 @@ struct __gen_yield_repack : public ::tpy::next_iter_mixin<__gen_yield_repack, st
         S_DONE = 2,
     };
 
-    __gen_yield_repack()
-        : __state(S_INITIAL) {}
+    __gen_yield_repack() : __state(S_INITIAL) {}
 
     std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __next__();
     __gen_yield_repack& __iter__() { return *this; }
@@ -238,7 +239,9 @@ struct __gen_yield_mixed : public ::tpy::next_iter_mixin<__gen_yield_mixed, std:
     };
 
     __gen_yield_mixed(const C& a, C& b)
-        : __state(S_INITIAL), a(a), b(b) {}
+        : __state(S_INITIAL),
+          a(a),
+          b(b) {}
 
     std::expected<std::tuple<C, C*>, ::tpy::StopIteration> __next__();
     __gen_yield_mixed& __iter__() { return *this; }

@@ -110,7 +110,9 @@ struct __coro_coro {
     };
 
     __coro_coro(int32_t x_)
-        : __state(S_INITIAL), __cancel_pending(false), x(std::move(x_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          x(std::move(x_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -135,7 +137,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     };
 
     __gen_gen(int32_t x_)
-        : __state(S_INITIAL), x(std::move(x_)) {}
+        : __state(S_INITIAL),
+          x(std::move(x_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -161,7 +164,8 @@ struct __gen_gen_rebind : public ::tpy::next_iter_mixin<__gen_gen_rebind, std::s
     };
 
     __gen_gen_rebind(int32_t x_)
-        : __state(S_INITIAL), x(std::move(x_)) {}
+        : __state(S_INITIAL),
+          x(std::move(x_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen_rebind& __iter__() { return *this; }
@@ -187,7 +191,8 @@ struct __gen_gen_named : public ::tpy::next_iter_mixin<__gen_gen_named, std::str
     };
 
     __gen_gen_named(int32_t x_)
-        : __state(S_INITIAL), x(std::move(x_)) {}
+        : __state(S_INITIAL),
+          x(std::move(x_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen_named& __iter__() { return *this; }
@@ -214,7 +219,8 @@ struct __gen_gen_try : public ::tpy::next_iter_mixin<__gen_gen_try, std::string>
     };
 
     __gen_gen_try(int32_t x_)
-        : __state(S_INITIAL), x(std::move(x_)) {}
+        : __state(S_INITIAL),
+          x(std::move(x_)) {}
 
     __gen_gen_try(__gen_gen_try&&) = default;
     ~__gen_gen_try() {
@@ -256,7 +262,8 @@ struct __gen_gen_branch : public ::tpy::next_iter_mixin<__gen_gen_branch, std::s
     };
 
     __gen_gen_branch(int32_t x_)
-        : __state(S_INITIAL), x(std::move(x_)) {}
+        : __state(S_INITIAL),
+          x(std::move(x_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen_branch& __iter__() { return *this; }
@@ -285,7 +292,8 @@ struct __gen_gen_loop : public ::tpy::next_iter_mixin<__gen_gen_loop, std::strin
     };
 
     __gen_gen_loop(int32_t x_)
-        : __state(S_INITIAL), x(std::move(x_)) {}
+        : __state(S_INITIAL),
+          x(std::move(x_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen_loop& __iter__() { return *this; }
@@ -310,7 +318,8 @@ struct __gen_Runner_walk : public ::tpy::next_iter_mixin<__gen_Runner_walk, std:
     };
 
     __gen_Runner_walk(const Runner& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_Runner_walk& __iter__() { return *this; }

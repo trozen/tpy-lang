@@ -353,7 +353,9 @@ inline std::ostream& operator<<(std::ostream& os, const TupleAllDC& obj) {
 }
 
 
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 inline bool Point::__eq__(const Point& other) const {
     return ((this->x == other.x) && (this->y == other.y));
@@ -363,7 +365,9 @@ inline std::string Point::__repr__() const {
     return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 
-inline Person::Person(std::string_view name, int32_t age) : name(name), age(age) {}
+inline Person::Person(std::string_view name, int32_t age)
+    : name(name),
+      age(age) {}
 
 inline bool Person::__eq__(const Person& other) const {
     return ((this->name == other.name) && (this->age == other.age));
@@ -373,7 +377,9 @@ inline std::string Person::__repr__() const {
     return std::format("Person(name={}, age={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->age));
 }
 
-inline Line::Line(Point&& start, Point&& end) : start(std::move(start)), end(std::move(end)) {}
+inline Line::Line(Point&& start, Point&& end)
+    : start(std::move(start)),
+      end(std::move(end)) {}
 
 inline bool Line::__eq__(const Line& other) const {
     return ((this->start == other.start) && (this->end == other.end));
@@ -383,7 +389,9 @@ inline std::string Line::__repr__() const {
     return std::format("Line(start={}, end={})", ::tpy::repr_of(this->start), ::tpy::repr_of(this->end));
 }
 
-inline NamedPoint::NamedPoint(std::string_view name, Point&& pos) : name(name), pos(std::move(pos)) {}
+inline NamedPoint::NamedPoint(std::string_view name, Point&& pos)
+    : name(name),
+      pos(std::move(pos)) {}
 
 inline bool NamedPoint::__eq__(const NamedPoint& other) const {
     return ((this->name == other.name) && (this->pos == other.pos));
@@ -403,7 +411,9 @@ inline std::string Polygon::__repr__() const {
     return std::format("Polygon(vertices={})", ::tpy::list_to_str(this->vertices));
 }
 
-inline Drawing::Drawing(std::string_view title, std::vector<Point>&& shapes) : title(title), shapes(std::move(shapes)) {}
+inline Drawing::Drawing(std::string_view title, std::vector<Point>&& shapes)
+    : title(title),
+      shapes(std::move(shapes)) {}
 
 inline bool Drawing::__eq__(const Drawing& other) const {
     return ((this->title == other.title) && (this->shapes == other.shapes));
@@ -423,7 +433,9 @@ inline std::string Wrapper::__repr__() const {
     return std::format("Wrapper(inner={})", ::tpy::repr_of(this->inner));
 }
 
-inline MaybeNamed::MaybeNamed(std::string_view name, int32_t value) : name(name), value(value) {}
+inline MaybeNamed::MaybeNamed(std::string_view name, int32_t value)
+    : name(name),
+      value(value) {}
 
 inline bool MaybeNamed::__eq__(const MaybeNamed& other) const {
     return ((this->name == other.name) && (this->value == other.value));
@@ -443,7 +455,9 @@ inline std::string Container::__repr__() const {
     return std::format("Container(items={})", ::tpy::list_to_str(this->items));
 }
 
-inline MultiList::MultiList(std::vector<Point>&& points, std::vector<std::string>&& labels) : points(std::move(points)), labels(std::move(labels)) {}
+inline MultiList::MultiList(std::vector<Point>&& points, std::vector<std::string>&& labels)
+    : points(std::move(points)),
+      labels(std::move(labels)) {}
 
 inline bool MultiList::__eq__(const MultiList& other) const {
     return ((this->points == other.points) && (this->labels == other.labels));

@@ -118,7 +118,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& s = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen" << " " << s << "\n";
+            std::cout << "gen" << " " << s << "\n";
         }
     }
     ::tpyapp::main::show("gen", gh);

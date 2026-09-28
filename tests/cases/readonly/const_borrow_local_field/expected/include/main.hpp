@@ -68,7 +68,9 @@ inline Inner::Inner(const ::tpy::BigInt& x) : x(x) {}
 // def __init__(self, x: int) -> None:
 //     self.inner = Inner(x)
 //     self.tags = []
-inline Outer::Outer(const ::tpy::BigInt& x) : inner(Inner(x)), tags(std::vector<::tpy::BigInt>{}) {}
+inline Outer::Outer(const ::tpy::BigInt& x)
+    : inner(Inner(x)),
+      tags(std::vector<::tpy::BigInt>{}) {}
 
 // def peek_x(self) -> int:      # inferred const receiver; plain field borrow-local
 //     r = self.inner

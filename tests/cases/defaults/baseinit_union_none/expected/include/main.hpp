@@ -95,7 +95,9 @@ inline Dog::Dog(int64_t n) : n(n) {}
 // def __init__(self, tag: int64, pet: Cat | Dog | None = None) -> None:
 //     self.tag = tag
 //     self.has_pet = pet is not None
-inline Base::Base(int64_t tag, ::tpy::Union<std::monostate, const Cat*, const Dog*> pet) : tag(tag), has_pet((!std::holds_alternative<std::monostate>(pet))) {}
+inline Base::Base(int64_t tag, ::tpy::Union<std::monostate, const Cat*, const Dog*> pet)
+    : tag(tag),
+      has_pet((!std::holds_alternative<std::monostate>(pet))) {}
 
 // def __init__(self, tag: int64) -> None:
 //     # The subject: THIR's base-init arg render is target-less, so it can only

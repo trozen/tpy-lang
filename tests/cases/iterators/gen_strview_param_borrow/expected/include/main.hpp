@@ -31,7 +31,8 @@ struct __gen_lengths : public ::tpy::next_iter_mixin<__gen_lengths, ::tpy::BigIn
     };
 
     __gen_lengths(std::string_view s_)
-        : __state(S_INITIAL), s(std::move(s_)) {}
+        : __state(S_INITIAL),
+          s(std::move(s_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_lengths& __iter__() { return *this; }

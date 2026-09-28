@@ -23,7 +23,20 @@ namespace tpystd::os::_types {
 //     self.st_atime_ns = atime_ns
 //     self.st_mtime_ns = mtime_ns
 //     self.st_ctime_ns = ctime_ns
-stat_result::stat_result(int64_t mode, int64_t ino, int64_t dev, int64_t nlink, int64_t uid, int64_t gid, int64_t size, double atime, double mtime, double ctime, int64_t atime_ns, int64_t mtime_ns, int64_t ctime_ns) : st_mode(mode), st_ino(ino), st_dev(dev), st_nlink(nlink), st_uid(uid), st_gid(gid), st_size(size), st_atime(atime), st_mtime(mtime), st_ctime(ctime), st_atime_ns(atime_ns), st_mtime_ns(mtime_ns), st_ctime_ns(ctime_ns) {}
+stat_result::stat_result(int64_t mode, int64_t ino, int64_t dev, int64_t nlink, int64_t uid, int64_t gid, int64_t size, double atime, double mtime, double ctime, int64_t atime_ns, int64_t mtime_ns, int64_t ctime_ns)
+    : st_mode(mode),
+      st_ino(ino),
+      st_dev(dev),
+      st_nlink(nlink),
+      st_uid(uid),
+      st_gid(gid),
+      st_size(size),
+      st_atime(atime),
+      st_mtime(mtime),
+      st_ctime(ctime),
+      st_atime_ns(atime_ns),
+      st_mtime_ns(mtime_ns),
+      st_ctime_ns(ctime_ns) {}
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

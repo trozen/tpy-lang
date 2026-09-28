@@ -46,7 +46,11 @@ void main() {
 //     pass
 //     self.b = 9  # tpyc: ok
 //     print("pass-between: after", self.value, self.m, self.a, self.b)
-PassBetween::PassBetween() : Parent(6), Other(7), a(8), b(9) {
+PassBetween::PassBetween()
+    : Parent(6),
+      Other(7),
+      a(8),
+      b(9) {
     std::cout << "pass-between: after" << " " << this->value << " " << this->m << " " << this->a << " " << this->b << "\n";
 }
 // main()

@@ -38,8 +38,7 @@ struct __gen_fresh_each_pull : public ::tpy::next_iter_mixin<__gen_fresh_each_pu
         S_DONE = 3,
     };
 
-    __gen_fresh_each_pull()
-        : __state(S_INITIAL) {}
+    __gen_fresh_each_pull() : __state(S_INITIAL) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_fresh_each_pull& __iter__() { return *this; }
@@ -61,8 +60,7 @@ struct __gen_fresh_each_pull_framed : public ::tpy::next_iter_mixin<__gen_fresh_
         S_DONE = 4,
     };
 
-    __gen_fresh_each_pull_framed()
-        : __state(S_INITIAL) {}
+    __gen_fresh_each_pull_framed() : __state(S_INITIAL) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_fresh_each_pull_framed& __iter__() { return *this; }
@@ -90,7 +88,8 @@ struct __gen_if_cond_temp : public ::tpy::next_iter_mixin<__gen_if_cond_temp, ::
     };
 
     __gen_if_cond_temp(::tpy::BigInt n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_if_cond_temp& __iter__() { return *this; }
@@ -115,7 +114,8 @@ struct __gen_walrus_gen : public ::tpy::next_iter_mixin<__gen_walrus_gen, ::tpy:
     };
 
     __gen_walrus_gen(::tpy::BigInt limit_)
-        : __state(S_INITIAL), limit(std::move(limit_)) {}
+        : __state(S_INITIAL),
+          limit(std::move(limit_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_walrus_gen& __iter__() { return *this; }

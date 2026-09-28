@@ -263,11 +263,9 @@ std::vector<std::tuple<P, P>> in_match(P& p, int32_t k) {
     switch (__match_subject_1) {
     case 1: {
         return {::tpy::tuple_to_storage<std::tuple<P, P>>(t)};
-        break;
     }
     default: {
         return std::vector<std::tuple<P, P>>{};
-        break;
     }
     }
     ::std::unreachable();
@@ -408,7 +406,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "gen" << " " << n << "\n";
+            std::cout << "gen" << " " << n << "\n";
         }
     }
     ::tpyapp::main::show("async", y11);

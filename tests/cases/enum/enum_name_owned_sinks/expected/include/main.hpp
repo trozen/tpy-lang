@@ -60,7 +60,8 @@ struct __gen_frame_view : public ::tpy::next_iter_mixin<__gen_frame_view, int32_
     };
 
     __gen_frame_view(Color c_)
-        : __state(S_INITIAL), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_frame_view& __iter__() { return *this; }

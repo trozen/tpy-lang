@@ -45,7 +45,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // def __init__(self, x: int32, y: int32) -> None:  # tpyc: ok
 //     self.x = x * 2
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x((::tpy::mul_check<int32_t>(x, 2))), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x((::tpy::mul_check<int32_t>(x, 2))),
+      y(y) {}
 
 inline bool Point::__eq__(const Point& other) const {
     return ((this->x == other.x) && (this->y == other.y));

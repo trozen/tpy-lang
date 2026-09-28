@@ -132,12 +132,10 @@ int32_t match_all_arms(Box&& b, int32_t x) {
     switch (__match_subject_1) {
     case 1: {
         return ::tpyapp::main::forward(std::move(b));
-        break;
     }
     default: {
         Holder h = Holder(std::move(b));
         return h.item.value;
-        break;
     }
     }
     ::std::unreachable();

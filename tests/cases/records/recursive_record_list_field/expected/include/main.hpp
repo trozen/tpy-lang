@@ -38,6 +38,8 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 // def __init__(self, val: int32) -> None:
 //     self.val = val
 //     self.children = []
-inline Node::Node(int32_t val) : val(val), children(std::vector<Node>{}) {}
+inline Node::Node(int32_t val)
+    : val(val),
+      children(std::vector<Node>{}) {}
 void __tpy_init();
 } // namespace tpyapp::main

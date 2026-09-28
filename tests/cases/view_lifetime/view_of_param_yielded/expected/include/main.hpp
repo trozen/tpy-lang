@@ -35,7 +35,8 @@ struct __gen_tails : public ::tpy::next_iter_mixin<__gen_tails, std::string_view
     };
 
     __gen_tails(std::string_view s_)
-        : __state(S_INITIAL), s(std::string(s_)) {}
+        : __state(S_INITIAL),
+          s(std::string(s_)) {}
 
     std::expected<std::string_view, ::tpy::StopIteration> __next__();
     __gen_tails& __iter__() { return *this; }
@@ -58,7 +59,8 @@ struct __gen_owned_local : public ::tpy::next_iter_mixin<__gen_owned_local, std:
     };
 
     __gen_owned_local(std::string_view s_)
-        : __state(S_INITIAL), s(std::string(s_)) {}
+        : __state(S_INITIAL),
+          s(std::string(s_)) {}
 
     std::expected<std::string_view, ::tpy::StopIteration> __next__();
     __gen_owned_local& __iter__() { return *this; }
@@ -82,7 +84,8 @@ struct __gen_slice_of_ref_param : public ::tpy::next_iter_mixin<__gen_slice_of_r
     };
 
     __gen_slice_of_ref_param(const ::tpy::ByteArray& ba)
-        : __state(S_INITIAL), ba(ba) {}
+        : __state(S_INITIAL),
+          ba(ba) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_slice_of_ref_param& __iter__() { return *this; }

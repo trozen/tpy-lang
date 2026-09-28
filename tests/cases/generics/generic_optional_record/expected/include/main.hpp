@@ -50,7 +50,9 @@ struct Container {
     //     self._value = value
     //     self._has = True
     Container() = default;
-    explicit Container(::tpy::own_param_t<T> value) : _value(std::move(value)), _has(true) {}
+    explicit Container(::tpy::own_param_t<T> value)
+        : _value(std::move(value)),
+          _has(true) {}
 
     // def get(self) -> T | None:
     //     if self._has:
@@ -75,7 +77,9 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // def __init__(self, x: int, y: int) -> None:
 //     self.x = x
 //     self.y = y
-inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
+inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y)
+    : x(x),
+      y(y) {}
 
 // def sum(self) -> int:
 //     return self.x + self.y

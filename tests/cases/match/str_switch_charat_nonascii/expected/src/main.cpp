@@ -25,35 +25,30 @@ int32_t classify(std::string_view s) {
         case 'a': {
             if (__match_subject_1 == "aa") {
                 return 1;
-                goto __match_end_2;
             }
             break;
         }
         case 'b': {
             if (__match_subject_1 == "ba") {
                 return 2;
-                goto __match_end_2;
             }
             break;
         }
         case 'c': {
             if (__match_subject_1 == "ca") {
                 return 3;
-                goto __match_end_2;
             }
             break;
         }
         case 'd': {
             if (__match_subject_1 == "da") {
                 return 4;
-                goto __match_end_2;
             }
             break;
         }
         case 195: {
             if (__match_subject_1 == "\xc3\xa9") {
                 return 5;
-                goto __match_end_2;
             }
             break;
         }
@@ -61,9 +56,7 @@ int32_t classify(std::string_view s) {
     }
     {
         return 0;
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 

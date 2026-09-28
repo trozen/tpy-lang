@@ -46,7 +46,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 // def __init__(self, limit: int32) -> None:
 //     self.value = 0
 //     self.limit = limit
-inline Counter::Counter(int32_t limit) : value(0), limit(limit) {}
+inline Counter::Counter(int32_t limit)
+    : value(0),
+      limit(limit) {}
 
 // def __iter__(self) -> Counter:
 //     return self

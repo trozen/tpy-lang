@@ -82,7 +82,8 @@ struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, bool> {
     };
 
     __gen_g(::tpy::Union<const A*, const B*> v_)
-        : __state(S_INITIAL), v(v_) {}
+        : __state(S_INITIAL),
+          v(v_) {}
 
     std::expected<bool, ::tpy::StopIteration> __next__();
     __gen_g& __iter__() { return *this; }
@@ -111,6 +112,8 @@ inline B::B(int32_t y) : y(y) {}
 //     # (BUGS.md#own-union-field-store-copy-warning).
 //     self.u = copy(v)  # tpyc: ok
 //     self.n = 0
-inline H::H(::tpy::Union<A, B>&& v) : u(std::move(v)), n(0) {}
+inline H::H(::tpy::Union<A, B>&& v)
+    : u(std::move(v)),
+      n(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

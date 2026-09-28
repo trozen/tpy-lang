@@ -75,7 +75,9 @@ struct __gen_take : public ::tpy::next_iter_mixin<__gen_take, int32_t> {
     };
 
     __gen_take(const std::vector<int32_t>& items, int32_t n_)
-        : __state(S_INITIAL), items(items), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          items(items),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_take& __iter__() { return *this; }
@@ -102,7 +104,8 @@ struct __gen_evens : public ::tpy::next_iter_mixin<__gen_evens, int32_t> {
     };
 
     __gen_evens(const std::vector<int32_t>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_evens& __iter__() { return *this; }
@@ -128,8 +131,7 @@ struct __gen_stride : public ::tpy::next_iter_mixin<__gen_stride, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_stride()
-        : __state(S_INITIAL) {}
+    __gen_stride() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_stride& __iter__() { return *this; }
@@ -156,7 +158,8 @@ struct __gen_upto_range : public ::tpy::next_iter_mixin<__gen_upto_range, int32_
     };
 
     __gen_upto_range(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_upto_range& __iter__() { return *this; }
@@ -179,8 +182,7 @@ struct __gen_upto_while : public ::tpy::next_iter_mixin<__gen_upto_while, int32_
         S_DONE = 4,
     };
 
-    __gen_upto_while()
-        : __state(S_INITIAL) {}
+    __gen_upto_while() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_upto_while& __iter__() { return *this; }
@@ -208,7 +210,8 @@ struct __gen_iter_post_break : public ::tpy::next_iter_mixin<__gen_iter_post_bre
     };
 
     __gen_iter_post_break(const std::vector<int32_t>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_iter_post_break& __iter__() { return *this; }
@@ -235,7 +238,8 @@ struct __gen_post_continue : public ::tpy::next_iter_mixin<__gen_post_continue, 
     };
 
     __gen_post_continue(const std::vector<int32_t>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_post_continue& __iter__() { return *this; }
@@ -265,7 +269,9 @@ struct __gen_Limiter_first_positives : public ::tpy::next_iter_mixin<__gen_Limit
     };
 
     __gen_Limiter_first_positives(const Limiter& __self, const std::vector<int32_t>& items)
-        : __state(S_INITIAL), __self(__self), items(items) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          items(items) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Limiter_first_positives& __iter__() { return *this; }

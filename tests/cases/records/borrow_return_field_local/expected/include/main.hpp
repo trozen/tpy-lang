@@ -41,7 +41,9 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 // def __init__(self) -> None:
 //     self.buf = bytearray(b"ab")
 //     self.xs = [1, 2]
-inline H::H() : buf(::tpy::ByteArray(::tpy::bytes_literal("ab", 2))), xs(std::vector<int32_t>{1, 2}) {}
+inline H::H()
+    : buf(::tpy::ByteArray(::tpy::bytes_literal("ab", 2))),
+      xs(std::vector<int32_t>{1, 2}) {}
 
 // def view(self) -> bytearray:
 //     return self.buf  # tpyc: ok

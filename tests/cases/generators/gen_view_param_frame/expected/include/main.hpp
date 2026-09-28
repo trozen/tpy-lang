@@ -234,7 +234,10 @@ struct __coro_Adder_add {
     };
 
     __coro_Adder_add(const Adder& __self, std::span<int32_t> s_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), s(std::move(s_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          s(std::move(s_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -262,7 +265,9 @@ struct __coro_async_head {
     };
 
     __coro_async_head(std::string_view t_)
-        : __state(S_INITIAL), __cancel_pending(false), t(std::move(t_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          t(std::move(t_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -286,7 +291,8 @@ struct __coro_run_head {
     };
 
     __coro_run_head()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -310,7 +316,9 @@ struct __coro_bump_async {
     };
 
     __coro_bump_async(std::span<int32_t> s_)
-        : __state(S_INITIAL), __cancel_pending(false), s(std::move(s_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          s(std::move(s_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -334,7 +342,8 @@ struct __coro_run_bump {
     };
 
     __coro_run_bump()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -362,7 +371,8 @@ struct __coro_outer_bind {
     };
 
     __coro_outer_bind()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -389,7 +399,8 @@ struct __coro_outer_task {
     };
 
     __coro_outer_task()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -422,7 +433,9 @@ struct __coro_outer_loop_bind {
     };
 
     __coro_outer_loop_bind(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -450,7 +463,8 @@ struct __coro_outer_task_recv {
     };
 
     __coro_outer_task_recv()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -473,7 +487,8 @@ struct __gen_bump_scalars : public ::tpy::next_iter_mixin<__gen_bump_scalars, in
     };
 
     __gen_bump_scalars(std::span<int32_t> s_)
-        : __state(S_INITIAL), s(std::move(s_)) {}
+        : __state(S_INITIAL),
+          s(std::move(s_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_bump_scalars& __iter__() { return *this; }
@@ -496,7 +511,8 @@ struct __gen_bump_records : public ::tpy::next_iter_mixin<__gen_bump_records, in
     };
 
     __gen_bump_records(std::span<P> s_)
-        : __state(S_INITIAL), s(std::move(s_)) {}
+        : __state(S_INITIAL),
+          s(std::move(s_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_bump_records& __iter__() { return *this; }
@@ -519,7 +535,8 @@ struct __gen_read_ro_elems : public ::tpy::next_iter_mixin<__gen_read_ro_elems, 
     };
 
     __gen_read_ro_elems(std::span<const int32_t> s_)
-        : __state(S_INITIAL), s(std::move(s_)) {}
+        : __state(S_INITIAL),
+          s(std::move(s_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_read_ro_elems& __iter__() { return *this; }
@@ -542,7 +559,8 @@ struct __gen_read_ro_span : public ::tpy::next_iter_mixin<__gen_read_ro_span, in
     };
 
     __gen_read_ro_span(std::span<int32_t> s_)
-        : __state(S_INITIAL), s(std::move(s_)) {}
+        : __state(S_INITIAL),
+          s(std::move(s_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_read_ro_span& __iter__() { return *this; }
@@ -565,7 +583,8 @@ struct __gen_read_pair : public ::tpy::next_iter_mixin<__gen_read_pair, int32_t>
     };
 
     __gen_read_pair(std::span<const int32_t> s_)
-        : __state(S_INITIAL), s(std::move(s_)) {}
+        : __state(S_INITIAL),
+          s(std::move(s_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_read_pair& __iter__() { return *this; }
@@ -588,7 +607,8 @@ struct __gen_head_tail : public ::tpy::next_iter_mixin<__gen_head_tail, std::str
     };
 
     __gen_head_tail(std::string_view t_)
-        : __state(S_INITIAL), t(std::move(t_)) {}
+        : __state(S_INITIAL),
+          t(std::move(t_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_head_tail& __iter__() { return *this; }
@@ -611,7 +631,8 @@ struct __gen_byte_ends : public ::tpy::next_iter_mixin<__gen_byte_ends, int32_t>
     };
 
     __gen_byte_ends(::tpy::BytesView b_)
-        : __state(S_INITIAL), b(std::move(b_)) {}
+        : __state(S_INITIAL),
+          b(std::move(b_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_byte_ends& __iter__() { return *this; }
@@ -635,7 +656,9 @@ struct __gen_view_lens : public ::tpy::next_iter_mixin<__gen_view_lens, int32_t>
     };
 
     __gen_view_lens(std::string_view t_, ::tpy::BytesView b_)
-        : __state(S_INITIAL), t(std::move(t_)), b(std::move(b_)) {}
+        : __state(S_INITIAL),
+          t(std::move(t_)),
+          b(std::move(b_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_view_lens& __iter__() { return *this; }
@@ -658,7 +681,8 @@ struct __gen_ends : public ::tpy::next_iter_mixin<__gen_ends, int32_t> {
     };
 
     __gen_ends(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_ends& __iter__() { return *this; }
@@ -685,8 +709,7 @@ struct __gen_outer_for : public ::tpy::next_iter_mixin<__gen_outer_for, std::str
         S_DONE = 4,
     };
 
-    __gen_outer_for()
-        : __state(S_INITIAL) {}
+    __gen_outer_for() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_outer_for& __iter__() { return *this; }
@@ -713,8 +736,7 @@ struct __gen_outer_span : public ::tpy::next_iter_mixin<__gen_outer_span, int32_
         S_DONE = 4,
     };
 
-    __gen_outer_span()
-        : __state(S_INITIAL) {}
+    __gen_outer_span() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_outer_span& __iter__() { return *this; }
@@ -743,7 +765,8 @@ struct __gen_outer_comp : public ::tpy::next_iter_mixin<__gen_outer_comp, int32_
     };
 
     __gen_outer_comp(const std::vector<int32_t>& src)
-        : __state(S_INITIAL), src(src) {}
+        : __state(S_INITIAL),
+          src(src) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_outer_comp& __iter__() { return *this; }
@@ -772,7 +795,8 @@ struct __gen_outer_fstring : public ::tpy::next_iter_mixin<__gen_outer_fstring, 
     };
 
     __gen_outer_fstring(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_outer_fstring& __iter__() { return *this; }
@@ -804,7 +828,8 @@ struct __gen_outer_loop_for : public ::tpy::next_iter_mixin<__gen_outer_loop_for
     };
 
     __gen_outer_loop_for(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_outer_loop_for& __iter__() { return *this; }
@@ -828,7 +853,9 @@ struct __gen_Scaler_scale : public ::tpy::next_iter_mixin<__gen_Scaler_scale, in
     };
 
     __gen_Scaler_scale(const Scaler& __self, std::span<int32_t> s_)
-        : __state(S_INITIAL), __self(__self), s(std::move(s_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          s(std::move(s_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Scaler_scale& __iter__() { return *this; }
@@ -856,7 +883,9 @@ struct __gen_Tagger_tag : public ::tpy::next_iter_mixin<__gen_Tagger_tag, std::s
     };
 
     __gen_Tagger_tag(const Tagger& __self, std::string_view t_)
-        : __state(S_INITIAL), __self(__self), t(std::move(t_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          t(std::move(t_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_Tagger_tag& __iter__() { return *this; }
@@ -884,7 +913,9 @@ struct __gen_Summer_pair : public ::tpy::next_iter_mixin<__gen_Summer_pair, int3
     };
 
     __gen_Summer_pair(const Summer& __self, const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __self(__self), xs(xs) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Summer_pair& __iter__() { return *this; }
@@ -921,7 +952,9 @@ struct __coro_outer_async_recv {
     };
 
     __coro_outer_async_recv(const std::vector<int32_t>& src)
-        : __state(S_INITIAL), __cancel_pending(false), src(src) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          src(src) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -951,7 +984,8 @@ struct __gen_outer_comp_method : public ::tpy::next_iter_mixin<__gen_outer_comp_
     };
 
     __gen_outer_comp_method(const std::vector<int32_t>& src)
-        : __state(S_INITIAL), src(src) {}
+        : __state(S_INITIAL),
+          src(src) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_outer_comp_method& __iter__() { return *this; }
@@ -980,7 +1014,8 @@ struct __gen_Outer_run : public ::tpy::next_iter_mixin<__gen_Outer_run, std::str
     };
 
     __gen_Outer_run(const Outer& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_Outer_run& __iter__() { return *this; }
@@ -1014,7 +1049,9 @@ struct __gen_Outer_run_recv : public ::tpy::next_iter_mixin<__gen_Outer_run_recv
     };
 
     __gen_Outer_run_recv(const Outer& __self, const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __self(__self), xs(xs) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Outer_run_recv& __iter__() { return *this; }

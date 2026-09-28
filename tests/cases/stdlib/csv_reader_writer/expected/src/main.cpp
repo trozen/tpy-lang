@@ -21,7 +21,7 @@ void read_basic() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::__len__(row) << " " << ::tpy::str_join("|", row) << "\n";
+            std::cout << ::tpy::__len__(row) << " " << ::tpy::str_join("|", row) << "\n";
         }
     }
 }
@@ -35,14 +35,14 @@ void read_basic() {
 void read_quoted() {
     std::string_view data = "1,\"two, comma\",3\r\n\"q \"\"x\"\"\",\"ln\nbrk\",z\r\n";
     {
-        auto __tmp_2 = ::tpystd::io::StringIO(data);
-        auto __src_0 = ::tpystd::csv::reader(__tmp_2, ",", "\"", true, false);
+        auto __tmp_1 = ::tpystd::io::StringIO(data);
+        auto __src_0 = ::tpystd::csv::reader(__tmp_1, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::__len__(row) << " " << ::tpy::str_join("::", row) << "\n";
+            std::cout << ::tpy::__len__(row) << " " << ::tpy::str_join("::", row) << "\n";
         }
     }
 }
@@ -52,14 +52,14 @@ void read_quoted() {
 //         print("|".join(row))
 void read_custom_delim() {
     {
-        auto __tmp_3 = ::tpystd::io::StringIO("a;b;c\n");
-        auto __src_0 = ::tpystd::csv::reader(__tmp_3, ";");
+        auto __tmp_1 = ::tpystd::io::StringIO("a;b;c\n");
+        auto __src_0 = ::tpystd::csv::reader(__tmp_1, ";");
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::str_join("|", row) << "\n";
+            std::cout << ::tpy::str_join("|", row) << "\n";
         }
     }
 }
@@ -69,14 +69,14 @@ void read_custom_delim() {
 //         print("|".join(row))
 void read_skipinitialspace() {
     {
-        auto __tmp_4 = ::tpystd::io::StringIO("a,  b,   c\n");
-        auto __src_0 = ::tpystd::csv::reader(__tmp_4, ",", "\"", true, true);
+        auto __tmp_1 = ::tpystd::io::StringIO("a,  b,   c\n");
+        auto __src_0 = ::tpystd::csv::reader(__tmp_1, ",", "\"", true, true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::str_join("|", row) << "\n";
+            std::cout << ::tpy::str_join("|", row) << "\n";
         }
     }
 }
@@ -86,14 +86,14 @@ void read_skipinitialspace() {
 //         print(len(row), "[" + "|".join(row) + "]")
 void read_empty_fields() {
     {
-        auto __tmp_5 = ::tpystd::io::StringIO("a,,c\n,,\n");
-        auto __src_0 = ::tpystd::csv::reader(__tmp_5, ",", "\"", true, false);
+        auto __tmp_1 = ::tpystd::io::StringIO("a,,c\n,,\n");
+        auto __src_0 = ::tpystd::csv::reader(__tmp_1, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::__len__(row) << " " << (::tpy::str_concat((::tpy::str_concat("[", ::tpy::str_join("|", row))), "]")) << "\n";
+            std::cout << ::tpy::__len__(row) << " " << (::tpy::str_concat((::tpy::str_concat("[", ::tpy::str_join("|", row))), "]")) << "\n";
         }
     }
 }
@@ -109,26 +109,26 @@ void read_empty_fields() {
 //     print("empty-input rows:", count)
 void read_blank_and_empty() {
     {
-        auto __tmp_6 = ::tpystd::io::StringIO("a\n\nb\n");
-        auto __src_0 = ::tpystd::csv::reader(__tmp_6, ",", "\"", true, false);
+        auto __tmp_1 = ::tpystd::io::StringIO("a\n\nb\n");
+        auto __src_0 = ::tpystd::csv::reader(__tmp_1, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::__len__(row) << " " << (::tpy::str_concat((::tpy::str_concat("[", ::tpy::str_join("|", row))), "]")) << "\n";
+            std::cout << ::tpy::__len__(row) << " " << (::tpy::str_concat((::tpy::str_concat("[", ::tpy::str_join("|", row))), "]")) << "\n";
         }
     }
     int32_t count = 0;
     {
-        auto __tmp_7 = ::tpystd::io::StringIO("");
-        auto __src_2 = ::tpystd::csv::reader(__tmp_7, ",", "\"", true, false);
+        auto __tmp_2 = ::tpystd::io::StringIO("");
+        auto __src_2 = ::tpystd::csv::reader(__tmp_2, ",", "\"", true, false);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_3);
-        count = ::tpy::add_check<int32_t>(count, 1);
+            count = ::tpy::add_check<int32_t>(count, 1);
         }
     }
     std::cout << "empty-input rows:" << " " << count << "\n";
@@ -147,15 +147,15 @@ void read_blank_and_empty() {
 void read_then_mutate() {
     std::vector<std::vector<std::string>> rows = std::vector<std::vector<std::string>>{};
     {
-        auto __tmp_8 = ::tpystd::io::StringIO("a,b\nc,d\n");
-        auto __src_0 = ::tpystd::csv::reader(__tmp_8, ",", "\"", true, false);
+        auto __tmp_1 = ::tpystd::io::StringIO("a,b\nc,d\n");
+        auto __src_0 = ::tpystd::csv::reader(__tmp_1, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& row = ::tpy::unwrap_ref(*__r_1);
-        row.push_back("EXTRA");
-        rows.push_back(std::move(row));
+            row.push_back("EXTRA");
+            rows.push_back(std::move(row));
         }
     }
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(rows, 0)) << "\n";
@@ -218,14 +218,14 @@ void roundtrip() {
     w.writerow({"Alice", "says, hi"});
     std::string text = out.getvalue();
     {
-        auto __tmp_9 = ::tpystd::io::StringIO(text);
-        auto __src_0 = ::tpystd::csv::reader(__tmp_9, ",", "\"", true, false);
+        auto __tmp_1 = ::tpystd::io::StringIO(text);
+        auto __src_0 = ::tpystd::csv::reader(__tmp_1, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::str_join("|", row) << "\n";
+            std::cout << ::tpy::str_join("|", row) << "\n";
         }
     }
 }

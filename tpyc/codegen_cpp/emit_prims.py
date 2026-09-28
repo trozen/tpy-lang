@@ -69,6 +69,19 @@ if TYPE_CHECKING:
 
 # -- signature rendering ---------------------------------------------------
 
+def member_init_list(inits: 'list[str]', indent: str) -> str:
+    """The ` : a(..), b(..)` tail that follows a constructor signature
+    written at `indent`; the caller appends the body brace. One initializer
+    stays on the signature line; more go one per line under a `:` indented
+    one level past the signature."""
+    if not inits:
+        return ""
+    if len(inits) == 1:
+        return f" : {inits[0]}"
+    lead = indent + INDENT
+    return f"\n{lead}: " + f",\n{lead}  ".join(inits)
+
+
 def nested_def_signature(types: 'TypeResolver',
                          func: TpyFunction) -> 'tuple[str, str | None]':
     """(params_str, ret_cpp-or-None-for-void) for a nested def -- shared

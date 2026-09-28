@@ -52,7 +52,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t u = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "own_container" << " " << u << "\n";
+            std::cout << "own_container" << " " << u << "\n";
         }
     }
     int32_t total = 0;
@@ -63,10 +63,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        total = (::tpy::add_check<int32_t>(total, v));
-        if ((v == 1)) {
-            ::tpy::__setitem__((*xs), 2, 30);
-        }
+            total = (::tpy::add_check<int32_t>(total, v));
+            if ((v == 1)) {
+                ::tpy::__setitem__((*xs), 2, 30);
+            }
         }
     }
     std::cout << "over_global" << " " << total << " " << ::tpy::__getitem__((*xs), 2) << "\n";

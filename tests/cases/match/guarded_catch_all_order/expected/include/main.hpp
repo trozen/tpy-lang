@@ -90,7 +90,9 @@ struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
     };
 
     __gen_steps(Color c_, bool k_)
-        : __state(S_INITIAL), c(std::move(c_)), k(std::move(k_)) {}
+        : __state(S_INITIAL),
+          c(std::move(c_)),
+          k(std::move(k_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_steps& __iter__() { return *this; }
@@ -119,18 +121,14 @@ inline int32_t Light::rank(bool k) const {
     {
         if (k) {
             return 1;
-            goto __match_end_2;
         }
     }
     if (__match_subject_1 == Color::GREEN) {
         return 2;
-        goto __match_end_2;
     }
     {
         return 3;
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 void __tpy_init();

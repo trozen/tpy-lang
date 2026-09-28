@@ -69,10 +69,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& _ = ::tpy::unwrap_ref(*__r_1);
-        pulls = ::tpy::add_check<int32_t>(pulls, 1);
-        if ((pulls >= 5)) {
-            break;
-        }
+            pulls = ::tpy::add_check<int32_t>(pulls, 1);
+            if ((pulls >= 5)) {
+                break;
+            }
         }
     }
     std::cout << pulls << "\n";
@@ -83,7 +83,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     int32_t framed = 0;
@@ -94,10 +94,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             const ::tpy::BigInt& _ = ::tpy::unwrap_ref(*__r_5);
-        framed = ::tpy::add_check<int32_t>(framed, 1);
-        if ((framed >= 5)) {
-            break;
-        }
+            framed = ::tpy::add_check<int32_t>(framed, 1);
+            if ((framed >= 5)) {
+                break;
+            }
         }
     }
     std::cout << "framed" << " " << framed << "\n";

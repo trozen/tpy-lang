@@ -96,12 +96,10 @@ inline std::string Holder::label() const {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         return "a";
-        break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         return "b";
-        break;
     }
     }
     ::std::unreachable();

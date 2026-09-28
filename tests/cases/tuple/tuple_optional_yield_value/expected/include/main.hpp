@@ -33,7 +33,8 @@ struct __gen_gen_value_pairs : public ::tpy::next_iter_mixin<__gen_gen_value_pai
     };
 
     __gen_gen_value_pairs(const std::vector<int32_t>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<std::tuple<std::optional<int32_t>, std::optional<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_gen_value_pairs& __iter__() { return *this; }

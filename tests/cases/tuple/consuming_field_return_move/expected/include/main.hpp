@@ -338,7 +338,9 @@ struct __coro_H_async_return {
     };
 
     __coro_H_async_return(H& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -367,7 +369,8 @@ struct __coro_run_async {
     };
 
     __coro_run_async()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -392,7 +395,8 @@ struct __gen_H_gen : public ::tpy::next_iter_mixin<__gen_H_gen, int32_t> {
     };
 
     __gen_H_gen(const H& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     __gen_H_gen(__gen_H_gen&&) = default;
     ~__gen_H_gen() {
@@ -474,7 +478,10 @@ inline Guard::~Guard() {
 //     self.a = P(1)
 //     self.b = P(2)
 //     self.n = 10 ** 20
-inline H::H() : a(P(1)), b(P(2)), n(((::tpy::BigInt(10)).pow(::tpy::BigInt(20)))) {}
+inline H::H()
+    : a(P(1)),
+      b(P(2)),
+      n(((::tpy::BigInt(10)).pow(::tpy::BigInt(20)))) {}
 
 // def count(self) -> int32:
 //     return len(self.a.xs)
@@ -911,7 +918,10 @@ inline int32_t H::self_in_nested_def() && {
 //     self.a = P(1)
 //     self.b = P(2)
 //     self.pa = self.a
-inline HPtr::HPtr() : a(P(1)), b(P(2)), pa(&this->a) {}
+inline HPtr::HPtr()
+    : a(P(1)),
+      b(P(2)),
+      pa(&this->a) {}
 
 // # ptr_field_in_return: `pa` aims at `a`, so moving `a` would leave `pa`
 // # reading the emptied field; a pointer-typed field in the value keeps
@@ -925,7 +935,9 @@ inline int32_t HPtr::ptr_field_in_return() && {
 // def __init__(self) -> None:
 //     self.a = P(1)
 //     self.b = P(2)
-inline Base::Base() : a(P(1)), b(P(2)) {}
+inline Base::Base()
+    : a(P(1)),
+      b(P(2)) {}
 
 // def count(self) -> int32:
 //     return len(self.a.xs)

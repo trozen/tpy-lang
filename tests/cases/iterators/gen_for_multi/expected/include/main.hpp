@@ -42,7 +42,9 @@ struct __gen_multi : public ::tpy::next_iter_mixin<__gen_multi, int32_t> {
     };
 
     __gen_multi(const std::vector<int32_t>& items, int32_t n_)
-        : __state(S_INITIAL), items(items), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          items(items),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_multi& __iter__() { return *this; }

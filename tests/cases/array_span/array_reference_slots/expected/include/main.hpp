@@ -49,7 +49,9 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 // def __init__(self) -> None:
 //     self.cells = [1, 2, 3]
 //     self.spare = [4, 5, 6]
-inline Grid::Grid() : cells(std::array<int32_t, 3>{1, 2, 3}), spare(std::array<int32_t, 3>{4, 5, 6}) {}
+inline Grid::Grid()
+    : cells(std::array<int32_t, 3>{1, 2, 3}),
+      spare(std::array<int32_t, 3>{4, 5, 6}) {}
 
 // def same_cells(self, other: Grid) -> bool:
 //     return self.cells == other.cells      # the Array FIELD read as an operand

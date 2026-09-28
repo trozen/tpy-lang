@@ -56,7 +56,8 @@ struct __gen_first_only : public ::tpy::next_iter_mixin<__gen_first_only, std::t
     };
 
     __gen_first_only(std::vector<P>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
     __gen_first_only& __iter__() { return *this; }
@@ -83,7 +84,8 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T_src>, std::tupl
     };
 
     __gen_relay(T_src&& src_)
-        : __state(S_INITIAL), src(std::forward<T_src>(src_)) {}
+        : __state(S_INITIAL),
+          src(std::forward<T_src>(src_)) {}
 
     std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
     __gen_relay& __iter__() { return *this; }

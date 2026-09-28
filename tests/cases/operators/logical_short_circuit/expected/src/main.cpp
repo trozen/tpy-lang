@@ -18,8 +18,8 @@ namespace tpyapp::main {
 //     # c[0] falsy (0) -> d[0] (out of range) must NOT be evaluated
 //     return c[0] and d[0]
 ::tpy::BigInt and_skips_fallible(const std::vector<::tpy::BigInt>& c, const std::vector<::tpy::BigInt>& d) {
-    auto&& __tmp_2 = ::tpy::__getitem__(c, 0);
-    return (__tmp_2 ? ::tpy::__getitem__(d, 0) : __tmp_2);
+    auto&& __tmp_1 = ::tpy::__getitem__(c, 0);
+    return (__tmp_1 ? ::tpy::__getitem__(d, 0) : __tmp_1);
 }
 
 // def logged(log: list[int], v: int) -> int:
@@ -34,8 +34,8 @@ namespace tpyapp::main {
 //     z = 7 or logged(log, 1)  # 7 truthy -> logged() must NOT run
 //     return z
 ::tpy::BigInt or_skips_side_effect(std::vector<::tpy::BigInt>& log) {
-    auto&& __tmp_3 = 7;
-    ::tpy::BigInt z = (__tmp_3 ? ::tpy::BigInt(__tmp_3) : ::tpyapp::main::logged(log, ::tpy::BigInt(1)));
+    auto&& __tmp_1 = 7;
+    ::tpy::BigInt z = (__tmp_1 ? ::tpy::BigInt(__tmp_1) : ::tpyapp::main::logged(log, ::tpy::BigInt(1)));
     return z;
 }
 
@@ -43,8 +43,8 @@ namespace tpyapp::main {
 //     z = 0 and logged(log, 1)  # 0 falsy -> logged() must NOT run
 //     return z
 ::tpy::BigInt and_skips_side_effect(std::vector<::tpy::BigInt>& log) {
-    auto&& __tmp_4 = 0;
-    ::tpy::BigInt z = (__tmp_4 ? ::tpyapp::main::logged(log, ::tpy::BigInt(1)) : ::tpy::BigInt(__tmp_4));
+    auto&& __tmp_1 = 0;
+    ::tpy::BigInt z = (__tmp_1 ? ::tpyapp::main::logged(log, ::tpy::BigInt(1)) : ::tpy::BigInt(__tmp_1));
     return z;
 }
 
@@ -52,8 +52,8 @@ namespace tpyapp::main {
 //     z = 7 and logged(log, 9)  # 7 truthy -> `and` returns RHS, logged() DOES run
 //     return z
 ::tpy::BigInt and_runs_rhs_when_truthy(std::vector<::tpy::BigInt>& log) {
-    auto&& __tmp_5 = 7;
-    ::tpy::BigInt z = (__tmp_5 ? ::tpyapp::main::logged(log, ::tpy::BigInt(9)) : ::tpy::BigInt(__tmp_5));
+    auto&& __tmp_1 = 7;
+    ::tpy::BigInt z = (__tmp_1 ? ::tpyapp::main::logged(log, ::tpy::BigInt(9)) : ::tpy::BigInt(__tmp_1));
     return z;
 }
 
@@ -61,18 +61,18 @@ namespace tpyapp::main {
 //     # first truthy operand wins; the rest (incl. out-of-range c[1]) not evaluated
 //     return c[0] or c[1] or c[1]
 ::tpy::BigInt chained_or_skips_tail(const std::vector<::tpy::BigInt>& c) {
-    auto&& __tmp_6 = ::tpy::__getitem__(c, 0);
-    auto&& __tmp_7 = (__tmp_6 ? __tmp_6 : ::tpy::__getitem__(c, 1));
-    return (__tmp_7 ? __tmp_7 : ::tpy::__getitem__(c, 1));
+    auto&& __tmp_1 = ::tpy::__getitem__(c, 0);
+    auto&& __tmp_2 = (__tmp_1 ? __tmp_1 : ::tpy::__getitem__(c, 1));
+    return (__tmp_2 ? __tmp_2 : ::tpy::__getitem__(c, 1));
 }
 
 // def chained_and_skips_tail(c: list[int]) -> int:
 //     # first falsy operand wins; the rest (incl. out-of-range c[1]) not evaluated
 //     return c[0] and c[1] and c[1]
 ::tpy::BigInt chained_and_skips_tail(const std::vector<::tpy::BigInt>& c) {
-    auto&& __tmp_8 = ::tpy::__getitem__(c, 0);
-    auto&& __tmp_9 = (__tmp_8 ? ::tpy::__getitem__(c, 1) : __tmp_8);
-    return (__tmp_9 ? ::tpy::__getitem__(c, 1) : __tmp_9);
+    auto&& __tmp_1 = ::tpy::__getitem__(c, 0);
+    auto&& __tmp_2 = (__tmp_1 ? ::tpy::__getitem__(c, 1) : __tmp_1);
+    return (__tmp_2 ? ::tpy::__getitem__(c, 1) : __tmp_2);
 }
 
 // def main() -> None:
@@ -89,22 +89,22 @@ namespace tpyapp::main {
 //     print(chained_or_skips_tail([3]))       # 3 (no IndexError on c[1])
 //     print(chained_and_skips_tail([0]))      # 0 (no IndexError on c[1])
 void main() {
-    std::vector<::tpy::BigInt> __tmp_10 = {5};
-    std::vector<::tpy::BigInt> __tmp_11 = std::vector<::tpy::BigInt>{};
-    std::cout << ::tpyapp::main::or_skips_fallible(__tmp_10, __tmp_11) << "\n";
-    std::vector<::tpy::BigInt> __tmp_12 = {0};
-    std::vector<::tpy::BigInt> __tmp_13 = std::vector<::tpy::BigInt>{};
-    std::cout << ::tpyapp::main::and_skips_fallible(__tmp_12, __tmp_13) << "\n";
+    std::vector<::tpy::BigInt> __tmp_1 = {5};
+    std::vector<::tpy::BigInt> __tmp_2 = std::vector<::tpy::BigInt>{};
+    std::cout << ::tpyapp::main::or_skips_fallible(__tmp_1, __tmp_2) << "\n";
+    std::vector<::tpy::BigInt> __tmp_3 = {0};
+    std::vector<::tpy::BigInt> __tmp_4 = std::vector<::tpy::BigInt>{};
+    std::cout << ::tpyapp::main::and_skips_fallible(__tmp_3, __tmp_4) << "\n";
     std::vector<::tpy::BigInt> log1 = std::vector<::tpy::BigInt>{};
     std::cout << ::tpyapp::main::or_skips_side_effect(log1) << " " << ::tpy::__len__(log1) << "\n";
     std::vector<::tpy::BigInt> log2 = std::vector<::tpy::BigInt>{};
     std::cout << ::tpyapp::main::and_skips_side_effect(log2) << " " << ::tpy::__len__(log2) << "\n";
     std::vector<::tpy::BigInt> log3 = std::vector<::tpy::BigInt>{};
     std::cout << ::tpyapp::main::and_runs_rhs_when_truthy(log3) << " " << ::tpy::__len__(log3) << "\n";
-    std::vector<::tpy::BigInt> __tmp_14 = {3};
-    std::cout << ::tpyapp::main::chained_or_skips_tail(__tmp_14) << "\n";
-    std::vector<::tpy::BigInt> __tmp_15 = {0};
-    std::cout << ::tpyapp::main::chained_and_skips_tail(__tmp_15) << "\n";
+    std::vector<::tpy::BigInt> __tmp_5 = {3};
+    std::cout << ::tpyapp::main::chained_or_skips_tail(__tmp_5) << "\n";
+    std::vector<::tpy::BigInt> __tmp_6 = {0};
+    std::cout << ::tpyapp::main::chained_and_skips_tail(__tmp_6) << "\n";
 }
 
 // main()

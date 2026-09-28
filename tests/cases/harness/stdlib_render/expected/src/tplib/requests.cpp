@@ -690,8 +690,8 @@ Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connecti
         if ((pnum.has_value())) {
             hport = ((*pnum)).to_fixed_check<int32_t>();
         }
-        ::tpystd::ssl::SSLContext __tmp_2 = ::tpystd::tplib::requests::_ssl_context_for(verify);
-        return ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(::tpystd::http::client::HTTPSConnection((*host), hport, timeout, &(__tmp_2)));
+        ::tpystd::ssl::SSLContext __tmp_1 = ::tpystd::tplib::requests::_ssl_context_for(verify);
+        return ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(::tpystd::http::client::HTTPSConnection((*host), hport, timeout, &(__tmp_1)));
     }
     int32_t port = DEFAULT_HTTP_PORT;
     if ((pnum.has_value())) {
@@ -1344,7 +1344,15 @@ void CookieJar::_ingest(std::string_view raw, std::string_view req_host, std::st
 //     self.cookies = cookies
 //     self.history = []
 //     self._raw = raw
-Response::Response(int32_t status_code, std::string_view reason, std::string_view url, CaseInsensitiveDict&& headers, ::tpy::BytesView content, CookieJar&& cookies, std::optional<::tpystd::http::client::HTTPResponse> raw) : status_code(status_code), reason(reason), url(url), headers(std::move(headers)), content(::tpy::Bytes(content)), cookies(std::move(cookies)), history(std::vector<Response>{}), _raw(std::move(raw)) {}
+Response::Response(int32_t status_code, std::string_view reason, std::string_view url, CaseInsensitiveDict&& headers, ::tpy::BytesView content, CookieJar&& cookies, std::optional<::tpystd::http::client::HTTPResponse> raw)
+    : status_code(status_code),
+      reason(reason),
+      url(url),
+      headers(std::move(headers)),
+      content(::tpy::Bytes(content)),
+      cookies(std::move(cookies)),
+      history(std::vector<Response>{}),
+      _raw(std::move(raw)) {}
 
 // def __init__(self) -> None:
 //     self.headers = {}
@@ -1355,7 +1363,15 @@ Response::Response(int32_t status_code, std::string_view reason, std::string_vie
 //     self._redirect_connections = []
 //     self._pool = {}
 //     self.max_redirects = 30
-Session::Session() : headers(::tpy::ordered_map<std::string, std::string>()), params(::tpy::ordered_map<std::string, std::string>()), auth(std::nullopt), cookies(CookieJar()), _connection(std::nullopt), _redirect_connections(std::vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>{}), _pool(::tpy::ordered_map<std::string, ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>()), max_redirects(30) {}
+Session::Session()
+    : headers(::tpy::ordered_map<std::string, std::string>()),
+      params(::tpy::ordered_map<std::string, std::string>()),
+      auth(std::nullopt),
+      cookies(CookieJar()),
+      _connection(std::nullopt),
+      _redirect_connections(std::vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>{}),
+      _pool(::tpy::ordered_map<std::string, ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>()),
+      max_redirects(30) {}
 
 // def _send_for_hop(self, method: str, url: str,
 //                   params: dict[str, str] | None,

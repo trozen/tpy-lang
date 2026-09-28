@@ -45,6 +45,8 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 // def __init__(self, items: list[int]):
 //     self.items = items
-inline Bag::Bag(const std::vector<::tpy::BigInt>& items) : Holder(), items(items) {}
+inline Bag::Bag(const std::vector<::tpy::BigInt>& items)
+    : Holder(),
+      items(items) {}
 void __tpy_init();
 } // namespace tpyapp::main

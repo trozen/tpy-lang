@@ -60,7 +60,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     };
 
     __gen_gen(std::optional<::tpy::BytesView> b_)
-        : __state(S_INITIAL), b(b_ ? std::make_optional(::tpy::Bytes(*b_)) : std::nullopt) {}
+        : __state(S_INITIAL),
+          b(b_ ? std::make_optional(::tpy::Bytes(*b_)) : std::nullopt) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

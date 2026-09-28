@@ -857,11 +857,9 @@ case Color::Green: {
     } else {
         return "green";
     }
-    break;
 }
 default: {
     return "other";
-    break;
 }
 }
 
@@ -876,7 +874,6 @@ case Color::Green: {
 }
 default: __match_default_1: {
     return "other";
-    break;
 }
 }
 ```
@@ -914,6 +911,16 @@ if (__match_subject_1 == "hello") {
 // next arm...
 __match_end_2:;
 ```
+
+An arm whose body never falls out (it ends in `return`, `raise`, a loop
+`break`, an if/else or exhaustive `match` that terminates on
+every path, `while True:` without a `break`, `assert False`) gets no
+`goto __match_end_N;`, and the end label is written only when some goto
+still targets it. The switch tiers apply the same fact to `break;`: a case
+block whose every path terminates (a single unguarded arm, or a guard chain
+ending in an unguarded `else`) writes none. The fact is
+`stmts_terminate` over the source case body, recorded once per arm entry
+at lowering (`THIRMatchArmEntry.body_terminates`).
 
 ### Or-patterns
 

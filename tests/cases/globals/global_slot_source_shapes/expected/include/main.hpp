@@ -116,7 +116,10 @@ inline Line::Line() : a(Point(0)) {}
 //     self.xs = [1, 2]
 //     self.inner = Point(3)
 //     self.value = Point(4)
-inline Holder::Holder() : xs(std::vector<int32_t>{1, 2}), inner(Point(3)), value(Point(4)) {}
+inline Holder::Holder()
+    : xs(std::vector<int32_t>{1, 2}),
+      inner(Point(3)),
+      value(Point(4)) {}
 
 // def __init__(self) -> None:
 //     self.n = 1
@@ -126,7 +129,9 @@ inline Base::Base() : n(1) {}
 //     super().__init__()
 //     self.n = 2
 //     self.extra = 9
-inline Child::Child() : Base(), extra(9) {
+inline Child::Child()
+    : Base(),
+      extra(9) {
     this->n = 2;
 }
 void __tpy_init();

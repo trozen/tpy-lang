@@ -35,7 +35,8 @@ struct __gen_sums : public ::tpy::next_iter_mixin<__gen_sums, int32_t> {
     };
 
     __gen_sums(const std::vector<int32_t>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_sums& __iter__() { return *this; }

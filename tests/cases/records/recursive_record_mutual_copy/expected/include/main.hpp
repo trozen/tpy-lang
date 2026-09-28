@@ -76,7 +76,9 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 // def __init__(self, val: int32) -> None:
 //     self.val = val
 //     self.bs = []
-inline A::A(int32_t val) : val(val), bs(std::vector<B>{}) {}
+inline A::A(int32_t val)
+    : val(val),
+      bs(std::vector<B>{}) {}
 
 inline A::A(const A& other) : A(other.__copy__()) {}
 inline A& A::operator=(const A& other) {
@@ -93,7 +95,9 @@ inline A A::__copy__() const {
 // def __init__(self, val: int32) -> None:
 //     self.val = val
 //     self.as_ = []
-inline B::B(int32_t val) : val(val), as_(std::vector<A>{}) {}
+inline B::B(int32_t val)
+    : val(val),
+      as_(std::vector<A>{}) {}
 
 inline B::B(const B& other) : B(other.__copy__()) {}
 inline B& B::operator=(const B& other) {

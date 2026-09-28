@@ -49,7 +49,9 @@ struct Wrapper {
     //     self.inner = inner
     //     self.tag = tag
     Wrapper() = default;
-    explicit Wrapper(::tpy::own_param_t<A> inner, ::tpy::own_param_t<B> tag) : inner(std::move(inner)), tag(std::move(tag)) {}
+    explicit Wrapper(::tpy::own_param_t<A> inner, ::tpy::own_param_t<B> tag)
+        : inner(std::move(inner)),
+          tag(std::move(tag)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 

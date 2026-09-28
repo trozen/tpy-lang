@@ -37,6 +37,8 @@ inline std::ostream& operator<<(std::ostream& os, const MyError& obj) {
 // def __init__(self, message: str = "") -> None:
 //     super().__init__(message)
 //     self.msg = message
-inline MyError::MyError(std::string_view message) : ::tpy::Exception(message), msg(message) {}
+inline MyError::MyError(std::string_view message)
+    : ::tpy::Exception(message),
+      msg(message) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -117,7 +117,9 @@ inline std::ostream& operator<<(std::ostream& os, const Segment& obj) {
 // def __init__(self, x: float, y: float) -> None:
 //     self.x = x
 //     self.y = y
-inline Vec::Vec(double x, double y) : x(x), y(y) {}
+inline Vec::Vec(double x, double y)
+    : x(x),
+      y(y) {}
 
 // def __add__(self, other: Vec) -> Own[Vec]:
 //     return Vec(self.x + other.x, self.y + other.y)
@@ -162,7 +164,9 @@ inline Vec& Vec::__iadd__(const Vec& other) {
 // def __init__(self, start: Vec, end: Vec) -> None:
 //     self.start = start
 //     self.end = end
-inline Segment::Segment(const Vec& start, const Vec& end) : start(start), end(end) {}
+inline Segment::Segment(const Vec& start, const Vec& end)
+    : start(start),
+      end(end) {}
 
 // def diff(self) -> Own[Vec]:
 //     # Ref[Vec] - Ref[Vec] via field access

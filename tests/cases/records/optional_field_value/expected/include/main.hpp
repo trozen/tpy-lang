@@ -39,7 +39,9 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 // def __init__(self, name: str):
 //     self.name = name
 //     self.max_retries = None
-inline Config::Config(std::string_view name) : name(name), max_retries(std::nullopt) {}
+inline Config::Config(std::string_view name)
+    : name(name),
+      max_retries(std::nullopt) {}
 
 // def get_retries(self) -> int32 | None:
 //     return self.max_retries

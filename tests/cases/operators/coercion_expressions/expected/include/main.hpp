@@ -123,7 +123,9 @@ inline ::tpy::BigInt Counter::add(const ::tpy::BigInt& x) const {
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.pt = Point(x, y)

@@ -106,7 +106,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     {
@@ -117,7 +117,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "first" << " " << v << "\n";
+            std::cout << "first" << " " << v << "\n";
         }
     }
     Push __tmp_2 = Push({1, 2, 3, 4});

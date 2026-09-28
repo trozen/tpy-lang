@@ -34,7 +34,9 @@ struct __coro_msg {
     };
 
     __coro_msg(std::string_view tag_)
-        : __state(S_INITIAL), __cancel_pending(false), tag(std::string(tag_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          tag(std::string(tag_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -60,7 +62,9 @@ struct __coro_go {
     };
 
     __coro_go(int32_t x_)
-        : __state(S_INITIAL), __cancel_pending(false), x(std::move(x_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          x(std::move(x_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -87,7 +91,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

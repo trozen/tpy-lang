@@ -72,7 +72,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& b = ::tpy::unwrap_ref(*__r_1);
-        total = ((::tpy::BigInt(total)) + (b.val));
+            total = ((::tpy::BigInt(total)) + (b.val));
         }
     }
     std::cout << "boxes" << " " << total << "\n";
@@ -85,7 +85,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const auto& b2 = ::tpy::unwrap_ref(*__r_3);
-        kept.push_back(b2.val);
+            kept.push_back(b2.val);
         }
     }
     ::tpy::__getitem__(src, 0).val = ::tpy::BigInt(100);
@@ -99,7 +99,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             const auto& r = ::tpy::unwrap_ref(*__r_5);
-        kept_rows.push_back(::tpy::__len__(r));
+            kept_rows.push_back(::tpy::__len__(r));
         }
     }
     ::tpy::__getitem__(rows, 0).push_back(9);
@@ -113,7 +113,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             const auto& b3 = ::tpy::unwrap_ref(*__r_7);
-        kept_m.push_back(b3.val);
+            kept_m.push_back(b3.val);
         }
     }
     ::tpy::__getitem__(bag.items, 0).val = ::tpy::BigInt(55);

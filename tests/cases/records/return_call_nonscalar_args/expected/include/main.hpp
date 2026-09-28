@@ -48,6 +48,8 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 // def __init__(self, label: str, size: int32) -> None:
 //     self.label = label
 //     self.size = size
-inline Config::Config(std::string_view label, int32_t size) : label(label), size(size) {}
+inline Config::Config(std::string_view label, int32_t size)
+    : label(label),
+      size(size) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -74,7 +74,9 @@ inline Source::Source() : items(std::vector<int32_t>{1, 2, 3}) {}
 // def __init__(self) -> None:
 //     self.src = Source()
 //     self.dest = Source()
-inline Holder::Holder() : src(Source()), dest(Source()) {}
+inline Holder::Holder()
+    : src(Source()),
+      dest(Source()) {}
 
 // @error_return(E)
 // def view(self) -> Source:

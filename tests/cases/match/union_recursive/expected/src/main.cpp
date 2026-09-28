@@ -17,11 +17,9 @@ std::string describe(const Tree& t) {
         auto& __case_0 = std::get<0>(__match_subject_1.value);
         auto& v = __case_0.value;
         return (::tpy::str_concat("leaf=", (v).to_string()));
-        break;
     }
     default: {
         return "branch";
-        break;
     }
     }
     ::std::unreachable();

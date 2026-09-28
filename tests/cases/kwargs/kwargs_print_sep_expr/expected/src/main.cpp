@@ -20,15 +20,15 @@ namespace tpyapp::main {
 void free_position(std::string_view d) {
     Sep s = Sep();
     std::cout << "free:" << " ";
-    const auto& __tmp_2 = s.tick();
-    std::cout << 1 << __tmp_2 << 2 << __tmp_2 << 3 << "\n";
+    const auto& __tmp_1 = s.tick();
+    std::cout << 1 << __tmp_1 << 2 << __tmp_1 << 3 << "\n";
     std::cout << "free: evals" << " " << s.calls << "\n";
     std::cout << "free:" << " ";
-    const auto& __tmp_3 = (::tpy::str_concat(d, "|"));
-    std::cout << "a" << __tmp_3 << "b" << "\n";
+    const auto& __tmp_2 = (::tpy::str_concat(d, "|"));
+    std::cout << "a" << __tmp_2 << "b" << "\n";
     std::cout << "free:" << " ";
-    const auto& __tmp_4 = (::tpy::str_concat(d, "!\n"));
-    std::cout << "tail" << __tmp_4;
+    const auto& __tmp_3 = (::tpy::str_concat(d, "!\n"));
+    std::cout << "tail" << __tmp_3;
 }
 
 
@@ -47,8 +47,8 @@ __gen_gen gen(std::string_view d) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         std::cout << "async:" << " ";
-        const auto& __tmp_7 = (::tpy::str_concat(d, "^"));
-        std::cout << "u" << __tmp_7 << "v" << "\n";
+        const auto& __tmp_1 = (::tpy::str_concat(d, "^"));
+        std::cout << "u" << __tmp_1 << "v" << "\n";
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -82,8 +82,8 @@ __coro_coro coro(std::string_view d) {
 void closure_position(std::string_view d) {
     auto show = [&d]() {
         std::cout << "closure:" << " ";
-        const auto& __tmp_8 = (::tpy::str_concat(d, "+"));
-        std::cout << "w" << __tmp_8 << "x" << "\n";
+        const auto& __tmp_1 = (::tpy::str_concat(d, "+"));
+        std::cout << "w" << __tmp_1 << "x" << "\n";
     };
     show();
 }
@@ -99,15 +99,15 @@ void try_position(std::string_view d) {
     {
         try {
             std::cout << "try:" << " ";
-            const auto& __tmp_9 = (::tpy::str_concat(d, "~"));
-            std::cout << "y" << __tmp_9 << "z" << "\n";
+            const auto& __tmp_1 = (::tpy::str_concat(d, "~"));
+            std::cout << "y" << __tmp_1 << "z" << "\n";
         } catch (...) {
-            const auto& __tmp_10 = (::tpy::str_concat(d, "\n"));
-            std::cout << "try: done" << __tmp_10;
+            const auto& __tmp_2 = (::tpy::str_concat(d, "\n"));
+            std::cout << "try: done" << __tmp_2;
             throw;
         }
-        const auto& __tmp_11 = (::tpy::str_concat(d, "\n"));
-        std::cout << "try: done" << __tmp_11;
+        const auto& __tmp_3 = (::tpy::str_concat(d, "\n"));
+        std::cout << "try: done" << __tmp_3;
     }
 }
 
@@ -124,8 +124,8 @@ void match_position(int32_t n, std::string_view d) {
     switch (__match_subject_1) {
     case 1: {
         std::cout << "match:" << " ";
-        const auto& __tmp_12 = (::tpy::str_concat(::tpy::fixed_to_str<int32_t>(n), d));
-        std::cout << "l" << __tmp_12 << "m" << "\n";
+        const auto& __tmp_1 = (::tpy::str_concat(::tpy::fixed_to_str<int32_t>(n), d));
+        std::cout << "l" << __tmp_1 << "m" << "\n";
         break;
     }
     default: {
@@ -156,7 +156,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen: yield" << " " << v << "\n";
+            std::cout << "gen: yield" << " " << v << "\n";
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::coro(d)));

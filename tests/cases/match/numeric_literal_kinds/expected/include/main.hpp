@@ -144,7 +144,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     };
 
     __gen_gen(const std::vector<double>& vals)
-        : __state(S_INITIAL), vals(vals) {}
+        : __state(S_INITIAL),
+          vals(vals) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -159,7 +160,10 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
 //     self.f = f
 //     self.i = i
 //     self.b = b
-inline P::P(double f, int32_t i, bool b) : f(f), i(i), b(b) {}
+inline P::P(double f, int32_t i, bool b)
+    : f(f),
+      i(i),
+      b(b) {}
 
 // def __init__(self, tag: str) -> None:
 //     self.tag = tag

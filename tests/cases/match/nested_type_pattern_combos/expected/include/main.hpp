@@ -106,6 +106,8 @@ inline Outer::Outer(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> i
 // def __init__(self, label: str, inner: str | int32) -> None:
 //     self.label = label
 //     self.inner = inner
-inline Tagged::Tagged(std::string_view label, const ::tpy::Union<int32_t, std::string>& inner) : label(label), inner(inner) {}
+inline Tagged::Tagged(std::string_view label, const ::tpy::Union<int32_t, std::string>& inner)
+    : label(label),
+      inner(inner) {}
 void __tpy_init();
 } // namespace tpyapp::main

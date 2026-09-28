@@ -39,7 +39,9 @@ struct __coro_first_bytes {
     };
 
     __coro_first_bytes(std::optional<::tpy::BytesView> b_)
-        : __state(S_INITIAL), __cancel_pending(false), b(b_ ? std::make_optional(::tpy::Bytes(*b_)) : std::nullopt) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          b(b_ ? std::make_optional(::tpy::Bytes(*b_)) : std::nullopt) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -63,7 +65,9 @@ struct __coro_str_len {
     };
 
     __coro_str_len(std::optional<std::string_view> s_)
-        : __state(S_INITIAL), __cancel_pending(false), s(s_ ? std::make_optional(std::string(*s_)) : std::nullopt) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          s(s_ ? std::make_optional(std::string(*s_)) : std::nullopt) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -98,7 +102,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

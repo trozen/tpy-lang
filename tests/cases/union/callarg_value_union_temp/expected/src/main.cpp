@@ -40,8 +40,8 @@ int32_t use_decl(int32_t k) {
 //     return r
 int32_t use_reassign(int32_t k) {
     int32_t r = 0;
-    ::tpy::Union<double, int32_t> __tmp_2 = (::tpy::add_check<int32_t>(k, 2));
-    r = ::tpyapp::main::take_vu(__tmp_2);
+    ::tpy::Union<double, int32_t> __tmp_1 = (::tpy::add_check<int32_t>(k, 2));
+    r = ::tpyapp::main::take_vu(__tmp_1);
     return r;
 }
 
@@ -49,24 +49,24 @@ int32_t use_reassign(int32_t k) {
 //     take_vu(k)  # discarded result; the temp still evaluates
 //     return k
 int32_t use_stmt(int32_t k) {
-    ::tpy::Union<double, int32_t> __tmp_3 = k;
-    ::tpyapp::main::take_vu(__tmp_3);
+    ::tpy::Union<double, int32_t> __tmp_1 = k;
+    ::tpyapp::main::take_vu(__tmp_1);
     return k;
 }
 
 // def use_two(k: int32, f: float64) -> int32:
 //     return two(k, f)
 int32_t use_two(int32_t k, double f) {
-    ::tpy::Union<double, int32_t> __tmp_4 = k;
-    ::tpy::Union<double, int32_t> __tmp_5 = f;
-    return ::tpyapp::main::two(__tmp_4, __tmp_5);
+    ::tpy::Union<double, int32_t> __tmp_1 = k;
+    ::tpy::Union<double, int32_t> __tmp_2 = f;
+    return ::tpyapp::main::two(__tmp_1, __tmp_2);
 }
 
 // def use_float() -> int32:
 //     return take_vu(2.5)
 int32_t use_float() {
-    ::tpy::Union<double, int32_t> __tmp_6 = 2.5;
-    return ::tpyapp::main::take_vu(__tmp_6);
+    ::tpy::Union<double, int32_t> __tmp_1 = 2.5;
+    return ::tpyapp::main::take_vu(__tmp_1);
 }
 
 // def main() -> None:

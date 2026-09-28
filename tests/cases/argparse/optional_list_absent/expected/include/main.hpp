@@ -77,7 +77,9 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 
 
 // a1 = p1.parse_args([])
-inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::optional<std::vector<std::string>>&& tag, std::optional<std::vector<::tpy::BigInt>>&& num) : tag(std::move(tag)), num(std::move(num)) {}
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::optional<std::vector<std::string>>&& tag, std::optional<std::vector<::tpy::BigInt>>&& num)
+    : tag(std::move(tag)),
+      num(std::move(num)) {}
 
 // a2 = p2.parse_args(["--tag", "x", "--tag", "y"])
 inline __tpy_builder_argparse_args_2::__tpy_builder_argparse_args_2(std::optional<std::vector<std::string>>&& tag) : tag(std::move(tag)) {}

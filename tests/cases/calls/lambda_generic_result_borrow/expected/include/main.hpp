@@ -117,7 +117,9 @@ inline Holder::Holder() : inner(Inner(7)) {}
 // def __init__(self, n: int32) -> None:
 //     self.n = n
 //     self.inner = Inner(n)
-inline Rec::Rec(int32_t n) : n(n), inner(Inner(n)) {}
+inline Rec::Rec(int32_t n)
+    : n(n),
+      inner(Inner(n)) {}
 
 // def shared(self, h: Holder) -> Inner:
 //     return h.inner

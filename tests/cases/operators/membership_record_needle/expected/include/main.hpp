@@ -121,7 +121,10 @@ struct __coro_async_holds {
     };
 
     __coro_async_holds(const std::vector<Pt>& pts, const Pt& p)
-        : __state(S_INITIAL), __cancel_pending(false), pts(pts), p(p) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          pts(pts),
+          p(p) {}
 
     ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -149,7 +152,9 @@ struct __gen_gen_found : public ::tpy::next_iter_mixin<__gen_gen_found, bool> {
     };
 
     __gen_gen_found(const std::vector<Pt>& pts, const std::vector<Pt>& probes)
-        : __state(S_INITIAL), pts(pts), probes(probes) {}
+        : __state(S_INITIAL),
+          pts(pts),
+          probes(probes) {}
 
     std::expected<bool, ::tpy::StopIteration> __next__();
     __gen_gen_found& __iter__() { return *this; }

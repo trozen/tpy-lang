@@ -471,8 +471,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& value = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "simple:" << " " << value << "\n";
-        inner.value = (inner.value) + (::tpy::BigInt(1));
+            std::cout << "simple:" << " " << value << "\n";
+            inner.value = (inner.value) + (::tpy::BigInt(1));
         }
     }
     {
@@ -482,8 +482,8 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& value = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "delegated:" << " " << value << "\n";
-        inner.value = (inner.value) + (::tpy::BigInt(10));
+            std::cout << "delegated:" << " " << value << "\n";
+            inner.value = (inner.value) + (::tpy::BigInt(10));
         }
     }
     std::cout << "delegated receiver:" << " " << inner.value << "\n";

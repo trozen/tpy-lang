@@ -40,8 +40,7 @@ struct __gen_unpack_across_yield : public ::tpy::next_iter_mixin<__gen_unpack_ac
         S_DONE = 3,
     };
 
-    __gen_unpack_across_yield()
-        : __state(S_INITIAL) {}
+    __gen_unpack_across_yield() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_unpack_across_yield& __iter__() { return *this; }
@@ -69,7 +68,8 @@ struct __gen_dict_keys : public ::tpy::next_iter_mixin<__gen_dict_keys, std::str
     };
 
     __gen_dict_keys(const ::tpy::ordered_map<std::string, int32_t>& d)
-        : __state(S_INITIAL), d(d) {}
+        : __state(S_INITIAL),
+          d(d) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_dict_keys& __iter__() { return *this; }
@@ -99,7 +99,8 @@ struct __gen_blob_slices : public ::tpy::next_iter_mixin<__gen_blob_slices, int3
     };
 
     __gen_blob_slices(const std::vector<::tpy::Bytes>& blobs)
-        : __state(S_INITIAL), blobs(blobs) {}
+        : __state(S_INITIAL),
+          blobs(blobs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_blob_slices& __iter__() { return *this; }
@@ -121,8 +122,7 @@ struct __gen_static_sources : public ::tpy::next_iter_mixin<__gen_static_sources
         S_DONE = 2,
     };
 
-    __gen_static_sources()
-        : __state(S_INITIAL) {}
+    __gen_static_sources() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_static_sources& __iter__() { return *this; }

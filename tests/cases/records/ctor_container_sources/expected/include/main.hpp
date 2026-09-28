@@ -79,7 +79,11 @@ inline std::vector<int32_t>& Holder::peek() {
 //     self.tags = [n] * 4  # ... and threads the field type for its element
 //     self.data = []
 //     self.mirror = []
-inline Grid::Grid(int32_t n) : cells(::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(8, {0}))), tags(::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(4, {n}))), data(std::vector<int32_t>{}), mirror(std::vector<int32_t>{}) {}
+inline Grid::Grid(int32_t n)
+    : cells(::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(8, {0}))),
+      tags(::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(4, {n}))),
+      data(std::vector<int32_t>{}),
+      mirror(std::vector<int32_t>{}) {}
 
 // def fill_own(self, n: int32) -> None:
 //     self.data = make_list(n)  # the Own return lands by value, no copy

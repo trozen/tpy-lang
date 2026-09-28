@@ -197,7 +197,8 @@ struct __coro_coro_dyn {
     };
 
     __coro_coro_dyn()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -220,8 +221,7 @@ struct __gen_gen_own_slot : public ::tpy::next_iter_mixin<__gen_gen_own_slot, in
         S_DONE = 3,
     };
 
-    __gen_gen_own_slot()
-        : __state(S_INITIAL) {}
+    __gen_gen_own_slot() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_own_slot& __iter__() { return *this; }
@@ -242,8 +242,7 @@ struct __gen_gen_escape_hoist : public ::tpy::next_iter_mixin<__gen_gen_escape_h
         S_DONE = 2,
     };
 
-    __gen_gen_escape_hoist()
-        : __state(S_INITIAL) {}
+    __gen_gen_escape_hoist() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_escape_hoist& __iter__() { return *this; }
@@ -269,8 +268,7 @@ struct __gen_gen_per_resume : public ::tpy::next_iter_mixin<__gen_gen_per_resume
         S_DONE = 3,
     };
 
-    __gen_gen_per_resume()
-        : __state(S_INITIAL) {}
+    __gen_gen_per_resume() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_per_resume& __iter__() { return *this; }
@@ -293,7 +291,8 @@ struct __gen_Holder_gen : public ::tpy::next_iter_mixin<__gen_Holder_gen, int32_
     };
 
     __gen_Holder_gen(const Holder& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Holder_gen& __iter__() { return *this; }

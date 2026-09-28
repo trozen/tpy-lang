@@ -70,6 +70,8 @@ inline bool Priority::__lt__(const Priority& other) const {
 // def __init__(self, name: str, prio: Own[Priority]) -> None:
 //     self.name = name
 //     self.prio = prio
-inline Task::Task(std::string_view name, Priority&& prio) : name(name), prio(std::move(prio)) {}
+inline Task::Task(std::string_view name, Priority&& prio)
+    : name(name),
+      prio(std::move(prio)) {}
 void __tpy_init();
 } // namespace tpyapp::main

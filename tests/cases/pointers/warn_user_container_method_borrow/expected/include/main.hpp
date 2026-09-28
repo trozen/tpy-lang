@@ -45,7 +45,9 @@ inline std::ostream& operator<<(std::ostream& os, const NumberList& obj) {
 // def __init__(self, label: str) -> None:
 //     self._items = []
 //     self._label = label
-inline NumberList::NumberList(std::string_view label) : _items(std::vector<int32_t>{}), _label(label) {}
+inline NumberList::NumberList(std::string_view label)
+    : _items(std::vector<int32_t>{}),
+      _label(label) {}
 
 // def add(self, val: int32) -> None:
 //     self._items.append(val)

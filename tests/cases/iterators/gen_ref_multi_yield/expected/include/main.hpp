@@ -52,7 +52,8 @@ struct __gen_twice : public ::tpy::next_iter_mixin<__gen_twice, ::tpy::val_or_re
     };
 
     __gen_twice(std::vector<Box>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __next__();
     __gen_twice& __iter__() { return *this; }

@@ -51,7 +51,10 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 //     self.name = name
 //     self.desc = desc
 //     self.label = label
-inline Item::Item(std::string_view name, std::string_view desc, std::string_view label) : name(name), desc(desc), label(label) {}
+inline Item::Item(std::string_view name, std::string_view desc, std::string_view label)
+    : name(name),
+      desc(desc),
+      label(label) {}
 
 // # Warning: -> str copies the field
 // def get_name(self) -> str:

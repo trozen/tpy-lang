@@ -93,7 +93,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> Cell::__next__() {
     return this->n;
 }
 
-inline Pack::Pack(int32_t a, int32_t b) : first(Cell(a)), second(Cell(b)) {}
+inline Pack::Pack(int32_t a, int32_t b)
+    : first(Cell(a)),
+      second(Cell(b)) {}
 
 inline Cell& Pack::get_first() {
     return this->first;

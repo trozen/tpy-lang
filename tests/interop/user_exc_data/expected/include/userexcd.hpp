@@ -57,6 +57,11 @@ inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
 }
 
 
-inline ParseError::ParseError(std::string_view message, int32_t line, std::string_view detail, ::tpy::BytesView payload, Severity severity) : ::tpy::ValueError(message), line(line), detail(detail), payload(::tpy::Bytes(payload)), severity(severity) {}
+inline ParseError::ParseError(std::string_view message, int32_t line, std::string_view detail, ::tpy::BytesView payload, Severity severity)
+    : ::tpy::ValueError(message),
+      line(line),
+      detail(detail),
+      payload(::tpy::Bytes(payload)),
+      severity(severity) {}
 void __tpy_init();
 } // namespace tpyapp::userexcd

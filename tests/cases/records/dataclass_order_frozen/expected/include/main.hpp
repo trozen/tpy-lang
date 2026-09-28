@@ -79,7 +79,10 @@ namespace tpyapp::main {
 
 
 
-inline Version::Version(int32_t major, int32_t minor, int32_t patch) : major(major), minor(minor), patch(patch) {}
+inline Version::Version(int32_t major, int32_t minor, int32_t patch)
+    : major(major),
+      minor(minor),
+      patch(patch) {}
 
 inline bool Version::__eq__(const Version& other) const {
     return (((this->major == other.major) && (this->minor == other.minor)) && (this->patch == other.patch));

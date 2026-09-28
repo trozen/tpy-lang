@@ -42,7 +42,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << x << "\n";
+            std::cout << x << "\n";
         }
     }
     {
@@ -52,7 +52,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_3);
-        std::cout << x << "\n";
+            std::cout << x << "\n";
         }
     }
     {
@@ -62,7 +62,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_5);
-        std::cout << x << "\n";
+            std::cout << x << "\n";
         }
     }
     std::vector<int32_t> empty = std::vector<int32_t>{};
@@ -73,7 +73,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_7);
-        std::cout << x << "\n";
+            std::cout << x << "\n";
         }
     }
     std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter([](int32_t x) -> bool { return ((::tpy::mod_floor<int32_t>(x, 2)) != 0); }, nums));

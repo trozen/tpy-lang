@@ -726,7 +726,8 @@ struct __genexpr_generator_heads_1_frame : public ::tpy::next_iter_mixin<__genex
     };
 
     __genexpr_generator_heads_1_frame(const std::vector<std::string>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __genexpr_generator_heads_1_frame& __iter__() { return *this; }
@@ -767,7 +768,8 @@ struct __genexpr_generator_heads_2_frame : public ::tpy::next_iter_mixin<__genex
     };
 
     __genexpr_generator_heads_2_frame(const std::vector<std::string>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __genexpr_generator_heads_2_frame& __iter__() { return *this; }
@@ -824,7 +826,7 @@ void generator_heads(const std::vector<std::string>& words) {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 std::string_view q = ::tpy::unwrap_ref(*__r_1);
-            y = q;
+                y = q;
             }
         }
         break;
@@ -839,7 +841,7 @@ void generator_heads(const std::vector<std::string>& words) {
                 auto __r_3 = __itr_2.__next__();
                 if (!__r_3.has_value()) break;
                 std::string_view q2 = ::tpy::unwrap_ref(*__r_3);
-            y2 = q2;
+                y2 = q2;
             }
         }
         break;
@@ -854,7 +856,7 @@ void generator_heads(const std::vector<std::string>& words) {
                 auto __r_5 = __itr_4.__next__();
                 if (!__r_5.has_value()) break;
                 std::string_view q3 = ::tpy::unwrap_ref(*__r_5);
-            y3 = q3;
+                y3 = q3;
             }
         }
         break;

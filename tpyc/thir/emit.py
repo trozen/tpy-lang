@@ -181,8 +181,8 @@ class TempSink:
     `create_typed` -- the type is already rendered at lowering, so both
     TempState arms (`create`'s param-type render and `create_typed`'s
     explicit string) reduce to the same pending row -- and every draw comes
-    from the live module-cumulative `__tmp_N` counter, so numbering runs
-    continuously across the module's bodies."""
+    from the live ctx `__tmp_N` counter, which numbers per emitted C++
+    function (`TempState.function_scope`)."""
 
     def __init__(self, ctx) -> None:
         self._ctx = ctx
@@ -365,9 +365,8 @@ class ModuleCounter:
     """Module-cumulative int sink for a hidden-name numbering stream
     (`__ctx_N`, `__after_else_N`, ...), backed by a named int attribute of
     the live CodeGenContext (duck-typed on `ctx` like TempSink). Unlike the
-    per-function counters below, these streams are never reset (like
-    `__tmp_N`), so the numbering runs continuously across the module's
-    bodies."""
+    per-function counters below (and `__tmp_N`), these streams are never
+    reset, so the numbering runs continuously across the module's bodies."""
 
     def __init__(self, ctx, attr: str) -> None:
         self._ctx = ctx
@@ -449,9 +448,9 @@ class _EmitState:
     pointer-local reseats carry their storage verdict on the node instead.
 
     `temps` is the `__tmp_N` sink THIRArgTemp renders through, flushed before
-    the enclosing statement line (one flush point per statement). Unlike the counters above it is NOT per-function: it is
-    ctx-backed, so the numbering stays module-cumulative across the module's
-    bodies."""
+    the enclosing statement line (one flush point per statement). It is
+    ctx-backed: the numbering is per emitted C++ function, so a nested def
+    rendered inside this body continues this body's stream."""
     temps: TempSink
     # `with_counter` numbers `__ctx_N` (ctx attr `with_counter`); `try_counter`
     # numbers the throw tier's `__after_else_N` else labels, the return
@@ -2323,11 +2322,7 @@ def _emit_for_iter_proto(out: TextIO, stmt: THIRForIterProto,
                                f"::tpy::unwrap_ref(*{r})", stmt.const_loop_var)
     out.write(f"{inner}{binding}\n")
     state.loop_depth += 1
-    # The body emits at the ORIGINAL level + 1 even inside the rvalue brace
-    # scope: the scope bump changes only the local `indent` string, never the
-    # statement indent LEVEL the body and its trailing comments follow. The
-    # prelude/close lines above follow the bumped string.
-    _emit_stmts(out, stmt.body, indent_level + 1, state)
+    _emit_stmts(out, stmt.body, lvl + 1, state)
     state.loop_depth -= 1
     out.write(f"{indent}}}\n")
     if not stmt.iterable_lvalue:
@@ -3009,9 +3004,10 @@ def _emit_match_switch(out: TextIO, stmt: THIRMatch, indent_level: int,
     # (binding, body one level in) or the guard chain (every entry's
     # binding first, deduped by name, then `if (g) { ... } else if ... }
     # else { ... }` with bodies two levels in; an all-guarded labeled group
-    # falls back via `goto __match_default_N;`). Every group closes with
-    # the unconditional `break;` (dead after a goto/continue but always
-    # written). The always-match group was placed last at lowering.
+    # falls back via `goto __match_default_N;`). A group closes with
+    # `break;` unless every path through it terminates (still written
+    # after the default goto). The always-match group was placed last at
+    # lowering.
     indent = INDENT * indent_level
     inner = INDENT * (indent_level + 1)
     default_label = None
@@ -3061,7 +3057,11 @@ def _emit_match_switch(out: TextIO, stmt: THIRMatch, indent_level: int,
             if (not has_unguarded and default_label is not None
                     and arm.labels):
                 out.write(f"{inner}goto {default_label};\n")
-        out.write(f"{inner}break;\n")
+        # A group whose every path terminates never reaches its `break;`
+        # (the unguarded entry, when present, is the chain's last `else`).
+        if not (any(e.guard is None for e in arm.entries)
+                and all(e.body_terminates for e in arm.entries)):
+            out.write(f"{inner}break;\n")
         out.write(f"{indent}}}\n")
     if stmt.synthetic_default:
         out.write(f"{indent}default: break;\n")
@@ -3076,9 +3076,10 @@ def _emit_match_switch_union(out: TextIO, stmt: THIRMatch, indent_level: int,
     # index case labels, the `__case_{i}` extraction alias when sema
     # narrowing drew one (`auto& __case_i = [*]std::get<idx>(subject);`),
     # the `as` binding against the alias (or the composed get), stacked
-    # index labels for binding-free or-patterns, and the unconditional
-    # `break;` per arm. A wrapper subject dispatches through its `.value`
-    # variant member (both the switch head and the get positions).
+    # index labels for binding-free or-patterns, and a `break;` per arm
+    # whose body does not terminate. A wrapper subject dispatches through
+    # its `.value` variant member (both the switch head and the get
+    # positions).
     indent = INDENT * indent_level
     inner = INDENT * (indent_level + 1)
     variant = f"{subject}.value" if stmt.wrapper_value else subject
@@ -3107,10 +3108,31 @@ def _emit_match_switch_union(out: TextIO, stmt: THIRMatch, indent_level: int,
         _emit_match_whole_bindings(out, entry, subject, inner,
                                    entry.case_alias or get)
         _emit_match_arm_body(out, entry, indent_level + 1, state)
-        out.write(f"{inner}break;\n")
+        if not entry.body_terminates:
+            out.write(f"{inner}break;\n")
         out.write(f"{indent}}}\n")
     state.switch_depth -= 1
     out.write(f"{indent}}}\n")
+
+
+class _MatchEnd:
+    """The goto tiers' `__match_end_N` label. An arm whose body terminates
+    never reaches its goto, so none is written; the label is written only
+    when some goto targets it (an unused label is a -Wunused-label)."""
+
+    def __init__(self, label: str) -> None:
+        self.label = label
+        self.used = False
+
+    def goto(self, out: TextIO, at: str, entry: THIRMatchArmEntry) -> None:
+        if entry.body_terminates:
+            return
+        self.used = True
+        out.write(f"{at}goto {self.label};\n")
+
+    def close(self, out: TextIO, at: str) -> None:
+        if self.used:
+            out.write(f"{at}{self.label}:;\n")
 
 
 def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
@@ -3125,13 +3147,14 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
     # collisions between arms), the binding (capture/as -- vs the subject
     # for always-match entries, vs the alias for class entries), the guard
     # as `if (guard) { <body> goto end; }` one level deeper, or the
-    # unguarded `<body> goto end;` inline; `break;` closes each block. The
+    # unguarded `<body> goto end;` inline; `break;` closes each block
+    # unless its last entry is unconditional with a terminating body. The
     # trailing end label writes UNINDENTED, at column 0.
     indent = INDENT * indent_level
     inner = INDENT * (indent_level + 1)
     inner2 = INDENT * (indent_level + 2)
     state.match_counter += 1
-    end_label = f"__match_end_{state.match_counter}"
+    end = _MatchEnd(f"__match_end_{state.match_counter}")
     # A wrapper subject dispatches through its `.value` variant member
     # (both the switch head and the get positions), like the unguarded tier.
     variant = f"{subject}.value" if stmt.wrapper_value else subject
@@ -3178,19 +3201,22 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
                     _emit_match_whole_bindings(out, entry, subject,
                                                body_indent, alias)
                 _emit_match_arm_body(out, entry, lvl, state)
-                out.write(f"{INDENT * lvl}goto {end_label};\n")
+                end.goto(out, INDENT * lvl, entry)
                 out.write(f"{bind_indent}}}\n")
             else:
                 lvl = indent_level + (2 if use_scope else 1)
                 _emit_match_arm_body(out, entry, lvl, state)
-                out.write(f"{INDENT * lvl}goto {end_label};\n")
+                end.goto(out, INDENT * lvl, entry)
             if use_scope:
                 out.write(f"{inner}}}\n")
-        out.write(f"{inner}break;\n")
+        last = arm.entries[-1]
+        if not (last.guard is None and not last.field_conds
+                and last.body_terminates):
+            out.write(f"{inner}break;\n")
         out.write(f"{indent}}}\n")
     state.switch_depth -= 1
     out.write(f"{indent}}}\n")
-    out.write(f"{end_label}:;\n")
+    end.close(out, "")
 
 
 def _emit_poly_whole_binding(out: TextIO, entry: THIRMatchArmEntry,
@@ -3249,7 +3275,7 @@ def _emit_match_poly_guarded(out: TextIO, stmt: THIRMatch,
     indent = INDENT * indent_level
     inner = INDENT * (indent_level + 1)
     state.match_counter += 1
-    end_label = f"__match_end_{state.match_counter}"
+    end = _MatchEnd(f"__match_end_{state.match_counter}")
     for arm in stmt.arms:
         entry = arm.entries[0]
         if entry.poly_cast is not None:
@@ -3266,11 +3292,11 @@ def _emit_match_poly_guarded(out: TextIO, stmt: THIRMatch,
             if cond_parts:
                 out.write(f"{inner}if ({' && '.join(cond_parts)}) {{\n")
                 _emit_stmts(out, entry.body, indent_level + 2, state)
-                out.write(f"{inner}    goto {end_label};\n")
+                end.goto(out, f"{inner}    ", entry)
                 out.write(f"{inner}}}\n")
             else:
                 _emit_stmts(out, entry.body, indent_level + 1, state)
-                out.write(f"{inner}goto {end_label};\n")
+                end.goto(out, inner, entry)
             out.write(f"{indent}}}\n")
         elif entry.poly_or_conds is not None:
             cond = " || ".join(f"{p}{subject}{s}"
@@ -3280,7 +3306,7 @@ def _emit_match_poly_guarded(out: TextIO, stmt: THIRMatch,
             out.write(f"{indent}if ({cond}) {{\n")
             _emit_poly_whole_binding(out, entry, subject, inner)
             _emit_stmts(out, entry.body, indent_level + 1, state)
-            out.write(f"{inner}goto {end_label};\n")
+            end.goto(out, inner, entry)
             out.write(f"{indent}}}\n")
         else:
             _emit_poly_whole_binding(out, entry, subject, indent)
@@ -3288,13 +3314,13 @@ def _emit_match_poly_guarded(out: TextIO, stmt: THIRMatch,
                 out.write(f"{indent}if ({_emit_expr(entry.guard, state)}) "
                           f"{{\n")
                 _emit_stmts(out, entry.body, indent_level + 1, state)
-                out.write(f"{inner}goto {end_label};\n")
+                end.goto(out, inner, entry)
                 out.write(f"{indent}}}\n")
             else:
                 out.write(f"{indent}{{\n")
                 _emit_stmts(out, entry.body, indent_level + 1, state)
                 out.write(f"{indent}}}\n")
-    out.write(f"{indent}{end_label}:;\n")
+    end.close(out, indent)
 
 
 def _emit_match_optional(out: TextIO, stmt: THIRMatch, indent_level: int,
@@ -3391,7 +3417,7 @@ def _emit_match_if_elif_optional(out: TextIO, stmt: THIRMatch,
 
 
 def _emit_match_goto_tail(out: TextIO, entry, indent_level: int,
-                          state: _EmitState, end_label: str) -> None:
+                          state: _EmitState, end: '_MatchEnd') -> None:
     # The guarded arm tail: inside an opened arm block (bindings already
     # emitted), the guard as `if (guard) { <body> goto end; }` two levels
     # in, or the unguarded body + goto one level; closes the block.
@@ -3400,11 +3426,11 @@ def _emit_match_goto_tail(out: TextIO, entry, indent_level: int,
     if entry.guard is not None:
         out.write(f"{inner}if ({_emit_expr(entry.guard, state)}) {{\n")
         _emit_match_arm_body(out, entry, indent_level + 2, state)
-        out.write(f"{INDENT * (indent_level + 2)}goto {end_label};\n")
+        end.goto(out, INDENT * (indent_level + 2), entry)
         out.write(f"{inner}}}\n")
     else:
         _emit_match_arm_body(out, entry, indent_level + 1, state)
-        out.write(f"{inner}goto {end_label};\n")
+        end.goto(out, inner, entry)
     out.write(f"{indent}}}\n")
 
 
@@ -3419,7 +3445,7 @@ def _emit_match_if_elif_optional_guarded(out: TextIO, stmt: THIRMatch,
     indent = INDENT * indent_level
     inner = INDENT * (indent_level + 1)
     state.match_counter += 1
-    end_label = f"__match_end_{state.match_counter}"
+    end = _MatchEnd(f"__match_end_{state.match_counter}")
     for arm in stmt.arms:
         entry = arm.entries[0]
         if entry.opt_conds is None:
@@ -3428,8 +3454,8 @@ def _emit_match_if_elif_optional_guarded(out: TextIO, stmt: THIRMatch,
             cond = _opt_chain_cond(entry.opt_conds, subject)
             out.write(f"{indent}if ({cond}) {{\n")
         _emit_match_opt_arm_bindings(out, entry, subject, inner)
-        _emit_match_goto_tail(out, entry, indent_level, state, end_label)
-    out.write(f"{indent}{end_label}:;\n")
+        _emit_match_goto_tail(out, entry, indent_level, state, end)
+    end.close(out, indent)
 
 
 def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
@@ -3449,12 +3475,12 @@ def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
     indent = INDENT * indent_level
     inner = INDENT * (indent_level + 1)
     state.match_counter += 1
-    end_label = f"__match_end_{state.match_counter}"
+    end = _MatchEnd(f"__match_end_{state.match_counter}")
     for entry in stmt.str_guarded:
         cond = _opt_chain_cond(entry.opt_conds, subject)
         out.write(f"{indent}if ({cond}) {{\n")
         _emit_match_whole_bindings(out, entry, subject, inner)
-        _emit_match_goto_tail(out, entry, indent_level, state, end_label)
+        _emit_match_goto_tail(out, entry, indent_level, state, end)
     if stmt.str_disc_kind == "char_at":
         out.write(f"{indent}if ({subject}.size() >= "
                   f"{stmt.str_disc_param + 1}) {{\n")
@@ -3475,7 +3501,7 @@ def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
             out.write(f"{sw_inner}if ({cond}) {{\n")
             _emit_match_whole_bindings(out, entry, subject, sw_deep)
             _emit_match_arm_body(out, entry, sw_level + 2, state)
-            out.write(f"{sw_deep}goto {end_label};\n")
+            end.goto(out, sw_deep, entry)
             out.write(f"{sw_inner}}}\n")
         out.write(f"{sw_inner}break;\n")
         out.write(f"{sw_indent}}}\n")
@@ -3486,8 +3512,8 @@ def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
     for entry in stmt.str_trailing:
         out.write(f"{indent}{{\n")
         _emit_match_whole_bindings(out, entry, subject, inner)
-        _emit_match_goto_tail(out, entry, indent_level, state, end_label)
-    out.write(f"{indent}{end_label}:;\n")
+        _emit_match_goto_tail(out, entry, indent_level, state, end)
+    end.close(out, indent)
 
 
 def _emit_match_if_elif(out: TextIO, stmt: THIRMatch, indent_level: int,
@@ -3542,7 +3568,7 @@ def _emit_match_if_elif_guarded(out: TextIO, stmt: THIRMatch,
     indent = INDENT * indent_level
     inner = INDENT * (indent_level + 1)
     state.match_counter += 1
-    end_label = f"__match_end_{state.match_counter}"
+    end = _MatchEnd(f"__match_end_{state.match_counter}")
     for arm in stmt.arms:
         entry = arm.entries[0]
         if not arm.labels:
@@ -3555,13 +3581,13 @@ def _emit_match_if_elif_guarded(out: TextIO, stmt: THIRMatch,
         if entry.guard is not None:
             out.write(f"{inner}if ({_emit_expr(entry.guard, state)}) {{\n")
             _emit_match_arm_body(out, entry, indent_level + 2, state)
-            out.write(f"{INDENT * (indent_level + 2)}goto {end_label};\n")
+            end.goto(out, INDENT * (indent_level + 2), entry)
             out.write(f"{inner}}}\n")
         else:
             _emit_match_arm_body(out, entry, indent_level + 1, state)
-            out.write(f"{inner}goto {end_label};\n")
+            end.goto(out, inner, entry)
         out.write(f"{indent}}}\n")
-    out.write(f"{indent}{end_label}:;\n")
+    end.close(out, indent)
 
 
 def _record_or_cond(or_conds, subject: str) -> str:
@@ -3630,7 +3656,7 @@ def _emit_match_guarded_record(out: TextIO, stmt: THIRMatch,
     indent = INDENT * indent_level
     inner = INDENT * (indent_level + 1)
     state.match_counter += 1
-    end_label = f"__match_end_{state.match_counter}"
+    end = _MatchEnd(f"__match_end_{state.match_counter}")
     for arm in stmt.arms:
         entry = arm.entries[0]
         if entry.or_conds is not None:
@@ -3646,7 +3672,7 @@ def _emit_match_guarded_record(out: TextIO, stmt: THIRMatch,
                 out.write(f"{indent}{{\n")
             _emit_match_whole_bindings(out, entry, subject, inner)
             _emit_match_arm_body(out, entry, indent_level + 1, state)
-            out.write(f"{inner}goto {end_label};\n")
+            end.goto(out, inner, entry)
             out.write(f"{indent}}}\n")
             continue
         conds = [f"{pre}{subject}{suf}" for pre, suf in entry.field_conds]
@@ -3661,13 +3687,13 @@ def _emit_match_guarded_record(out: TextIO, stmt: THIRMatch,
         if entry.guard is not None:
             out.write(f"{inner}if ({_emit_expr(entry.guard, state)}) {{\n")
             _emit_match_arm_body(out, entry, indent_level + 2, state)
-            out.write(f"{INDENT * (indent_level + 2)}goto {end_label};\n")
+            end.goto(out, INDENT * (indent_level + 2), entry)
             out.write(f"{inner}}}\n")
         else:
             _emit_match_arm_body(out, entry, indent_level + 1, state)
-            out.write(f"{inner}goto {end_label};\n")
+            end.goto(out, inner, entry)
         out.write(f"{indent}}}\n")
-    out.write(f"{indent}{end_label}:;\n")
+    end.close(out, indent)
 
 
 def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState) -> None:
@@ -4731,11 +4757,12 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
                    global_scope: bool = False) -> None:
     """Emit `fn`'s body statements (no signature, no braces) at `indent_level`.
 
-    `temps` is the `__tmp_N` sink, `with_counter` the `__ctx_N` sink,
-    `try_counter` the try/error_return label+temp sink, and
-    `finally_guard_counter` the `__fin_ran_N` cleanup-guard sink -- all
-    module-cumulative and ctx-backed, so the numbering runs continuously
-    across the module's bodies. `return_cpp` is the signature's return
+    `temps` is the `__tmp_N` sink (numbered per C++ function by the
+    caller's `TempState.function_scope`), `with_counter` the `__ctx_N`
+    sink, `try_counter` the try/error_return label+temp sink, and
+    `finally_guard_counter` the `__fin_ran_N` cleanup-guard sink -- the
+    last three module-cumulative and ctx-backed, so their numbering runs
+    continuously across the module's bodies. `return_cpp` is the signature's return
     spelling (`ctx.current_return_cpp` at the seam), read only by the
     finally-chain return temp decl. `global_scope` emits the module-init body
     (`__tpy_init`), whose slots spell `static __global_slot_N`."""
@@ -4790,9 +4817,8 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
         f"{mi.field_cpp}(std::move({_emit_expr(mi.value, state)}))" if mi.move
         else f"{mi.field_cpp}({_emit_expr(mi.value, state)})"
         for mi in ctor.mil_inits)
-    if inits:
-        out.write(" : ")
-        out.write(", ".join(inits))
+    out.write(emit_prims.member_init_list(
+        inits, INDENT * (body_indent_level - 1)))
     if ctor.temp_plan is not None:
         validate_plan(ctor.body, ctor.temp_plan)
     state.temp_plan = ctor.temp_plan
@@ -4815,8 +4841,8 @@ class ResumableLeafEmitter:
     """Per-routed-body leaf renderer driven by the shared resumable-frame
     skeleton (`gen_async`). One instance per routed body holds one
     `_EmitState`, so per-function streams (rebind slots, `__tup_N`) behave
-    as one body across leaf calls while the module-cumulative streams come
-    from the ctx-backed sinks -- the same contract as `emit_thir_body`.
+    as one body across leaf calls while the `__tmp_N` and module-cumulative
+    streams come from the ctx-backed sinks -- the same contract as `emit_thir_body`.
 
     The skeleton looks up exactly the leaves lowering stored, keyed by the
     parse-tree node it holds; a missing key means the gate and

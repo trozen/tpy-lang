@@ -32,7 +32,9 @@ struct __coro_total_up {
     };
 
     __coro_total_up(int32_t k_)
-        : __state(S_INITIAL), __cancel_pending(false), k(std::move(k_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          k(std::move(k_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

@@ -336,7 +336,9 @@ struct __coro_async_body {
     };
 
     __coro_async_body(::tpy::Union<A*, B*> v_)
-        : __state(S_INITIAL), __cancel_pending(false), v(v_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          v(v_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -360,7 +362,9 @@ struct __coro_async_match {
     };
 
     __coro_async_match(::tpy::Union<A*, B*> v_)
-        : __state(S_INITIAL), __cancel_pending(false), v(v_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          v(v_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -384,7 +388,9 @@ struct __coro_async_total {
     };
 
     __coro_async_total(::tpy::Union<const A*, const B*> v_)
-        : __state(S_INITIAL), __cancel_pending(false), v(v_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          v(v_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -417,7 +423,8 @@ struct __coro_async_main {
     };
 
     __coro_async_main()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -441,7 +448,8 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
     };
 
     __gen_gen_body(::tpy::Union<A*, B*> v_)
-        : __state(S_INITIAL), v(v_) {}
+        : __state(S_INITIAL),
+          v(v_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_body& __iter__() { return *this; }
@@ -466,7 +474,8 @@ struct __gen_gen_match : public ::tpy::next_iter_mixin<__gen_gen_match, int32_t>
     };
 
     __gen_gen_match(::tpy::Union<A*, B*> v_)
-        : __state(S_INITIAL), v(v_) {}
+        : __state(S_INITIAL),
+          v(v_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_match& __iter__() { return *this; }
@@ -489,7 +498,8 @@ struct __gen_gen_total : public ::tpy::next_iter_mixin<__gen_gen_total, int32_t>
     };
 
     __gen_gen_total(::tpy::Union<const A*, const B*> v_)
-        : __state(S_INITIAL), v(v_) {}
+        : __state(S_INITIAL),
+          v(v_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_total& __iter__() { return *this; }

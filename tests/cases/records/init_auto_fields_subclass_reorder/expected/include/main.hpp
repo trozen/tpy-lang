@@ -48,6 +48,9 @@ inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
 // def __init__(self, a: int32, b: int32):
 //     self.b = b
 //     self.a = a
-inline Sub::Sub(int32_t a, int32_t b) : Base(), b(b), a(a) {}
+inline Sub::Sub(int32_t a, int32_t b)
+    : Base(),
+      b(b),
+      a(a) {}
 void __tpy_init();
 } // namespace tpyapp::main

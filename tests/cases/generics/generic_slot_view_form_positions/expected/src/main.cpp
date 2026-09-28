@@ -359,7 +359,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             bool g = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen_body" << " " << ::tpy::print_bool(g) << "\n";
+            std::cout << "gen_body" << " " << ::tpy::print_bool(g) << "\n";
         }
     }
     std::cout << "async_body" << " " << ::tpy::print_bool(::tpystd::asyncio::run<bool>(::tpy::make_adapter<::tpystd::coro::Cancellable<bool>>(::tpyapp::main::async_body("a")))) << "\n";

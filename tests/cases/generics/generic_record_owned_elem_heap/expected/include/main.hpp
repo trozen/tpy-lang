@@ -30,7 +30,9 @@ struct Entry {
     //     self.val = val
     //     self.idx = idx
     Entry() = default;
-    explicit Entry(::tpy::own_param_t<T> val, const ::tpy::BigInt& idx) : val(std::move(val)), idx(idx) {}
+    explicit Entry(::tpy::own_param_t<T> val, const ::tpy::BigInt& idx)
+        : val(std::move(val)),
+          idx(idx) {}
 
     // def __lt__(self, other: "Entry[T]") -> bool:
     //     return self.val < other.val

@@ -184,7 +184,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view b = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "yield" << " " << b << "\n";
+            std::cout << "yield" << " " << b << "\n";
         }
     }
 }

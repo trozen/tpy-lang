@@ -49,7 +49,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& got = ::tpy::unwrap_ref(*__r_1);
-        got.push_back(66);
+            got.push_back(66);
         }
     }
     std::cout << ::tpy::__len__(b) << "\n";
@@ -61,7 +61,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& ga = ::tpy::unwrap_ref(*__r_3);
-        ::tpy::__setitem__(ga, 0, (::tpy::add_check<int32_t>(::tpy::__getitem__(ga, 0), 1)));
+            ::tpy::__setitem__(ga, 0, (::tpy::add_check<int32_t>(::tpy::__getitem__(ga, 0), 1)));
         }
     }
     std::cout << ::tpy::__getitem__(a, 0) << "\n";
@@ -73,7 +73,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& gx = ::tpy::unwrap_ref(*__r_5);
-        gx.push_back(2);
+            gx.push_back(2);
         }
     }
     std::cout << ::tpy::__len__(xs) << "\n";

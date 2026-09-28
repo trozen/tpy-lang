@@ -45,7 +45,11 @@ inline std::ostream& operator<<(std::ostream& os, const Color& obj) {
 }
 
 
-inline Color::Color(int32_t r, int32_t g, int32_t b, int32_t a) : r(r), g(g), b(b), a(a) {}
+inline Color::Color(int32_t r, int32_t g, int32_t b, int32_t a)
+    : r(r),
+      g(g),
+      b(b),
+      a(a) {}
 
 inline bool Color::__eq__(const Color& other) const {
     return ((((this->r == other.r) && (this->g == other.g)) && (this->b == other.b)) && (this->a == other.a));

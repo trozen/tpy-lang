@@ -63,7 +63,8 @@ struct __gen_gen_view : public ::tpy::next_iter_mixin<__gen_gen_view, int32_t> {
     };
 
     __gen_gen_view(const Holder& h)
-        : __state(S_INITIAL), h(h) {}
+        : __state(S_INITIAL),
+          h(h) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_view& __iter__() { return *this; }
@@ -92,7 +93,8 @@ struct __gen_gen_name : public ::tpy::next_iter_mixin<__gen_gen_name, int32_t> {
     };
 
     __gen_gen_name(const Holder& h)
-        : __state(S_INITIAL), h(h) {}
+        : __state(S_INITIAL),
+          h(h) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_name& __iter__() { return *this; }

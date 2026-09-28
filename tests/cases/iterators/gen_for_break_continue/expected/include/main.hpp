@@ -36,7 +36,9 @@ struct __gen_filtered : public ::tpy::next_iter_mixin<__gen_filtered, int32_t> {
     };
 
     __gen_filtered(const std::vector<int32_t>& items, int32_t limit_)
-        : __state(S_INITIAL), items(items), limit(std::move(limit_)) {}
+        : __state(S_INITIAL),
+          items(items),
+          limit(std::move(limit_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_filtered& __iter__() { return *this; }

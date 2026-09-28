@@ -26,7 +26,9 @@ struct Pair {
     //     self.first = first
     //     self.second = second
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<A> first, ::tpy::readonly_form_t<B> second) : first(first), second(second) {}
+    explicit Pair(::tpy::readonly_form_t<A> first, ::tpy::readonly_form_t<B> second)
+        : first(first),
+          second(second) {}
 
     // def get_first(self) -> A:
     //     return self.first

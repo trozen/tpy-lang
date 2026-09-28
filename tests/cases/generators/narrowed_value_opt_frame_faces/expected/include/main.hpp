@@ -48,7 +48,8 @@ struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, int32_t> {
     };
 
     __gen_g(std::optional<int32_t> p_)
-        : __state(S_INITIAL), p(std::move(p_)) {}
+        : __state(S_INITIAL),
+          p(std::move(p_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_g& __iter__() { return *this; }
@@ -77,7 +78,8 @@ struct __gen_g_loop : public ::tpy::next_iter_mixin<__gen_g_loop, int32_t> {
     };
 
     __gen_g_loop(const ::tpy::ordered_map<std::string, std::optional<int32_t>>& d)
-        : __state(S_INITIAL), d(d) {}
+        : __state(S_INITIAL),
+          d(d) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_g_loop& __iter__() { return *this; }
@@ -101,7 +103,8 @@ struct __gen_g_whole : public ::tpy::next_iter_mixin<__gen_g_whole, std::optiona
     };
 
     __gen_g_whole(std::optional<int32_t> p_)
-        : __state(S_INITIAL), p(std::move(p_)) {}
+        : __state(S_INITIAL),
+          p(std::move(p_)) {}
 
     std::expected<std::optional<int32_t>, ::tpy::StopIteration> __next__();
     __gen_g_whole& __iter__() { return *this; }
@@ -127,7 +130,8 @@ struct __gen_g_frame_whole : public ::tpy::next_iter_mixin<__gen_g_frame_whole, 
     };
 
     __gen_g_frame_whole(std::optional<int32_t> p_)
-        : __state(S_INITIAL), p(std::move(p_)) {}
+        : __state(S_INITIAL),
+          p(std::move(p_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_g_frame_whole& __iter__() { return *this; }
@@ -149,8 +153,7 @@ struct __gen_g_global : public ::tpy::next_iter_mixin<__gen_g_global, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_g_global()
-        : __state(S_INITIAL) {}
+    __gen_g_global() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_g_global& __iter__() { return *this; }
@@ -174,7 +177,8 @@ struct __gen_g_view : public ::tpy::next_iter_mixin<__gen_g_view, std::string> {
     };
 
     __gen_g_view(std::optional<std::string_view> s_)
-        : __state(S_INITIAL), s(s_ ? std::make_optional(std::string(*s_)) : std::nullopt) {}
+        : __state(S_INITIAL),
+          s(s_ ? std::make_optional(std::string(*s_)) : std::nullopt) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_g_view& __iter__() { return *this; }

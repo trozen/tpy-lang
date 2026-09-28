@@ -24,14 +24,12 @@ namespace tpyapp::main {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
-            break;
         }
         case 0: {
             auto& __case_1 = *std::get<0>(__match_subject_1);
             __state = S_DONE;
             std::string __tpy_async_ret = __case_1.sound();
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
-            break;
         }
         }
         ::std::unreachable();

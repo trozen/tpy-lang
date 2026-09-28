@@ -106,19 +106,19 @@ void call_arm(std::vector<Rec>& rs, bool c) {
 //     alias_arms([Rec(1)], [Rec(2)], True)
 //     value_elements([1, 2], True)
 void main() {
-    std::vector<Rec> __tmp_2 = {Rec(1)};
-    ::tpyapp::main::call_arm(__tmp_2, true);
+    std::vector<Rec> __tmp_1 = {Rec(1)};
+    ::tpyapp::main::call_arm(__tmp_1, true);
     std::vector<Rec> rs = {Rec(1), Rec(2), Rec(3)};
     ::tpyapp::main::both_element_arms(rs, true);
-    std::vector<Rec> __tmp_3 = {Rec(1)};
-    std::vector<Rec> __tmp_4 = {Rec(2)};
-    ::tpyapp::main::two_containers(__tmp_3, __tmp_4, false);
+    std::vector<Rec> __tmp_2 = {Rec(1)};
+    std::vector<Rec> __tmp_3 = {Rec(2)};
+    ::tpyapp::main::two_containers(__tmp_2, __tmp_3, false);
     ::tpyapp::main::optional_arm(rs, true);
-    std::vector<Rec> __tmp_5 = {Rec(1)};
-    std::vector<Rec> __tmp_6 = {Rec(2)};
-    ::tpyapp::main::alias_arms(__tmp_5, __tmp_6, true);
-    std::vector<int32_t> __tmp_7 = {1, 2};
-    ::tpyapp::main::value_elements(__tmp_7, true);
+    std::vector<Rec> __tmp_4 = {Rec(1)};
+    std::vector<Rec> __tmp_5 = {Rec(2)};
+    ::tpyapp::main::alias_arms(__tmp_4, __tmp_5, true);
+    std::vector<int32_t> __tmp_6 = {1, 2};
+    ::tpyapp::main::value_elements(__tmp_6, true);
 }
 
 // main()

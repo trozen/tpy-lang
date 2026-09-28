@@ -63,7 +63,9 @@ inline Cell::Cell(int32_t v) : v(v) {}
 //     self.cells = [Cell(i) for i in range(self.n)]  # tpyc: ok
 //     self.seen = {i * 2 for i in range(self.n)}  # tpyc: ok
 //     self.index = {i: i * i for i in range(self.n)}  # tpyc: ok
-inline Grid::Grid(int32_t n) : n(n), cells(({
+inline Grid::Grid(int32_t n)
+    : n(n),
+      cells(({
     std::vector<Cell> __result;
     const int32_t __stop_0 = this->n;
     if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
@@ -71,14 +73,16 @@ inline Grid::Grid(int32_t n) : n(n), cells(({
         __result.push_back(Cell(i));
     }
     std::move(__result);
-})), seen(({
+})),
+      seen(({
     ::tpy::ordered_set<int32_t> __result;
     const int32_t __stop_1 = this->n;
     for (int32_t i = 0; i < __stop_1; ++i) {
         __result.insert((::tpy::mul_check<int32_t>(i, 2)));
     }
     std::move(__result);
-})), index(({
+})),
+      index(({
     ::tpy::ordered_map<int32_t, int32_t> __result;
     const int32_t __stop_2 = this->n;
     for (int32_t i = 0; i < __stop_2; ++i) {

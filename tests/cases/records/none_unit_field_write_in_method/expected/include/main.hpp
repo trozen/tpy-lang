@@ -38,7 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const Field& obj) {
 // def __init__(self) -> None:
 //     self.slot = None
 //     self.n = 0
-inline Field::Field() : slot(std::monostate{}), n(0) {}
+inline Field::Field()
+    : slot(std::monostate{}),
+      n(0) {}
 
 // def reset(self) -> None:
 //     # The same write as the constructor's, but in a method body.

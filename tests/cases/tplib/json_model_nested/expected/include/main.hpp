@@ -172,7 +172,9 @@ inline std::ostream& operator<<(std::ostream& os, const Profile& obj) {
 }
 
 
-inline Address::Address(std::string_view street, std::string_view city) : street(street), city(city) {}
+inline Address::Address(std::string_view street, std::string_view city)
+    : street(street),
+      city(city) {}
 
 inline bool Address::__eq__(const Address& other) const {
     return ((this->street == other.street) && (this->city == other.city));

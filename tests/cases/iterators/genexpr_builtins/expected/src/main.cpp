@@ -22,7 +22,8 @@ struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_f
     };
 
     __genexpr_main_1_frame(int32_t __r0_)
-        : __state(S_INITIAL), __r0(std::move(__r0_)) {}
+        : __state(S_INITIAL),
+          __r0(std::move(__r0_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_1_frame& __iter__() { return *this; }
@@ -70,7 +71,8 @@ struct __genexpr_main_2_frame : public ::tpy::next_iter_mixin<__genexpr_main_2_f
     };
 
     __genexpr_main_2_frame(int32_t __r0_)
-        : __state(S_INITIAL), __r0(std::move(__r0_)) {}
+        : __state(S_INITIAL),
+          __r0(std::move(__r0_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_2_frame& __iter__() { return *this; }
@@ -117,7 +119,8 @@ struct __genexpr_main_3_frame : public ::tpy::next_iter_mixin<__genexpr_main_3_f
     };
 
     __genexpr_main_3_frame(int32_t __r0_)
-        : __state(S_INITIAL), __r0(std::move(__r0_)) {}
+        : __state(S_INITIAL),
+          __r0(std::move(__r0_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_3_frame& __iter__() { return *this; }
@@ -165,7 +168,8 @@ struct __genexpr_main_4_frame : public ::tpy::next_iter_mixin<__genexpr_main_4_f
     };
 
     __genexpr_main_4_frame(int32_t __r0_)
-        : __state(S_INITIAL), __r0(std::move(__r0_)) {}
+        : __state(S_INITIAL),
+          __r0(std::move(__r0_)) {}
 
     std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> __next__();
     __genexpr_main_4_frame& __iter__() { return *this; }
@@ -214,7 +218,8 @@ struct __genexpr_main_5_frame : public ::tpy::next_iter_mixin<__genexpr_main_5_f
     };
 
     __genexpr_main_5_frame(const std::vector<std::string>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __genexpr_main_5_frame& __iter__() { return *this; }

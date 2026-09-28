@@ -27,7 +27,9 @@ void main() {
 }
 
 
-A::A(A&& other) noexcept : val(std::move(other.val)), bs(std::move(other.bs)) {
+A::A(A&& other) noexcept
+    : val(std::move(other.val)),
+      bs(std::move(other.bs)) {
     other.__tpy_owned_ = false;
 }
 A& A::operator=(A&& other) noexcept {

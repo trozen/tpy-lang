@@ -53,11 +53,9 @@ std::string label(::ns::E e) {
     switch (__match_subject_1) {
     case ::ns::E::A: {
         return "first";
-        break;
     }
     case ::ns::E::B: {
         return "second";
-        break;
     }
     }
     ::std::unreachable();

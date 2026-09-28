@@ -270,7 +270,8 @@ struct __coro_tick {
     };
 
     __coro_tick()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -295,7 +296,9 @@ struct __coro_arun {
     };
 
     __coro_arun(Color c_)
-        : __state(S_INITIAL), __cancel_pending(false), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(std::move(c_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -318,7 +321,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     };
 
     __gen_gen(Color c_)
-        : __state(S_INITIAL), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -363,11 +367,9 @@ inline std::string __enum_Color::kind() const {
     switch (__match_subject_1) {
     case Color::Red: {
         return "warm";
-        break;
     }
     case Color::Blue: {
         return "cold";
-        break;
     }
     }
     ::std::unreachable();
@@ -594,7 +596,9 @@ inline Level __enum_Level::floor() {
 //     self.c = c
 //     # position: constructor body
 //     self.tag = c.label()  # tpyc: ok
-inline Holder::Holder(Color c) : c(c), tag(__enum_Color{c}.label()) {}
+inline Holder::Holder(Color c)
+    : c(c),
+      tag(__enum_Color{c}.label()) {}
 
 // # position: record method, enum-valued field receiver (instance and
 // # static)

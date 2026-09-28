@@ -297,7 +297,9 @@ struct __coro_co {
     };
 
     __coro_co(std::tuple<A*, A*> p_)
-        : __state(S_INITIAL), __cancel_pending(false), p(p_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          p(p_) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -324,7 +326,8 @@ struct __coro_await_caller {
     };
 
     __coro_await_caller()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -352,7 +355,8 @@ struct __coro_task_caller {
     };
 
     __coro_task_caller()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -376,7 +380,9 @@ struct __coro_abump {
     };
 
     __coro_abump(std::tuple<A*, ::tpy::BigInt> p_)
-        : __state(S_INITIAL), __cancel_pending(false), p(p_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          p(p_) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -401,7 +407,9 @@ struct __coro_async_callee {
     };
 
     __coro_async_callee(A& a)
-        : __state(S_INITIAL), __cancel_pending(false), a(a) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(a) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -424,7 +432,8 @@ struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair, ::tpy::BigInt> {
     };
 
     __gen_pair(std::tuple<A*, A*> p_)
-        : __state(S_INITIAL), p(p_) {}
+        : __state(S_INITIAL),
+          p(p_) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_pair& __iter__() { return *this; }
@@ -446,7 +455,8 @@ struct __gen_pairn : public ::tpy::next_iter_mixin<__gen_pairn, ::tpy::BigInt> {
     };
 
     __gen_pairn(std::tuple<::tpy::BigInt, const A*> p_)
-        : __state(S_INITIAL), p(p_) {}
+        : __state(S_INITIAL),
+          p(p_) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_pairn& __iter__() { return *this; }
@@ -468,7 +478,8 @@ struct __gen_opt_pair : public ::tpy::next_iter_mixin<__gen_opt_pair, ::tpy::Big
     };
 
     __gen_opt_pair(std::tuple<A*, A*> p_)
-        : __state(S_INITIAL), p(p_) {}
+        : __state(S_INITIAL),
+          p(p_) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_opt_pair& __iter__() { return *this; }
@@ -496,8 +507,7 @@ struct __gen_outer : public ::tpy::next_iter_mixin<__gen_outer, ::tpy::BigInt> {
         S_DONE = 4,
     };
 
-    __gen_outer()
-        : __state(S_INITIAL) {}
+    __gen_outer() : __state(S_INITIAL) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_outer& __iter__() { return *this; }
@@ -519,7 +529,8 @@ struct __gen_edge_gen : public ::tpy::next_iter_mixin<__gen_edge_gen, ::tpy::Big
     };
 
     __gen_edge_gen(A& a)
-        : __state(S_INITIAL), a(a) {}
+        : __state(S_INITIAL),
+          a(a) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_edge_gen& __iter__() { return *this; }
@@ -546,8 +557,7 @@ struct __gen_loop_gen : public ::tpy::next_iter_mixin<__gen_loop_gen, ::tpy::Big
         S_DONE = 4,
     };
 
-    __gen_loop_gen()
-        : __state(S_INITIAL) {}
+    __gen_loop_gen() : __state(S_INITIAL) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_loop_gen& __iter__() { return *this; }
@@ -571,7 +581,8 @@ struct __gen_owned_view_gen : public ::tpy::next_iter_mixin<__gen_owned_view_gen
     };
 
     __gen_owned_view_gen(std::string_view s_)
-        : __state(S_INITIAL), s(std::string(s_)) {}
+        : __state(S_INITIAL),
+          s(std::string(s_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_owned_view_gen& __iter__() { return *this; }
@@ -595,7 +606,9 @@ struct __gen_G_pair : public ::tpy::next_iter_mixin<__gen_G_pair, ::tpy::BigInt>
     };
 
     __gen_G_pair(const G& __self, std::tuple<A*, A*> p_)
-        : __state(S_INITIAL), __self(__self), p(p_) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          p(p_) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_G_pair& __iter__() { return *this; }
@@ -656,7 +669,9 @@ inline void K::bump(const std::tuple<A*, ::tpy::BigInt>& p) const {
 // def __init__(self, name: str) -> None:
 //     self.reads = 0
 //     self.name = name
-inline Named::Named(std::string_view name) : reads(::tpy::BigInt(0)), name(name) {}
+inline Named::Named(std::string_view name)
+    : reads(::tpy::BigInt(0)),
+      name(name) {}
 
 // def bump(self, a: A, s: str) -> int:
 //     # method body

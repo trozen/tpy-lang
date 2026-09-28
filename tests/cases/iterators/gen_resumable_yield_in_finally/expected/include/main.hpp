@@ -34,8 +34,7 @@ struct __gen_gen_return_then_finally_yield : public ::tpy::next_iter_mixin<__gen
         S_DONE = 5,
     };
 
-    __gen_gen_return_then_finally_yield()
-        : __state(S_INITIAL) {}
+    __gen_gen_return_then_finally_yield() : __state(S_INITIAL) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_return_then_finally_yield& __iter__() { return *this; }
@@ -63,7 +62,8 @@ struct __gen_gen_exception_then_finally_yield : public ::tpy::next_iter_mixin<__
     };
 
     __gen_gen_exception_then_finally_yield(::tpy::BigInt x_)
-        : __state(S_INITIAL), x(std::move(x_)) {}
+        : __state(S_INITIAL),
+          x(std::move(x_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_exception_then_finally_yield& __iter__() { return *this; }

@@ -59,7 +59,9 @@ struct __gen_Repeater_run : public ::tpy::next_iter_mixin<__gen_Repeater_run<T_i
     };
 
     __gen_Repeater_run(const Repeater& __self, T_it&& it_)
-        : __state(S_INITIAL), __self(__self), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Repeater_run& __iter__() { return *this; }

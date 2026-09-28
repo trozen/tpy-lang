@@ -44,7 +44,9 @@ struct __coro_producer {
     };
 
     __coro_producer(::tpystd::asyncio::Event& e)
-        : __state(S_INITIAL), __cancel_pending(false), e(e) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          e(e) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -68,7 +70,9 @@ struct __coro_consumer {
     };
 
     __coro_consumer(::tpystd::asyncio::Event& e)
-        : __state(S_INITIAL), __cancel_pending(false), e(e) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          e(e) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -92,7 +96,9 @@ struct __coro_fast_path_consumer {
     };
 
     __coro_fast_path_consumer(::tpystd::asyncio::Event& e)
-        : __state(S_INITIAL), __cancel_pending(false), e(e) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          e(e) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -118,7 +124,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

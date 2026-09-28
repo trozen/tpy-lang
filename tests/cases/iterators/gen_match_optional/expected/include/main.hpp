@@ -41,7 +41,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     };
 
     __gen_gen(std::optional<::tpy::BigInt> x_)
-        : __state(S_INITIAL), x(std::move(x_)) {}
+        : __state(S_INITIAL),
+          x(std::move(x_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -68,7 +69,8 @@ struct __gen_chain : public ::tpy::next_iter_mixin<__gen_chain, int32_t> {
     };
 
     __gen_chain(std::optional<int32_t> x_)
-        : __state(S_INITIAL), x(std::move(x_)) {}
+        : __state(S_INITIAL),
+          x(std::move(x_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_chain& __iter__() { return *this; }
@@ -97,7 +99,8 @@ struct __gen_chain_capture : public ::tpy::next_iter_mixin<__gen_chain_capture, 
     };
 
     __gen_chain_capture(std::optional<int32_t> x_)
-        : __state(S_INITIAL), x(std::move(x_)) {}
+        : __state(S_INITIAL),
+          x(std::move(x_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_chain_capture& __iter__() { return *this; }
@@ -124,7 +127,9 @@ struct __gen_chain_guarded : public ::tpy::next_iter_mixin<__gen_chain_guarded, 
     };
 
     __gen_chain_guarded(std::optional<int32_t> x_, bool k_)
-        : __state(S_INITIAL), x(std::move(x_)), k(std::move(k_)) {}
+        : __state(S_INITIAL),
+          x(std::move(x_)),
+          k(std::move(k_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_chain_guarded& __iter__() { return *this; }

@@ -49,7 +49,10 @@ struct __coro_Counter_bump {
     };
 
     __coro_Counter_bump(Counter& __self, int32_t by_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), by(std::move(by_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          by(std::move(by_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -81,7 +84,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

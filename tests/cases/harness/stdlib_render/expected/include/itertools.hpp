@@ -65,7 +65,9 @@ struct __gen_count : public ::tpy::next_iter_mixin<__gen_count, ::tpy::BigInt> {
     };
 
     __gen_count(::tpy::BigInt start_ = ::tpy::BigInt(0), ::tpy::BigInt step_ = ::tpy::BigInt(1))
-        : __state(S_INITIAL), start(std::move(start_)), step(std::move(step_)) {}
+        : __state(S_INITIAL),
+          start(std::move(start_)),
+          step(std::move(step_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_count& __iter__() { return *this; }
@@ -96,7 +98,9 @@ struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, ::tpy::yiel
     };
 
     __gen_repeat(::tpy::param_val_or_ref_t<T> object_, std::optional<int32_t> times_ = std::nullopt)
-        : __state(S_INITIAL), object(object_), times(std::move(times_)) {}
+        : __state(S_INITIAL),
+          object(object_),
+          times(std::move(times_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_repeat& __iter__() { return *this; }
@@ -189,7 +193,8 @@ struct __gen_cycle : public ::tpy::next_iter_mixin<__gen_cycle<T, T_it>, ::tpy::
     };
 
     __gen_cycle(T_it&& it_)
-        : __state(S_INITIAL), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_cycle& __iter__() { return *this; }
@@ -283,7 +288,9 @@ struct __gen_islice : public ::tpy::next_iter_mixin<__gen_islice<T, T_it>, ::tpy
     };
 
     __gen_islice(T_it&& it_, int32_t stop_)
-        : __state(S_INITIAL), it(std::forward<T_it>(it_)), stop(std::move(stop_)) {}
+        : __state(S_INITIAL),
+          it(std::forward<T_it>(it_)),
+          stop(std::move(stop_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_islice& __iter__() { return *this; }
@@ -367,7 +374,9 @@ struct __gen_takewhile : public ::tpy::next_iter_mixin<__gen_takewhile<T, T_it, 
     };
 
     __gen_takewhile(F_pred&& pred_, T_it&& it_)
-        : __state(S_INITIAL), pred(std::forward<F_pred>(pred_)), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          pred(std::forward<F_pred>(pred_)),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_takewhile& __iter__() { return *this; }
@@ -443,7 +452,9 @@ struct __gen_dropwhile : public ::tpy::next_iter_mixin<__gen_dropwhile<T, T_it, 
     };
 
     __gen_dropwhile(F_pred&& pred_, T_it&& it_)
-        : __state(S_INITIAL), pred(std::forward<F_pred>(pred_)), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          pred(std::forward<F_pred>(pred_)),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_dropwhile& __iter__() { return *this; }
@@ -528,7 +539,9 @@ struct __gen_filterfalse : public ::tpy::next_iter_mixin<__gen_filterfalse<T, T_
     };
 
     __gen_filterfalse(F_pred&& pred_, T_it&& it_)
-        : __state(S_INITIAL), pred(std::forward<F_pred>(pred_)), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          pred(std::forward<F_pred>(pred_)),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_filterfalse& __iter__() { return *this; }

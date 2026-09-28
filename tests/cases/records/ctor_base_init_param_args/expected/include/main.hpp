@@ -87,7 +87,9 @@ inline Payload::Payload(int32_t v) : v(v) {}
 // def __init__(self, p: Payload, opt: Payload | None) -> None:
 //     self.p = p  # tpyc: warning(/copies Payload into field/)
 //     self.opt = opt  # tpyc: warning(/copies Payload \| None into field/)
-inline Base::Base(const Payload& p, const Payload* opt) : p(p), opt(::tpy::ptr_to_optional(opt)) {}
+inline Base::Base(const Payload& p, const Payload* opt)
+    : p(p),
+      opt(::tpy::ptr_to_optional(opt)) {}
 
 // def __init__(self, p: Payload, o: Payload | None) -> None:
 //     super().__init__(p, o)  # the Optional parameter argument

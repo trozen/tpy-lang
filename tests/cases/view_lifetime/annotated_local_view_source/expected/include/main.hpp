@@ -43,7 +43,8 @@ struct __gen_gen_frame : public ::tpy::next_iter_mixin<__gen_gen_frame, ::tpy::B
     };
 
     __gen_gen_frame(std::string_view sv_)
-        : __state(S_INITIAL), sv(std::move(sv_)) {}
+        : __state(S_INITIAL),
+          sv(std::move(sv_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_frame& __iter__() { return *this; }

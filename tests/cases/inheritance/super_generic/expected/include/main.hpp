@@ -61,7 +61,9 @@ inline std::ostream& operator<<(std::ostream& os, const LabeledContainer& obj) {
 // def __init__(self, label: str, value: int32) -> None:
 //     super().__init__(value)
 //     self.label = label
-inline LabeledContainer::LabeledContainer(std::string_view label, int32_t value) : Container<int32_t>(value), label(label) {}
+inline LabeledContainer::LabeledContainer(std::string_view label, int32_t value)
+    : Container<int32_t>(value),
+      label(label) {}
 
 // def describe(self) -> str:
 //     return self.label

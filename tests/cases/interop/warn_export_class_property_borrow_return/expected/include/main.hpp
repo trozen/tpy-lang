@@ -88,7 +88,10 @@ inline Inner::Inner() : x(0) {}
 //     self._items = [1, 2]
 //     self._inner = Inner()
 //     self._alt = Inner()
-inline Box::Box() : _items(std::vector<int64_t>{1, 2}), _inner(Inner()), _alt(Inner()) {}
+inline Box::Box()
+    : _items(std::vector<int64_t>{1, 2}),
+      _inner(Inner()),
+      _alt(Inner()) {}
 
 // def rebind_alt(self) -> None:
 //     self._alt = Inner()

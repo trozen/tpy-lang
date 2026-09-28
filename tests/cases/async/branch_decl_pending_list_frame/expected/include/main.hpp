@@ -37,7 +37,9 @@ struct __coro_pick {
     };
 
     __coro_pick(::tpy::BigInt n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -64,7 +66,8 @@ struct __coro_drive {
     };
 
     __coro_drive()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

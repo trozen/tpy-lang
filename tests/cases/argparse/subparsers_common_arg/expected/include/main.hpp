@@ -81,6 +81,10 @@ inline __tpy_builder_argparse_a_args_1::__tpy_builder_argparse_a_args_1(std::opt
 inline __tpy_builder_argparse_b_args_1::__tpy_builder_argparse_b_args_1(std::optional<std::string_view> y) : y(y ? std::make_optional(std::string(*y)) : std::nullopt) {}
 
 // args = parser.parse_args(["-v", "a", "--x", "hello"])
-inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(bool verbose, std::string_view cmd, std::optional<std::string_view> x, std::optional<std::string_view> y) : verbose(verbose), cmd(cmd), x(x ? std::make_optional(std::string(*x)) : std::nullopt), y(y ? std::make_optional(std::string(*y)) : std::nullopt) {}
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(bool verbose, std::string_view cmd, std::optional<std::string_view> x, std::optional<std::string_view> y)
+    : verbose(verbose),
+      cmd(cmd),
+      x(x ? std::make_optional(std::string(*x)) : std::nullopt),
+      y(y ? std::make_optional(std::string(*y)) : std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

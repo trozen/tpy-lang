@@ -79,8 +79,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << x << "\n";
-        break;
+            std::cout << x << "\n";
+            break;
         }
     }
     std::cout << "after" << "\n";

@@ -66,7 +66,9 @@ struct __coro_producer {
     };
 
     __coro_producer(::tpystd::tpy::channel::Sender<Counter>&& tx_)
-        : __state(S_INITIAL), __cancel_pending(false), tx(std::move(tx_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          tx(std::move(tx_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -95,7 +97,9 @@ struct __coro_consumer {
     };
 
     __coro_consumer(::tpystd::tpy::channel::Receiver<Counter>&& rx_)
-        : __state(S_INITIAL), __cancel_pending(false), rx(std::move(rx_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          rx(std::move(rx_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -124,7 +128,8 @@ struct __coro_main_co {
     };
 
     __coro_main_co()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

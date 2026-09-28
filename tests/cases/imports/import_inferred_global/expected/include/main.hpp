@@ -77,8 +77,7 @@ struct __gen_gen_sizes : public ::tpy::next_iter_mixin<__gen_gen_sizes, int32_t>
         S_DONE = 3,
     };
 
-    __gen_gen_sizes()
-        : __state(S_INITIAL) {}
+    __gen_gen_sizes() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_sizes& __iter__() { return *this; }

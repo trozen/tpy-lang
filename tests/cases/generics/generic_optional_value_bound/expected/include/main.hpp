@@ -26,7 +26,9 @@ struct Box {
     //     self._value = value
     //     self._has = True
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> value) : _value(value), _has(true) {}
+    explicit Box(::tpy::readonly_form_t<T> value)
+        : _value(value),
+          _has(true) {}
 
     // def get(self) -> T | None:
     //     if self._has:

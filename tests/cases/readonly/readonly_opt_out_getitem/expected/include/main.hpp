@@ -41,7 +41,9 @@ inline std::ostream& operator<<(std::ostream& os, const CachedList& obj) {
 // def __init__(self) -> None:
 //     self._data = [10, 20, 30]
 //     self._hits = 0
-inline CachedList::CachedList() : _data(std::vector<int32_t>{10, 20, 30}), _hits(0) {}
+inline CachedList::CachedList()
+    : _data(std::vector<int32_t>{10, 20, 30}),
+      _hits(0) {}
 
 // @readonly(False)
 // def __getitem__(self, idx: int32) -> int32:

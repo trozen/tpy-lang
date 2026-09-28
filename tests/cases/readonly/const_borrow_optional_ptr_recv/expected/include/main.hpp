@@ -62,6 +62,8 @@ inline A::A(const ::tpy::BigInt& v) : v(v) {}
 // def __init__(self) -> None:
 //     self.g = A(1)
 //     self.f = A(2)
-inline H::H() : g(A(::tpy::BigInt(1))), f(A(::tpy::BigInt(2))) {}
+inline H::H()
+    : g(A(::tpy::BigInt(1))),
+      f(A(::tpy::BigInt(2))) {}
 void __tpy_init();
 } // namespace tpyapp::main

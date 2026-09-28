@@ -65,11 +65,9 @@ std::string classify(Color c) {
     case Color::Blue:
     {
         return "primary";
-        break;
     }
     case Color::Cyan: {
         return "mixed";
-        break;
     }
     }
     ::std::unreachable();

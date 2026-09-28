@@ -189,7 +189,9 @@ struct __coro_copy_in_task {
     };
 
     __coro_copy_in_task(const Cell& c)
-        : __state(S_INITIAL), __cancel_pending(false), c(c) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(c) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -213,7 +215,8 @@ struct __gen_gen_copies : public ::tpy::next_iter_mixin<__gen_gen_copies, int32_
     };
 
     __gen_gen_copies(const Cell& c)
-        : __state(S_INITIAL), c(c) {}
+        : __state(S_INITIAL),
+          c(c) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_copies& __iter__() { return *this; }

@@ -131,7 +131,9 @@ struct __coro_value {
     };
 
     __coro_value(::tpy::BigInt n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -159,7 +161,9 @@ struct __coro_Source_pairs {
     };
 
     __coro_Source_pairs(const Source& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -190,7 +194,8 @@ struct __coro_a_for_body {
     };
 
     __coro_a_for_body()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -217,7 +222,8 @@ struct __coro_a_for_else {
     };
 
     __coro_a_for_else()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -244,7 +250,8 @@ struct __coro_a_while_body {
     };
 
     __coro_a_while_body()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -270,7 +277,8 @@ struct __coro_a_try_except {
     };
 
     __coro_a_try_except()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -296,7 +304,8 @@ struct __coro_a_if_arms {
     };
 
     __coro_a_if_arms()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -323,7 +332,8 @@ struct __coro_a_with_body {
     };
 
     __coro_a_with_body()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -349,7 +359,8 @@ struct __coro_a_with_target {
     };
 
     __coro_a_with_target()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -376,7 +387,9 @@ struct __coro_a_match_arm {
     };
 
     __coro_a_match_arm(int32_t m_)
-        : __state(S_INITIAL), __cancel_pending(false), m(std::move(m_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          m(std::move(m_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -406,7 +419,9 @@ struct __coro_a_record {
     };
 
     __coro_a_record(Cell& c)
-        : __state(S_INITIAL), __cancel_pending(false), c(c) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(c) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -434,7 +449,10 @@ struct __coro_a_record_match {
     };
 
     __coro_a_record_match(Cell& c, int32_t m_)
-        : __state(S_INITIAL), __cancel_pending(false), c(c), m(std::move(m_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(c),
+          m(std::move(m_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -460,7 +478,8 @@ struct __coro_a_walrus {
     };
 
     __coro_a_walrus()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -520,7 +539,8 @@ struct __coro_driver {
     };
 
     __coro_driver()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

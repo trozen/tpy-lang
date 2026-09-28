@@ -99,7 +99,7 @@ void test_rvalue_span() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        total = ::tpy::add_check<int32_t>(total, x);
+            total = ::tpy::add_check<int32_t>(total, x);
         }
     }
     std::cout << total << "\n";

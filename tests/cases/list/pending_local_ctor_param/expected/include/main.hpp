@@ -121,6 +121,8 @@ inline SetHolder::SetHolder(::tpy::ordered_set<int32_t>&& s) : s(std::move(s)) {
 // def __init__(self, xs: list[int32]):
 //     super().__init__()
 //     self.n = len(xs)
-inline DataError::DataError(const std::vector<int32_t>& xs) : ::tpy::Exception(), n(::tpy::__len__(xs)) {}
+inline DataError::DataError(const std::vector<int32_t>& xs)
+    : ::tpy::Exception(),
+      n(::tpy::__len__(xs)) {}
 void __tpy_init();
 } // namespace tpyapp::main

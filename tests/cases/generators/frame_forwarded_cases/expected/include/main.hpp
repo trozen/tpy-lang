@@ -93,7 +93,9 @@ struct __coro_async_loop {
     };
 
     __coro_async_loop(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -126,7 +128,9 @@ struct __coro_async_try_loop {
     };
 
     __coro_async_try_loop(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs) {}
 
     __coro_async_try_loop(__coro_async_try_loop&&) = default;
     ~__coro_async_try_loop() {
@@ -170,7 +174,9 @@ struct __gen_filtered : public ::tpy::next_iter_mixin<__gen_filtered, int32_t> {
     };
 
     __gen_filtered(const std::vector<int32_t>& xs, int32_t k_)
-        : __state(S_INITIAL), xs(xs), k(std::move(k_)) {}
+        : __state(S_INITIAL),
+          xs(xs),
+          k(std::move(k_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_filtered& __iter__() { return *this; }
@@ -200,7 +206,8 @@ struct __gen_in_try : public ::tpy::next_iter_mixin<__gen_in_try, int32_t> {
     };
 
     __gen_in_try(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     __gen_in_try(__gen_in_try&&) = default;
     ~__gen_in_try() {
@@ -246,7 +253,8 @@ struct __gen_in_with : public ::tpy::next_iter_mixin<__gen_in_with, int32_t> {
     };
 
     __gen_in_with(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     __gen_in_with(__gen_in_with&&) = default;
     ~__gen_in_with() {
@@ -290,7 +298,8 @@ struct __gen_in_match : public ::tpy::next_iter_mixin<__gen_in_match, int32_t> {
     };
 
     __gen_in_match(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_in_match& __iter__() { return *this; }
@@ -320,7 +329,8 @@ struct __gen_break_continue : public ::tpy::next_iter_mixin<__gen_break_continue
     };
 
     __gen_break_continue(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     __gen_break_continue(__gen_break_continue&&) = default;
     ~__gen_break_continue() {
@@ -365,7 +375,8 @@ struct __gen_return_in_finally : public ::tpy::next_iter_mixin<__gen_return_in_f
     };
 
     __gen_return_in_finally(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     __gen_return_in_finally(__gen_return_in_finally&&) = default;
     ~__gen_return_in_finally() {
@@ -410,7 +421,8 @@ struct __gen_abandoned : public ::tpy::next_iter_mixin<__gen_abandoned, int32_t>
     };
 
     __gen_abandoned(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     __gen_abandoned(__gen_abandoned&&) = default;
     ~__gen_abandoned() {
@@ -464,7 +476,8 @@ struct __gen_stop_in_region : public ::tpy::next_iter_mixin<__gen_stop_in_region
     };
 
     __gen_stop_in_region(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     __gen_stop_in_region(__gen_stop_in_region&&) = default;
     ~__gen_stop_in_region() {

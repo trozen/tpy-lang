@@ -300,7 +300,9 @@ struct __coro_async_body {
     };
 
     __coro_async_body(::tpy::Union<Cat*, Counter*> a_)
-        : __state(S_INITIAL), __cancel_pending(false), a(a_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(a_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -322,7 +324,8 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
     };
 
     __gen_gen_body(::tpy::Union<Cat*, Counter*> a_)
-        : __state(S_INITIAL), a(a_) {}
+        : __state(S_INITIAL),
+          a(a_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_body& __iter__() { return *this; }
@@ -336,12 +339,16 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
 // def __init__(self, hunger: int32) -> None:
 //     self.hunger = hunger
 //     self.tags = []
-inline Cat::Cat(int32_t hunger) : hunger(hunger), tags(std::vector<std::string>{}) {}
+inline Cat::Cat(int32_t hunger)
+    : hunger(hunger),
+      tags(std::vector<std::string>{}) {}
 
 // def __init__(self, bones: int32) -> None:
 //     self.bones = bones
 //     self.tags = []
-inline Dog::Dog(int32_t bones) : bones(bones), tags(std::vector<std::string>{}) {}
+inline Dog::Dog(int32_t bones)
+    : bones(bones),
+      tags(std::vector<std::string>{}) {}
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
@@ -417,7 +424,9 @@ inline std::string Slot::__repr__() const {
     return std::format("Slot(n={})", ::tpy::repr_of(this->n));
 }
 
-inline Pair::Pair(Slot&& left, Slot&& right) : left(std::move(left)), right(std::move(right)) {}
+inline Pair::Pair(Slot&& left, Slot&& right)
+    : left(std::move(left)),
+      right(std::move(right)) {}
 
 inline bool Pair::__eq__(const Pair& other) const {
     return ((this->left == other.left) && (this->right == other.right));
@@ -468,12 +477,10 @@ inline int32_t UnionHolder::value() const {
     case 1: {
         auto& c = std::get<1>(__match_subject_1);
         return c.n;
-        break;
     }
     case 0: {
         auto& k = std::get<0>(__match_subject_1);
         return k.hunger;
-        break;
     }
     }
     ::std::unreachable();

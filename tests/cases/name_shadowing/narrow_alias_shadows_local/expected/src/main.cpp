@@ -464,106 +464,106 @@ __coro_coro_global coro_global(::tpy::Union<Cat*, Dog*> acache) {
 //     print(asyncio.run(coro_global(cg)))
 //     print("coro_global after", cg.n)
 void main() {
+    Cat __tmp_1 = Cat(1);
+    ::tpyapp::main::plain(::tpy::Union<Cat*, Dog*>{&__tmp_1});
     Cat __tmp_2 = Cat(1);
-    ::tpyapp::main::plain(::tpy::Union<Cat*, Dog*>{&__tmp_2});
+    ::tpyapp::main::bumped_twice(::tpy::Union<Cat*, Dog*>{&__tmp_2});
     Cat __tmp_3 = Cat(1);
-    ::tpyapp::main::bumped_twice(::tpy::Union<Cat*, Dog*>{&__tmp_3});
-    Cat __tmp_4 = Cat(1);
-    Dog __tmp_5 = Dog(2);
-    ::tpyapp::main::cross(::tpy::Union<Cat*, Dog*>{&__tmp_4}, ::tpy::Union<Cat*, Dog*>{&__tmp_5});
-    Cat __tmp_6 = Cat(1);
-    Dog __tmp_7 = Dog(2);
-    ::tpyapp::main::multi_cross(::tpy::Union<Cat*, Dog*>{&__tmp_6}, ::tpy::Union<Cat*, Dog*>{&__tmp_7});
+    Dog __tmp_4 = Dog(2);
+    ::tpyapp::main::cross(::tpy::Union<Cat*, Dog*>{&__tmp_3}, ::tpy::Union<Cat*, Dog*>{&__tmp_4});
+    Cat __tmp_5 = Cat(1);
+    Dog __tmp_6 = Dog(2);
+    ::tpyapp::main::multi_cross(::tpy::Union<Cat*, Dog*>{&__tmp_5}, ::tpy::Union<Cat*, Dog*>{&__tmp_6});
+    Cat __tmp_7 = Cat(1);
+    ::tpyapp::main::global_read(::tpy::Union<Cat*, Dog*>{&__tmp_7});
     Cat __tmp_8 = Cat(1);
-    ::tpyapp::main::global_read(::tpy::Union<Cat*, Dog*>{&__tmp_8});
-    Cat __tmp_9 = Cat(1);
-    Cat __tmp_10 = Cat(100);
-    ::tpyapp::main::match_capture(::tpy::Union<Cat*, Dog*>{&__tmp_9}, ::tpy::Union<const Cat*, const Dog*>{&__tmp_10});
+    Cat __tmp_9 = Cat(100);
+    ::tpyapp::main::match_capture(::tpy::Union<Cat*, Dog*>{&__tmp_8}, ::tpy::Union<const Cat*, const Dog*>{&__tmp_9});
+    Cat __tmp_10 = Cat(1);
+    ::tpyapp::main::lambda_param(::tpy::Union<Cat*, Dog*>{&__tmp_10});
     Cat __tmp_11 = Cat(1);
-    ::tpyapp::main::lambda_param(::tpy::Union<Cat*, Dog*>{&__tmp_11});
-    Cat __tmp_12 = Cat(1);
-    Dog __tmp_13 = Dog(2);
-    ::tpyapp::main::multi(::tpy::Union<Cat*, Dog*>{&__tmp_12}, ::tpy::Union<Cat*, Dog*>{&__tmp_13});
+    Dog __tmp_12 = Dog(2);
+    ::tpyapp::main::multi(::tpy::Union<Cat*, Dog*>{&__tmp_11}, ::tpy::Union<Cat*, Dog*>{&__tmp_12});
+    Cat __tmp_13 = Cat(1);
+    ::tpyapp::main::asserted(::tpy::Union<Cat*, Dog*>{&__tmp_13});
     Cat __tmp_14 = Cat(1);
-    ::tpyapp::main::asserted(::tpy::Union<Cat*, Dog*>{&__tmp_14});
+    ::tpyapp::main::complement(::tpy::Union<Cat*, Dog*>{&__tmp_14});
     Cat __tmp_15 = Cat(1);
-    ::tpyapp::main::complement(::tpy::Union<Cat*, Dog*>{&__tmp_15});
-    Cat __tmp_16 = Cat(1);
-    ::tpyapp::main::inner_decl(::tpy::Union<Cat*, Dog*>{&__tmp_16});
-    Cat __tmp_17 = Cat(10);
-    ::tpyapp::main::comprehension(::tpy::Union<Cat*, Dog*>{&__tmp_17});
-    Cat __tmp_18 = Cat(1);
-    ::tpyapp::main::nested(::tpy::Union<Cat*, Dog*>{&__tmp_18});
-    Bird __tmp_19{Bird()};
+    ::tpyapp::main::inner_decl(::tpy::Union<Cat*, Dog*>{&__tmp_15});
+    Cat __tmp_16 = Cat(10);
+    ::tpyapp::main::comprehension(::tpy::Union<Cat*, Dog*>{&__tmp_16});
+    Cat __tmp_17 = Cat(1);
+    ::tpyapp::main::nested(::tpy::Union<Cat*, Dog*>{&__tmp_17});
+    Bird __tmp_18{Bird()};
+    ::tpyapp::main::poly(__tmp_18);
+    Fish __tmp_19{Fish()};
     ::tpyapp::main::poly(__tmp_19);
-    Fish __tmp_20{Fish()};
-    ::tpyapp::main::poly(__tmp_20);
     {
-        Cat __tmp_21 = Cat(2);
-        auto __src_0 = ::tpyapp::main::gen(::tpy::Union<Cat*, Dog*>{&__tmp_21});
+        Cat __tmp_20 = Cat(2);
+        auto __src_0 = ::tpyapp::main::gen(::tpy::Union<Cat*, Dog*>{&__tmp_20});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen yield" << " " << v << "\n";
+            std::cout << "gen yield" << " " << v << "\n";
         }
     }
     {
-        Cat __tmp_22 = Cat(2);
-        auto __src_2 = ::tpyapp::main::gen_across(::tpy::Union<Cat*, Dog*>{&__tmp_22});
+        Cat __tmp_21 = Cat(2);
+        auto __src_2 = ::tpyapp::main::gen_across(::tpy::Union<Cat*, Dog*>{&__tmp_21});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "gen_across yield" << " " << v << "\n";
+            std::cout << "gen_across yield" << " " << v << "\n";
         }
     }
     {
-        Cat __tmp_23 = Cat(2);
-        Dog __tmp_24 = Dog(3);
-        auto __src_4 = ::tpyapp::main::gen_cross(::tpy::Union<Cat*, Dog*>{&__tmp_23}, ::tpy::Union<Cat*, Dog*>{&__tmp_24});
+        Cat __tmp_22 = Cat(2);
+        Dog __tmp_23 = Dog(3);
+        auto __src_4 = ::tpyapp::main::gen_cross(::tpy::Union<Cat*, Dog*>{&__tmp_22}, ::tpy::Union<Cat*, Dog*>{&__tmp_23});
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        std::cout << "gen_cross yield" << " " << v << "\n";
+            std::cout << "gen_cross yield" << " " << v << "\n";
         }
     }
     {
-        Cat __tmp_25 = Cat(2);
-        auto __src_6 = ::tpyapp::main::gen_assert(::tpy::Union<Cat*, Dog*>{&__tmp_25});
+        Cat __tmp_24 = Cat(2);
+        auto __src_6 = ::tpyapp::main::gen_assert(::tpy::Union<Cat*, Dog*>{&__tmp_24});
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        std::cout << "gen_assert yield" << " " << v << "\n";
+            std::cout << "gen_assert yield" << " " << v << "\n";
         }
     }
     {
-        Cat __tmp_26 = Cat(2);
-        auto __src_8 = ::tpyapp::main::gen_bumped_frame(::tpy::Union<Cat*, Dog*>{&__tmp_26});
+        Cat __tmp_25 = Cat(2);
+        auto __src_8 = ::tpyapp::main::gen_bumped_frame(::tpy::Union<Cat*, Dog*>{&__tmp_25});
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        std::cout << "gen_bumped_frame yield" << " " << v << "\n";
+            std::cout << "gen_bumped_frame yield" << " " << v << "\n";
         }
     }
     Cat rc = Cat(2);
     {
-        Dog __tmp_27 = Dog(3);
-        auto __src_10 = ::tpyapp::main::gen_resume_cross(::tpy::Union<Cat*, Dog*>{&(rc)}, ::tpy::Union<Cat*, Dog*>{&__tmp_27});
+        Dog __tmp_26 = Dog(3);
+        auto __src_10 = ::tpyapp::main::gen_resume_cross(::tpy::Union<Cat*, Dog*>{&(rc)}, ::tpy::Union<Cat*, Dog*>{&__tmp_26});
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-        std::cout << "gen_resume_cross yield" << " " << v << "\n";
+            std::cout << "gen_resume_cross yield" << " " << v << "\n";
         }
     }
     std::cout << "gen_resume_cross after" << " " << rc.n << "\n";
@@ -575,14 +575,14 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-        std::cout << "gen_sibling yield" << " " << v << "\n";
+            std::cout << "gen_sibling yield" << " " << v << "\n";
         }
     }
     std::cout << "gen_sibling after" << " " << gs.n << "\n";
-    Cat __tmp_28 = Cat(3);
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::coro(::tpy::Union<Cat*, Dog*>{&__tmp_28})));
-    Dog __tmp_29 = Dog(4);
-    std::cout << "coro_complement" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro_complement(::tpy::Union<Cat*, Dog*>{&__tmp_29}))) << "\n";
+    Cat __tmp_27 = Cat(3);
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::coro(::tpy::Union<Cat*, Dog*>{&__tmp_27})));
+    Dog __tmp_28 = Dog(4);
+    std::cout << "coro_complement" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro_complement(::tpy::Union<Cat*, Dog*>{&__tmp_28}))) << "\n";
     Cat cg = Cat(3);
     std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::coro_global(::tpy::Union<Cat*, Dog*>{&(cg)}))) << "\n";
     std::cout << "coro_global after" << " " << cg.n << "\n";

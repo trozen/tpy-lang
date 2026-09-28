@@ -49,8 +49,8 @@ void ternary_source(bool flag) {
     Bag __slot_1 = Bag();
     Bag* b = &__slot_1;
     b = &(((flag) ? (g.itself()) : (h.itself())));
-    Bag __tmp_2 = (*b);
-    ::tpyapp::main::take(std::move(__tmp_2));
+    Bag __tmp_1 = (*b);
+    ::tpyapp::main::take(std::move(__tmp_1));
     if (flag) {
         g.xs.push_back(9);
         std::cout << ::tpy::__len__(g.xs) << "\n";

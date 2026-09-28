@@ -115,7 +115,10 @@ struct __coro_Holder_show {
     };
 
     __coro_Holder_show(const Holder<T>& __self, ::tpy::Union<const A*, const B*> u_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), u(u_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          u(u_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -181,7 +184,10 @@ struct __coro_PlainHolder_show {
     };
 
     __coro_PlainHolder_show(const PlainHolder& __self, ::tpy::Union<const A*, const B*> u_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), u(u_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          u(u_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -207,7 +213,9 @@ struct __coro_bump {
     };
 
     __coro_bump(A& a)
-        : __state(S_INITIAL), __cancel_pending(false), a(a) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(a) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -241,7 +249,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

@@ -187,7 +187,7 @@ void main() {
             auto __r_4 = __itr_3.__next__();
             if (!__r_4.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_4);
-        std::cout << "gen" << " " << v << "\n";
+            std::cout << "gen" << " " << v << "\n";
         }
     }
     ::tpy::__getitem__((*TOP), 0).push_back("m");

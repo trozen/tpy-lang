@@ -300,7 +300,9 @@ struct __gen_Pattern_finditer : public ::tpy::next_iter_mixin<__gen_Pattern_find
     };
 
     __gen_Pattern_finditer(const Pattern& __self, std::string_view subject_)
-        : __state(S_INITIAL), __self(__self), subject(std::string(subject_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          subject(std::string(subject_)) {}
 
     std::expected<Match, ::tpy::StopIteration> __next__();
     __gen_Pattern_finditer& __iter__() { return *this; }
@@ -404,7 +406,10 @@ inline ::pcre2_match_context_8* _OwnedMatchContext::get() const {
 //     self._md = md
 //     self._subject = subject
 //     self._ngroups = ngroups
-inline Match::Match(_OwnedMatchData&& md, std::string_view subject, int32_t ngroups) : _md(std::move(md)), _subject(subject), _ngroups(ngroups) {}
+inline Match::Match(_OwnedMatchData&& md, std::string_view subject, int32_t ngroups)
+    : _md(std::move(md)),
+      _subject(subject),
+      _ngroups(ngroups) {}
 
 // def _ovec_load(self, i: uint32) -> uint64:
 //     ovec = pcre2.get_ovector_pointer(self._md.get())
@@ -494,7 +499,9 @@ inline std::vector<std::string> Match::groups() const {
 //     pcre2.jit_compile(self._code.get(), pcre2.PCRE2_JIT_COMPLETE)
 //     self.pattern = pattern
 //     self.flags = flags
-inline Pattern::Pattern(std::string_view pattern, int32_t flags) : _code(_OwnedCode(pattern, flags)), _mctx(_OwnedMatchContext()) {
+inline Pattern::Pattern(std::string_view pattern, int32_t flags)
+    : _code(_OwnedCode(pattern, flags)),
+      _mctx(_OwnedMatchContext()) {
     ::pcre2_jit_compile_8(this->_code.get(), ::tpystd::_bindings::pcre2::PCRE2_JIT_COMPLETE);
     this->pattern = pattern;
     this->flags = flags;
@@ -539,7 +546,7 @@ inline std::vector<std::string> Pattern::findall(std::string_view subject) const
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& m = ::tpy::unwrap_ref(*__r_1);
-        out.push_back(m.group(0));
+            out.push_back(m.group(0));
         }
     }
     return out;

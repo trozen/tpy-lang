@@ -213,7 +213,9 @@ struct __coro_coro {
     };
 
     __coro_coro(::tpy::Union<Cat*, Dog*> a_)
-        : __state(S_INITIAL), __cancel_pending(false), a(a_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(a_) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -238,7 +240,9 @@ struct __coro_coro_complement {
     };
 
     __coro_coro_complement(::tpy::Union<Cat*, Dog*> a_)
-        : __state(S_INITIAL), __cancel_pending(false), a(a_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(a_) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -263,7 +267,9 @@ struct __coro_coro_global {
     };
 
     __coro_coro_global(::tpy::Union<Cat*, Dog*> acache_)
-        : __state(S_INITIAL), __cancel_pending(false), acache(acache_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          acache(acache_) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -286,7 +292,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     };
 
     __gen_gen(::tpy::Union<Cat*, Dog*> a_)
-        : __state(S_INITIAL), a(a_) {}
+        : __state(S_INITIAL),
+          a(a_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -310,7 +317,8 @@ struct __gen_gen_across : public ::tpy::next_iter_mixin<__gen_gen_across, int32_
     };
 
     __gen_gen_across(::tpy::Union<Cat*, Dog*> a_)
-        : __state(S_INITIAL), a(a_) {}
+        : __state(S_INITIAL),
+          a(a_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_across& __iter__() { return *this; }
@@ -334,7 +342,9 @@ struct __gen_gen_cross : public ::tpy::next_iter_mixin<__gen_gen_cross, int32_t>
     };
 
     __gen_gen_cross(::tpy::Union<Cat*, Dog*> a_, ::tpy::Union<Cat*, Dog*> a_narrowed_)
-        : __state(S_INITIAL), a(a_), a_narrowed(a_narrowed_) {}
+        : __state(S_INITIAL),
+          a(a_),
+          a_narrowed(a_narrowed_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_cross& __iter__() { return *this; }
@@ -357,7 +367,8 @@ struct __gen_gen_assert : public ::tpy::next_iter_mixin<__gen_gen_assert, int32_
     };
 
     __gen_gen_assert(::tpy::Union<Cat*, Dog*> a_)
-        : __state(S_INITIAL), a(a_) {}
+        : __state(S_INITIAL),
+          a(a_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_assert& __iter__() { return *this; }
@@ -382,7 +393,8 @@ struct __gen_gen_bumped_frame : public ::tpy::next_iter_mixin<__gen_gen_bumped_f
     };
 
     __gen_gen_bumped_frame(::tpy::Union<Cat*, Dog*> a_)
-        : __state(S_INITIAL), a(a_) {}
+        : __state(S_INITIAL),
+          a(a_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_bumped_frame& __iter__() { return *this; }
@@ -406,7 +418,9 @@ struct __gen_gen_resume_cross : public ::tpy::next_iter_mixin<__gen_gen_resume_c
     };
 
     __gen_gen_resume_cross(::tpy::Union<Cat*, Dog*> a_, ::tpy::Union<Cat*, Dog*> a_narrowed_)
-        : __state(S_INITIAL), a(a_), a_narrowed(a_narrowed_) {}
+        : __state(S_INITIAL),
+          a(a_),
+          a_narrowed(a_narrowed_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_resume_cross& __iter__() { return *this; }
@@ -432,7 +446,9 @@ struct __gen_gen_sibling : public ::tpy::next_iter_mixin<__gen_gen_sibling, int3
     };
 
     __gen_gen_sibling(::tpy::Union<Cat*, Dog*> a_, int32_t a_narrowed_)
-        : __state(S_INITIAL), a(a_), a_narrowed(std::move(a_narrowed_)) {}
+        : __state(S_INITIAL),
+          a(a_),
+          a_narrowed(std::move(a_narrowed_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_sibling& __iter__() { return *this; }

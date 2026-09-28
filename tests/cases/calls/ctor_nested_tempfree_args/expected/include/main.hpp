@@ -189,7 +189,9 @@ inline int32_t Rec::ping() const {
 // def __init__(self) -> None:
 //     self.items = [1, 2]
 //     self.rec = Rec(3)
-inline W::W() : items(std::vector<int32_t>{1, 2}), rec(Rec(3)) {}
+inline W::W()
+    : items(std::vector<int32_t>{1, 2}),
+      rec(Rec(3)) {}
 
 // def __init__(self, p: list[int32]) -> None:
 //     self.tag = len(p)

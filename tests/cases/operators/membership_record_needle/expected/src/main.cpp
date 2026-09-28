@@ -182,7 +182,7 @@ void main() {
             auto __r_2 = __itr_1.__next__();
             if (!__r_2.has_value()) break;
             bool r = ::tpy::unwrap_ref(*__r_2);
-        gflags.push_back(r);
+            gflags.push_back(r);
         }
     }
     std::cout << "generator" << " " << ::tpy::ListPrinter(gflags) << "\n";

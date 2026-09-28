@@ -52,7 +52,9 @@ struct Pair {
     //     self.first = first
     //     self.second = second
     Pair() = default;
-    explicit Pair(::tpy::own_param_t<T> first, std::string_view second) : first(std::move(first)), second(second) {}
+    explicit Pair(::tpy::own_param_t<T> first, std::string_view second)
+        : first(std::move(first)),
+          second(second) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 

@@ -46,7 +46,9 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 // def __init__(self) -> None:
 //     self.items = None
 //     self.by_key = None
-inline Bag::Bag() : items(std::nullopt), by_key(std::nullopt) {}
+inline Bag::Bag()
+    : items(std::nullopt),
+      by_key(std::nullopt) {}
 
 // def fill(self) -> None:
 //     # Post-construction field assignment from a container literal.

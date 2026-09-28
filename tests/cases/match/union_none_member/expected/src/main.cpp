@@ -17,17 +17,14 @@ int32_t pick(::tpy::Union<std::monostate, const A*, const B*> x) {
     switch (__match_subject_1.index()) {
     case 0: {
         return 0;
-        break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         return __case_1.v;
-        break;
     }
     case 2: {
         auto& __case_2 = *std::get<2>(__match_subject_1);
         return (::tpy::add_check<int32_t>(__case_2.v, 10));
-        break;
     }
     }
     ::std::unreachable();

@@ -67,7 +67,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     std::vector<Point> pts = {Point(1)};
@@ -78,7 +78,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
@@ -89,7 +89,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     {
@@ -99,7 +99,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     {
@@ -109,7 +109,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
 }

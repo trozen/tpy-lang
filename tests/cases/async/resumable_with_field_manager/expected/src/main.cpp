@@ -175,7 +175,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen" << " " << x << "\n";
+            std::cout << "gen" << " " << x << "\n";
         }
     }
     std::cout << "gen after" << " " << h.g.depth << "\n";

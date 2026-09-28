@@ -24,44 +24,37 @@ int32_t classify(std::string_view s) {
     case 1: {
         if (__match_subject_1 == "x") {
             return 1;
-            goto __match_end_2;
         }
         break;
     }
     case 2: {
         if (__match_subject_1 == "xy") {
             return 2;
-            goto __match_end_2;
         }
         break;
     }
     case 3: {
         if (__match_subject_1 == "xyz") {
             return 3;
-            goto __match_end_2;
         }
         break;
     }
     case 4: {
         if (__match_subject_1 == "wxyz") {
             return 4;
-            goto __match_end_2;
         }
         break;
     }
     case 5: {
         if (__match_subject_1 == "caf\xc3\xa9") {
             return 5;
-            goto __match_end_2;
         }
         break;
     }
     }
     {
         return 0;
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 

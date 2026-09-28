@@ -51,8 +51,8 @@ int32_t StringIO::write(std::string_view s) {
     }
     std::string owned = std::string(s);
     if ((this->_pos == this->_total)) {
-        std::string __tmp_2{owned};
-        this->_chunks.push_back(std::move(__tmp_2));
+        std::string __tmp_1{owned};
+        this->_chunks.push_back(std::move(__tmp_1));
         this->_total = (::tpy::add_check<int32_t>(this->_total, n));
         this->_pos = this->_total;
         return n;
@@ -433,7 +433,13 @@ int32_t BytesIO::truncate(int32_t size) {
 //     self._closed = False
 //     if buffer_size <= 0:
 //         raise ValueError("buffer size must be strictly positive")
-BufferedReader::BufferedReader(std::unique_ptr<RawBinaryIO> raw, int32_t buffer_size) : _raw(::tpystd::tplib::box::Box<RawBinaryIO>(std::move(raw))), _buf(::tpy::Bytes{}), _pos(0), _eof(false), _buffer_size(buffer_size), _closed(false) {
+BufferedReader::BufferedReader(std::unique_ptr<RawBinaryIO> raw, int32_t buffer_size)
+    : _raw(::tpystd::tplib::box::Box<RawBinaryIO>(std::move(raw))),
+      _buf(::tpy::Bytes{}),
+      _pos(0),
+      _eof(false),
+      _buffer_size(buffer_size),
+      _closed(false) {
     if ((buffer_size <= 0)) {
         throw ::tpy::ValueError("buffer size must be strictly positive");
     }

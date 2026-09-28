@@ -79,7 +79,10 @@ struct __gen_Lim_first : public ::tpy::next_iter_mixin<__gen_Lim_first, int32_t>
     };
 
     __gen_Lim_first(const Lim& __self, const std::vector<int32_t>& items, int32_t cap_)
-        : __state(S_INITIAL), __self(__self), items(items), cap(std::move(cap_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          items(items),
+          cap(std::move(cap_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Lim_first& __iter__() { return *this; }
@@ -112,7 +115,9 @@ struct __gen_Lim_ro_pair : public ::tpy::next_iter_mixin<__gen_Lim_ro_pair, int3
     };
 
     __gen_Lim_ro_pair(const Lim& __self, const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __self(__self), xs(xs) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Lim_ro_pair& __iter__() { return *this; }
@@ -140,7 +145,9 @@ struct __gen_Lim_rec_val : public ::tpy::next_iter_mixin<__gen_Lim_rec_val, int3
     };
 
     __gen_Lim_rec_val(const Lim& __self, const Rec& r)
-        : __state(S_INITIAL), __self(__self), r(r) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          r(r) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Lim_rec_val& __iter__() { return *this; }
@@ -173,7 +180,9 @@ struct __gen_Lim_dvals : public ::tpy::next_iter_mixin<__gen_Lim_dvals, int32_t>
     };
 
     __gen_Lim_dvals(const Lim& __self, const ::tpy::ordered_map<std::string, int32_t>& d)
-        : __state(S_INITIAL), __self(__self), d(d) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          d(d) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Lim_dvals& __iter__() { return *this; }
@@ -201,7 +210,9 @@ struct __gen_Lim_echo : public ::tpy::next_iter_mixin<__gen_Lim_echo, int32_t> {
     };
 
     __gen_Lim_echo(const Lim& __self, const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __self(__self), xs(xs) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Lim_echo& __iter__() { return *this; }

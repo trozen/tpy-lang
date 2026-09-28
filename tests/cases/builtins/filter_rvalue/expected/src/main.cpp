@@ -32,7 +32,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << x << "\n";
+            std::cout << x << "\n";
         }
     }
     std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter([](int32_t x) -> bool { return (x > 3); }, ::tpyapp::main::make_nums()));

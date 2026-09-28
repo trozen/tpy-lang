@@ -193,16 +193,16 @@ C give_or_name(const C& a) {
 //     # Own return of an and/or of fresh operands.
 //     return C(0) or make(log)  # tpyc: ok
 C give_or_fresh(std::vector<std::string>& log) {
-    auto&& __tmp_4 = C(0);
-    return (::tpy::__bool__(__tmp_4) ? std::move(__tmp_4) : ::tpyapp::main::make(log));
+    auto&& __tmp_1 = C(0);
+    return (::tpy::__bool__(__tmp_1) ? std::move(__tmp_1) : ::tpyapp::main::make(log));
 }
 
 // def give_or_list() -> Own[list[int32]]:
 //     # ... and of a container one.
 //     return [] or [2]  # tpyc: ok
 std::vector<int32_t> give_or_list() {
-    auto&& __tmp_5 = std::vector<int32_t>{};
-    return ((::tpy::__len__(__tmp_5) != 0) ? std::move(__tmp_5) : std::vector<int32_t>{2});
+    auto&& __tmp_1 = std::vector<int32_t>{};
+    return ((::tpy::__len__(__tmp_1) != 0) ? std::move(__tmp_1) : std::vector<int32_t>{2});
 }
 
 // def or_return(log: list[str]) -> None:
@@ -215,8 +215,8 @@ std::vector<int32_t> give_or_list() {
 //     xs.append(3)
 //     print("or_return", r.n, q.n, xs, len(log))
 void or_return(std::vector<std::string>& log) {
-    C __tmp_6 = C(0);
-    C r = ::tpyapp::main::give_or_name(__tmp_6);
+    C __tmp_1 = C(0);
+    C r = ::tpyapp::main::give_or_name(__tmp_1);
     r.n = ::tpy::add_check<int32_t>(r.n, 1);
     C q = ::tpyapp::main::give_or_fresh(log);
     q.n = ::tpy::add_check<int32_t>(q.n, 1);
@@ -239,8 +239,8 @@ void member_init(bool c, std::vector<std::string>& log) {
 //     # A nested name select LHS is copied into the owned result, and warned.
 //     return (a or b) or C(3)  # tpyc: warning(/copies C into owned storage/)
 C give_chain(const C& a, const C& b) {
-    auto&& __tmp_7 = (::tpy::__bool__(a) ? a : b);
-    return C((::tpy::__bool__(__tmp_7) ? __tmp_7 : C(3)));
+    auto&& __tmp_1 = (::tpy::__bool__(a) ? a : b);
+    return C((::tpy::__bool__(__tmp_1) ? __tmp_1 : C(3)));
 }
 
 // def or_chain() -> None:
@@ -249,9 +249,9 @@ C give_chain(const C& a, const C& b) {
 //     r.n += 1
 //     print("or_chain", r.n)
 void or_chain() {
-    C __tmp_8 = C(0);
-    C __tmp_9 = C(0);
-    C r = ::tpyapp::main::give_chain(__tmp_8, __tmp_9);
+    C __tmp_1 = C(0);
+    C __tmp_2 = C(0);
+    C r = ::tpyapp::main::give_chain(__tmp_1, __tmp_2);
     r.n = ::tpy::add_check<int32_t>(r.n, 1);
     std::cout << "or_chain" << " " << r.n << "\n";
 }
@@ -269,8 +269,8 @@ void own_arg(bool c, bool d, std::vector<std::string>& log) {
     C a = C(1);
     std::cout << "own_arg" << " " << ::tpy::print_bool(c) << " " << ::tpyapp::main::take(((c) ? (C(a)) : (::tpyapp::main::make(log)))).n << " " << a.n << "\n";
     std::cout << "own_arg_nested" << " " << ::tpy::print_bool(c) << " " << ::tpy::print_bool(d) << " " << ::tpyapp::main::take(((c) ? (C(1)) : (((d) ? (C(2)) : (::tpyapp::main::make(log)))))).n << "\n";
-    C __tmp_10 = (::tpy::__bool__(a) ? a : C(5));
-    std::cout << "own_arg_or" << " " << ::tpy::print_bool(c) << " " << ::tpyapp::main::take(std::move(__tmp_10)).n << "\n";
+    C __tmp_1 = (::tpy::__bool__(a) ? a : C(5));
+    std::cout << "own_arg_or" << " " << ::tpy::print_bool(c) << " " << ::tpyapp::main::take(std::move(__tmp_1)).n << "\n";
 }
 
 // def give_nocopy(c: bool) -> Own[N]:
@@ -392,7 +392,7 @@ void main() {
                 auto __r_3 = __itr_2.__next__();
                 if (!__r_3.has_value()) break;
                 int32_t v = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "gen" << " " << ::tpy::print_bool(c) << " " << v << "\n";
+                std::cout << "gen" << " " << ::tpy::print_bool(c) << " " << v << "\n";
             }
         }
     }

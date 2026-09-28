@@ -73,7 +73,9 @@ struct Guard {
     //     self.val = val
     //     self.entered = 0
     Guard() = default;
-    explicit Guard(::tpy::readonly_form_t<T> val) : val(val), entered(0) {}
+    explicit Guard(::tpy::readonly_form_t<T> val)
+        : val(val),
+          entered(0) {}
 
     __coro_Guard___aenter__<T> __aenter__();
 
@@ -102,7 +104,10 @@ struct Counter {
     //     self.limit = limit
     //     self.seed = seed
     Counter() = default;
-    explicit Counter(int32_t limit, ::tpy::readonly_form_t<T> seed) : cur(0), limit(limit), seed(seed) {}
+    explicit Counter(int32_t limit, ::tpy::readonly_form_t<T> seed)
+        : cur(0),
+          limit(limit),
+          seed(seed) {}
 
     // def __aiter__(self) -> "Counter[T]":
     //     return self
@@ -177,7 +182,9 @@ struct __coro_Box_fetch {
     };
 
     __coro_Box_fetch(Box<T>& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -234,7 +241,9 @@ struct __coro_Guard___aenter__ {
     };
 
     __coro_Guard___aenter__(Guard<T>& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -296,7 +305,12 @@ struct __coro_Guard___aexit__ {
     };
 
     __coro_Guard___aexit__(const Guard<T>& __self, std::monostate et_, std::monostate ev_, std::monostate tb_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), et(std::move(et_)), ev(std::move(ev_)), tb(std::move(tb_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          et(std::move(et_)),
+          ev(std::move(ev_)),
+          tb(std::move(tb_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -351,7 +365,9 @@ struct __coro_Counter___anext__ {
     };
 
     __coro_Counter___anext__(Counter<T>& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -437,7 +453,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

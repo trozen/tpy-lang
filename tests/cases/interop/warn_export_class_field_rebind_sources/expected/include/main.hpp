@@ -95,7 +95,10 @@ inline Inner::Inner(int64_t x) : x(x) {}
 //     self._a = Inner(1)
 //     self._b = Inner(2)
 //     self._c = Inner(3)
-inline Base::Base() : _a(Inner(1)), _b(Inner(2)), _c(Inner(3)) {}
+inline Base::Base()
+    : _a(Inner(1)),
+      _b(Inner(2)),
+      _c(Inner(3)) {}
 
 // def get_a(self) -> Inner:
 //     return self._a  # tpyc: warning(/no live object behind it/)

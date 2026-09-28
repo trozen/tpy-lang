@@ -144,7 +144,9 @@ struct __coro_a_first {
     };
 
     __coro_a_first(T_it&& it_)
-        : __state(S_INITIAL), __cancel_pending(false), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          it(std::forward<T_it>(it_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -222,7 +224,9 @@ struct __coro_a_dead {
     };
 
     __coro_a_dead(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -254,7 +258,8 @@ struct __coro_a_main {
     };
 
     __coro_a_main()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -281,7 +286,8 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, ::tpy::val_or_ref<
     };
 
     __gen_walk(std::vector<Node>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __next__();
     __gen_walk& __iter__() { return *this; }
@@ -307,7 +313,9 @@ struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T_it>, ::tpy::val_o
     };
 
     __gen_head(std::vector<Node>& items, T_it&& it_)
-        : __state(S_INITIAL), items(items), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          items(items),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __next__();
     __gen_head& __iter__() { return *this; }
@@ -378,7 +386,8 @@ struct __gen_dead_pass : public ::tpy::next_iter_mixin<__gen_dead_pass, ::tpy::v
     };
 
     __gen_dead_pass(std::vector<Node>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __next__();
     __gen_dead_pass& __iter__() { return *this; }
@@ -408,7 +417,8 @@ struct __gen_dead_break : public ::tpy::next_iter_mixin<__gen_dead_break, ::tpy:
     };
 
     __gen_dead_break(std::vector<Node>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __next__();
     __gen_dead_break& __iter__() { return *this; }
@@ -437,7 +447,8 @@ struct __gen_dead_return : public ::tpy::next_iter_mixin<__gen_dead_return, ::tp
     };
 
     __gen_dead_return(std::vector<Node>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __next__();
     __gen_dead_return& __iter__() { return *this; }
@@ -470,7 +481,9 @@ struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested<T_it>, ::tpy::v
     };
 
     __gen_nested(std::vector<Node>& items, T_it&& it_)
-        : __state(S_INITIAL), items(items), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          items(items),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __next__();
     __gen_nested& __iter__() { return *this; }
@@ -563,7 +576,9 @@ inline Node::Node(int32_t v) : v(v) {}
 // def __init__(self, limit: int32) -> None:
 //     self.n = 0
 //     self.limit = limit
-inline Indices::Indices(int32_t limit) : n(0), limit(limit) {}
+inline Indices::Indices(int32_t limit)
+    : n(0),
+      limit(limit) {}
 
 // def __iter__(self) -> "Indices":
 //     return self

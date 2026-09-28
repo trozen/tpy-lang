@@ -40,7 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 //     """Create a new Point."""
 //     self.x = x
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {
 }
 
 // def magnitude_sq(self) -> int32:

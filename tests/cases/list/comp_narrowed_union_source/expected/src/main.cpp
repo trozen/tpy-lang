@@ -24,7 +24,8 @@ struct __genexpr_total_1_frame : public ::tpy::next_iter_mixin<__genexpr_total_1
     };
 
     __genexpr_total_1_frame(const std::vector<int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_total_1_frame& __iter__() { return *this; }
@@ -111,7 +112,9 @@ struct __genexpr_scaled_2_frame : public ::tpy::next_iter_mixin<__genexpr_scaled
     };
 
     __genexpr_scaled_2_frame(const std::vector<int32_t>& __src, F_w&& w_)
-        : __state(S_INITIAL), __src(__src), w(std::forward<F_w>(w_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          w(std::forward<F_w>(w_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_scaled_2_frame& __iter__() { return *this; }
@@ -180,7 +183,9 @@ struct __genexpr_ranged_3_frame : public ::tpy::next_iter_mixin<__genexpr_ranged
     };
 
     __genexpr_ranged_3_frame(int32_t __r0_, F_w&& w_)
-        : __state(S_INITIAL), __r0(std::move(__r0_)), w(std::forward<F_w>(w_)) {}
+        : __state(S_INITIAL),
+          __r0(std::move(__r0_)),
+          w(std::forward<F_w>(w_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_ranged_3_frame& __iter__() { return *this; }
@@ -267,7 +272,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen" << " " << v << "\n";
+            std::cout << "gen" << " " << v << "\n";
         }
     }
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));

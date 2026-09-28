@@ -74,6 +74,8 @@ inline Right::Right(int32_t b) : b(b) {}
 // def __init__(self, a: int32, b: int32) -> None:
 //     Right.__init__(self, b)
 //     Left.__init__(self, a)  # tpyc: warning(/written out of declaration order/)
-inline Child::Child(int32_t a, int32_t b) : Left(a), Right(b) {}
+inline Child::Child(int32_t a, int32_t b)
+    : Left(a),
+      Right(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

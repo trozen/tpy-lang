@@ -164,26 +164,20 @@ __gen_nested_shadow nested_shadow(const Holder& h) {
                     __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
                     __state = S_RESUME_0;
                     continue;
-                    goto __match_end_2;
                 }
             }
             {
                 __state = S_DONE;
                 int32_t __tpy_async_ret = 0;
                 return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
-                goto __match_end_2;
             }
-            break;
         }
         default: {
             __state = S_DONE;
             int32_t __tpy_async_ret = 0;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
-            goto __match_end_2;
-            break;
         }
         }
-__match_end_2:;
         ::std::unreachable();
         __builtin_unreachable();
     }
@@ -274,7 +268,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     {
@@ -285,7 +279,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     {
@@ -296,7 +290,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     {
@@ -307,7 +301,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     {
@@ -319,7 +313,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     {
@@ -331,7 +325,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain()));

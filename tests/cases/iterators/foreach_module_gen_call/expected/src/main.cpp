@@ -19,7 +19,7 @@ int32_t total(int32_t n) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        t = (::tpy::add_check<int32_t>(t, x));
+            t = (::tpy::add_check<int32_t>(t, x));
         }
     }
     return t;
@@ -37,7 +37,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     std::cout << ::tpyapp::main::total(5) << "\n";

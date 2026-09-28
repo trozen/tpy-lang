@@ -59,6 +59,8 @@ inline Node::Node(const ::tpy::BigInt& v) : v(v) {}
 // def __init__(self, n: Node | None) -> None:
 //     super().__init__("boom")
 //     self.node = n
-inline MyErr::MyErr(const Node* n) : ::tpy::Exception("boom"), node(::tpy::ptr_to_optional(n)) {}
+inline MyErr::MyErr(const Node* n)
+    : ::tpy::Exception("boom"),
+      node(::tpy::ptr_to_optional(n)) {}
 void __tpy_init();
 } // namespace tpyapp::main

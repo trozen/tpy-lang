@@ -19,7 +19,6 @@ std::string pick(::tpy::Union<const A*, const B*, const C*, const D*> x) {
     case 3:
     {
         return "any";
-        break;
     }
     }
     ::std::unreachable();
@@ -38,25 +37,21 @@ std::string pick(::tpy::Union<const A*, const B*, const C*, const D*> x) {
         auto& __case_0_0 = *std::get<0>(__match_subject_1);
         auto& v = __case_0_0.n;
         return v;
-        break;
     }
     case 1: {
         auto& __case_0_1 = *std::get<1>(__match_subject_1);
         auto& v = __case_0_1.n;
         return v;
-        break;
     }
     case 2: {
         auto& __case_0_2 = *std::get<2>(__match_subject_1);
         auto& v = __case_0_2.n;
         return v;
-        break;
     }
     case 3: {
         auto& __case_0_3 = *std::get<3>(__match_subject_1);
         auto& v = __case_0_3.n;
         return v;
-        break;
     }
     }
     ::std::unreachable();

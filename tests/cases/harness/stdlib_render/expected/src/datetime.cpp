@@ -555,8 +555,8 @@ std::optional<std::string> datetime::tzname() const {
     ::tpy::BigInt u_s = ((utc_us) / (::tpy::BigInt(1000000)));
     ::tpy::BigInt off = ::tpy::BigInt(static_cast<int64_t>(::tpy::stdlib::datetime::local_utc_offset_seconds((u_s).to_fixed_check<int64_t>())));
     std::string name = ::tpy::stdlib::datetime::local_zone_abbrev((u_s).to_fixed_check<int64_t>());
-    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), off), name);
-    return datetime::_from_epoch_us(utc_us, false, __tmp_2);
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), off), name);
+    return datetime::_from_epoch_us(utc_us, false, __tmp_1);
 }
 
 // @staticmethod

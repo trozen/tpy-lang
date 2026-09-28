@@ -355,7 +355,9 @@ struct __coro_async_body {
     };
 
     __coro_async_body(Bag& b)
-        : __state(S_INITIAL), __cancel_pending(false), b(b) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          b(b) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -376,8 +378,7 @@ struct __gen_words : public ::tpy::next_iter_mixin<__gen_words, std::string> {
         S_DONE = 3,
     };
 
-    __gen_words()
-        : __state(S_INITIAL) {}
+    __gen_words() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_words& __iter__() { return *this; }
@@ -401,7 +402,8 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
     };
 
     __gen_gen_body(Bag& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_body& __iter__() { return *this; }
@@ -425,7 +427,8 @@ struct __gen_gen_protocol : public ::tpy::next_iter_mixin<__gen_gen_protocol<T_x
     };
 
     __gen_gen_protocol(T_xs&& xs_)
-        : __state(S_INITIAL), xs(std::forward<T_xs>(xs_)) {}
+        : __state(S_INITIAL),
+          xs(std::forward<T_xs>(xs_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_protocol& __iter__() { return *this; }
@@ -503,7 +506,8 @@ struct __gen_GBag___iter__ : public ::tpy::next_iter_mixin<__gen_GBag___iter__, 
     };
 
     __gen_GBag___iter__(const GBag& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_GBag___iter__& __iter__() { return *this; }
@@ -534,7 +538,8 @@ struct __gen_Letters___iter__ : public ::tpy::next_iter_mixin<__gen_Letters___it
     };
 
     __gen_Letters___iter__(const Letters& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_Letters___iter__& __iter__() { return *this; }
@@ -632,7 +637,9 @@ inline Cnt& Src::__iter__() {
 // def __init__(self) -> None:
 //     self.started = 0
 //     self.names = ["t", "u"]
-inline Tx::Tx() : started(0), names(std::vector<std::string>{"t", "u"}) {}
+inline Tx::Tx()
+    : started(0),
+      names(std::vector<std::string>{"t", "u"}) {}
 
 // # Methods named begin/end are not a C++ range: iteration takes `__iter__`.
 // def begin(self) -> None:
@@ -656,7 +663,9 @@ inline auto Tx::__iter__() const {
 // def __init__(self) -> None:
 //     self.lo = 1
 //     self.names = ["p", "q"]
-inline Window::Window() : lo(1), names(std::vector<std::string>{"p", "q"}) {}
+inline Window::Window()
+    : lo(1),
+      names(std::vector<std::string>{"p", "q"}) {}
 
 // # begin/end returning an Optional are not an iterator pair either.
 // def begin(self) -> int32 | None:

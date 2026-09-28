@@ -263,7 +263,10 @@ inline _Stream::~_Stream() {
 //     self.parts = []
 //     self.pos = 0
 //     self.rc = _z.OK
-inline _Pump::_Pump() : parts(std::vector<::tpy::Bytes>{}), pos(0), rc(::tpystd::_bindings::zlib::OK) {}
+inline _Pump::_Pump()
+    : parts(std::vector<::tpy::Bytes>{}),
+      pos(0),
+      rc(::tpystd::_bindings::zlib::OK) {}
 
 // def output(self) -> bytes:
 //     return b"".join(self.parts)
@@ -277,7 +280,9 @@ inline ::tpy::Bytes _Pump::output() const {
 //     self._s = _Stream(_deflate_stream(level, method, wbits, memLevel,
 //                                       strategy))
 //     self._ended = False
-inline _Compress::_Compress(int32_t level, int32_t method, int32_t wbits, int32_t memLevel, int32_t strategy) : _s(_Stream(::tpystd::zlib::_deflate_stream(level, method, wbits, memLevel, strategy))), _ended(false) {}
+inline _Compress::_Compress(int32_t level, int32_t method, int32_t wbits, int32_t memLevel, int32_t strategy)
+    : _s(_Stream(::tpystd::zlib::_deflate_stream(level, method, wbits, memLevel, strategy))),
+      _ended(false) {}
 
 // def compress(self, data: bytes) -> bytes:
 //     """Compress `data`; the result may hold only part of it until a
@@ -306,7 +311,12 @@ inline ::tpy::Bytes _Compress::compress(::tpy::BytesView data) const {
 //     self._ended = False
 //     self._unused = b""
 //     self._tail = b""
-inline _Decompress::_Decompress(int32_t wbits) : _s(_Stream(::tpystd::zlib::_inflate_stream(wbits, true))), _eof(false), _ended(false), _unused(::tpy::Bytes{}), _tail(::tpy::Bytes{}) {}
+inline _Decompress::_Decompress(int32_t wbits)
+    : _s(_Stream(::tpystd::zlib::_inflate_stream(wbits, true))),
+      _eof(false),
+      _ended(false),
+      _unused(::tpy::Bytes{}),
+      _tail(::tpy::Bytes{}) {}
 
 // @property
 // def eof(self) -> bool:

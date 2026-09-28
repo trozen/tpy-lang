@@ -88,6 +88,8 @@ inline std::string Tag::__repr__() const {
 // args = parser.parse_args(
 //     ["--include", "core", "--include", "extra",
 //      "--paths", "a", "b", "c"])
-inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::optional<std::vector<Tag>>&& include, std::optional<std::vector<Tag>>&& paths) : include(std::move(include)), paths(std::move(paths)) {}
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::optional<std::vector<Tag>>&& include, std::optional<std::vector<Tag>>&& paths)
+    : include(std::move(include)),
+      paths(std::move(paths)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -262,7 +262,9 @@ inline socket::socket(int32_t family, int32_t type_, int32_t proto, int32_t file
     }
 }
 
-inline socket::socket(socket&& other) noexcept : fd(std::move(other.fd)), _timeout(std::move(other._timeout)) {
+inline socket::socket(socket&& other) noexcept
+    : fd(std::move(other.fd)),
+      _timeout(std::move(other._timeout)) {
     other.__tpy_owned_ = false;
 }
 inline socket& socket::operator=(socket&& other) noexcept {

@@ -87,7 +87,9 @@ inline std::ostream& operator<<(std::ostream& os, const Either& obj) {
 // def __init__(self, a: int32, b: int32) -> None:
 //     self.a = a
 //     self.b = b
-inline Pair::Pair(int32_t a, int32_t b) : a(a), b(b) {}
+inline Pair::Pair(int32_t a, int32_t b)
+    : a(a),
+      b(b) {}
 
 // def __enter__(self) -> tuple[int32, int32]:
 //     return (self.a, self.b)

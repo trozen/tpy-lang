@@ -30,8 +30,7 @@ struct __gen_src : public ::tpy::next_iter_mixin<__gen_src, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_src()
-        : __state(S_INITIAL) {}
+    __gen_src() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_src& __iter__() { return *this; }
@@ -56,8 +55,7 @@ struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_g()
-        : __state(S_INITIAL) {}
+    __gen_g() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_g& __iter__() { return *this; }

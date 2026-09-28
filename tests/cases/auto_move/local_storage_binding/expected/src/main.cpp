@@ -271,7 +271,6 @@ int32_t matched(int32_t tag) {
     }
     default: {
         return 0;
-        break;
     }
     }
     return target->value;
@@ -870,7 +869,7 @@ void binding_controls() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "generator alias" << " " << value << "\n";
+            std::cout << "generator alias" << " " << value << "\n";
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_aliases()));

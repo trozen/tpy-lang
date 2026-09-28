@@ -27,10 +27,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        const auto& __tup_1 = __for_tup_0;
-        std::string_view name = std::get<0>(__tup_1);
-        int32_t score = std::get<1>(__tup_1);
-        std::cout << name << " " << score << "\n";
+            const auto& __tup_1 = __for_tup_0;
+            std::string_view name = std::get<0>(__tup_1);
+            int32_t score = std::get<1>(__tup_1);
+            std::cout << name << " " << score << "\n";
         }
     }
 }

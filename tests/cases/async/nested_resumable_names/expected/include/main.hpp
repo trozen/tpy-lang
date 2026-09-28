@@ -223,7 +223,9 @@ struct __coro_2_5_Outer_3_Box_3_get {
     };
 
     __coro_2_5_Outer_3_Box_3_get(Outer::Box<T>& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -280,7 +282,10 @@ struct __coro_2_5_Outer_5_Inner_7_compute {
     };
 
     __coro_2_5_Outer_5_Inner_7_compute(Outer::Inner& __self, ::tpy::BigInt delta_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), delta(std::move(delta_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          delta(std::move(delta_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -310,7 +315,10 @@ struct __coro_2_5_Outer_5_Inner_4_echo {
     };
 
     __coro_2_5_Outer_5_Inner_4_echo(const Outer::Inner& __self, ::tpy::param_val_or_ref_t<T> value_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), value(value_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          value(value_) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -367,7 +375,9 @@ struct __coro_2_5_Outer_5_Inner_7_cleanup {
     };
 
     __coro_2_5_Outer_5_Inner_7_cleanup(Outer::Inner& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     __coro_2_5_Outer_5_Inner_7_cleanup(__coro_2_5_Outer_5_Inner_7_cleanup&&) = default;
     ~__coro_2_5_Outer_5_Inner_7_cleanup() {
@@ -410,7 +420,9 @@ struct __coro_2_5_Outer_4_Gate_10___aenter__ {
     };
 
     __coro_2_5_Outer_4_Gate_10___aenter__(Outer::Gate& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -441,7 +453,12 @@ struct __coro_2_5_Outer_4_Gate_9___aexit__ {
     };
 
     __coro_2_5_Outer_4_Gate_9___aexit__(Outer::Gate& __self, std::monostate et_, std::monostate ev_, std::monostate tb_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), et(std::move(et_)), ev(std::move(ev_)), tb(std::move(tb_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          et(std::move(et_)),
+          ev(std::move(ev_)),
+          tb(std::move(tb_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -467,7 +484,9 @@ struct __coro_3_5_Outer_5_Layer_4_Deep_7_compute {
     };
 
     __coro_3_5_Outer_5_Layer_4_Deep_7_compute(const Outer::Layer::Deep& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -493,7 +512,9 @@ struct __coro_2_5_Outer_10_Layer_Deep_7_compute {
     };
 
     __coro_2_5_Outer_10_Layer_Deep_7_compute(const Outer::Layer_Deep& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -519,7 +540,9 @@ struct __coro_2_11_Outer_Layer_4_Deep_7_compute {
     };
 
     __coro_2_11_Outer_Layer_4_Deep_7_compute(const Outer_Layer::Deep& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -545,7 +568,9 @@ struct __coro_Outer_Layer_Deep_compute {
     };
 
     __coro_Outer_Layer_Deep_compute(const Outer_Layer_Deep& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -570,7 +595,8 @@ struct __coro_Outer_Inner_echo {
     };
 
     __coro_Outer_Inner_echo()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -595,7 +621,10 @@ struct __coro_nested_compute {
     };
 
     __coro_nested_compute(Outer::Inner& inner, ::tpy::BigInt delta_ = ::tpy::BigInt(1))
-        : __state(S_INITIAL), __cancel_pending(false), inner(inner), delta(std::move(delta_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          inner(inner),
+          delta(std::move(delta_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -622,7 +651,11 @@ struct __coro_nested_echo {
     };
 
     __coro_nested_echo(Outer::Inner& inner, ::tpy::param_val_or_ref_t<T> value_, ::tpy::BigInt delta_ = ::tpy::BigInt(1))
-        : __state(S_INITIAL), __cancel_pending(false), inner(inner), value(value_), delta(std::move(delta_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          inner(inner),
+          value(value_),
+          delta(std::move(delta_)) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -678,7 +711,8 @@ struct __gen_2_5_Outer_5_Inner_6_values : public ::tpy::next_iter_mixin<__gen_2_
     };
 
     __gen_2_5_Outer_5_Inner_6_values(const Outer::Inner& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_2_5_Outer_5_Inner_6_values& __iter__() { return *this; }
@@ -778,7 +812,8 @@ struct __coro_async_sections {
     };
 
     __coro_async_sections()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     __coro_async_sections(__coro_async_sections&&) = default;
     ~__coro_async_sections() {
@@ -821,7 +856,8 @@ struct __gen_delegated : public ::tpy::next_iter_mixin<__gen_delegated, ::tpy::B
     };
 
     __gen_delegated(Outer::Inner& inner)
-        : __state(S_INITIAL), inner(inner) {}
+        : __state(S_INITIAL),
+          inner(inner) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_delegated& __iter__() { return *this; }
@@ -847,7 +883,8 @@ struct __gen_2_5_Outer_5_Inner_6_simple : public ::tpy::next_iter_mixin<__gen_2_
     };
 
     __gen_2_5_Outer_5_Inner_6_simple(const Outer::Inner& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_2_5_Outer_5_Inner_6_simple& __iter__() { return *this; }

@@ -22,11 +22,9 @@ std::string classify(std::optional<int32_t> x) {
         switch (__match_inner_1) {
         case 0: {
             return "zero";
-            break;
         }
         default: {
             return "something";
-            break;
         }
         }
     }

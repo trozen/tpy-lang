@@ -32,7 +32,8 @@ struct __gen_chunks : public ::tpy::next_iter_mixin<__gen_chunks, ::tpy::BigInt>
     };
 
     __gen_chunks(::tpy::BigInt n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_chunks& __iter__() { return *this; }

@@ -58,7 +58,9 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 // def __init__(self, w: int32, h: int32) -> None:
 //     self._w = w
 //     self._h = h
-inline Rect::Rect(int32_t w, int32_t h) : _w(w), _h(h) {}
+inline Rect::Rect(int32_t w, int32_t h)
+    : _w(w),
+      _h(h) {}
 
 // @property
 // def width(self) -> int32:

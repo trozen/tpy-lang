@@ -35,7 +35,8 @@ struct __gen_loop : public ::tpy::next_iter_mixin<__gen_loop, std::string> {
     };
 
     __gen_loop(::tpy::Union<::tpy::BigInt, std::string> a_)
-        : __state(S_INITIAL), a(std::move(a_)) {}
+        : __state(S_INITIAL),
+          a(std::move(a_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_loop& __iter__() { return *this; }
@@ -58,7 +59,8 @@ struct __gen_checked : public ::tpy::next_iter_mixin<__gen_checked, std::string>
     };
 
     __gen_checked(::tpy::Union<::tpy::BigInt, std::string> a_)
-        : __state(S_INITIAL), a(std::move(a_)) {}
+        : __state(S_INITIAL),
+          a(std::move(a_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_checked& __iter__() { return *this; }

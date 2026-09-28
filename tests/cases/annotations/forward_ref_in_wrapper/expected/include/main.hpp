@@ -41,6 +41,9 @@ inline std::ostream& operator<<(std::ostream& os, const Tree& obj) {
 //     self.value = value
 //     self.parent_value = parent_value
 //     self.children = []
-inline Tree::Tree(int32_t value, std::optional<int32_t> parent_value) : value(value), parent_value(parent_value), children(std::vector<Tree>{}) {}
+inline Tree::Tree(int32_t value, std::optional<int32_t> parent_value)
+    : value(value),
+      parent_value(parent_value),
+      children(std::vector<Tree>{}) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -92,7 +92,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // def __init__(self) -> None:
 //     self.items = [Point(1, 2), Point(3, 4)]

@@ -34,7 +34,9 @@ struct ArrayList {
     ArrayList() : ArrayList(static_cast<std::nullptr_t*>(nullptr)) {}
     template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, T> || ::tpystd::tpy::Spannable<T_items, T>)
-    explicit ArrayList(const T_items* items = nullptr) : _storage(::tpy::UninitArrayStorage<T, N>()), _size(0) {
+    explicit ArrayList(const T_items* items = nullptr)
+        : _storage(::tpy::UninitArrayStorage<T, N>()),
+          _size(0) {
         if constexpr (!std::same_as<T_items, std::nullptr_t>) {
             this->extend((*items));
         }
@@ -45,7 +47,9 @@ struct ArrayList {
         if (this != &other) { *this = other.__copy__(); }
         return *this;
     }
-    ArrayList(ArrayList&& other) noexcept : _storage(), _size() {
+    ArrayList(ArrayList&& other) noexcept
+        : _storage(),
+          _size() {
         this->_storage.relocate_from(other._storage, other._size);
         this->_size = other._size;
         other.__tpy_owned_ = false;

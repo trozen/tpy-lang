@@ -114,7 +114,9 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
-inline Base::Base(int32_t x, int32_t y) : x(x), y(y) {}
+inline Base::Base(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 inline bool Base::__eq__(const Base& other) const {
     return ((this->x == other.x) && (this->y == other.y));
@@ -152,7 +154,9 @@ inline bool Base::__ge__(const Base& other) const {
     return (this->y >= other.y);
 }
 
-inline Child::Child(int32_t x, int32_t y, int32_t z) : Base(x, y), z(z) {}
+inline Child::Child(int32_t x, int32_t y, int32_t z)
+    : Base(x, y),
+      z(z) {}
 
 inline bool Child::__eq__(const Child& other) const {
     return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));

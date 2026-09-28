@@ -77,17 +77,13 @@ std::string match_guard(::tpy::Union<const A*, const B*, const C*> v) {
         {
             if ((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))) {
                 return "ab";
-                goto __match_end_2;
             }
         }
         {
             return "c";
-            goto __match_end_2;
         }
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
 }
 

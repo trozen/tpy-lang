@@ -25,12 +25,12 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        const auto& __tup_1 = __for_tup_0;
-        std::optional<int32_t> a = std::get<0>(__tup_1);
-        std::optional<int32_t> b = std::get<1>(__tup_1);
-        if ((a.has_value())) {
-            std::cout << ::tpy::print_optional_val(a) << "\n";
-        }
+            const auto& __tup_1 = __for_tup_0;
+            std::optional<int32_t> a = std::get<0>(__tup_1);
+            std::optional<int32_t> b = std::get<1>(__tup_1);
+            if ((a.has_value())) {
+                std::cout << ::tpy::print_optional_val(a) << "\n";
+            }
         }
     }
 }

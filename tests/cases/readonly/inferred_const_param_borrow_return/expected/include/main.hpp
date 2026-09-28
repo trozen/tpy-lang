@@ -144,7 +144,11 @@ inline Rec::Rec(int32_t x) : x(x) {}
 //     self.o = Rec(x + 100)
 //     self.rs = [Rec(x + 200)]
 //     self.ns = [x]
-inline B::B(int32_t x) : m(Rec(x)), o(Rec((::tpy::add_check<int32_t>(x, 100)))), rs(std::vector<Rec>{Rec((::tpy::add_check<int32_t>(x, 200)))}), ns(std::vector<int32_t>{x}) {}
+inline B::B(int32_t x)
+    : m(Rec(x)),
+      o(Rec((::tpy::add_check<int32_t>(x, 100)))),
+      rs(std::vector<Rec>{Rec((::tpy::add_check<int32_t>(x, 200)))}),
+      ns(std::vector<int32_t>{x}) {}
 
 // def bump(self) -> None:
 //     self.m.x += 1

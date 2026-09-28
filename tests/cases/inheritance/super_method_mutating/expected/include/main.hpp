@@ -137,7 +137,9 @@ inline int32_t Child::call_super_get() const {
 // def __init__(self) -> None:
 //     Child.__init__(self)
 //     Other.__init__(self)
-inline Multi::Multi() : Child(), Other() {}
+inline Multi::Multi()
+    : Child(),
+      Other() {}
 
 // def call_super_bump_other(self) -> None:
 //     super().bump_other()

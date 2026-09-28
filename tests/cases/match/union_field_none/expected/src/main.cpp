@@ -20,22 +20,16 @@ std::string describe(::tpy::Union<const Other*, const Wrapper*> w) {
         {
             if (!__case_1.child.has_value()) {
                 return "empty wrapper";
-                goto __match_end_2;
             }
         }
         {
             return "full wrapper";
-            goto __match_end_2;
         }
-        break;
     }
     default: {
         return "other";
-        goto __match_end_2;
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
 }
 

@@ -71,7 +71,8 @@ struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, std::tuple<int32_t, P*>>
     };
 
     __gen_g(std::vector<P>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<std::tuple<int32_t, P*>, ::tpy::StopIteration> __next__();
     __gen_g& __iter__() { return *this; }
@@ -94,7 +95,8 @@ struct __gen_Box_walk : public ::tpy::next_iter_mixin<__gen_Box_walk, std::tuple
     };
 
     __gen_Box_walk(Box& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<std::tuple<int32_t, P*>, ::tpy::StopIteration> __next__();
     __gen_Box_walk& __iter__() { return *this; }

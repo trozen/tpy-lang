@@ -57,6 +57,8 @@ inline Packet::Packet(::tpy::BytesView data) : data(::tpy::Bytes(data)) {}
 // def __init__(self, name: str, payload: bytes) -> None:
 //     self.name = name
 //     self.payload = payload
-inline MultiField::MultiField(std::string_view name, ::tpy::BytesView payload) : name(name), payload(::tpy::Bytes(payload)) {}
+inline MultiField::MultiField(std::string_view name, ::tpy::BytesView payload)
+    : name(name),
+      payload(::tpy::Bytes(payload)) {}
 void __tpy_init();
 } // namespace tpyapp::main

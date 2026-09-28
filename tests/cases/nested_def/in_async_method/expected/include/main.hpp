@@ -54,7 +54,9 @@ struct __coro_Counter_bump_twice {
     };
 
     __coro_Counter_bump_twice(Counter& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -83,7 +85,8 @@ struct __gen_Counter_steps : public ::tpy::next_iter_mixin<__gen_Counter_steps, 
     };
 
     __gen_Counter_steps(const Counter& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Counter_steps& __iter__() { return *this; }

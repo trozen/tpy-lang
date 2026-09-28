@@ -74,7 +74,8 @@ struct __gen_storage_relay : public ::tpy::next_iter_mixin<__gen_storage_relay, 
     };
 
     __gen_storage_relay(std::vector<std::tuple<int32_t, C>>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __next__();
     __gen_storage_relay& __iter__() { return *this; }
@@ -102,7 +103,8 @@ struct __gen_relay_twice : public ::tpy::next_iter_mixin<__gen_relay_twice, std:
     };
 
     __gen_relay_twice(std::vector<std::tuple<int32_t, C>>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __next__();
     __gen_relay_twice& __iter__() { return *this; }
@@ -130,7 +132,8 @@ struct __gen_Holder_relay : public ::tpy::next_iter_mixin<__gen_Holder_relay, st
     };
 
     __gen_Holder_relay(Holder& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __next__();
     __gen_Holder_relay& __iter__() { return *this; }

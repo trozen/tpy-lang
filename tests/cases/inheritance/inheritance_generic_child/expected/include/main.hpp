@@ -67,7 +67,9 @@ struct Box : Animal {
     //     super().__init__(name)
     //     self.value = value
     Box() = default;
-    explicit Box(std::string_view name, ::tpy::readonly_form_t<T> value) : Animal(name), value(value) {}
+    explicit Box(std::string_view name, ::tpy::readonly_form_t<T> value)
+        : Animal(name),
+          value(value) {}
 
     // def get(self) -> T:
     //     return self.value
@@ -93,7 +95,9 @@ struct Wrapper : Container<int32_t> {
     //     super().__init__(value)
     //     self.extra = extra
     Wrapper() = default;
-    explicit Wrapper(int32_t value, ::tpy::readonly_form_t<U> extra) : Container<int32_t>(value), extra(extra) {}
+    explicit Wrapper(int32_t value, ::tpy::readonly_form_t<U> extra)
+        : Container<int32_t>(value),
+          extra(extra) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 

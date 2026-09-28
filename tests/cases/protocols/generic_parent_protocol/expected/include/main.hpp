@@ -79,7 +79,9 @@ inline std::ostream& operator<<(std::ostream& os, const IntList& obj) {
 // def __init__(self, items: list[int32]) -> None:
 //     self.items = items
 //     self.pos = 0
-inline IntListIter::IntListIter(const std::vector<int32_t>& items) : items(items), pos(0) {}
+inline IntListIter::IntListIter(const std::vector<int32_t>& items)
+    : items(items),
+      pos(0) {}
 
 // def __next__(self) -> int32:
 //     if self.pos >= int32(len(self.items)):

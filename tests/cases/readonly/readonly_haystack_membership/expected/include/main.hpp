@@ -107,7 +107,9 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each, bool> {
     };
 
     __gen_each(const ::tpy::ordered_map<std::string, int32_t>& d, const std::vector<std::string>& ks)
-        : __state(S_INITIAL), d(d), ks(ks) {}
+        : __state(S_INITIAL),
+          d(d),
+          ks(ks) {}
 
     std::expected<bool, ::tpy::StopIteration> __next__();
     __gen_each& __iter__() { return *this; }

@@ -241,7 +241,8 @@ struct __coro_async_pos {
     };
 
     __coro_async_pos()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -267,7 +268,9 @@ struct __coro_else_async {
     };
 
     __coro_else_async(bool flag_)
-        : __state(S_INITIAL), __cancel_pending(false), flag(std::move(flag_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          flag(std::move(flag_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -290,8 +293,7 @@ struct __gen_gen_pos : public ::tpy::next_iter_mixin<__gen_gen_pos, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_gen_pos()
-        : __state(S_INITIAL) {}
+    __gen_gen_pos() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_pos& __iter__() { return *this; }
@@ -315,7 +317,8 @@ struct __gen_else_gen : public ::tpy::next_iter_mixin<__gen_else_gen, int32_t> {
     };
 
     __gen_else_gen(bool flag_)
-        : __state(S_INITIAL), flag(std::move(flag_)) {}
+        : __state(S_INITIAL),
+          flag(std::move(flag_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_else_gen& __iter__() { return *this; }

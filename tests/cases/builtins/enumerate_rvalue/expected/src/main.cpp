@@ -29,7 +29,8 @@ struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_f
     };
 
     __genexpr_main_1_frame(const std::array<int32_t, 3>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __genexpr_main_1_frame& __iter__() { return *this; }
@@ -76,10 +77,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        const auto& __tup_1 = __for_tup_0;
-        int32_t i = std::get<0>(__tup_1);
-        std::string_view s = std::get<1>(__tup_1);
-        std::cout << i << " " << s << "\n";
+            const auto& __tup_1 = __for_tup_0;
+            int32_t i = std::get<0>(__tup_1);
+            std::string_view s = std::get<1>(__tup_1);
+            std::cout << i << " " << s << "\n";
         }
     }
     {
@@ -89,10 +90,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const auto& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
-        const auto& __tup_2 = __for_tup_1;
-        int32_t i = std::get<0>(__tup_2);
-        std::string_view s = std::get<1>(__tup_2);
-        std::cout << i << " " << s << "\n";
+            const auto& __tup_2 = __for_tup_1;
+            int32_t i = std::get<0>(__tup_2);
+            std::string_view s = std::get<1>(__tup_2);
+            std::cout << i << " " << s << "\n";
         }
     }
     std::array<int32_t, 3> nums = {1, 2, 3};
@@ -103,10 +104,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
-        const auto& __tup_3 = __for_tup_2;
-        int32_t i = std::get<0>(__tup_3);
-        std::string_view s = std::get<1>(__tup_3);
-        std::cout << i << " " << s << "\n";
+            const auto& __tup_3 = __for_tup_2;
+            int32_t i = std::get<0>(__tup_3);
+            std::string_view s = std::get<1>(__tup_3);
+            std::cout << i << " " << s << "\n";
         }
     }
 }

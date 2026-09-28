@@ -16,12 +16,10 @@ int32_t free_read(::tpy::Union<const Other*, const R*> v) {
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         return __case_0.x;
-        break;
     }
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         return __case_1.y;
-        break;
     }
     }
     ::std::unreachable();

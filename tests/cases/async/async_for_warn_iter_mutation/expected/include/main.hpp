@@ -169,7 +169,9 @@ struct __coro_SrcIter___anext__ {
     };
 
     __coro_SrcIter___anext__(SrcIter& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -196,7 +198,9 @@ struct __coro_FeedIter___anext__ {
     };
 
     __coro_FeedIter___anext__(FeedIter& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -229,7 +233,8 @@ struct __coro_runner {
     };
 
     __coro_runner()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -258,7 +263,8 @@ struct __coro_post_loop {
     };
 
     __coro_post_loop()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -295,7 +301,8 @@ struct __coro_nested {
     };
 
     __coro_nested()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -324,7 +331,9 @@ struct __coro_hop {
     };
 
     __coro_hop(Shelf& sh)
-        : __state(S_INITIAL), __cancel_pending(false), sh(sh) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          sh(sh) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -353,7 +362,9 @@ struct __coro_field_hop {
     };
 
     __coro_field_hop(Shelf& sh)
-        : __state(S_INITIAL), __cancel_pending(false), sh(sh) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          sh(sh) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -382,7 +393,9 @@ struct __coro_elem_distinct {
     };
 
     __coro_elem_distinct(std::vector<Source>& rows)
-        : __state(S_INITIAL), __cancel_pending(false), rows(rows) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          rows(rows) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -412,7 +425,10 @@ struct __coro_elem_unknown {
     };
 
     __coro_elem_unknown(std::vector<Source>& rows, ::tpy::BigInt i_)
-        : __state(S_INITIAL), __cancel_pending(false), rows(rows), i(std::move(i_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          rows(rows),
+          i(std::move(i_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -443,7 +459,9 @@ struct __coro_elem_container {
     };
 
     __coro_elem_container(std::vector<Source>& rows)
-        : __state(S_INITIAL), __cancel_pending(false), rows(rows) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          rows(rows) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -472,7 +490,9 @@ struct __coro_ptr_iter {
     };
 
     __coro_ptr_iter(std::vector<Feed>& feeds)
-        : __state(S_INITIAL), __cancel_pending(false), feeds(feeds) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          feeds(feeds) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -486,12 +506,16 @@ struct __coro_ptr_iter {
 // def __init__(self, limit: int) -> None:
 //     self.cursor = 0
 //     self.limit = limit
-inline SrcIter::SrcIter(const ::tpy::BigInt& limit) : cursor(::tpy::BigInt(0)), limit(limit) {}
+inline SrcIter::SrcIter(const ::tpy::BigInt& limit)
+    : cursor(::tpy::BigInt(0)),
+      limit(limit) {}
 
 // def __init__(self, limit: int) -> None:
 //     self.seen = []
 //     self.limit = limit
-inline Source::Source(const ::tpy::BigInt& limit) : seen(std::vector<::tpy::BigInt>{}), limit(limit) {}
+inline Source::Source(const ::tpy::BigInt& limit)
+    : seen(std::vector<::tpy::BigInt>{}),
+      limit(limit) {}
 
 // def __aiter__(self) -> Own[SrcIter]:
 //     return SrcIter(self.limit)
@@ -508,12 +532,16 @@ inline void Source::push(const ::tpy::BigInt& x) {
 // def __init__(self) -> None:
 //     self.rows = [Source(2), Source(1)]
 //     self.one = Source(2)
-inline Shelf::Shelf() : rows(std::vector<Source>{Source(::tpy::BigInt(2)), Source(::tpy::BigInt(1))}), one(Source(::tpy::BigInt(2))) {}
+inline Shelf::Shelf()
+    : rows(std::vector<Source>{Source(::tpy::BigInt(2)), Source(::tpy::BigInt(1))}),
+      one(Source(::tpy::BigInt(2))) {}
 
 // def __init__(self, lim: int) -> None:
 //     self.hits = []
 //     self.lim = lim
-inline Feed::Feed(const ::tpy::BigInt& lim) : hits(std::vector<::tpy::BigInt>{}), lim(lim) {}
+inline Feed::Feed(const ::tpy::BigInt& lim)
+    : hits(std::vector<::tpy::BigInt>{}),
+      lim(lim) {}
 
 // # the iterator holds a POINTER back into the iterable, so the frame's
 // # iterator really does borrow it -- this is the shape that makes the loan
@@ -533,6 +561,8 @@ inline void Feed::note(const ::tpy::BigInt& x) {
 // def __init__(self, p: Ptr[Feed]) -> None:
 //     self.p = p
 //     self.cur = 0
-inline FeedIter::FeedIter(Feed* p) : p(p), cur(::tpy::BigInt(0)) {}
+inline FeedIter::FeedIter(Feed* p)
+    : p(p),
+      cur(::tpy::BigInt(0)) {}
 void __tpy_init();
 } // namespace tpyapp::main

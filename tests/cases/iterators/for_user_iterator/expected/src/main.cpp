@@ -26,7 +26,7 @@ void __tpy_init() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << x << "\n";
+            std::cout << x << "\n";
         }
     }
     auto __tmp_1 = Counter(5);
@@ -38,7 +38,7 @@ void __tpy_init() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_3);
-        std::cout << x << "\n";
+            std::cout << x << "\n";
         }
     }
     std::cout << "done" << "\n";

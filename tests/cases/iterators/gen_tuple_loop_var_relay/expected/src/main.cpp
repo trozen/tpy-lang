@@ -60,12 +60,12 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& q = ::tpy::unwrap_ref(*__r_1);
-        if (first) {
-            std::get<1>(q)->val = 99;
-            first = false;
-        } else {
-            std::cout << std::get<1>(q)->val << "\n";
-        }
+            if (first) {
+                std::get<1>(q)->val = 99;
+                first = false;
+            } else {
+                std::cout << std::get<1>(q)->val << "\n";
+            }
         }
     }
     std::vector<int32_t> seen = std::vector<int32_t>{};
@@ -77,11 +77,11 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& q2 = ::tpy::unwrap_ref(*__r_3);
-        if ((n == 0)) {
-            std::get<1>(q2)->val = 77;
-        }
-        seen.push_back(std::get<1>(q2)->val);
-        n = ::tpy::add_check<int32_t>(n, 1);
+            if ((n == 0)) {
+                std::get<1>(q2)->val = 77;
+            }
+            seen.push_back(std::get<1>(q2)->val);
+            n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
     std::cout << "free" << " " << ::tpy::ListPrinter(seen) << "\n";
@@ -95,11 +95,11 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& q3 = ::tpy::unwrap_ref(*__r_5);
-        if ((m == 0)) {
-            std::get<1>(q3)->val = 88;
-        }
-        seen_m.push_back(std::get<1>(q3)->val);
-        m = ::tpy::add_check<int32_t>(m, 1);
+            if ((m == 0)) {
+                std::get<1>(q3)->val = 88;
+            }
+            seen_m.push_back(std::get<1>(q3)->val);
+            m = ::tpy::add_check<int32_t>(m, 1);
         }
     }
     std::cout << "method" << " " << ::tpy::ListPrinter(seen_m) << "\n";

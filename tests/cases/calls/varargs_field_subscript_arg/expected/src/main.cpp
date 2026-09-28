@@ -31,8 +31,8 @@ int32_t via_field(const Pair& p) {
 // def via_subscript(items: list[Box]) -> int32:
 //     return sum_all(items[0], items[1])  # tpyc: ok
 int32_t via_subscript(const std::vector<Box>& items) {
-    std::array<const Box*, 2> __tmp_2{&::tpy::__getitem__(items, 0), &::tpy::__getitem__(items, 1)};
-    return ::tpyapp::main::sum_all(::tpy::varargs<const Box>(__tmp_2));
+    std::array<const Box*, 2> __tmp_1{&::tpy::__getitem__(items, 0), &::tpy::__getitem__(items, 1)};
+    return ::tpyapp::main::sum_all(::tpy::varargs<const Box>(__tmp_1));
 }
 
 // def main() -> None:

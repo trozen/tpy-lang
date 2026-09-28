@@ -95,7 +95,10 @@ struct __coro_Dispatcher_run {
     };
 
     __coro_Dispatcher_run(const Dispatcher& __self, int32_t count_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), count(std::move(count_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          count(std::move(count_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -123,7 +126,9 @@ struct __coro_handle {
     };
 
     __coro_handle(Conn&& c_)
-        : __state(S_INITIAL), __cancel_pending(false), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(std::move(c_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -147,7 +152,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

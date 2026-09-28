@@ -175,7 +175,9 @@ struct __coro_achain_hop {
     };
 
     __coro_achain_hop(Shelf& s)
-        : __state(S_INITIAL), __cancel_pending(false), s(s) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          s(s) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -206,7 +208,9 @@ struct __coro_aalias_mut {
     };
 
     __coro_aalias_mut(std::vector<Depot>& ds)
-        : __state(S_INITIAL), __cancel_pending(false), ds(ds) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          ds(ds) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -236,7 +240,9 @@ struct __coro_aro {
     };
 
     __coro_aro(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -260,7 +266,9 @@ struct __coro_drive_aro {
     };
 
     __coro_drive_aro(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -287,7 +295,8 @@ struct __gen_ro : public ::tpy::next_iter_mixin<__gen_ro, int32_t> {
     };
 
     __gen_ro(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_ro& __iter__() { return *this; }
@@ -314,7 +323,8 @@ struct __gen_mut : public ::tpy::next_iter_mixin<__gen_mut, ::tpy::val_or_ref<Re
     };
 
     __gen_mut(std::vector<Rec>& recs)
-        : __state(S_INITIAL), recs(recs) {}
+        : __state(S_INITIAL),
+          recs(recs) {}
 
     std::expected<::tpy::val_or_ref<Rec>, ::tpy::StopIteration> __next__();
     __gen_mut& __iter__() { return *this; }
@@ -346,7 +356,8 @@ struct __gen_sub_hop : public ::tpy::next_iter_mixin<__gen_sub_hop, int32_t> {
     };
 
     __gen_sub_hop(std::vector<std::vector<std::vector<Rec>>>& grid)
-        : __state(S_INITIAL), grid(grid) {}
+        : __state(S_INITIAL),
+          grid(grid) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_sub_hop& __iter__() { return *this; }
@@ -373,7 +384,8 @@ struct __gen_chain_hop : public ::tpy::next_iter_mixin<__gen_chain_hop, int32_t>
     };
 
     __gen_chain_hop(Shelf& s)
-        : __state(S_INITIAL), s(s) {}
+        : __state(S_INITIAL),
+          s(s) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_chain_hop& __iter__() { return *this; }
@@ -401,7 +413,8 @@ struct __gen_alias_ro : public ::tpy::next_iter_mixin<__gen_alias_ro, int32_t> {
     };
 
     __gen_alias_ro(const std::vector<Depot>& ds)
-        : __state(S_INITIAL), ds(ds) {}
+        : __state(S_INITIAL),
+          ds(ds) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_alias_ro& __iter__() { return *this; }
@@ -429,7 +442,8 @@ struct __gen_alias_mut : public ::tpy::next_iter_mixin<__gen_alias_mut, int32_t>
     };
 
     __gen_alias_mut(std::vector<Depot>& ds)
-        : __state(S_INITIAL), ds(ds) {}
+        : __state(S_INITIAL),
+          ds(ds) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_alias_mut& __iter__() { return *this; }
@@ -456,7 +470,8 @@ struct __gen_to_mut_callee : public ::tpy::next_iter_mixin<__gen_to_mut_callee, 
     };
 
     __gen_to_mut_callee(std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_to_mut_callee& __iter__() { return *this; }
@@ -487,7 +502,8 @@ struct __gen_items_ro : public ::tpy::next_iter_mixin<__gen_items_ro, int32_t> {
     };
 
     __gen_items_ro(const ::tpy::ordered_map<int32_t, int32_t>& d)
-        : __state(S_INITIAL), d(d) {}
+        : __state(S_INITIAL),
+          d(d) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_items_ro& __iter__() { return *this; }
@@ -515,7 +531,8 @@ struct __gen_values_ro : public ::tpy::next_iter_mixin<__gen_values_ro, int32_t>
     };
 
     __gen_values_ro(const ::tpy::ordered_map<int32_t, int32_t>& d)
-        : __state(S_INITIAL), d(d) {}
+        : __state(S_INITIAL),
+          d(d) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_values_ro& __iter__() { return *this; }
@@ -541,7 +558,8 @@ struct __gen_match_ro : public ::tpy::next_iter_mixin<__gen_match_ro, int32_t> {
     };
 
     __gen_match_ro(const Box& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_match_ro& __iter__() { return *this; }
@@ -569,7 +587,9 @@ struct __gen_Bag_scan : public ::tpy::next_iter_mixin<__gen_Bag_scan, int32_t> {
     };
 
     __gen_Bag_scan(const Bag& __self, const std::vector<int32_t>& ys)
-        : __state(S_INITIAL), __self(__self), ys(ys) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          ys(ys) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Bag_scan& __iter__() { return *this; }

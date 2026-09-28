@@ -106,11 +106,9 @@ int32_t via_match(NPt& p, int32_t tag) {
     switch (__match_subject_1) {
     case 1: {
         return ::tpyapp::main::take<NPt>(p);
-        break;
     }
     default: {
         return 0;
-        break;
     }
     }
     ::std::unreachable();
@@ -146,7 +144,7 @@ int32_t via_match(NPt& p, int32_t tag) {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << "gen" << " " << v << "\n";
+                std::cout << "gen" << " " << v << "\n";
             }
         }
         __sub_0.emplace((*n));

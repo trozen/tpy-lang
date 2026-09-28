@@ -36,7 +36,9 @@ struct Cell {
     //     self._buf = UninitHeapStorage[T](cap)
     //     self._cap = cap
     Cell() = default;
-    explicit Cell(uint32_t cap) : _buf(::tpy::UninitHeapStorage<T>(cap)), _cap(cap) {}
+    explicit Cell(uint32_t cap)
+        : _buf(::tpy::UninitHeapStorage<T>(cap)),
+          _cap(cap) {}
     // non-copyable (@nocopy)
     Cell(const Cell&) = delete;
     Cell& operator=(const Cell&) = delete;
@@ -63,7 +65,9 @@ struct Chan {
     // def __init__(self) -> None:
     //     self.m = Mutex.new(Cell[T](uint32(4)))
     //     self.cv = Condvar()
-    Chan() : m(::tpystd::tpy::sync::Mutex<Cell<T>>::new_(Cell<T>(4))), cv(::tpystd::tpy::sync::Condvar()) {}
+    Chan()
+        : m(::tpystd::tpy::sync::Mutex<Cell<T>>::new_(Cell<T>(4))),
+          cv(::tpystd::tpy::sync::Condvar()) {}
     // non-copyable (@nocopy)
     Chan(const Chan&) = delete;
     Chan& operator=(const Chan&) = delete;

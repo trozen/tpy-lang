@@ -99,7 +99,9 @@ inline std::string A::__repr__() const {
     return std::format("A(x={})", ::tpy::repr_of(this->x));
 }
 
-inline B::B(int32_t x, int32_t y) : A(x), y(y) {}
+inline B::B(int32_t x, int32_t y)
+    : A(x),
+      y(y) {}
 
 inline bool B::__eq__(const B& other) const {
     return ((this->x == other.x) && (this->y == other.y));
@@ -109,7 +111,9 @@ inline std::string B::__repr__() const {
     return std::format("B(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 
-inline C::C(int32_t x, int32_t y, int32_t z) : B(x, y), z(z) {}
+inline C::C(int32_t x, int32_t y, int32_t z)
+    : B(x, y),
+      z(z) {}
 
 inline bool C::__eq__(const C& other) const {
     return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));

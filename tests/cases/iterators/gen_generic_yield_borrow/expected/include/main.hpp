@@ -285,7 +285,8 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T, T_items>, ::tpy:
     };
 
     __gen_each(T_items&& items_)
-        : __state(S_INITIAL), items(std::forward<T_items>(items_)) {}
+        : __state(S_INITIAL),
+          items(std::forward<T_items>(items_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_each& __iter__() { return *this; }
@@ -348,7 +349,8 @@ struct __gen_each_ro : public ::tpy::next_iter_mixin<__gen_each_ro<T, T_items>, 
     };
 
     __gen_each_ro(T_items&& items_)
-        : __state(S_INITIAL), items(std::forward<T_items>(items_)) {}
+        : __state(S_INITIAL),
+          items(std::forward<T_items>(items_)) {}
 
     std::expected<::tpy::yield_slot_t<const T>, ::tpy::StopIteration> __next__();
     __gen_each_ro& __iter__() { return *this; }
@@ -412,7 +414,9 @@ struct __gen_rep : public ::tpy::next_iter_mixin<__gen_rep<T>, ::tpy::yield_slot
     };
 
     __gen_rep(::tpy::param_val_or_ref_t<T> obj_, int32_t times_)
-        : __state(S_INITIAL), obj(obj_), times(std::move(times_)) {}
+        : __state(S_INITIAL),
+          obj(obj_),
+          times(std::move(times_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_rep& __iter__() { return *this; }
@@ -471,7 +475,8 @@ struct __gen_ends : public ::tpy::next_iter_mixin<__gen_ends<T>, ::tpy::yield_sl
     };
 
     __gen_ends(std::vector<T>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_ends& __iter__() { return *this; }
@@ -532,7 +537,8 @@ struct __gen_first_then_rest : public ::tpy::next_iter_mixin<__gen_first_then_re
     };
 
     __gen_first_then_rest(std::vector<T>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_first_then_rest& __iter__() { return *this; }
@@ -606,7 +612,8 @@ struct __gen_in_with : public ::tpy::next_iter_mixin<__gen_in_with<T>, ::tpy::yi
     };
 
     __gen_in_with(std::vector<T>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     __gen_in_with(__gen_in_with&&) = default;
     ~__gen_in_with() {
@@ -725,7 +732,8 @@ struct __gen_in_try : public ::tpy::next_iter_mixin<__gen_in_try<T>, ::tpy::yiel
     };
 
     __gen_in_try(std::vector<T>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     __gen_in_try(__gen_in_try&&) = default;
     ~__gen_in_try() {
@@ -834,7 +842,9 @@ struct __gen_in_match : public ::tpy::next_iter_mixin<__gen_in_match<T>, ::tpy::
     };
 
     __gen_in_match(std::vector<T>& items, int32_t mode_)
-        : __state(S_INITIAL), items(items), mode(std::move(mode_)) {}
+        : __state(S_INITIAL),
+          items(items),
+          mode(std::move(mode_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_in_match& __iter__() { return *this; }
@@ -915,7 +925,8 @@ struct __gen_via_local : public ::tpy::next_iter_mixin<__gen_via_local<T>, ::tpy
     };
 
     __gen_via_local(const std::vector<T>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_via_local& __iter__() { return *this; }
@@ -1009,7 +1020,9 @@ struct __gen_trial_then_local : public ::tpy::next_iter_mixin<__gen_trial_then_l
     };
 
     __gen_trial_then_local(std::vector<T>& items, int32_t n_)
-        : __state(S_INITIAL), items(items), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          items(items),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_trial_then_local& __iter__() { return *this; }
@@ -1077,7 +1090,8 @@ struct __gen_with_nested : public ::tpy::next_iter_mixin<__gen_with_nested<T>, :
     };
 
     __gen_with_nested(std::vector<T>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_with_nested& __iter__() { return *this; }
@@ -1149,7 +1163,8 @@ struct __gen_local_after_nested : public ::tpy::next_iter_mixin<__gen_local_afte
     };
 
     __gen_local_after_nested(int32_t x_)
-        : __state(S_INITIAL), x(std::move(x_)) {}
+        : __state(S_INITIAL),
+          x(std::move(x_)) {}
 
     std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __next__();
     __gen_local_after_nested& __iter__() { return *this; }
@@ -1175,7 +1190,8 @@ struct __gen_via_shadowing_local : public ::tpy::next_iter_mixin<__gen_via_shado
     };
 
     __gen_via_shadowing_local(std::vector<T>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_via_shadowing_local& __iter__() { return *this; }
@@ -1238,7 +1254,9 @@ struct __gen_mapped : public ::tpy::next_iter_mixin<__gen_mapped<T, U, T_it, F_f
     };
 
     __gen_mapped(F_fn&& fn_, T_it&& it_)
-        : __state(S_INITIAL), fn(std::forward<F_fn>(fn_)), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          fn(std::forward<F_fn>(fn_)),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<U, ::tpy::StopIteration> __next__();
     __gen_mapped& __iter__() { return *this; }
@@ -1309,7 +1327,9 @@ struct __gen_mixed : public ::tpy::next_iter_mixin<__gen_mixed<T, T_extra>, T> {
     };
 
     __gen_mixed(std::vector<T>& items, T_extra&& extra_)
-        : __state(S_INITIAL), items(items), extra(std::forward<T_extra>(extra_)) {}
+        : __state(S_INITIAL),
+          items(items),
+          extra(std::forward<T_extra>(extra_)) {}
 
     std::expected<T, ::tpy::StopIteration> __next__();
     __gen_mixed& __iter__() { return *this; }
@@ -1388,7 +1408,8 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T, T_it>, T> {
     };
 
     __gen_relay(T_it&& it_)
-        : __state(S_INITIAL), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<T, ::tpy::StopIteration> __next__();
     __gen_relay& __iter__() { return *this; }
@@ -1449,7 +1470,8 @@ struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk<T>, :
     };
 
     __gen_Holder_walk(Holder<T>& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Holder_walk& __iter__() { return *this; }
@@ -1509,7 +1531,8 @@ struct __gen_Cell_twice : public ::tpy::next_iter_mixin<__gen_Cell_twice<T>, ::t
     };
 
     __gen_Cell_twice(Cell<T>& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Cell_twice& __iter__() { return *this; }
@@ -1563,7 +1586,8 @@ struct __gen_Cell_prop : public ::tpy::next_iter_mixin<__gen_Cell_prop<T>, ::tpy
     };
 
     __gen_Cell_prop(Cell<T>& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Cell_prop& __iter__() { return *this; }

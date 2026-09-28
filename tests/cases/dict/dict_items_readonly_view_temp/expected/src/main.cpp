@@ -19,8 +19,8 @@ int32_t count(const ::tpy::ordered_map<std::string, Node>& d) {
 //     xs = ArrayList[readonly[Node], 16](d.values())  # tpyc: warning(/copies .* elements/)
 //     return len(xs)
 int32_t count_values(const ::tpy::ordered_map<std::string, Node>& d) {
-    ::tpy::dict_values_view<std::string, const Node> __tmp_2 = ::tpy::dict_values(d);
-    ::tpystd::tplib::array_list::ArrayList<Node, 16> xs = ::tpystd::tplib::array_list::ArrayList<Node, 16>(&(__tmp_2));
+    ::tpy::dict_values_view<std::string, const Node> __tmp_1 = ::tpy::dict_values(d);
+    ::tpystd::tplib::array_list::ArrayList<Node, 16> xs = ::tpystd::tplib::array_list::ArrayList<Node, 16>(&(__tmp_1));
     return ::tpy::__len__(xs);
 }
 

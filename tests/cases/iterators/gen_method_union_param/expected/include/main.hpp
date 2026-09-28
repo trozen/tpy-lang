@@ -86,7 +86,9 @@ struct __gen_Zoo_voices : public ::tpy::next_iter_mixin<__gen_Zoo_voices, std::s
     };
 
     __gen_Zoo_voices(Zoo& __self, ::tpy::Union<Cat*, Dog*> a_)
-        : __state(S_INITIAL), __self(__self), a(a_) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          a(a_) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_Zoo_voices& __iter__() { return *this; }
@@ -116,7 +118,9 @@ struct __gen_Zoo_names : public ::tpy::next_iter_mixin<__gen_Zoo_names, std::str
     };
 
     __gen_Zoo_names(Zoo& __self, ::tpy::Union<const Cat*, const Dog*> a_)
-        : __state(S_INITIAL), __self(__self), a(a_) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          a(a_) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_Zoo_names& __iter__() { return *this; }

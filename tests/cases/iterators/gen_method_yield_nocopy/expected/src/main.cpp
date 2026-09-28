@@ -20,7 +20,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& h = ::tpy::unwrap_ref(*__r_1);
-        h.fd = (::tpy::add_check<int32_t>(h.fd, 10));
+            h.fd = (::tpy::add_check<int32_t>(h.fd, 10));
         }
     }
     auto& __obj_2 = b.items;

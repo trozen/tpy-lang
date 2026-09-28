@@ -57,7 +57,9 @@ inline std::ostream& operator<<(std::ostream& os, const DoublePairIter& obj) {
 // def __init__(self, limit: int32) -> None:
 //     self.current = 0
 //     self.limit = limit
-inline PairIter::PairIter(int32_t limit) : current(0), limit(limit) {}
+inline PairIter::PairIter(int32_t limit)
+    : current(0),
+      limit(limit) {}
 
 // def __iter__(self) -> PairIter:
 //     return self

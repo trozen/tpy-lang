@@ -63,7 +63,8 @@ struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__<T>,
     };
 
     __gen_Bag___iter__(Bag<T>& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Bag___iter__& __iter__() { return *this; }

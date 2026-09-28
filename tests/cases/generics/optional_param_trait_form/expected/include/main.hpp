@@ -212,7 +212,9 @@ struct __coro_probe_async {
     };
 
     __coro_probe_async(::tpy::opt_param_t<T> val_)
-        : __state(S_INITIAL), __cancel_pending(false), val(val_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          val(val_) {}
 
     ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -258,7 +260,9 @@ struct __coro_probe_async_twin {
     };
 
     __coro_probe_async_twin(std::optional<int32_t> val_)
-        : __state(S_INITIAL), __cancel_pending(false), val(std::move(val_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          val(std::move(val_)) {}
 
     ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -280,7 +284,9 @@ struct __coro_probe_pinned_twin {
     };
 
     __coro_probe_pinned_twin(Pinned* val_)
-        : __state(S_INITIAL), __cancel_pending(false), val(val_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          val(val_) {}
 
     ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -339,7 +345,9 @@ struct __coro_amain {
     };
 
     __coro_amain(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -362,7 +370,8 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, bool> {
     };
 
     __gen_gen_body(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<bool, ::tpy::StopIteration> __next__();
     __gen_gen_body& __iter__() { return *this; }

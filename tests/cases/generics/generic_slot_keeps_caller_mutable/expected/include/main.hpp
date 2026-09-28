@@ -149,7 +149,9 @@ struct __coro_via_async {
     };
 
     __coro_via_async(NPt& p)
-        : __state(S_INITIAL), __cancel_pending(false), p(p) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          p(p) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -177,7 +179,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -199,7 +202,8 @@ struct __gen_via_gen : public ::tpy::next_iter_mixin<__gen_via_gen, int32_t> {
     };
 
     __gen_via_gen(NPt& p)
-        : __state(S_INITIAL), p(p) {}
+        : __state(S_INITIAL),
+          p(p) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_via_gen& __iter__() { return *this; }

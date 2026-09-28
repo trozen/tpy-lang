@@ -38,6 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 
 
 // args = parser.parse_args(["-h"])
-inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::string_view path, const ::tpy::BigInt& count, std::optional<std::vector<std::string>>&& names) : path(path), count(count), names(std::move(names)) {}
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::string_view path, const ::tpy::BigInt& count, std::optional<std::vector<std::string>>&& names)
+    : path(path),
+      count(count),
+      names(std::move(names)) {}
 void __tpy_init();
 } // namespace tpyapp::main

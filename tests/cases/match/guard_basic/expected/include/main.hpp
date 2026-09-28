@@ -7,6 +7,29 @@
 
 namespace tpyapp::main {
 
+enum class Color : int32_t {
+    RED = 1,
+    BLUE = 2,
+};
+
+} // namespace tpyapp::main
+
+template<>
+struct tpy::EnumUtil<::tpyapp::main::Color> {
+    static constexpr std::string_view type_name = "Color";
+    static std::string_view name(::tpyapp::main::Color e);
+    static const std::array<::tpyapp::main::Color, 2> members;
+    static ::tpyapp::main::Color from_value(int32_t v);
+    static ::tpyapp::main::Color from_name(std::string_view s);
+    static std::optional<::tpyapp::main::Color> try_parse(std::string_view s);
+};
+
+namespace tpyapp::main {
+
+inline std::ostream& operator<<(std::ostream& __os, Color __e) {
+    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
+}
+
 struct Dog;
 struct Cat;
 
@@ -14,6 +37,26 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def describe(a: Dog | Cat) -> str:
 std::string describe(::tpy::Union<const Cat*, const Dog*> a);
+// def chain_raise(n: int, flag: bool) -> str:
+std::string chain_raise(const ::tpy::BigInt& n, bool flag);
+// def chain_if_else(n: int, flag: bool, pick: bool) -> str:
+std::string chain_if_else(const ::tpy::BigInt& n, bool flag, bool pick);
+// def chain_try_finally(n: int, flag: bool) -> str:
+std::string chain_try_finally(const ::tpy::BigInt& n, bool flag);
+// def chain_break(xs: list[int], flag: bool) -> None:
+void chain_break(const std::vector<::tpy::BigInt>& xs, bool flag);
+// def union_nested_match(a: Dog | Cat, c: Color) -> str:
+std::string union_nested_match(::tpy::Union<const Cat*, const Dog*> a, Color c);
+// def union_while_true(a: Dog | Cat) -> int:
+::tpy::BigInt union_while_true(::tpy::Union<const Cat*, const Dog*> a);
+// def union_assert_false(a: Dog | Cat) -> str:
+std::string union_assert_false(::tpy::Union<const Cat*, const Dog*> a);
+// def union_break(pets: list[Dog | Cat]) -> None:
+void union_break(const std::vector<::tpy::Union<Cat, Dog>>& pets);
+// def switch_while_true(a: Dog | Cat) -> int:
+::tpy::BigInt switch_while_true(::tpy::Union<const Cat*, const Dog*> a);
+// def switch_try_finally(a: Dog | Cat) -> str:
+std::string switch_try_finally(::tpy::Union<const Cat*, const Dog*> a);
 // def main() -> None:
 void main();
 

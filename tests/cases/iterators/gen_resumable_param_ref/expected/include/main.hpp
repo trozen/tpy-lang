@@ -29,7 +29,8 @@ struct __gen_first_two : public ::tpy::next_iter_mixin<__gen_first_two, int32_t>
     };
 
     __gen_first_two(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_first_two& __iter__() { return *this; }

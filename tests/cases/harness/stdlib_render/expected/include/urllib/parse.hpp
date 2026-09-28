@@ -191,7 +191,12 @@ inline std::ostream& operator<<(std::ostream& os, const ParseResult& obj) {
 //     self.path = path
 //     self.query = query
 //     self.fragment = fragment
-inline SplitResult::SplitResult(std::string_view scheme, std::string_view netloc, std::string_view path, std::string_view query, std::string_view fragment) : scheme(scheme), netloc(netloc), path(path), query(query), fragment(fragment) {}
+inline SplitResult::SplitResult(std::string_view scheme, std::string_view netloc, std::string_view path, std::string_view query, std::string_view fragment)
+    : scheme(scheme),
+      netloc(netloc),
+      path(path),
+      query(query),
+      fragment(fragment) {}
 
 // @property
 // def hostname(self) -> str | None:
@@ -236,7 +241,13 @@ inline std::string SplitResult::geturl() const {
 //     self.params = params
 //     self.query = query
 //     self.fragment = fragment
-inline ParseResult::ParseResult(std::string_view scheme, std::string_view netloc, std::string_view path, std::string_view params, std::string_view query, std::string_view fragment) : scheme(scheme), netloc(netloc), path(path), params(params), query(query), fragment(fragment) {}
+inline ParseResult::ParseResult(std::string_view scheme, std::string_view netloc, std::string_view path, std::string_view params, std::string_view query, std::string_view fragment)
+    : scheme(scheme),
+      netloc(netloc),
+      path(path),
+      params(params),
+      query(query),
+      fragment(fragment) {}
 
 // @property
 // def hostname(self) -> str | None:

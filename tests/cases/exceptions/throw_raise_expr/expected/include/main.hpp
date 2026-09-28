@@ -69,11 +69,15 @@ inline std::ostream& operator<<(std::ostream& os, const OtherError& obj) {
 // def __init__(self, code: int32) -> None:
 //     super().__init__()
 //     self.code = code
-inline AppError::AppError(int32_t code) : ::tpy::Exception(), code(code) {}
+inline AppError::AppError(int32_t code)
+    : ::tpy::Exception(),
+      code(code) {}
 
 // def __init__(self, tag: str) -> None:
 //     super().__init__()
 //     self.tag = tag
-inline OtherError::OtherError(std::string_view tag) : ::tpy::Exception(), tag(tag) {}
+inline OtherError::OtherError(std::string_view tag)
+    : ::tpy::Exception(),
+      tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

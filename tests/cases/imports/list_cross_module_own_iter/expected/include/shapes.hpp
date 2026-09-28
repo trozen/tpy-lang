@@ -48,8 +48,7 @@ struct __gen_points : public ::tpy::next_iter_mixin<__gen_points, Point> {
         S_DONE = 3,
     };
 
-    __gen_points()
-        : __state(S_INITIAL) {}
+    __gen_points() : __state(S_INITIAL) {}
 
     std::expected<Point, ::tpy::StopIteration> __next__();
     __gen_points& __iter__() { return *this; }

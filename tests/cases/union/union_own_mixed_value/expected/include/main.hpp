@@ -44,7 +44,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // def __init__(self) -> None:
 //     self.items = [10, 20, 30, 40, 50]
 //     self._dummy = 0
-inline Box::Box() : items(std::vector<int32_t>{10, 20, 30, 40, 50}), _dummy(0) {}
+inline Box::Box()
+    : items(std::vector<int32_t>{10, 20, 30, 40, 50}),
+      _dummy(0) {}
 
 // def get_span(self) -> Own[Span[int32] | list[int32]]:  # tpyc: ok
 //     """basic_slice produces Span (value type) -- allowed as Own return."""

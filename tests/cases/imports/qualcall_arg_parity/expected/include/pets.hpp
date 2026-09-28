@@ -118,7 +118,8 @@ struct __gen_gen_tags : public ::tpy::next_iter_mixin<__gen_gen_tags, std::strin
     };
 
     __gen_gen_tags(std::string_view prefix_)
-        : __state(S_INITIAL), prefix(std::string(prefix_)) {}
+        : __state(S_INITIAL),
+          prefix(std::string(prefix_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen_tags& __iter__() { return *this; }
@@ -140,7 +141,8 @@ struct __gen_gen_sizes : public ::tpy::next_iter_mixin<__gen_gen_sizes, ::tpy::B
     };
 
     __gen_gen_sizes(::tpy::BytesView data_)
-        : __state(S_INITIAL), data(::tpy::Bytes(data_)) {}
+        : __state(S_INITIAL),
+          data(::tpy::Bytes(data_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_sizes& __iter__() { return *this; }

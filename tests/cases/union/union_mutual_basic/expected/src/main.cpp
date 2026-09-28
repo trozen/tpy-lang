@@ -29,7 +29,6 @@ Expr make_lit(const ::tpy::BigInt& v) {
         auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto& v = __case_0.value;
         return v;
-        break;
     }
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1.value);
@@ -43,7 +42,6 @@ Expr make_lit(const ::tpy::BigInt& v) {
         } else {
             return ((lv) - (rv));
         }
-        break;
     }
     }
     ::std::unreachable();

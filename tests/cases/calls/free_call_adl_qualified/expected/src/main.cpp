@@ -290,7 +290,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t y = ::tpy::unwrap_ref(*__r_1);
-        total = ::tpy::add_check<int32_t>(total, y);
+            total = ::tpy::add_check<int32_t>(total, y);
         }
     }
     std::cout << "generator:" << " " << total << "\n";

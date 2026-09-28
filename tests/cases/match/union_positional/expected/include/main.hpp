@@ -78,7 +78,9 @@ inline std::string Circle::__repr__() const {
     return std::format("Circle(radius={})", ::tpy::repr_of(this->radius));
 }
 
-inline Rect::Rect(double width, double height) : width(width), height(height) {}
+inline Rect::Rect(double width, double height)
+    : width(width),
+      height(height) {}
 
 inline bool Rect::__eq__(const Rect& other) const {
     return ((this->width == other.width) && (this->height == other.height));

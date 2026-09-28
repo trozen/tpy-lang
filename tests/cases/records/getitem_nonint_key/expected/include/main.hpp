@@ -44,7 +44,9 @@ inline std::ostream& operator<<(std::ostream& os, const Scores& obj) {
 // def __init__(self) -> None:
 //     self._a = 10
 //     self._b = 20
-inline Scores::Scores() : _a(10), _b(20) {}
+inline Scores::Scores()
+    : _a(10),
+      _b(20) {}
 
 // def __getitem__(self, key: str) -> int32:
 //     if key == "a":

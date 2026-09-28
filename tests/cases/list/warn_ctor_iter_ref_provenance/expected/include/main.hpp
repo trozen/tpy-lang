@@ -111,7 +111,8 @@ struct __gen_fresh : public ::tpy::next_iter_mixin<__gen_fresh, C> {
     };
 
     __gen_fresh(const std::vector<C>& cs)
-        : __state(S_INITIAL), cs(cs) {}
+        : __state(S_INITIAL),
+          cs(cs) {}
 
     std::expected<C, ::tpy::StopIteration> __next__();
     __gen_fresh& __iter__() { return *this; }
@@ -134,7 +135,8 @@ struct __gen_generator_body : public ::tpy::next_iter_mixin<__gen_generator_body
     };
 
     __gen_generator_body(const std::vector<C>& cs)
-        : __state(S_INITIAL), cs(cs) {}
+        : __state(S_INITIAL),
+          cs(cs) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_generator_body& __iter__() { return *this; }
@@ -161,7 +163,8 @@ struct __gen_later : public ::tpy::next_iter_mixin<__gen_later, ::tpy::val_or_re
     };
 
     __gen_later(std::vector<C>& cs)
-        : __state(S_INITIAL), cs(cs) {}
+        : __state(S_INITIAL),
+          cs(cs) {}
 
     std::expected<::tpy::val_or_ref<C>, ::tpy::StopIteration> __next__();
     __gen_later& __iter__() { return *this; }
@@ -189,7 +192,8 @@ struct __gen_later_t : public ::tpy::next_iter_mixin<__gen_later_t<T>, ::tpy::yi
     };
 
     __gen_later_t(std::vector<T>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_later_t& __iter__() { return *this; }
@@ -251,7 +255,8 @@ struct __gen_Bag_each : public ::tpy::next_iter_mixin<__gen_Bag_each, ::tpy::val
     };
 
     __gen_Bag_each(Bag& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::val_or_ref<C>, ::tpy::StopIteration> __next__();
     __gen_Bag_each& __iter__() { return *this; }

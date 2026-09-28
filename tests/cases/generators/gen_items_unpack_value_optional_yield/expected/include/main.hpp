@@ -37,7 +37,8 @@ struct __gen_g_items : public ::tpy::next_iter_mixin<__gen_g_items, int32_t> {
     };
 
     __gen_g_items(const ::tpy::ordered_map<std::string, std::optional<int32_t>>& d)
-        : __state(S_INITIAL), d(d) {}
+        : __state(S_INITIAL),
+          d(d) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_g_items& __iter__() { return *this; }

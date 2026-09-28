@@ -35,7 +35,8 @@ struct __gen_upto_while : public ::tpy::next_iter_mixin<__gen_upto_while, int32_
     };
 
     __gen_upto_while(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_upto_while& __iter__() { return *this; }
@@ -62,7 +63,8 @@ struct __gen_upto_for : public ::tpy::next_iter_mixin<__gen_upto_for, int32_t> {
     };
 
     __gen_upto_for(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_upto_for& __iter__() { return *this; }

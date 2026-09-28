@@ -51,7 +51,9 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 // def __init__(self, n: int32) -> None:
 //     self.token = n
 //     Parent.token = n + 1
-inline Child::Child(int32_t n) : Parent(), token(n) {
+inline Child::Child(int32_t n)
+    : Parent(),
+      token(n) {
     this->Parent::token = (::tpy::add_check<int32_t>(n, 1));
 }
 

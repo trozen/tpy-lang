@@ -47,7 +47,9 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 }
 
 
-inline Rect::Rect(int32_t width, int32_t height) : width(width), height(height) {}
+inline Rect::Rect(int32_t width, int32_t height)
+    : width(width),
+      height(height) {}
 
 // def area(self) -> int32:
 //     return self.width * self.height

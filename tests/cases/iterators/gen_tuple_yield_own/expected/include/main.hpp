@@ -50,7 +50,8 @@ struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, std::tuple<::tpy::BigInt
     };
 
     __gen_g(::tpy::BigInt n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<std::tuple<::tpy::BigInt, Box>, ::tpy::StopIteration> __next__();
     __gen_g& __iter__() { return *this; }

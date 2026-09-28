@@ -69,7 +69,9 @@ struct __coro_count_mono {
     };
 
     __coro_count_mono(T_items&& items_)
-        : __state(S_INITIAL), __cancel_pending(false), items(std::forward<T_items>(items_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          items(std::forward<T_items>(items_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -138,7 +140,8 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T, T_items>, std::t
     };
 
     __gen_each(T_items&& items_)
-        : __state(S_INITIAL), items(std::forward<T_items>(items_)) {}
+        : __state(S_INITIAL),
+          items(std::forward<T_items>(items_)) {}
 
     std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __next__();
     __gen_each& __iter__() { return *this; }
@@ -215,7 +218,8 @@ struct __gen_each_mono : public ::tpy::next_iter_mixin<__gen_each_mono<T_items>,
     };
 
     __gen_each_mono(T_items&& items_)
-        : __state(S_INITIAL), items(std::forward<T_items>(items_)) {}
+        : __state(S_INITIAL),
+          items(std::forward<T_items>(items_)) {}
 
     std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __next__();
     __gen_each_mono& __iter__() { return *this; }

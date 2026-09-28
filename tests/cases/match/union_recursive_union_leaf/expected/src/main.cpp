@@ -27,11 +27,9 @@ int32_t leaf_count(const Tree<::tpy::Union<int32_t, std::string>>& t) {
             total = ::tpy::add_check<int32_t>(total, ::tpyapp::main::leaf_count(child));
         }
         return total;
-        break;
     }
     default: {
         return 1;
-        break;
     }
     }
     ::std::unreachable();

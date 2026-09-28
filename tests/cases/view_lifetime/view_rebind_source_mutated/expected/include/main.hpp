@@ -56,7 +56,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // def __init__(self) -> None:
 //     self.xs = ["a" * 40]
 //     self.ys = ["j" * 40]
-inline Holder::Holder() : xs(std::vector<std::string>{(::tpy::str_repeat("a", 40))}), ys(std::vector<std::string>{(::tpy::str_repeat("j", 40))}) {}
+inline Holder::Holder()
+    : xs(std::vector<std::string>{(::tpy::str_repeat("a", 40))}),
+      ys(std::vector<std::string>{(::tpy::str_repeat("j", 40))}) {}
 
 // def method(self) -> None:
 //     v = self.xs[0]  # tpyc: type(str)

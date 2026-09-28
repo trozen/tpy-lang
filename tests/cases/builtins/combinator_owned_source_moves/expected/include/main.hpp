@@ -266,7 +266,9 @@ struct __coro_acount {
     };
 
     __coro_acount(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -288,8 +290,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_gen()
-        : __state(S_INITIAL) {}
+    __gen_gen() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -313,8 +314,7 @@ struct __gen_ranged : public ::tpy::next_iter_mixin<__gen_ranged, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_ranged()
-        : __state(S_INITIAL) {}
+    __gen_ranged() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_ranged& __iter__() { return *this; }
@@ -343,7 +343,8 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, int32_t> {
     };
 
     __gen_pairs(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_pairs& __iter__() { return *this; }
@@ -357,7 +358,9 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, int32_t> {
 // def __init__(self, n: int32) -> None:
 //     self.i = 0
 //     self.n = n
-inline Cur::Cur(int32_t n) : i(0), n(n) {}
+inline Cur::Cur(int32_t n)
+    : i(0),
+      n(n) {}
 
 // def __iter__(self) -> "Cur":
 //     print("  Cur.__iter__", self.n)
@@ -383,7 +386,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> Cur::__next__() {
 // def __init__(self, n: int32) -> None:
 //     self.n = n
 //     self.i = 0
-inline Rng::Rng(int32_t n) : n(n), i(0) {}
+inline Rng::Rng(int32_t n)
+    : n(n),
+      i(0) {}
 
 // def __iter__(self) -> Own["Rng"]:
 //     print("  Rng.__iter__", self.n)
@@ -458,7 +463,10 @@ inline void Scope::__exit__(std::monostate exc_type, const ::tpy::BaseException*
 //     self.n = n
 //     self.quiet = Quiet(n)
 //     self.count = len(list(map(dbl, Quiet(n))))  # tpyc: ok
-inline Holder::Holder(int32_t n) : n(n), quiet(Quiet(n)), count(::tpy::__len__(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t>(dbl, Quiet(n))))) {}
+inline Holder::Holder(int32_t n)
+    : n(n),
+      quiet(Quiet(n)),
+      count(::tpy::__len__(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t>(dbl, Quiet(n))))) {}
 
 // def make(self) -> Own[Quiet]:
 //     return Quiet(self.n)
@@ -489,10 +497,10 @@ inline int32_t Holder::total(const std::vector<int32_t>& xs) const {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        const auto& __tup_1 = __for_tup_0;
-        int32_t a = std::get<0>(__tup_1);
-        int32_t b = std::get<1>(__tup_1);
-        t = ::tpy::add_check<int32_t>(t, (::tpy::mul_check<int32_t>(a, b)));
+            const auto& __tup_1 = __for_tup_0;
+            int32_t a = std::get<0>(__tup_1);
+            int32_t b = std::get<1>(__tup_1);
+            t = ::tpy::add_check<int32_t>(t, (::tpy::mul_check<int32_t>(a, b)));
         }
     }
     return t;
@@ -505,7 +513,9 @@ inline Sub::Sub(int32_t n) : Cur(n) {}
 // def __init__(self, n: int32) -> None:
 //     super().__init__(0)
 //     self.inner = Cur(n)
-inline Deleg::Deleg(int32_t n) : Cur(0), inner(Cur(n)) {}
+inline Deleg::Deleg(int32_t n)
+    : Cur(0),
+      inner(Cur(n)) {}
 
 // def __iter__(self) -> Cur:
 //     return self.inner

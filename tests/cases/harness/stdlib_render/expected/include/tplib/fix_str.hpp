@@ -55,14 +55,18 @@ struct FixStr {
     // def __init__(self) -> None:
     //     self._storage = UninitArrayStorage[char, N]()
     //     self._size = 0
-    FixStr() : _storage(::tpy::UninitArrayStorage<char, N>()), _size(0) {}
+    FixStr()
+        : _storage(::tpy::UninitArrayStorage<char, N>()),
+          _size(0) {}
     // copyable via __copy__
     FixStr(const FixStr& other) : FixStr(other.__copy__()) {}
     FixStr& operator=(const FixStr& other) {
         if (this != &other) { *this = other.__copy__(); }
         return *this;
     }
-    FixStr(FixStr&& other) noexcept : _storage(), _size() {
+    FixStr(FixStr&& other) noexcept
+        : _storage(),
+          _size() {
         this->_storage.relocate_from(other._storage, static_cast<uint32_t>(other._size));
         this->_size = other._size;
         other.__tpy_owned_ = false;
@@ -134,8 +138,8 @@ struct FixStr {
     //     self._storage.init(uint32(index), value)
     void __setitem__(int32_t index, char value) {
         this->_storage.drop(::tpy::int_cast_check<uint32_t>(index));
-        char __tmp_2 = value;
-        this->_storage.init(::tpy::int_cast_check<uint32_t>(index), std::move(__tmp_2));
+        char __tmp_1 = value;
+        this->_storage.init(::tpy::int_cast_check<uint32_t>(index), std::move(__tmp_1));
     }
 
     // def __str__(self) -> StrView:
@@ -185,7 +189,10 @@ inline std::ostream& operator<<(std::ostream& os, const FixStr<N>& obj) {
 //     self._data = data
 //     self._size = size
 //     self._index = 0
-inline FixStrIter::FixStrIter(const char* data, int32_t size) : _data(data), _size(size), _index(0) {}
+inline FixStrIter::FixStrIter(const char* data, int32_t size)
+    : _data(data),
+      _size(size),
+      _index(0) {}
 
 // def __next__(self) -> char:
 //     if self._index < self._size:

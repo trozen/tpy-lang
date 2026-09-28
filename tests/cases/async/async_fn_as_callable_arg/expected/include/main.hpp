@@ -40,7 +40,9 @@ struct __coro_double_ {
     };
 
     __coro_double_(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -73,7 +75,11 @@ struct __coro_run_twice {
     };
 
     __coro_run_twice(std::function<std::unique_ptr<::tpystd::coro::Cancellable<int32_t>>(int32_t)> factory_, int32_t a_, int32_t b_)
-        : __state(S_INITIAL), __cancel_pending(false), factory(std::move(factory_)), a(std::move(a_)), b(std::move(b_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          factory(std::move(factory_)),
+          a(std::move(a_)),
+          b(std::move(b_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -96,7 +102,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

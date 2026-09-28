@@ -77,11 +77,29 @@ struct _ChanState {
     //     self._has_send_waiter = False
     //     self._recv_waker = Waker()
     //     self._has_recv_waiter = False
-    explicit _ChanState(uint32_t capacity) : _buf(::tpy::UninitHeapStorage<T>(capacity)), _cap(capacity), _head(0), _count(0), _closed(false), _send_waker(::tpystd::coro::Waker()), _has_send_waiter(false), _recv_waker(::tpystd::coro::Waker()), _has_recv_waiter(false) {}
+    explicit _ChanState(uint32_t capacity)
+        : _buf(::tpy::UninitHeapStorage<T>(capacity)),
+          _cap(capacity),
+          _head(0),
+          _count(0),
+          _closed(false),
+          _send_waker(::tpystd::coro::Waker()),
+          _has_send_waiter(false),
+          _recv_waker(::tpystd::coro::Waker()),
+          _has_recv_waiter(false) {}
     // non-copyable (@nocopy)
     _ChanState(const _ChanState&) = delete;
     _ChanState& operator=(const _ChanState&) = delete;
-    _ChanState(_ChanState&& other) noexcept : _buf(std::move(other._buf)), _cap(std::move(other._cap)), _head(std::move(other._head)), _count(std::move(other._count)), _closed(std::move(other._closed)), _send_waker(std::move(other._send_waker)), _has_send_waiter(std::move(other._has_send_waiter)), _recv_waker(std::move(other._recv_waker)), _has_recv_waiter(std::move(other._has_recv_waiter)) {
+    _ChanState(_ChanState&& other) noexcept
+        : _buf(std::move(other._buf)),
+          _cap(std::move(other._cap)),
+          _head(std::move(other._head)),
+          _count(std::move(other._count)),
+          _closed(std::move(other._closed)),
+          _send_waker(std::move(other._send_waker)),
+          _has_send_waiter(std::move(other._has_send_waiter)),
+          _recv_waker(std::move(other._recv_waker)),
+          _has_recv_waiter(std::move(other._has_recv_waiter)) {
         other.__tpy_owned_ = false;
     }
     _ChanState& operator=(_ChanState&& other) noexcept {
@@ -250,13 +268,17 @@ struct _Send {
     //     self._state = state
     //     self._value = UninitStorage[T]()
     //     self._value.construct(value)
-    explicit _Send(::tpystd::tplib::rc::Rc<_ChanState<T>>&& state, ::tpy::own_param_t<T> value) : _state(std::move(state)), _value(::tpy::UninitStorage<T>()) {
+    explicit _Send(::tpystd::tplib::rc::Rc<_ChanState<T>>&& state, ::tpy::own_param_t<T> value)
+        : _state(std::move(state)),
+          _value(::tpy::UninitStorage<T>()) {
         this->_value.construct(std::move(value));
     }
     // non-copyable (@nocopy)
     _Send(const _Send&) = delete;
     _Send& operator=(const _Send&) = delete;
-    _Send(_Send&& other) noexcept : _state(std::move(other._state)), _value(std::move(other._value)) {
+    _Send(_Send&& other) noexcept
+        : _state(std::move(other._state)),
+          _value(std::move(other._value)) {
         other.__tpy_owned_ = false;
     }
     _Send& operator=(_Send&& other) noexcept {

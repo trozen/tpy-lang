@@ -116,6 +116,8 @@ inline Base::Base(int32_t v) : res(Resource(v)) {}
 // def __init__(self, v: int32, e: int32) -> None:
 //     Base.__init__(self, v)   # explicit base-init form (no super())
 //     self.extra = e
-inline Child::Child(int32_t v, int32_t e) : Base(v), extra(e) {}
+inline Child::Child(int32_t v, int32_t e)
+    : Base(v),
+      extra(e) {}
 void __tpy_init();
 } // namespace tpyapp::main

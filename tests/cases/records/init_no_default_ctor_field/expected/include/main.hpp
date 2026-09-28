@@ -68,6 +68,8 @@ inline Handle::Handle(int32_t id) : id(id) {}
 // def __init__(self, id: int32, tag: int32):
 //     self.h = Handle(id)   # init section: h assigned
 //     self.tag = tag        # init section: tag assigned
-inline Owner::Owner(int32_t id, int32_t tag) : h(Handle(id)), tag(tag) {}
+inline Owner::Owner(int32_t id, int32_t tag)
+    : h(Handle(id)),
+      tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

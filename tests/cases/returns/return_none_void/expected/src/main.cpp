@@ -79,7 +79,6 @@ void match_arm(int32_t k) {
     case 0: {
         std::cout << "match zero" << "\n";
         return;
-        break;
     }
     default: {
         std::cout << "match other" << "\n";

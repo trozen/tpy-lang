@@ -70,7 +70,7 @@ retain that schedule, not substitute a source or parameter-order guess.
 The preparation and emission paths must reuse the same scheduling primitives
 and banking eligibility decision (`banks_in_region`). The planner must not
 become a second collection of emitter-shaped predicates. C++ naming remains
-in emission, preserving module-wide counters and existing output exactly.
+in emission, preserving the per-function counters and existing output exactly.
 There is no dry-run printing pass, duplicate witness accounting or live
 counter consumption during preparation.
 

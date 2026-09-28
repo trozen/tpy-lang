@@ -70,7 +70,9 @@ struct __coro_identity {
     };
 
     __coro_identity(::tpy::param_val_or_ref_t<T> x_)
-        : __state(S_INITIAL), __cancel_pending(false), x(x_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          x(x_) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -119,7 +121,10 @@ struct __coro_sized_after {
     };
 
     __coro_sized_after(::tpy::readonly_form_t<T> obj_, Bin& alias)
-        : __state(S_INITIAL), __cancel_pending(false), obj(obj_), alias(alias) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          obj(obj_),
+          alias(alias) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -191,7 +196,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

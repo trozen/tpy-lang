@@ -17,16 +17,13 @@ std::string classify(int32_t n) {
     switch (__match_subject_1) {
     case 0: {
         return "zero";
-        break;
     }
     case 1: {
         return "one";
-        break;
     }
     default: {
         auto x = __match_subject_1;
         return "other";
-        break;
     }
     }
     ::std::unreachable();

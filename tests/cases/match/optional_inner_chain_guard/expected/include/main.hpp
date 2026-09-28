@@ -43,7 +43,9 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     };
 
     __gen_gen(std::optional<std::string_view> x_, bool flag_)
-        : __state(S_INITIAL), x(x_ ? std::make_optional(std::string(*x_)) : std::nullopt), flag(std::move(flag_)) {}
+        : __state(S_INITIAL),
+          x(x_ ? std::make_optional(std::string(*x_)) : std::nullopt),
+          flag(std::move(flag_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

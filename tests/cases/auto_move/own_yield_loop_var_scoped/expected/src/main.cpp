@@ -25,7 +25,7 @@ void collect_scoped() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        out.push_back(std::move(x));
+            out.push_back(std::move(x));
         }
     }
     std::cout << ::tpy::ListPrinter(out) << "\n";

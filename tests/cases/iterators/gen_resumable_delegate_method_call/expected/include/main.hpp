@@ -68,7 +68,8 @@ struct __gen_Holder_nodes_gen : public ::tpy::next_iter_mixin<__gen_Holder_nodes
     };
 
     __gen_Holder_nodes_gen(Holder& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __next__();
     __gen_Holder_nodes_gen& __iter__() { return *this; }
@@ -101,7 +102,8 @@ struct __gen_bump_all : public ::tpy::next_iter_mixin<__gen_bump_all, int32_t> {
     };
 
     __gen_bump_all(Holder& h)
-        : __state(S_INITIAL), h(h) {}
+        : __state(S_INITIAL),
+          h(h) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_bump_all& __iter__() { return *this; }
@@ -119,6 +121,8 @@ inline Node::Node(int32_t val) : val(val) {}
 // def __init__(self) -> None:
 //     self.a = Node(1)
 //     self.b = Node(2)
-inline Holder::Holder() : a(Node(1)), b(Node(2)) {}
+inline Holder::Holder()
+    : a(Node(1)),
+      b(Node(2)) {}
 void __tpy_init();
 } // namespace tpyapp::main

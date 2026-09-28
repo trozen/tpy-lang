@@ -37,6 +37,8 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 
 
 // args = parser.parse_args(["--mode", "fast", "--level", "2"])
-inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::string_view mode, const ::tpy::BigInt& severity) : mode(mode), severity(severity) {}
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::string_view mode, const ::tpy::BigInt& severity)
+    : mode(mode),
+      severity(severity) {}
 void __tpy_init();
 } // namespace tpyapp::main

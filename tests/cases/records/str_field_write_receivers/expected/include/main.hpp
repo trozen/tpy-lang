@@ -162,7 +162,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     };
 
     __gen_gen(Outer& o)
-        : __state(S_INITIAL), o(o) {}
+        : __state(S_INITIAL),
+          o(o) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -177,7 +178,10 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 //     self.name = name
 //     self.tag = b"t0"
 //     self.count = 0
-inline Inner::Inner(std::string_view name) : name(name), tag(::tpy::bytes_literal_owned("t0", 2)), count(0) {}
+inline Inner::Inner(std::string_view name)
+    : name(name),
+      tag(::tpy::bytes_literal_owned("t0", 2)),
+      count(0) {}
 
 // def __init__(self) -> None:
 //     self.inner = Inner("mid")
@@ -188,7 +192,11 @@ inline Mid::Mid() : inner(Inner("mid")) {}
 //     self.inner = Inner("inner")
 //     self.rows = [Inner("row0")]
 //     self.table = {"k": Inner("tab")}
-inline Outer::Outer() : mid(Mid()), inner(Inner("inner")), rows(std::vector<Inner>{Inner("row0")}), table(::tpy::ordered_map<std::string, Inner>({{"k", Inner("tab")}})) {}
+inline Outer::Outer()
+    : mid(Mid()),
+      inner(Inner("inner")),
+      rows(std::vector<Inner>{Inner("row0")}),
+      table(::tpy::ordered_map<std::string, Inner>({{"k", Inner("tab")}})) {}
 
 // @property
 // def held(self) -> Inner:

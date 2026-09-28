@@ -38,6 +38,8 @@ inline std::ostream& operator<<(std::ostream& os, const W& obj) {
 // def __init__(self, opt: "str | None", uni: "int | str | None") -> None:
 //     self.opt = opt
 //     self.uni = uni
-inline W::W(std::optional<std::string_view> opt, const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& uni) : opt(opt ? std::make_optional(std::string(*opt)) : std::nullopt), uni(uni) {}
+inline W::W(std::optional<std::string_view> opt, const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& uni)
+    : opt(opt ? std::make_optional(std::string(*opt)) : std::nullopt),
+      uni(uni) {}
 void __tpy_init();
 } // namespace tpyapp::main

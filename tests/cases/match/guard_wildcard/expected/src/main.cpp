@@ -24,7 +24,6 @@ std::string classify(int32_t x) {
         } else {
             return "small";
         }
-        break;
     }
     }
     ::std::unreachable();
@@ -48,7 +47,6 @@ std::string describe(int32_t x) {
         } else {
             return (::tpy::str_concat("nonzero: ", ::tpy::fixed_to_str<int32_t>(n)));
         }
-        break;
     }
     }
     ::std::unreachable();

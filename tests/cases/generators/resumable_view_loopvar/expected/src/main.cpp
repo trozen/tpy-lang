@@ -60,10 +60,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        seen = ::tpy::add_check<int32_t>(seen, 1);
-        if ((seen >= 4)) {
-            break;
-        }
+            seen = ::tpy::add_check<int32_t>(seen, 1);
+            if ((seen >= 4)) {
+                break;
+            }
         }
     }
     std::vector<::tpy::Bytes> bs = std::vector<::tpy::Bytes>{};
@@ -76,10 +76,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        seen = ::tpy::add_check<int32_t>(seen, 1);
-        if ((seen >= 4)) {
-            break;
-        }
+            seen = ::tpy::add_check<int32_t>(seen, 1);
+            if ((seen >= 4)) {
+                break;
+            }
         }
     }
     std::vector<std::tuple<std::string, int32_t>> ps = std::vector<std::tuple<std::string, int32_t>>{};
@@ -92,10 +92,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        seen = ::tpy::add_check<int32_t>(seen, 1);
-        if ((seen >= 4)) {
-            break;
-        }
+            seen = ::tpy::add_check<int32_t>(seen, 1);
+            if ((seen >= 4)) {
+                break;
+            }
         }
     }
 }

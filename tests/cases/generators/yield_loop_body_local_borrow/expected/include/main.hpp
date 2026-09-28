@@ -57,8 +57,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::val_or_ref<st
         S_DONE = 3,
     };
 
-    __gen_gen()
-        : __state(S_INITIAL) {}
+    __gen_gen() : __state(S_INITIAL) {}
 
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -83,8 +82,7 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<int32_t
         S_DONE = 3,
     };
 
-    __gen_walk()
-        : __state(S_INITIAL) {}
+    __gen_walk() : __state(S_INITIAL) {}
 
     std::expected<std::tuple<int32_t, std::vector<int32_t>*>, ::tpy::StopIteration> __next__();
     __gen_walk& __iter__() { return *this; }
@@ -109,8 +107,7 @@ struct __gen_gen_range : public ::tpy::next_iter_mixin<__gen_gen_range, ::tpy::v
         S_DONE = 3,
     };
 
-    __gen_gen_range()
-        : __state(S_INITIAL) {}
+    __gen_gen_range() : __state(S_INITIAL) {}
 
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_gen_range& __iter__() { return *this; }
@@ -136,7 +133,8 @@ struct __gen_gen_ternary : public ::tpy::next_iter_mixin<__gen_gen_ternary, ::tp
     };
 
     __gen_gen_ternary(bool flag_)
-        : __state(S_INITIAL), flag(std::move(flag_)) {}
+        : __state(S_INITIAL),
+          flag(std::move(flag_)) {}
 
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_gen_ternary& __iter__() { return *this; }
@@ -160,8 +158,7 @@ struct __gen_gen_walrus : public ::tpy::next_iter_mixin<__gen_gen_walrus, ::tpy:
         S_DONE = 3,
     };
 
-    __gen_gen_walrus()
-        : __state(S_INITIAL) {}
+    __gen_gen_walrus() : __state(S_INITIAL) {}
 
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_gen_walrus& __iter__() { return *this; }
@@ -186,7 +183,8 @@ struct __gen_Source_gen : public ::tpy::next_iter_mixin<__gen_Source_gen, ::tpy:
     };
 
     __gen_Source_gen(const Source& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_Source_gen& __iter__() { return *this; }

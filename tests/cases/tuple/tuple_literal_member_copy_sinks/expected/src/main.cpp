@@ -301,7 +301,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& pr = ::tpy::unwrap_ref(*__r_1);
-        std::get<1>(pr).v = 777;
+            std::get<1>(pr).v = 777;
         }
     }
     std::cout << "yield_param" << " " << p.v << "\n";
@@ -312,7 +312,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& pr = ::tpy::unwrap_ref(*__r_3);
-        std::get<1>(pr).v = 777;
+            std::get<1>(pr).v = 777;
         }
     }
     {
@@ -322,7 +322,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& pr = ::tpy::unwrap_ref(*__r_5);
-        std::get<1>(pr).v = 777;
+            std::get<1>(pr).v = 777;
         }
     }
     C a = C(1);
@@ -334,8 +334,8 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             auto&& mx = ::tpy::unwrap_ref(*__r_7);
-        std::get<0>(mx).v = 70;
-        std::get<1>(mx)->v = 80;
+            std::get<0>(mx).v = 70;
+            std::get<1>(mx)->v = 80;
         }
     }
     std::cout << "yield_mixed" << " " << a.v << " " << b.v << "\n";

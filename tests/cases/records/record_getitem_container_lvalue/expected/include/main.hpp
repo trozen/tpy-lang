@@ -54,7 +54,9 @@ struct DefaultDict {
     //     self.factory = factory
     //     self._data = {}
     DefaultDict() = default;
-    explicit DefaultDict(std::function<V()> factory) : factory(factory), _data(::tpy::ordered_map<K, V>()) {}
+    explicit DefaultDict(std::function<V()> factory)
+        : factory(factory),
+          _data(::tpy::ordered_map<K, V>()) {}
 
     // # Inserts on a miss, so it mutates the receiver.
     // @readonly(False)
@@ -286,7 +288,8 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
     };
 
     __gen_walk(const Box<std::vector<int32_t>>& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_walk& __iter__() { return *this; }

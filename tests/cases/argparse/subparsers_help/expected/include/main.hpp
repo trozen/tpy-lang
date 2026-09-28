@@ -79,9 +79,15 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 inline __tpy_builder_argparse_show_args_1::__tpy_builder_argparse_show_args_1(std::optional<std::string_view> key) : key(key ? std::make_optional(std::string(*key)) : std::nullopt) {}
 
 // args = parser.parse_args(["-h"])
-inline __tpy_builder_argparse_set_args_1::__tpy_builder_argparse_set_args_1(std::optional<std::string_view> key, std::optional<std::string_view> value) : key(key ? std::make_optional(std::string(*key)) : std::nullopt), value(value ? std::make_optional(std::string(*value)) : std::nullopt) {}
+inline __tpy_builder_argparse_set_args_1::__tpy_builder_argparse_set_args_1(std::optional<std::string_view> key, std::optional<std::string_view> value)
+    : key(key ? std::make_optional(std::string(*key)) : std::nullopt),
+      value(value ? std::make_optional(std::string(*value)) : std::nullopt) {}
 
 // args = parser.parse_args(["-h"])
-inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(bool verbose, std::string_view cmd, std::optional<std::string_view> key, std::optional<std::string_view> value) : verbose(verbose), cmd(cmd), key(key ? std::make_optional(std::string(*key)) : std::nullopt), value(value ? std::make_optional(std::string(*value)) : std::nullopt) {}
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(bool verbose, std::string_view cmd, std::optional<std::string_view> key, std::optional<std::string_view> value)
+    : verbose(verbose),
+      cmd(cmd),
+      key(key ? std::make_optional(std::string(*key)) : std::nullopt),
+      value(value ? std::make_optional(std::string(*value)) : std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

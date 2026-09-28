@@ -98,7 +98,9 @@ inline std::string Shape::describe() const {
 // def __init__(self, side: int32) -> None:
 //     super().__init__("Square")
 //     self.side = side
-inline Square::Square(int32_t side) : Shape("Square"), side(side) {}
+inline Square::Square(int32_t side)
+    : Shape("Square"),
+      side(side) {}
 
 // def area(self) -> int32:
 //     return self.side * self.side
@@ -110,7 +112,10 @@ inline int32_t Square::area() const {
 //     super().__init__("Rectangle")
 //     self.width = width
 //     self.height = height
-inline Rectangle::Rectangle(int32_t width, int32_t height) : Shape("Rectangle"), width(width), height(height) {}
+inline Rectangle::Rectangle(int32_t width, int32_t height)
+    : Shape("Rectangle"),
+      width(width),
+      height(height) {}
 
 // def area(self) -> int32:
 //     return self.width * self.height
