@@ -23,6 +23,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_outer_return_i
         continue;
     }
     case S_RESUME_0: {  // after: yield 1
+        bool __fin_ran_1 = false;
         try {
             bool __fin_ran_2 = false;
             try {
@@ -34,6 +35,8 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_outer_return_i
                 if (!__fin_ran_2) {
                     this->__finally_0();
                     if (this->__finally_stop) {
+                        __fin_ran_1 = true;
+                        (*__with_ctx_0).__exit__({}, nullptr, {});
                         __state = S_DONE;
                         return ::tpy::make_unexpected(::tpy::StopIteration{});
                     }
@@ -41,10 +44,13 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_outer_return_i
                 throw;
             }
         } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_1) throw;
             if (!(*__with_ctx_0).__exit__({}, &__exc_0, {})) throw;
+            this->__finally_stop = false;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
+            if (__fin_ran_1) throw;
             (*__with_ctx_0).__exit__({}, nullptr, {});
             throw;
         }
@@ -67,6 +73,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_outer_return_i
         } catch (::tpy::BaseException& __exc_0) {
             if (__fin_ran_4) throw;
             if (!(*__with_ctx_0).__exit__({}, &__exc_0, {})) throw;
+            this->__finally_stop = false;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -118,7 +125,9 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_nested_with_return_
         continue;
     }
     case S_RESUME_0: {  // after: yield 1
+        bool __fin_ran_5 = false;
         try {
+            bool __fin_ran_6 = false;
             try {
                 bool __fin_ran_7 = false;
                 try {
@@ -130,6 +139,10 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_nested_with_return_
                     if (!__fin_ran_7) {
                         this->__finally_0();
                         if (this->__finally_stop) {
+                            __fin_ran_6 = true;
+                            (*__with_ctx_1).__exit__({}, nullptr, {});
+                            __fin_ran_5 = true;
+                            (*__with_ctx_0).__exit__({}, nullptr, {});
                             __state = S_DONE;
                             return ::tpy::make_unexpected(::tpy::StopIteration{});
                         }
@@ -137,18 +150,24 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_nested_with_return_
                     throw;
                 }
             } catch (::tpy::BaseException& __exc_1) {
+                if (__fin_ran_6) throw;
                 if (!(*__with_ctx_1).__exit__({}, &__exc_1, {})) throw;
+                this->__finally_stop = false;
                 __state = S_JOIN_2;
                 continue;
             } catch (...) {
+                if (__fin_ran_6) throw;
                 (*__with_ctx_1).__exit__({}, nullptr, {});
                 throw;
             }
         } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_5) throw;
             if (!(*__with_ctx_0).__exit__({}, &__exc_0, {})) throw;
+            this->__finally_stop = false;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
+            if (__fin_ran_5) throw;
             (*__with_ctx_0).__exit__({}, nullptr, {});
             throw;
         }
@@ -165,6 +184,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_nested_with_return_
             continue;
         } catch (::tpy::BaseException& __exc_0) {
             if (!(*__with_ctx_0).__exit__({}, &__exc_0, {})) throw;
+            this->__finally_stop = false;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -186,6 +206,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_nested_with_return_
         } catch (::tpy::BaseException& __exc_0) {
             if (__fin_ran_9) throw;
             if (!(*__with_ctx_0).__exit__({}, &__exc_0, {})) throw;
+            this->__finally_stop = false;
             __state = S_JOIN_0;
             continue;
         } catch (...) {
@@ -205,6 +226,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_nested_with_return_
             } catch (::tpy::BaseException& __exc_1) {
                 if (__fin_ran_13) throw;
                 if (!(*__with_ctx_1).__exit__({}, &__exc_1, {})) throw;
+                this->__finally_stop = false;
                 __state = S_JOIN_2;
                 continue;
             } catch (...) {
@@ -214,6 +236,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_nested_with_return_
             }
         } catch (::tpy::BaseException& __exc_0) {
             if (!(*__with_ctx_0).__exit__({}, &__exc_0, {})) throw;
+            this->__finally_stop = false;
             __state = S_JOIN_0;
             continue;
         } catch (...) {

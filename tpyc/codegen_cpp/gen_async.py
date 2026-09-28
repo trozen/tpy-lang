@@ -26,6 +26,7 @@ from functools import partial
 from typing import NoReturn, TYPE_CHECKING
 
 from ..identity_map import IdentityMap
+from ..prescan import loop_bindings_of
 from ..namespace import Namespace
 from ..parse.nodes import (
     RebindStorage, SourceLocation, read_names,
@@ -83,6 +84,7 @@ from .context import (INDENT, escape_cpp_name, CodeGenError, FinallyContext,
 from .protocols import protocol_param_template_name, fn_param_template_name
 from .functions import default_to_cpp, default_emittable
 from . import resumable_cfg as rcfg
+from .frame_fields import FrameField, order_frame_fields
 
 
 def _bound_local(stmt: TpyStmt) -> str | None:
@@ -126,52 +128,13 @@ def _cannot_hold_a_borrow(t: 'TpyType') -> bool:
             or is_str_type(bare) or is_bytes_type(bare))
 
 
-def _loop_bound_names(stmts: 'list[TpyStmt]') -> 'IdentityMap':
-    """Per for-loop in `stmts`, every name that loop can BIND -- its own
-    target, and its body's and orelse's, nested bodies included.
-
-    One bottom-up walk of the whole body, so a nested loop's names are
-    collected once rather than once per enclosing loop. An
-    over-approximation on purpose: the caller turns "this name could hold an
-    element" into a lifetime decision, so a missed binding is a dangling read
-    while a spurious one only costs a frame field. Nested defs are excluded
-    -- their locals are the closure's, not this body's."""
-    per_loop: IdentityMap = IdentityMap()
-
-    def collect(ss: 'list[TpyStmt]') -> 'set[str]':
-        out: 'set[str]' = set()
-        for s in ss:
-            inner: 'set[str]' = set()
-            for body in s.sub_bodies():
-                inner |= collect(body)
-            if isinstance(s, TpyNestedDef):
-                continue
-            if isinstance(s, TpyVarDecl):
-                out.add(s.name)
-            elif isinstance(s, (TpyAssign, TpyAugAssign)):
-                if isinstance(s.target, TpyName):
-                    out.add(s.target.name)
-            elif isinstance(s, TpyTupleUnpack):
-                out.update(t for t in s.targets if t is not None)
-            elif isinstance(s, TpyForEach):
-                out.add(s.var)
-            elif isinstance(s, TpyWith):
-                out.update(i.target for i in s.items if i.target is not None)
-            elif isinstance(s, TpyTry):
-                out.update(h.binding for h in s.handlers
-                           if h.binding is not None)
-            elif isinstance(s, TpyMatch):
-                for case in s.cases:
-                    for cap in iter_capture_bindings(case.pattern):
-                        out.add(cap.name)
-            out.update(w.target for w in walrus_bindings(s))
-            if isinstance(s, TpyForEach):
-                per_loop[s] = inner | {s.var}
-            out |= inner
-        return out
-
-    collect(stmts)
-    return per_loop
+def _loop_bound_names(analyzer, loop: 'TpyForEach') -> 'frozenset[str]':
+    """Every name `loop` can BIND -- its own target, and what a pass binds.
+    An over-approximation on purpose: the caller turns "this name could hold
+    an element" into a lifetime decision, so a missed binding is a dangling
+    read while a spurious one only costs a frame field."""
+    facts = loop_bindings_of(analyzer.loop_bindings, loop)
+    return facts.body | facts.target
 
 
 def _stmts_have_return(stmts: "list[TpyStmt]") -> bool:
@@ -360,6 +323,16 @@ class _CoroParam:
             # nullable forms copy the inner only when present).
             return f"{self.cpp_name}({self.owned_copy_init})"
         return f"{self.cpp_name}(std::move({self.cpp_name}_))"
+
+
+@dataclass(frozen=True)
+class _LoopFieldOwner:
+    """The loop a frame field belongs to: the statement, its strategy info
+    (None for a loop the CFG keeps whole, whose only field is its source),
+    and the alias the field is spelled off (None for range counters)."""
+    stmt: TpyForEach
+    info: 'GeneratorForInfo | None'
+    alias: 'str | None'
 
 
 @dataclass(frozen=True)
@@ -1519,16 +1492,16 @@ class AsyncCoroCodegen:
         pre.append(TpyVarDecl(name=name, type=local_t, init=source, loc=None))
         if func.generator_locals is None:
             func.generator_locals = []
-        # Fields are destroyed in reverse declaration order, and both sides
-        # of the lift may read the other from a destructor: what it borrows
-        # (earlier locals) must outlive it, and so must it the local its
-        # statement binds (`binds`, a bound generator or coroutine). So it
-        # goes right before that local, else after every local.
+        # Declared with its statement: ahead of the local the statement binds,
+        # else after every local. The field order proper follows the borrow
+        # edges recorded here (`_frame_fields`): the lift borrows what its
+        # expression reads, and the handle `binds` names borrows the lift.
         names = [n for n, _ in func.generator_locals]
         if binds is not None and binds in names:
             func.generator_locals.insert(names.index(binds), (name, local_t))
         else:
             func.generator_locals.append((name, local_t))
+        rcfg.resumable_state(func).arg_lifts[name] = (source, binds)
         replacement = TpyName(name=name, loc=source.loc)
         self.ctx.analyzer.ctx.set_expr_type(replacement, local_t)
         return replacement
@@ -1583,7 +1556,8 @@ class AsyncCoroCodegen:
                     or rcfg._stmts_have_any_suspension(stmt.orelse)
                     or (for_source_is_rvalue(stmt, self.ctx.analyzer)
                         and self._loop_lends_element_out(
-                            func, _loop_bound_names([stmt])[stmt]))):
+                            func, _loop_bound_names(self.ctx.analyzer,
+                                                    stmt)))):
                 retains = iterator_source_callee
         elif isinstance(stmt, TpyVarDecl):
             root = stmt.init
@@ -1908,7 +1882,7 @@ class AsyncCoroCodegen:
         )
 
     def _loop_lends_element_out(self, func: TpyFunction,
-                                bound_names: 'set[str]') -> bool:
+                                bound_names: 'frozenset[str]') -> bool:
         """Whether this loop can bind something out of its elements into
         frame storage that may point back at an element.
 
@@ -2176,21 +2150,27 @@ class AsyncCoroCodegen:
                         s.loc))
         return aliases
 
-    def _emit_frame_locals_and_aliases(
-            self, out: "TextIO", func: TpyFunction, record_name: str | None,
-            cfg: 'rcfg.CFG') -> 'list[tuple[str, TpyType, rcfg.FrameLocalLayout]]':
-        """Emit the hoisted-local fields and the `for` source aliases in
-        dependency order.
+    # Field kinds that point into other storage and own nothing.
+    _BORROWING_FRAME_KINDS = frozenset((
+        rcfg.FrameLocalKind.PTR_ALIAS, rcfg.FrameLocalKind.OPT_PTR,
+        rcfg.FrameLocalKind.REBIND_PTR, rcfg.FrameLocalKind.BORROW_TUPLE))
 
-        A field can only be spelled off what precedes it: an alias names
-        the frame locals its render reads (an outer loop var, a local bound
-        before the loop), and a pointer-form or source-form loop var names
-        its loop's alias. Locals are emitted in declaration order, each
-        pulling in the alias it depends on -- and that alias the locals it
-        reads -- first; the aliases nothing depends on follow. A cycle (a
-        loop whose source reads the name the loop itself rebinds) cannot
-        be ordered and is a located reject."""
+    def _frame_fields(self, func: TpyFunction, record_name: str | None,
+                      cfg: 'rcfg.CFG') -> 'list[FrameField]':
+        """Every field of this frame, in declaration order (see
+        `frame_fields`). Cached on the frame's resumable state.
+
+        The order they are handed to the sort is the frame's layout before
+        any edge pulls: locals in declaration order (a loop var after the
+        alias its field is spelled off), the loop source aliases, the loop,
+        rebind-slot, `with` and `try` machinery, then the frame objects the
+        body holds by value, then the sub-futures. A frame object goes that
+        late because it borrows other fields and its destructor may run a
+        pending `finally` over them; an edge only ever pulls it earlier, next
+        to the loop whose source type is spelled off it."""
         state = rcfg.resumable_state(func)
+        if state.frame_fields is not None:
+            return state.frame_fields
         locals_ = list(func.generator_locals or [])
         layout = self._frame_layout(func) if locals_ else None
         local_types = dict(locals_)
@@ -2206,11 +2186,10 @@ class AsyncCoroCodegen:
                     "parameter; bind it once from the parameter, or "
                     "iterate the parameter directly",
                     loc=func.loc)
-        aliases = {a.name: a for a in
-                   self._for_source_aliases(func, record_name, cfg)}
+        aliases = self._for_source_aliases(func, record_name, cfg)
         # The aliases each loop var's field is spelled off -- every loop
         # that binds the name, since a shared field joins their payloads.
-        aliases_of_local: dict[str, list[str]] = {}
+        aliases_of_local: dict[str, set[str]] = {}
         for info in state.for_loop_info.values():
             if info.src_alias is None:
                 continue
@@ -2218,85 +2197,304 @@ class AsyncCoroCodegen:
             if info.loop_var_field is not None:
                 names.append(info.loop_var_field[0])
             for name in names:
-                aliases_of_local.setdefault(name, []).append(info.src_alias)
-        done: set[str] = set()
+                aliases_of_local.setdefault(name, set()).add(info.src_alias)
+        loop_fields = self._loop_field_owners(func)
+        borrows, untraced = self._frame_local_borrows(func, layout, local_types,
+                                                      loop_fields)
 
-        def emit_alias(name: str, stack: tuple[str, ...]) -> None:
-            if name in done:
-                return
-            a = aliases[name]
-            if name in stack:
-                raise CodeGenError(
-                    "this loop's source reads the variable the loop itself "
-                    "binds, which the frame cannot lay out; rename the loop "
-                    "variable", loc=a.loc)
-            for n in sorted(a.reads):
-                if n in local_types:
-                    if n in deferred and n not in done:
-                        check_pulled_frame(n, a)
-                    emit_local(n, stack + (name,))
-            done.add(name)
-            out.write(f"{INDENT}using {name} = {a.definition};\n")
+        def render(emit: 'Callable[[TextIO], None]') -> str:
+            buf = io.StringIO()
+            emit(buf)
+            return buf.getvalue()
 
-        def emit_local(name: str, stack: tuple[str, ...]) -> None:
-            if name in done:
-                return
-            for dep in aliases_of_local.get(name, ()):
-                if dep in aliases:
-                    emit_alias(dep, stack)
-            done.add(name)
-            self._emit_frame_local_field(out, name, local_types[name],
-                                         layout.bindings[name], func)
+        local_fields: list[FrameField] = []
+        frame_objects: list[FrameField] = []
+        for lname, ltype in locals_:
+            verdict = layout.bindings[lname]
+            drops = (verdict.kind not in self._BORROWING_FRAME_KINDS
+                     and verdict.kind is not rcfg.FrameLocalKind.OWNED_STR
+                     and unwrap_ref_type(ltype).drop_runs_user_code())
+            ff = FrameField(
+                name=lname,
+                decl=render(partial(self._emit_frame_local_field,
+                                    lname=lname, ltype=ltype,
+                                    verdict=verdict, func=func)),
+                borrows=frozenset(borrows.get(lname, ())),
+                spelled_from=frozenset(aliases_of_local.get(lname, ())),
+                drop_runs_user_code=drops,
+                borrows_untraced=lname in untraced,
+                local=lname, loc=func.loc)
+            if self._holds_frame_by_value(ltype, verdict):
+                frame_objects.append(ff)
+            else:
+                local_fields.append(ff)
+        alias_fields = [
+            FrameField(name=a.name,
+                       decl=f"{INDENT}using {a.name} = {a.definition};\n",
+                       spelled_from=a.reads, is_alias=True, loc=a.loc)
+            for a in aliases]
 
-        # A frame object held by value (a bound generator or coroutine)
-        # borrows other fields, and its destructor may run a pending
-        # `finally` over them, so it is declared after every field it could
-        # borrow -- the rebind slots, loop and `with` fields included, which
-        # follow the locals (fields die in reverse order). An alias spelled
-        # off one still pulls it in first.
-        deferred = [lname for lname, ltype in locals_
-                    if self._holds_frame_by_value(ltype,
-                                                  layout.bindings[lname])]
-        durable = {pname for pname, _ in func.params} | {"self"}
+        # Synthetic fields for for-loops: iterator, sentinel and step result
+        # for a CFG-decomposed one, plus the source holder, which a loop that
+        # keeps its block-local iterators also takes when it lends an element
+        # out. frame_loop_slot has frame_slot's storage but unchecked reads:
+        # only this loop's own emitted code reads them, after its init.
+        loop_machinery: list[FrameField] = []
+        for fname, ftype in state.for_fields:
+            owner = loop_fields.get(fname)
+            # An `async for` iterator has no strategy info: whatever
+            # `__aiter__` built.
+            drops = owner is None or self._loop_field_drops(fname, owner)
+            loop_machinery.append(FrameField(
+                name=fname,
+                decl=f"{INDENT}::tpy::frame_loop_slot<{ftype}> {fname};\n",
+                borrows=(self._loop_field_borrows(fname, owner)
+                         if owner is not None else frozenset()),
+                spelled_from=(frozenset([owner.alias])
+                              if owner is not None and owner.alias is not None
+                              else frozenset()),
+                drop_runs_user_code=drops))
 
-        def check_pulled_frame(frame: str, a: '_ForSourceAlias') -> None:
-            """A loop over a frame object spells its source type off the
-            frame's field, which so goes before the loop, `with` and rebind
-            fields it may borrow: admit it only when everything it borrows
-            is already declared -- a parameter or a local that owns its
-            storage."""
-            fact = self.ctx.analyzer.function_frame_local_roots.get(
-                func, {}).get(frame)
+        # Per-write-site materialization slots for rvalue writes into
+        # pointer-form frame locals (see _prescan_resumable_ptr_slots).
+        slot_sites = {fname: stmt for stmt, fname in state.ptr_slot_map.items()}
+        for fname, ftype in state.ptr_slot_fields:
+            site = slot_sites.get(fname)
+            target, init = self._ptr_slot_site(site)
+            target_t = local_types.get(target) if target is not None else None
+            if isinstance(target_t, OptionalType):
+                target_t = target_t.inner
+            drops = (target_t is None
+                     or unwrap_ref_type(target_t).drop_runs_user_code())
+            loop_machinery.append(FrameField(
+                name=fname, decl=f"{INDENT}{ftype} {fname};\n",
+                borrows=frozenset(read_names(init)) if init is not None
+                else frozenset(),
+                drop_runs_user_code=drops))
+
+        # Context-manager fields for CFG-decomposed `with`-with-await
+        # bodies. One per WithItem: an owning `frame_slot<T>` for a
+        # by-value manager, or a `T*` borrow for a reference-type lvalue
+        # manager (so __enter__/__exit__ act on the original, not a copy).
+        with_items = self._with_field_items(func)
+        for fname, ftype in state.with_fields:
+            item = with_items.get(fname)
+            reads = (frozenset(read_names(item.context_expr))
+                     if item is not None else frozenset())
+            if fname in state.with_borrowed_fields:
+                loop_machinery.append(FrameField(
+                    name=fname, decl=f"{INDENT}{ftype}* {fname} = nullptr;\n",
+                    borrows=reads))
+                continue
+            ctx_t = (self.types.get_resolved_type(item.context_expr)
+                     if item is not None else None)
+            drops = (ctx_t is None
+                     or unwrap_ref_type(ctx_t).drop_runs_user_code())
+            loop_machinery.append(FrameField(
+                name=fname,
+                decl=f"{INDENT}::tpy::frame_slot<{ftype}> {fname};\n",
+                borrows=reads, drop_runs_user_code=drops))
+
+        # In-flight exception slots for CFG-decomposed try-finally-with-
+        # await bodies. std::exception_ptr default-constructs
+        # to null; the catch arm sets it via std::current_exception().
+        # bool pending-return flags need explicit init: NSDMI
+        # = false. Value slots default-init via their own type's ctor.
+        is_gen = self._is_generator_shape()
+        for fname, ftype in state.try_finally_fields:
+            # Generators always return StopIteration; no pending-return value
+            # slot is needed. The field may be allocated by the prescan when
+            # the trial build ran under the async shape -- skip it here.
+            if is_gen and fname.startswith("__finally_ret_"):
+                continue
+            init = " = false" if ftype == "bool" else ""
+            loop_machinery.append(FrameField(
+                name=fname, decl=f"{INDENT}{ftype} {fname}{init};\n"))
+
+        # A sub-future is reset where its await completes, so it holds
+        # nothing when the body finishes.
+        sub_futures = [
+            FrameField(name=name, decl=decl, borrows=reads,
+                       drop_runs_user_code=owns)
+            for name, decl, reads, owns in self._resumable_sub_future_fields(
+                func, cfg, record_name)]
+
+        fields_ = (local_fields + alias_fields + loop_machinery
+                   + frame_objects + sub_futures)
+        state.frame_fields = order_frame_fields(fields_)
+        return state.frame_fields
+
+    def _loop_field_owners(
+            self, func: TpyFunction) -> 'dict[str, _LoopFieldOwner]':
+        """Each loop field -> the loop it belongs to."""
+        state = rcfg.resumable_state(func)
+        owners: dict[str, _LoopFieldOwner] = {}
+        for s, info in state.for_loop_info.items():
+            for fname, _ in info.fields:
+                owners[fname] = _LoopFieldOwner(s, info, info.src_alias)
+        for s, held in state.for_src_fields.items():
+            if held is not None:
+                # A kept-whole loop's field is spelled as the alias itself.
+                owners[held[0]] = _LoopFieldOwner(s, None, held[1])
+        return owners
+
+    def _loop_field_drops(self, fname: str, owner: _LoopFieldOwner) -> bool:
+        """Whether destroying this loop field may run user code: the source
+        holds the iterable, the step result an element, and a derived
+        iterator is whatever `__iter__` returned -- not known here."""
+        stmt, info = owner.stmt, owner.info
+        if info is None or fname == f"__for_src_{info.uid}":
+            src_t = self.types.get_resolved_type(stmt.iterable)
+            return (src_t is None
+                    or unwrap_ref_type(src_t).drop_runs_user_code())
+        if info.strategy in ("range", "begin_end"):
+            return False
+        if fname == f"__for_r_{info.uid}":
+            elem = stmt.elem_type
+            if isinstance(elem, IntLiteralType):
+                return False
+            return elem is None or unwrap_ref_type(elem).drop_runs_user_code()
+        return True
+
+    def _loop_field_borrows(self, fname: str,
+                            owner: _LoopFieldOwner) -> 'frozenset[str]':
+        """The source holds what its expression reads; every other loop field
+        points into the source, held or named."""
+        stmt, info = owner.stmt, owner.info
+        reads = frozenset(read_names(stmt.iterable)) | frozenset(
+            w.target for w in walrus_bindings(stmt))
+        if info is None or fname == f"__for_src_{info.uid}":
+            return reads
+        src = f"__for_src_{info.uid}"
+        if any(fn == src for fn, _ in info.fields):
+            return frozenset([src])
+        return reads
+
+    @staticmethod
+    def _ptr_slot_site(site: 'TpyStmt | None'
+                       ) -> 'tuple[str | None, TpyExpr | None]':
+        """(the local, the value) a rebind-slot write site stores."""
+        if isinstance(site, TpyVarDecl):
+            return site.name, site.init
+        if isinstance(site, TpyAssign) and isinstance(site.target, TpyName):
+            return site.target.name, site.value
+        return None, None
+
+    def _with_field_items(self, func: TpyFunction) -> 'dict[str, TpyWithItem]':
+        """Each `__with_ctx_<n>` field -> the `with` item whose manager it
+        holds."""
+        state = rcfg.resumable_state(func)
+        out: dict[str, TpyWithItem] = {}
+
+        def walk(stmts: 'list[TpyStmt]') -> None:
+            for s in stmts:
+                if isinstance(s, TpyWith):
+                    per_item = (state.with_uid_map.get(id(s))
+                                or state.with_owned_ctx_map.get(s) or ())
+                    for item, n in zip(s.items, per_item):
+                        if n is not None:
+                            out[f"__with_ctx_{n}"] = item
+                for b in s.sub_bodies():
+                    walk(b)
+
+        walk(self._effective_body(func))
+        return out
+
+    def _frame_local_borrows(
+            self, func: TpyFunction, layout: 'rcfg.FrameLayoutPlan | None',
+            local_types: 'dict[str, TpyType]',
+            loop_fields: 'dict[str, _LoopFieldOwner]',
+    ) -> 'tuple[dict[str, set[str]], set[str]]':
+        """The LIFETIME edges out of each local's field -- the fields (and
+        other names) whose storage it may point into -- plus the locals whose
+        borrows are not traced.
+
+        * A frame object borrows the roots sema recorded for its bindings
+          (`function_frame_local_roots`); a plain call's temporaries are the
+          `__coro_arg_<n>` lifts of its statement.
+        * A lift borrows what its expression reads.
+        * A rebound local points into its rebind slots.
+        * A borrow alias points into its source root.
+        * A loop var (or unpack target) bound into its loop's storage points
+          into the loop's fields and what the loop iterates.
+        * A `with` target points into its manager."""
+        state = rcfg.resumable_state(func)
+        out: dict[str, set[str]] = {}
+        untraced: set[str] = set()
+        if layout is None:
+            return out, untraced
+
+        def edge(src: str, dst: 'str | None') -> None:
+            if dst is not None and dst != src:
+                out.setdefault(src, set()).add(dst)
+
+        for lift, (source, binds) in state.arg_lifts.items():
+            for n in read_names(source):
+                edge(lift, n)
+            if binds is not None:
+                edge(binds, lift)
+        roots_of = self.ctx.analyzer.function_frame_local_roots.get(func, {})
+        for lname, ltype in local_types.items():
+            if not self._holds_frame_by_value(ltype, layout.bindings[lname]):
+                continue
+            fact = roots_of.get(lname)
             if fact is None:
-                raise CodeGenError(
-                    f"cannot loop over generator '{frame}' here: what it "
-                    f"borrows cannot be traced; loop over it in a helper "
-                    f"function",
-                    loc=a.loc)
+                untraced.add(lname)
+                continue
             roots, plain = fact
-            for root in sorted(roots, key=lambda r: (r is None, r or "")):
-                # A plain call's temporary is lifted into a field declared
-                # ahead of the local.
-                ok = (plain if root is None else root in durable or (
-                    root in done and root in layout.bindings
-                    and layout.bindings[root].kind in _OWNING_FRAME_KINDS))
-                if not ok:
-                    what = (f"'{root}'" if root is not None
-                            else "a temporary")
-                    raise CodeGenError(
-                        f"cannot loop over generator '{frame}' here: it "
-                        f"borrows {what}, and a generator iterated by a "
-                        f"'for' in a generator or async function may borrow "
-                        f"only parameters and locals bound once; loop over "
-                        f"it in a helper function",
-                        loc=a.loc)
-        for lname, _ in locals_:
-            if lname not in deferred:
-                emit_local(lname, ())
-        for name in aliases:
-            emit_alias(name, ())
-        return [(n, local_types[n], layout.bindings[n])
-                for n in deferred if n not in done]
+            if None in roots and not plain:
+                untraced.add(lname)
+            for root in roots:
+                edge(lname, root)
+        for stmt, fname in state.ptr_slot_map.items():
+            edge(self._ptr_slot_site(stmt)[0], fname)
+        for root, targets in state.const_source_edges.items():
+            for target in targets:
+                edge(target, root)
+        by_loop: dict[int, list[str]] = {}
+        for fname, owner in loop_fields.items():
+            by_loop.setdefault(id(owner.stmt), []).append(fname)
+        for s, info in state.for_loop_info.items():
+            bound = set(info.pointer_payloads) | set(
+                info.pointer_form_unpack_targets)
+            for n in (info.pointer_form_loop_var, info.borrow_tuple_loop_var,
+                      info.opt_ptr_loop_var,
+                      info.loop_var_field[0] if info.loop_var_field else None):
+                if n is not None:
+                    bound.add(n)
+            for n in bound:
+                for fname in by_loop.get(id(s), ()):
+                    edge(n, fname)
+                for r in read_names(s.iterable):
+                    edge(n, r)
+        # A loop the CFG keeps whole holds its source only because something
+        # its body binds may point into an element.
+        for s, held in state.for_src_fields.items():
+            if held is None:
+                continue
+            for n in _loop_bound_names(self.ctx.analyzer, s):
+                v = layout.bindings.get(n)
+                if v is not None and v.kind not in _OWNING_FRAME_KINDS:
+                    edge(n, held[0])
+        with_items = self._with_field_items(func)
+        manager_of = {id(item): fname for fname, item in with_items.items()}
+
+        def with_targets(stmts: 'list[TpyStmt]') -> None:
+            for s in stmts:
+                if isinstance(s, TpyWith):
+                    for item in s.items:
+                        if item.target is None:
+                            continue
+                        mgr = manager_of.get(id(item))
+                        if mgr is not None:
+                            edge(item.target, mgr)
+                        for r in read_names(item.context_expr):
+                            edge(item.target, r)
+                for b in s.sub_bodies():
+                    with_targets(b)
+
+        with_targets(self._effective_body(func))
+        return out, untraced
 
     @staticmethod
     def _holds_frame_by_value(ltype: TpyType,
@@ -2389,56 +2587,12 @@ class AsyncCoroCodegen:
         for p in ctor_params:
             out.write(f"{INDENT}{p.field_decl()};\n")
 
-        state = rcfg.resumable_state(func)
-        # Hoisted local fields and the `for` source aliases, in dependency
-        # order: an alias is `decltype` of a render that names the fields it
-        # reads, and a loop var's field is spelled off its loop's alias.
-        deferred_frames = self._emit_frame_locals_and_aliases(
-            out, func, record_name, cfg)
-
-        # Synthetic fields for for-loops: iterator, sentinel and step result
-        # for a CFG-decomposed one, plus the source holder, which a loop that
-        # keeps its block-local iterators also takes when it lends an element
-        # out. frame_loop_slot has frame_slot's storage but unchecked reads:
-        # only this loop's own emitted code reads them, after its init.
-        for fname, ftype in state.for_fields:
-            out.write(f"{INDENT}::tpy::frame_loop_slot<{ftype}> {fname};\n")
-
-        # Per-write-site materialization slots for rvalue writes into
-        # pointer-form frame locals (see _prescan_resumable_ptr_slots).
-        for fname, ftype in state.ptr_slot_fields:
-            out.write(f"{INDENT}{ftype} {fname};\n")
-
-        # Context-manager fields for CFG-decomposed `with`-with-await
-        # bodies. One per WithItem: an owning `frame_slot<T>` for a
-        # by-value manager, or a `T*` borrow for a reference-type lvalue
-        # manager (so __enter__/__exit__ act on the original, not a copy).
-        for fname, ftype in state.with_fields:
-            if fname in state.with_borrowed_fields:
-                out.write(f"{INDENT}{ftype}* {fname} = nullptr;\n")
-            else:
-                out.write(f"{INDENT}::tpy::frame_slot<{ftype}> {fname};\n")
-
-        # In-flight exception slots for CFG-decomposed try-finally-with-
-        # await bodies. std::exception_ptr default-constructs
-        # to null; the catch arm sets it via std::current_exception().
-        # bool pending-return flags need explicit init: NSDMI
-        # = false. Value slots default-init via their own type's ctor.
+        # Every other field -- hoisted locals, the `for` source aliases, loop,
+        # rebind-slot, `with` and `try` machinery, frame objects, sub-futures
+        # -- in one borrow-graph order (see `frame_fields`).
+        for ff in self._frame_fields(func, record_name, cfg):
+            out.write(ff.decl)
         is_gen = self._is_generator_shape()
-        for fname, ftype in state.try_finally_fields:
-            # Generators always return StopIteration; no pending-return value
-            # slot is needed. The field may be allocated by the prescan when
-            # the trial build ran under the async shape -- skip it here.
-            if is_gen and fname.startswith("__finally_ret_"):
-                continue
-            if ftype == "bool":
-                out.write(f"{INDENT}{ftype} {fname} = false;\n")
-            else:
-                out.write(f"{INDENT}{ftype} {fname};\n")
-
-        for lname, ltype, verdict in deferred_frames:
-            self._emit_frame_local_field(out, lname, ltype, verdict, func)
-        self._emit_resumable_sub_future_fields(out, func, cfg, record_name)
 
         # Generators with helper-based finallies that contain a `return` need a
         # stop flag: the helper sets it so `__next__()` emits StopIteration
@@ -3039,19 +3193,22 @@ class AsyncCoroCodegen:
                         args[y.suspension_index] = extra
         return args
 
-    def _emit_resumable_sub_future_fields(
-            self, out: "TextIO", func: TpyFunction, cfg: 'rcfg.CFG',
-            record_name: str | None = None) -> None:
-        """Sub-future frame fields -- async-only (policy seam). One per
-        Yield (suspension_index = field ordinal): Inline ->
+    def _resumable_sub_future_fields(
+            self, func: TpyFunction, cfg: 'rcfg.CFG',
+            record_name: str | None = None
+    ) -> 'list[tuple[str, str, frozenset[str], bool]]':
+        """Sub-future frame fields -- async-only (policy seam), as (name,
+        declaration, the names its operand reads, whether it owns a frame).
+        One per Yield (suspension_index = field ordinal): Inline ->
         optional<sub-coro struct>, Erased -> optional<value awaitable>,
         Borrowed -> raw pointer. Async-with's synthetic yields override
         sub_field_cpp_type via the state.async_with_struct_names map (the CM's
         __aenter__/__aexit__ coro struct, computed at prescan time). The
-        generator shape stores nothing at a `yield`, so it emits nothing.
+        generator shape stores nothing at a `yield`, so it has none.
         """
         if self._is_generator_shape():
-            return
+            return []
+        fields: 'list[tuple[str, str, frozenset[str], bool]]' = []
         state = rcfg.resumable_state(func)
         struct_names = state.async_with_struct_names
         for_struct_names = state.async_for_struct_names
@@ -3081,12 +3238,17 @@ class AsyncCoroCodegen:
                 entry = for_struct_names.get(p.async_for_uid)
                 if entry is not None:
                     sub_cpp = entry
+            name = f"__sub_{y.suspension_index}"
+            reads = (frozenset(read_names(p.operand_expr))
+                     if p.operand_expr is not None else frozenset())
             if p.mode is rcfg.AwaitMode.BORROWED:
-                out.write(f"{INDENT}{sub_cpp}* "
-                          f"__sub_{y.suspension_index} = nullptr;\n")
+                fields.append((name, f"{INDENT}{sub_cpp}* {name} = nullptr;\n",
+                               reads, False))
             else:
-                out.write(f"{INDENT}std::optional<{sub_cpp}> "
-                          f"__sub_{y.suspension_index};\n")
+                fields.append((name,
+                               f"{INDENT}std::optional<{sub_cpp}> {name};\n",
+                               reads, True))
+        return fields
 
     def _resumable_body_method_fwd_decl(self, func: TpyFunction) -> str:
         """In-struct forward declaration of the body method (unqualified).
@@ -3419,6 +3581,11 @@ class AsyncCoroCodegen:
         the return is deferred: set the pending flag, walk finallies inside
         the boundary, transition the state machine to the finally entry.
         The finally tail will emit StopIteration once it completes."""
+        return self._generator_stop_return(indent)
+
+    def _generator_stop_return(self, indent: str) -> str:
+        """The generator `return` from the current finally-frame stack and
+        pending-return context (see `_make_generator_resumable_return`)."""
         out = io.StringIO()
         pending_flag = self.ctx.async_pending_return_flag
         if pending_flag is not None:
@@ -3526,12 +3693,14 @@ class AsyncCoroCodegen:
             self._prescan_with_manager_homes(func, body)
             self._prescan_resumable_ptr_slots(func, body)
             try_finally_uid_map = self._prescan_resumable_try_finally(func, body)
+            state.loop_close_fields = self._loop_close_fields(func, body)
             builder = rcfg.CFGBuilder(
                 payload_factory=self._make_await_payload,
                 for_uid_map=for_uid_map,
                 with_uid_map=with_uid_map,
                 try_finally_uid_map=try_finally_uid_map,
                 func_returns_void=self._is_void_return(func),
+                loop_close_fields=state.loop_close_fields,
             )
             # Build inside the resumable-frame body context so the payload
             # factory's field-type render (`_extra_template_args_for_await`)
@@ -3565,6 +3734,34 @@ class AsyncCoroCodegen:
                 state.frame_dep_units.append(_dep)
         state.cfg = cfg
         return cfg
+
+    def _loop_close_fields(
+            self, func: TpyFunction,
+            body: 'list[TpyStmt]') -> 'dict[int, tuple[str, ...]]':
+        """Per decomposed loop, the fields it releases when control leaves it
+        (`rcfg.LoopSourceRegion`), in release order: the ones whose
+        destruction may run user code -- a source generator whose `finally`
+        CPython runs as the loop exits, an iterator `__iter__` built.
+
+        None for a loop that lends an element out: a name bound in it may
+        still point into the source after the loop, so the source lives on
+        with the frame. None for the body's last statement too: leaving it
+        ends the body, and the frame keeps its locals to its destruction
+        anyway (BUGS.md#finished-frame-keeps-locals), so a release there
+        would only add states and a destructor."""
+        state = rcfg.resumable_state(func)
+        owners = self._loop_field_owners(func)
+        out: dict[int, tuple[str, ...]] = {}
+        for s, info in state.for_loop_info.items():
+            if s.is_async or (body and body[-1] is s):
+                continue
+            fields = [fn for fn, _ in info.fields
+                      if fn in owners and self._loop_field_drops(fn, owners[fn])]
+            if not fields or self._loop_lends_element_out(
+                    func, _loop_bound_names(self.ctx.analyzer, s)):
+                continue
+            out[id(s)] = tuple(reversed(fields))
+        return out
 
     def _prescan_resumable_for_loops(
             self, func: TpyFunction,
@@ -3640,9 +3837,6 @@ class AsyncCoroCodegen:
         # {TpyForEach -> (field name, its C++ type)}. Separate from `uid_map`,
         # which the CFG builder reads as "decompose this loop".
         src_fields: IdentityMap = IdentityMap()
-        # One bottom-up pass for the whole body, so a nested loop's bound
-        # names are not re-walked once per enclosing loop.
-        loop_bound_names = _loop_bound_names(body)
 
         def mark_loop_var_const(s: TpyForEach, info: GeneratorForInfo) -> None:
             # A loop var bound into const storage joins the frame's const
@@ -3694,7 +3888,7 @@ class AsyncCoroCodegen:
             if info is None or not (
                     for_source_is_rvalue(s, self.ctx.analyzer)
                     and self._loop_lends_element_out(
-                        func, loop_bound_names[s])):
+                        func, _loop_bound_names(self.ctx.analyzer, s))):
                 # Existing storage outlives the loop by itself, and a loop
                 # that lends nothing out needs nothing kept: either way the
                 # holder stays where the sync route puts it, in the block.
@@ -5008,7 +5202,8 @@ class AsyncCoroCodegen:
             head_labels=frozenset(
                 [loop_label] + [case_entries[b].cpp_name() for b in others]),
             loop_label=loop_label, init_bb=init[0], loop_bb=loop_bb,
-            records_done=not idempotent, may_hoist_test=may_hoist,
+            records_done=not idempotent,
+            may_hoist_test=may_hoist,
             ctor_seeded_uid=advance.uid if seeded else None)
 
     @staticmethod
@@ -5063,6 +5258,8 @@ class AsyncCoroCodegen:
             out.write(f"{inner}while ({form.condition}) {{\n")
             out.write(body.getvalue())
             out.write(f"{inner}}}\n")
+            if form.records_done:
+                out.write(f"{inner}__state = S_DONE;\n")
             out.write(f"{inner}return {stop};\n")
         else:
             out.write(f"{inner}for (;;) {{\n")
@@ -5174,22 +5371,21 @@ class AsyncCoroCodegen:
         # because the guard pre-allocation and the finally-frame push both
         # need it.
         no_throw = self._case_is_no_throw(cfg, entry_bb)
-        try_emitting = ([] if no_throw else
-                         [i for i, r in enumerate(bb.region_stack)
-                          if isinstance(r, (rcfg.TryRegion,
-                                            rcfg.WithRegion))])
-        # Pre-allocate a `bool __fin_ran_N` guard name for each region whose
+        levels = [] if no_throw else self._unwind_levels(bb.region_stack)
+        # Pre-allocate a `bool __fin_ran_N` guard name for each level whose
         # cleanup can run on an exit edge inside its C++ try and be re-run by
-        # its own catch: a TryRegion with a finally, or any WithRegion. The
-        # name is populated now so the finally frames pushed just below share
-        # it (a return/break/continue via _emit_finally_chain sets the same
-        # guard the region's catch tests); the `bool` is declared later, at
-        # the right indent before each region's `try {`.
-        for i in try_emitting:
+        # its own catch: a TryRegion with a finally, an ExceptRegion's parent
+        # finally, or any WithRegion. The name is populated now so the
+        # finally frames pushed just below share it (a return/break/continue
+        # via _emit_finally_chain sets the same guard the level's catch
+        # tests); the `bool` is declared later, before the level's `try {`.
+        for i in levels:
             region = bb.region_stack[i]
-            if ((isinstance(region, rcfg.TryRegion)
-                 and region.finally_helper_name is not None)
-                    or isinstance(region, rcfg.WithRegion)):
+            helper = (region.finally_helper_name
+                      if isinstance(region, rcfg.TryRegion)
+                      else region.parent_finally
+                      if isinstance(region, rcfg.ExceptRegion) else None)
+            if helper is not None or isinstance(region, rcfg.WithRegion):
                 self.ctx.finally_guard_counter += 1
                 self.ctx.resumable_region_guards[region] = (
                     f"__fin_ran_{self.ctx.finally_guard_counter}")
@@ -5204,85 +5400,55 @@ class AsyncCoroCodegen:
         # state so `return` inside the body routes through the
         # pending-return slot.
         prev_pending = self._snapshot_pending_return_ctx()
-        pending = self._pending_return_info_for_region_stack(bb.region_stack)
-        if pending is not None:
-            flag, slot, finally_entry_bb, boundary = pending
-            target_label = case_entries[finally_entry_bb].cpp_name()
-            self.ctx.async_pending_return_flag = flag
-            self.ctx.async_pending_return_slot = slot
-            self.ctx.async_pending_return_target_state = target_label
-            self.ctx.async_pending_return_boundary = boundary
+        self._install_pending_return_ctx(bb.region_stack, case_entries)
+        base_level = self.ctx.indent_level
         try:
-            # Emit `try {` for each TryRegion / WithRegion. For each
-            # TryRegion, collect the list of "inter-region finally
-            # helpers" between THIS TryRegion and the next-inner
-            # try-emitting region (TryRegion or WithRegion): each
-            # ExceptRegion's parent_finally goes in the TryRegion's
-            # catch because its source-level try frame is no longer on
-            # the C++ try stack but is still logically active.
-            # WithRegions inside the gap get their own C++ try and
-            # don't contribute extras.
-            # Collect the (region, extras) stack as data first -- without
-            # emitting -- so the body can be buffered before the guard
-            # declarations are written.
-            tryctx_stack: list[tuple[rcfg.Region, tuple[str, ...]]] = []
-            for j, i in enumerate(try_emitting):
-                region = bb.region_stack[i]
-                if isinstance(region, rcfg.TryRegion):
-                    next_emit = (try_emitting[j + 1]
-                                 if j + 1 < len(try_emitting)
-                                 else len(bb.region_stack))
-                    extras: list[str] = []
-                    for k in range(i + 1, next_emit):
-                        mid = bb.region_stack[k]
-                        if isinstance(mid, rcfg.ExceptRegion):
-                            if mid.parent_finally is not None:
-                                extras.append(mid.parent_finally)
-                    extras.reverse()
-                else:
-                    extras = []
-                tryctx_stack.append((region, tuple(extras)))
-
             # Buffer the body at the indent it will occupy inside all the
-            # tries, so we learn which guards actually get set before
+            # levels' tries, so we learn which guards actually get set before
             # declaring them: a region whose cleanup never runs on a normal
             # exit edge (e.g. a with-body that always raises) sets no guard,
             # so its `bool` + catch tests are skipped -- the shared
             # live_finally_guards gate.
-            self.ctx.indent_level += len(tryctx_stack)
+            self.ctx.indent_level += len(levels)
             body_buf = io.StringIO()
             self._emit_case_body(body_buf, cfg, entry_bb, case_entries, func)
-            self.ctx.indent_level -= len(tryctx_stack)
+            self.ctx.indent_level = base_level
+            text = body_buf.getvalue()
             # A body that only re-dispatches cannot throw: no region try.
             jump = self._redispatch_target(cfg, entry_bb, case_entries, func)
-            if jump is not None and tryctx_stack:
-                tryctx_stack = []
-                body_buf = io.StringIO(_state_jump(
-                    body_indent, case_entries[jump].cpp_name()))
+            if jump is not None and levels:
+                levels = []
+                text = _state_jump(body_indent, case_entries[jump].cpp_name())
 
-            for region, extras in tryctx_stack:
-                guard = self._active_region_guard(region)
-                if guard is not None:
-                    out.write(f"{body_indent}bool {guard} = false;\n")
-                out.write(f"{body_indent}try {{\n")
-                self.ctx.indent_level += 1
-                body_indent = self.ctx.indent()
-
-            out.write(body_buf.getvalue())
-
-            # Close regions innermost first.
-            for region, extras in reversed(tryctx_stack):
-                self.ctx.indent_level -= 1
-                body_indent = self.ctx.indent()
-                out.write(f"{body_indent}}}")
+            # Wrap the levels innermost first: a level's catches are emitted
+            # after everything it encloses, so a guard an inner catch sets
+            # (a `return` in a finally running the outer cleanups) is live by
+            # the time this level declares its own.
+            for depth in reversed(range(len(levels))):
+                i = levels[depth]
+                region = bb.region_stack[i]
+                outer = bb.region_stack[:i]
+                self.ctx.indent_level = base_level + depth
+                ind = self.ctx.indent()
+                catches = io.StringIO()
+                catches.write(f"{ind}}}")
                 if isinstance(region, rcfg.TryRegion):
                     self._emit_try_region_catches(
-                        out, body_indent, region, cfg, case_entries,
-                        entry_bb, func, extras)
-                else:
+                        catches, ind, region, cfg, case_entries,
+                        entry_bb, func, outer)
+                elif isinstance(region, rcfg.WithRegion):
                     self._emit_with_region_catches(
-                        out, body_indent, region, case_entries)
-                out.write("\n")
+                        catches, ind, region, case_entries)
+                else:
+                    self._emit_cleanup_level_catch(
+                        catches, ind, region, outer, case_entries)
+                catches.write("\n")
+                guard = self._active_region_guard(region)
+                decl = (f"{ind}bool {guard} = false;\n"
+                        if guard is not None else "")
+                text = f"{decl}{ind}try {{\n{text}{catches.getvalue()}"
+            self.ctx.indent_level = base_level
+            out.write(text)
         finally:
             for _ in range(pushed_finally):
                 self.ctx.finally_stack.pop()
@@ -5307,12 +5473,15 @@ class AsyncCoroCodegen:
 
     def _finally_helpers_for_region_stack(
             self, region_stack: tuple) -> list:
-        """Compute the finally-emit closures for BBs with this
-        region_stack. Each TryRegion / ExceptRegion contributes its
-        finally helper name (called via `this->name()`); each WithRegion
-        contributes a closure that emits `(*__with_ctx_<n>).__exit__(
-        {}, nullptr/{}, {})`. Order: outermost first (innermost ends up
-        on top of the stack).
+        """The cleanup actions the regions of this stack run when control
+        leaves them -- THE one list every exit reads: a normal edge
+        (`_emit_exit_region_finallies`), a `return` (the finally frames
+        `_push_finally_helpers` makes of it), an exception (the region
+        catches) and abandonment (`_dtor_cleanup_cases`). Each TryRegion /
+        ExceptRegion contributes its finally helper name (called via
+        `this->name()`); each WithRegion its `__exit__`; each
+        LoopSourceRegion the reset of the loop fields it releases. Order:
+        outermost first (innermost ends up on top of the stack).
 
         Each entry is `(kind, payload, region)`: `region` is the source
         region the entry came from, so a consumer can recover the region's
@@ -5329,7 +5498,24 @@ class AsyncCoroCodegen:
                     helpers.append(("helper", region.parent_finally, region))
             elif isinstance(region, rcfg.WithRegion):
                 helpers.append(("with", region, region))
+            elif isinstance(region, rcfg.LoopSourceRegion):
+                helpers.append(("reset", region.fields, region))
         return helpers
+
+    def _emit_cleanup_action(self, out: "TextIO", indent: str, action: tuple,
+                             *, exc_val_cpp: str | None = None) -> None:
+        """Emit one cleanup action (an entry of
+        `_finally_helpers_for_region_stack`) on a normal or abandoning exit.
+        `exc_val_cpp` is what a `with` `__exit__` that takes one receives."""
+        tag, payload, _region = action
+        if tag == "helper":
+            self._emit_finally_helper_call(out, indent, payload)
+        elif tag == "with":
+            self._emit_with_exit(out, indent, payload, on_exception=False,
+                                 exc_val_cpp=exc_val_cpp)
+        else:
+            for fname in payload:
+                out.write(f"{indent}{fname}.reset();\n")
 
     def _active_region_guard(self, region: 'rcfg.Region') -> 'str | None':
         """The region's guard name, but only if some exit edge in this case
@@ -5394,7 +5580,7 @@ class AsyncCoroCodegen:
         out.write(f"{body}switch (__state) {{\n")
         # Group states sharing an identical cleanup chain under one body.
         def chain_key(actions: list) -> tuple:
-            return tuple((tag, payload if tag == "helper" else id(payload))
+            return tuple((tag, payload if tag != "with" else id(payload))
                          for tag, payload, _region in actions)
         grouped: dict[tuple, tuple[list[str], list]] = {}
         for state_name, actions in dtor_cases:
@@ -5403,13 +5589,9 @@ class AsyncCoroCodegen:
         for state_names, actions in grouped.values():
             for sn in state_names:
                 out.write(f"{body}case {sn}:\n")
-            for tag, payload, _region in actions:
-                if tag == "helper":
-                    out.write(f"{action_ind}this->{payload}();\n")
-                else:
-                    self._emit_with_exit(out, action_ind, payload,
-                                         on_exception=False,
-                                         exc_val_cpp="&__tpy_ge")
+            for action in actions:
+                self._emit_cleanup_action(out, action_ind, action,
+                                          exc_val_cpp="&__tpy_ge")
             out.write(f"{action_ind}break;\n")
         out.write(f"{body}default: break;\n")
         out.write(f"{body}}}\n")
@@ -5465,7 +5647,7 @@ class AsyncCoroCodegen:
                                  region.pending_return_slot,
                                  region.finally_exit_bb,
                                  boundary)
-            elif isinstance(region, rcfg.WithRegion):
+            elif isinstance(region, (rcfg.WithRegion, rcfg.LoopSourceRegion)):
                 boundary += 1
         return innermost
 
@@ -5473,19 +5655,18 @@ class AsyncCoroCodegen:
                                     helper_name: str) -> None:
         """Emit `this->helper_name();`.
 
-        The stop-check (`if __finally_stop`) is NOT emitted here. Callers
-        that need to act on __finally_stop (e.g. to suppress a rethrow or
-        skip a state transition) call _emit_generator_stop_check AFTER all
-        cleanup for the current exit event has run, so that outer region
-        cleanup (with.__exit__, outer finallies) is never skipped."""
+        The stop-check (`if __finally_stop`) is NOT emitted here: a normal
+        exit checks it after all its cleanup ran
+        (`_emit_generator_stop_check`), an exception path returns through
+        the outer cleanups (`_emit_unwind_return`)."""
         out.write(f"{indent}this->{helper_name}();\n")
 
     def _emit_generator_stop_check(self, out: "TextIO", indent: str) -> None:
         """Emit `if (this->__finally_stop) { return StopIteration; }`.
 
         Only emitted when in generator shape and the struct has __finally_stop.
-        Call AFTER all cleanup for an exit event (region loop, catch handler)
-        has run, so outer cleanups are never skipped by an early return."""
+        Call AFTER all cleanup for a normal exit has run, so outer cleanups
+        are never skipped by an early return."""
         if not (self._is_generator_shape() and self.ctx.generator_has_finally_stop):
             return
         done_state = self.ctx.generator_resumable_done_state or "S_DONE"
@@ -5494,6 +5675,13 @@ class AsyncCoroCodegen:
         out.write(f"{indent}{INDENT}return ::tpy::make_unexpected("
                   f"::tpy::StopIteration{{}});\n")
         out.write(f"{indent}}}\n")
+
+    def _emit_cancel_finally_stop(self, out: "TextIO", indent: str) -> None:
+        """Where a state-machine handler catches (or a `with` suppresses):
+        the exception came from a cleanup run after a `return` in a
+        finally, which cancels that return, so the frame goes on."""
+        if self._is_generator_shape() and self.ctx.generator_has_finally_stop:
+            out.write(f"{indent}this->__finally_stop = false;\n")
 
     def _push_finally_helpers(self, helpers: list) -> int:
         """Push FinallyContext entries for each helper. Returns the
@@ -5505,17 +5693,10 @@ class AsyncCoroCodegen:
         same `bool` the region's catch tests -- no double-run of a raising
         cleanup on the return path."""
         count = 0
-        for kind, payload, region in helpers:
-            if kind == "helper":
-                helper_name = payload
-                def _emit_finally(o: "TextIO", ind: str,
-                                  n=helper_name) -> None:
-                    self._emit_finally_helper_call(o, ind, n)
-            else:  # "with"
-                with_region = payload
-                def _emit_finally(o: "TextIO", ind: str,
-                                  r=with_region) -> None:
-                    self._emit_with_exit(o, ind, r, on_exception=False)
+        for action in helpers:
+            region = action[2]
+            def _emit_finally(o: "TextIO", ind: str, a=action) -> None:
+                self._emit_cleanup_action(o, ind, a)
             guard = self.ctx.resumable_region_guards.get(region)
             fctx = FinallyContext(
                 emit_finally=_emit_finally, terminates=False, loop_depth=0,
@@ -5523,6 +5704,99 @@ class AsyncCoroCodegen:
             self.ctx.finally_stack.append(fctx)
             count += 1
         return count
+
+    @staticmethod
+    def _unwind_levels(region_stack: tuple) -> list[int]:
+        """The indexes of the regions of a case's stack that open a C++
+        `try` level of their own around the case body: every TryRegion and
+        WithRegion, every ExceptRegion whose try has a helper finally, and
+        -- inside an outer level -- every LoopSourceRegion (outside all
+        levels an escaping exception leaves its fields to the frame's
+        destruction, BUGS.md#finished-frame-keeps-locals). One level per cleanup
+        action, nested as the regions nest, is what gives an action that
+        raises CPython's unwind: its exception leaves the catch clause
+        that ran it and is dispatched, as a fresh exception, to the
+        handlers, `__exit__`s and finallies of the levels outside it."""
+        levels: list[int] = []
+        for i, r in enumerate(region_stack):
+            if (isinstance(r, (rcfg.TryRegion, rcfg.WithRegion))
+                    or (isinstance(r, rcfg.ExceptRegion)
+                        and r.parent_finally is not None)
+                    or (isinstance(r, rcfg.LoopSourceRegion)
+                        and levels and r.fields)):
+                levels.append(i)
+        return levels
+
+    def _install_pending_return_ctx(
+            self, region_stack: tuple,
+            case_entries: dict[int, _StateLabel]) -> None:
+        """Route a `return` emitted for `region_stack` through the innermost
+        CFG-based finally's pending-return slot, or directly when none."""
+        pending = self._pending_return_info_for_region_stack(region_stack)
+        if pending is None:
+            self._restore_pending_return_ctx((None, None, None, 0))
+            return
+        flag, slot, finally_entry_bb, boundary = pending
+        self._restore_pending_return_ctx(
+            (flag, slot, case_entries[finally_entry_bb].cpp_name(), boundary))
+
+    def _emit_cleanup_level_catch(self, out: "TextIO", indent: str,
+                                  region: 'rcfg.Region', outer: tuple,
+                                  case_entries: dict[int, _StateLabel]
+                                  ) -> None:
+        """The catch-all of a level that only cleans up (an ExceptRegion's
+        parent finally, a loop-source release): run the action, rethrow.
+        A helper whose normal-exit copy already ran in this case (its
+        guard) is not run again."""
+        [(tag, payload, _region)] = self._finally_helpers_for_region_stack(
+            (region,))
+        out.write(" catch (...) {\n")
+        self.ctx.indent_level += 1
+        catch_ind = self.ctx.indent()
+        if tag == "reset":
+            for fname in payload:
+                out.write(f"{catch_ind}{fname}.reset();\n")
+        else:
+            guard = self._active_region_guard(region)
+            ind = catch_ind
+            if guard is not None:
+                out.write(f"{catch_ind}if (!{guard}) {{\n")
+                ind = catch_ind + INDENT
+            self._emit_finally_helper_call(out, ind, payload)
+            self._emit_unwind_return(out, ind, outer, case_entries)
+            if guard is not None:
+                out.write(f"{catch_ind}}}\n")
+        out.write(f"{catch_ind}throw;\n")
+        self.ctx.indent_level -= 1
+        out.write(f"{indent}}}")
+
+    def _emit_unwind_return(self, out: "TextIO", indent: str, outer: tuple,
+                            case_entries: dict[int, _StateLabel]) -> None:
+        """After a finally helper ran on an exception path: a `return` in it
+        (`__finally_stop`) cancels the exception and returns from the
+        finally's position -- the cleanups of the `outer` regions run as
+        for any `return` there, `__exit__` seeing no exception."""
+        if not (self._is_generator_shape()
+                and self.ctx.generator_has_finally_stop):
+            return
+        saved_stack = self.ctx.finally_stack
+        saved_pending = self._snapshot_pending_return_ctx()
+        self.ctx.finally_stack = []
+        try:
+            self._push_finally_helpers(
+                self._finally_helpers_for_region_stack(outer))
+            self._install_pending_return_ctx(outer, case_entries)
+            out.write(f"{indent}if (this->__finally_stop) {{\n")
+            if self.ctx.async_pending_return_flag is not None:
+                # The return parks into a suspending finally, whose own
+                # normal exits test the flag: cleared so they do not stop
+                # before that finally has run.
+                out.write(f"{indent}{INDENT}this->__finally_stop = false;\n")
+            out.write(self._generator_stop_return(indent + INDENT))
+            out.write(f"{indent}}}\n")
+        finally:
+            self.ctx.finally_stack = saved_stack
+            self._restore_pending_return_ctx(saved_pending)
 
     def _emit_with_region_catches(self, out: "TextIO", indent: str,
                                     region: 'rcfg.WithRegion',
@@ -5560,6 +5834,7 @@ class AsyncCoroCodegen:
                 out.write(
                     f"{catch_ind}if (!(*__with_ctx_{n}).__exit__("
                     f"{{}}, &__exc_{n}, {{}})) throw;\n")
+                self._emit_cancel_finally_stop(out, catch_ind)
                 out.write(f"{catch_ind}__state = {post_label};\n")
                 out.write(f"{catch_ind}continue;\n")
             else:
@@ -5589,7 +5864,7 @@ class AsyncCoroCodegen:
                                   case_entries: dict[int, _StateLabel],
                                   case_entry_bb: int,
                                   func: TpyFunction,
-                                  extra_finallies: tuple[str, ...] = ()) -> None:
+                                  outer: tuple) -> None:
         """Emit `} catch (...) { ... }` clauses for a TryRegion at the
         close of a case body. Each handler's body is emitted inline
         inside its catch (walks the handler entry BB).
@@ -5598,22 +5873,17 @@ class AsyncCoroCodegen:
         determine which __sub_<n> to reset (the in-flight sub-future
         for this resume case).
 
-        `extra_finallies` are helper-fn names (innermost first) for any
-        ExceptRegion / FinallyRegion in the case's region_stack that
-        sit *between* this TryRegion and the next-inner TryRegion --
-        their Python-level try frames are no longer C++ try wraps here
-        but are still logically active. They run in the catch-all (and
-        each handler's body, if the handler completes normally is the
-        Fall-edge case handled by `_emit_exit_region_finallies`; the
-        throw escape is what we cover here)."""
+        `outer` is the case's region stack outside this TryRegion: a
+        `return` in this try's finally, run on an exception path, runs
+        their cleanups on its way out (`_emit_unwind_return`)."""
         builder = rcfg.resumable_state(func).cfg_builder
         yield_for_case = self._yield_at_resume(cfg, case_entry_bb)
-        # Helpers to invoke on throw from inside the handler body
-        # (innermost first): each extra_finally + this region's own
-        # finally. Mirrors the catch-all unwind order.
-        handler_throw_finallies: tuple[str, ...] = tuple(extra_finallies)
+        # Helpers to invoke on throw from inside the handler body: this
+        # region's own finally (the inner ones ran on entry to the handler).
+        handler_throw_finallies: tuple[str, ...] = ()
         if region.finally_helper_name is not None:
-            handler_throw_finallies = handler_throw_finallies + (region.finally_helper_name,)
+            handler_throw_finallies = (region.finally_helper_name,)
+        own_guard = self._active_region_guard(region)
         for handler in region.handlers:
             emit_prims.emit_except_handler_header(self.ctx, out, handler)
             self.ctx.indent_level += 1
@@ -5625,6 +5895,12 @@ class AsyncCoroCodegen:
                 self._emit_sub_reset(out, catch_indent,
                                       yield_for_case.payload,
                                       yield_for_case.suspension_index)
+            # Once this try's finally has run in the case, an exception is
+            # that finally's own or comes from after the try statement:
+            # never one of this try's handlers to catch.
+            if own_guard is not None:
+                out.write(f"{catch_indent}if ({own_guard}) throw;\n")
+            self._emit_cancel_finally_stop(out, catch_indent)
             # Wrap handler body in `try { ... } catch (...) {
             # finallies; throw; }` so a `raise` from inside the
             # handler runs this try's finally (and any inter-region
@@ -5736,7 +6012,8 @@ class AsyncCoroCodegen:
                     body_ic = self.ctx.indent()
                     for helper in handler_throw_finallies:
                         self._emit_finally_helper_call(out, body_ic, helper)
-                    self._emit_generator_stop_check(out, body_ic)
+                    self._emit_unwind_return(out, body_ic, outer,
+                                             case_entries)
                     self.ctx.indent_level -= 1
                     out.write(f"{inner_catch}}}\n")
                     out.write(f"{inner_catch}throw;\n")
@@ -5752,14 +6029,15 @@ class AsyncCoroCodegen:
                 else:
                     for helper in handler_throw_finallies:
                         self._emit_finally_helper_call(out, inner_catch, helper)
-                    self._emit_generator_stop_check(out, inner_catch)
+                    self._emit_unwind_return(out, inner_catch, outer,
+                                             case_entries)
                     out.write(f"{inner_catch}throw;\n")
                 self.ctx.indent_level -= 1
                 out.write(f"{inner_close}}}\n")
             self.ctx.indent_level -= 1
             out.write(f"{indent}}}")
-        # Catch-all: reset sub, run inter-region finallies (innermost
-        # first). For helper-based finally: call helper, re-throw. For
+        # Catch-all: reset sub. For helper-based finally: call helper,
+        # re-throw. For
         # CFG-based finally: save current exception to the
         # captured-exc field and transition state to the finally entry
         # so the finally body runs in the state machine (with possible
@@ -5773,8 +6051,6 @@ class AsyncCoroCodegen:
             self._emit_sub_reset(out, catch_indent,
                                   yield_for_case.payload,
                                   yield_for_case.suspension_index)
-        for helper in extra_finallies:
-            self._emit_finally_helper_call(out, catch_indent, helper)
         if region.captured_exc_field is not None:
             assert region.finally_entry_bb is not None
             label = case_entries[region.finally_entry_bb].cpp_name()
@@ -5792,7 +6068,8 @@ class AsyncCoroCodegen:
                 self.ctx.indent_level += 1
                 self._emit_finally_helper_call(
                     out, self.ctx.indent(), region.finally_helper_name)
-                self._emit_generator_stop_check(out, self.ctx.indent())
+                self._emit_unwind_return(out, self.ctx.indent(), outer,
+                                         case_entries)
                 self.ctx.indent_level -= 1
                 out.write(f"{catch_indent}}}\n")
                 out.write(f"{catch_indent}throw;\n")
@@ -5800,9 +6077,8 @@ class AsyncCoroCodegen:
                 if region.finally_helper_name is not None:
                     self._emit_finally_helper_call(
                         out, catch_indent, region.finally_helper_name)
-                # All cleanup done; Python `return` in finally suppresses the
-                # exception (return StopIteration rather than rethrowing).
-                self._emit_generator_stop_check(out, catch_indent)
+                    self._emit_unwind_return(out, catch_indent, outer,
+                                             case_entries)
                 out.write(f"{catch_indent}throw;\n")
         self.ctx.indent_level -= 1
         out.write(f"{indent}}}")
@@ -5855,15 +6131,9 @@ class AsyncCoroCodegen:
         """Whether `_emit_exit_region_finallies` writes anything on this edge."""
         if not from_regions:
             return False
-        for region in self._exited_regions(from_regions, to_regions):
-            if isinstance(region, rcfg.TryRegion):
-                if region.finally_helper_name is not None:
-                    return True
-            elif isinstance(region, rcfg.ExceptRegion):
-                if region.parent_finally is not None:
-                    return True
-            elif isinstance(region, rcfg.WithRegion):
-                return True
+        if self._finally_helpers_for_region_stack(
+                tuple(self._exited_regions(from_regions, to_regions))):
+            return True
         return (not _regions_have_pending_cleanup(to_regions)
                 and self._is_generator_shape()
                 and self.ctx.generator_has_finally_stop)
@@ -5943,35 +6213,19 @@ class AsyncCoroCodegen:
             return
         exited = self._exited_regions(from_regions, to_regions)
         guards = self.ctx.resumable_region_guards
-        # Innermost first.
-        for region in reversed(exited):
+        # Innermost first. Leaving an except handler normally runs the parent
+        # try's finally (Python semantics); leaving a with-region normally is
+        # `__exit__(None, None, None)`.
+        for action in reversed(
+                self._finally_helpers_for_region_stack(tuple(exited))):
             # Set the region's guard (if its C++ try is still open in this
             # case) before its cleanup copy runs, so the region's own catch
             # skips re-running a copy that raised.
-            guard = guards.get(region)
-            if isinstance(region, rcfg.TryRegion):
-                if region.finally_helper_name is not None:
-                    if guard is not None:
-                        self.ctx.live_finally_guards.add(guard)
-                        out.write(f"{indent}{guard} = true;\n")
-                    self._emit_finally_helper_call(
-                        out, indent, region.finally_helper_name)
-            elif isinstance(region, rcfg.ExceptRegion):
-                # Leaving an except handler normally: run the parent
-                # try's finally body (Python semantics).
-                if region.parent_finally is not None:
-                    if guard is not None:
-                        self.ctx.live_finally_guards.add(guard)
-                        out.write(f"{indent}{guard} = true;\n")
-                    self._emit_finally_helper_call(
-                        out, indent, region.parent_finally)
-            elif isinstance(region, rcfg.WithRegion):
-                # Leaving a with-region normally: __exit__(None, None, None).
-                if guard is not None:
-                    self.ctx.live_finally_guards.add(guard)
-                    out.write(f"{indent}{guard} = true;\n")
-                self._emit_with_exit(out, indent, region,
-                                            on_exception=False)
+            guard = guards.get(action[2])
+            if guard is not None:
+                self.ctx.live_finally_guards.add(guard)
+                out.write(f"{indent}{guard} = true;\n")
+            self._emit_cleanup_action(out, indent, action)
         # Emit stop-check only when to_regions has no pending cleanup of its
         # own. If to_regions still has with/__exit__ or finally helpers, the
         # state machine will run those in subsequent states; the stop-check

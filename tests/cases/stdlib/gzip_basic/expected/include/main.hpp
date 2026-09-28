@@ -72,12 +72,12 @@ inline std::ostream& operator<<(std::ostream& os, const Loader& obj) {
 struct __gen_lines_of : public ::tpy::next_iter_mixin<__gen_lines_of, ::tpy::Bytes> {
     ::tpy::frame_state __state;
     std::string path;
+    ::tpy::frame_slot<::tpystd::gzip::GzipFile> __with_ctx_0;
     ::tpy::frame_slot<::tpy::with_enter_t<::tpystd::gzip::GzipFile>> f;
     ::tpy::Bytes line;
     using __for_src_0_t = decltype(((*f)));
     ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
     ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
-    ::tpy::frame_slot<::tpystd::gzip::GzipFile> __with_ctx_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -85,7 +85,8 @@ struct __gen_lines_of : public ::tpy::next_iter_mixin<__gen_lines_of, ::tpy::Byt
         S_JOIN_0 = 2,
         S_JOIN_1 = 3,
         S_JOIN_2 = 4,
-        S_DONE = 5,
+        S_JOIN_3 = 5,
+        S_DONE = 6,
     };
 
     __gen_lines_of(std::string_view path_)
@@ -97,6 +98,7 @@ struct __gen_lines_of : public ::tpy::next_iter_mixin<__gen_lines_of, ::tpy::Byt
         try {
             switch (__state) {
             case S_RESUME_0:
+                __for_itr_0.reset();
                 (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
                 break;
             default: break;

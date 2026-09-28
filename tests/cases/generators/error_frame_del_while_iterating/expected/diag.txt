@@ -1,0 +1,1 @@
+main.py:24: error: cannot delete 'g' inside a 'for' loop over it: the loop is still running the generator 'g' holds; delete it after the loop

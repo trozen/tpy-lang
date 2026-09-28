@@ -406,6 +406,7 @@ def clear_all_compilation_state() -> None:
     _evaluating_send.clear()
     _evaluating_sync.clear()
     _evaluating_movable.clear()
+    _evaluating_drop.clear()
     _evaluating_alias_value.clear()
     clear_dynamic_type_defs()
 
@@ -584,6 +585,17 @@ class TpyType:
         transitively own one without __move__ / are @nomove. Composite types
         (Own/Optional/tuple/union/readonly) override to delegate to members."""
         return True
+
+    def drop_runs_user_code(self) -> bool:
+        """Whether destroying a value of this type may run user code: a
+        class's `__del__`, a generator's or coroutine's pending `finally`,
+        or a destructor the compiler cannot see into. Such a value's
+        destruction is observable (and may read storage it borrows), so a
+        resumable frame orders it after what it borrows and a loop holding
+        it as its source releases it on leaving. Conservative: a type that
+        cannot be shown to run nothing answers True. Base: the value
+        families own no user objects; any other type is unknown here."""
+        return not self.is_value_type()
 
     def to_cpp_return(self) -> str:
         """Return the C++ representation for function return types.
@@ -952,6 +964,11 @@ class TypeParamRef(TpyType):
         # Unknown at definition time - the trait decides at C++ instantiation
         return False
 
+    def drop_runs_user_code(self) -> bool:
+        # Any instantiation, a value-bounded one included, may carry a class
+        # with `__del__`; only an INT param is a plain number.
+        return self.kind != TypeParamKind.INT
+
     def value_form(self) -> 'ValueForm':
         # A value-bounded / INT type param is a value; otherwise the generic
         # proxy category (val_or_ref_t<T>), neither a plain value nor a ref.
@@ -1280,6 +1297,34 @@ class NominalType(TpyType):
         finally:
             _evaluating_movable.discard(self)
 
+    def drop_runs_user_code(self) -> bool:
+        from tpyc.type_def_registry import TypeCategory, type_def_of
+        td = type_def_of(self)
+        if td is None:
+            return not self.is_value_type()
+        if td.category is TypeCategory.PROTOCOL:
+            # Whatever implements it may run anything.
+            return True
+        args = [a for a in self.type_args if isinstance(a, TpyType)]
+        rec = td.record
+        if rec is None or rec.is_native:
+            # A builtin or @native type's own destructor is library code; what
+            # it runs of the user's is its elements' destructors.
+            return any(a.drop_runs_user_code() for a in args)
+        if rec.has_del:
+            return True
+        # A self-referential class (`children: list[Node]`) adds no user code
+        # by recursing into itself: least fixed point.
+        if self in _evaluating_drop:
+            return False
+        _evaluating_drop.add(self)
+        try:
+            return any(sub.drop_runs_user_code()
+                       for sub in _fields_and_parents_under_args(
+                           rec, self.type_args))
+        finally:
+            _evaluating_drop.discard(self)
+
     def get_element_type(self) -> Optional['TpyType']:
         # Per-qname override (e.g. Span/SpanIter reshape a readonly[T] element:
         # strip for a value element, keep for a reference element).
@@ -1456,6 +1501,7 @@ def expand_fi_template(fi: 'FunctionInfo',
 _evaluating_send: set['NominalType'] = set()
 _evaluating_sync: set['NominalType'] = set()
 _evaluating_movable: set['NominalType'] = set()
+_evaluating_drop: set['NominalType'] = set()
 
 
 def _fields_and_parents_under_args(
@@ -1634,6 +1680,9 @@ class PtrType(TpyType):
         """Unwrapped pointee type (strips ReadonlyType if present)."""
         return unwrap_readonly(self.pointee)
 
+    def drop_runs_user_code(self) -> bool:
+        return False
+
     def to_cpp(self) -> str:
         # Ptr[None] -> void* (and Ptr[readonly[None]] -> const void*).
         # `void*` is the canonical opaque-pointer idiom in C/C++ and is
@@ -1712,6 +1761,9 @@ class OwnType(TpyType):
     """
     wrapped: TpyType
 
+    def drop_runs_user_code(self) -> bool:
+        return self.wrapped.drop_runs_user_code()
+
     def to_cpp(self) -> str:
         # Own[P] for abstract @dynamic P -- heap-owned via std::unique_ptr<P>
         # since the abstract base has no sizeof.
@@ -1789,6 +1841,9 @@ class OwnType(TpyType):
 class ReadonlyType(TpyType):
     """Readonly reference -- immutable view of T. Maps to const T& in C++."""
     wrapped: TpyType
+
+    def drop_runs_user_code(self) -> bool:
+        return self.wrapped.drop_runs_user_code()
 
     def to_cpp(self) -> str:
         return self.wrapped.to_cpp()
@@ -2117,6 +2172,9 @@ class _MarkerType(TpyType):
     """
     wrapped: TpyType
 
+    def drop_runs_user_code(self) -> bool:
+        return self.wrapped.drop_runs_user_code()
+
     def to_cpp(self) -> str:
         return self.wrapped.to_cpp()
 
@@ -2298,6 +2356,9 @@ class FrameType(TpyType):
     kind: str  # "coroutine" | "generator" | "closure"
     unclassified: bool = False
 
+    def drop_runs_user_code(self) -> bool:
+        return True
+
     def is_send(self) -> bool:
         return not self.unclassified and all(s.send for s in self.slots)
 
@@ -2338,6 +2399,9 @@ class RefType(TpyType):
     - Storage in std::expected / iterators: val_or_ref<T>
     """
     wrapped: TpyType
+
+    def drop_runs_user_code(self) -> bool:
+        return False
 
     def to_cpp(self) -> str:
         if isinstance(self.wrapped, TypeParamRef):
@@ -2604,6 +2668,9 @@ class AutoReadonlyType(TpyType):
     """
     wrapped: TpyType
 
+    def drop_runs_user_code(self) -> bool:
+        return self.wrapped.drop_runs_user_code()
+
     def to_cpp(self) -> str:
         raise RuntimeError("AutoReadonlyType must be stripped before codegen")
 
@@ -2665,6 +2732,9 @@ class AutoOwnType(TpyType):
     Stripped by registration before reaching sema body analysis or codegen.
     """
     wrapped: TpyType
+
+    def drop_runs_user_code(self) -> bool:
+        return self.wrapped.drop_runs_user_code()
 
     def to_cpp(self) -> str:
         raise RuntimeError("AutoOwnType must be stripped before codegen")
@@ -2733,6 +2803,9 @@ class InteriorMutableType(TpyType):
     """
     wrapped: TpyType
 
+    def drop_runs_user_code(self) -> bool:
+        return self.wrapped.drop_runs_user_code()
+
     def to_cpp(self) -> str:
         raise RuntimeError(
             "unsafe_interior_mutable[...] is only valid on a class field declaration"
@@ -2760,6 +2833,9 @@ class _TypeModifierWrapper(TpyType):
     and `with_inner_types` to round-trip the right wrapper class.
     """
     wrapped: TpyType
+
+    def drop_runs_user_code(self) -> bool:
+        return self.wrapped.drop_runs_user_code()
 
     def to_cpp(self) -> str:
         return self.wrapped.to_cpp()
@@ -3272,6 +3348,10 @@ class AnyType(TpyType):
     `docs/ANY_TYPE_DESIGN.md` for the full design and composition rules.
     """
 
+    def drop_runs_user_code(self) -> bool:
+        # The cell may hold any class, one with `__del__` included.
+        return True
+
     def to_cpp(self) -> str:
         return "::tpy::Any"
 
@@ -3437,6 +3517,9 @@ class OptionalType(TpyType):
             if isinstance(inner, ReadonlyType) and isinstance(inner.wrapped, PtrType):
                 return inner
         return super().__new__(cls)
+
+    def drop_runs_user_code(self) -> bool:
+        return self.inner.drop_runs_user_code()
 
     def to_cpp(self) -> str:
         return f"std::optional<{self.inner.to_cpp()}>"
@@ -3857,6 +3940,9 @@ class UnionType(TpyType):
         """True if this union requires a C++ wrapper struct (recursive alias)."""
         return self.wrapper_info() is not None
 
+    def drop_runs_user_code(self) -> bool:
+        return any(m.drop_runs_user_code() for m in self.members)
+
     def to_cpp(self) -> str:
         compiler = get_current_compiler()
         if compiler is not None:
@@ -4039,6 +4125,9 @@ def _contains_self_reference(typ: 'TpyType', name: str) -> bool:
 class TupleType(TpyType):
     """Fixed-length tuple: tuple[T1, T2, ...] -> std::tuple<T1, T2, ...>."""
     element_types: tuple[TpyType, ...]
+
+    def drop_runs_user_code(self) -> bool:
+        return any(t.drop_runs_user_code() for t in self.element_types)
 
     def to_cpp(self) -> str:
         args = ", ".join(t.to_cpp() for t in self.element_types)
@@ -4625,6 +4714,13 @@ class ConcreteFrameType(NominalType):
     # Defining module when it differs from the binding module (qualifies
     # the struct name with the callee's C++ namespace).
     frame_module_qual: 'str | None' = None
+    # The function whose frame this is, for what destroying one may run.
+    frame_fi: 'FunctionInfo | None' = field(
+        default=None, compare=False, hash=False, repr=False)
+
+    def drop_runs_user_code(self) -> bool:
+        fi = self.frame_fi
+        return fi is None or fi.root.frame_close_runs_user_code is not False
 
     def is_value_type(self) -> bool:
         return False
@@ -4663,7 +4759,8 @@ def make_concrete_coro(awaited_type: 'TpyType', func_name: str,
                        owner: 'NominalType | None' = None,
                        inferred_type_args: 'tuple[TpyType, ...] | None' = None,
                        module_qual: 'str | None' = None,
-                       result_is_borrow: bool = False) -> 'ConcreteCoroType':
+                       result_is_borrow: bool = False,
+                       fi: 'FunctionInfo | None' = None) -> 'ConcreteCoroType':
     from tpyc import qnames
     return ConcreteCoroType(
         name="Cancellable", type_args=(awaited_type,),
@@ -4672,13 +4769,15 @@ def make_concrete_coro(awaited_type: 'TpyType', func_name: str,
         frame_func_name=func_name, frame_owner=owner,
         frame_inferred_type_args=inferred_type_args,
         frame_module_qual=module_qual,
+        frame_fi=fi.root if fi is not None else None,
         result_is_borrow=result_is_borrow)
 
 
 def make_concrete_gen(iterator: 'NominalType', func_name: str,
                       owner: 'NominalType | None' = None,
                       inferred_type_args: 'tuple[TpyType, ...] | None' = None,
-                      module_qual: 'str | None' = None) -> 'ConcreteGenType':
+                      module_qual: 'str | None' = None,
+                      fi: 'FunctionInfo | None' = None) -> 'ConcreteGenType':
     """The concrete frame of a generator call typed `iterator`
     (`typing.Iterator[T]`)."""
     return ConcreteGenType(
@@ -4688,7 +4787,8 @@ def make_concrete_gen(iterator: 'NominalType', func_name: str,
         is_dynamic_protocol=iterator.is_dynamic_protocol,
         frame_func_name=func_name, frame_owner=owner,
         frame_inferred_type_args=inferred_type_args,
-        frame_module_qual=module_qual)
+        frame_module_qual=module_qual,
+        frame_fi=fi.root if fi is not None else None)
 
 
 # Singleton for the non-generic Waker type. Registered as a value-type
@@ -6253,6 +6353,15 @@ class FunctionInfo:
     # @unsafe_sync, False from @nosend/@nosync, None = structural
     send_override: bool | None = None
     sync_override: bool | None = None
+    # Close materials, stamped with the Send/Sync ones (generator / async
+    # only): the body has a `finally` or `with` around a suspension point,
+    # and the loop sources it holds across one.
+    frame_cleanup_at_suspension: bool = False
+    frame_loop_source_types: tuple['TpyType', ...] = ()
+    # Whether destroying a started frame of this generator / coroutine may
+    # run user code, decided by sema/frame_close.py once every body of the
+    # defining module is analyzed; None until then (read as yes).
+    frame_close_runs_user_code: bool | None = None
 
     @property
     def root(self) -> 'FunctionInfo':

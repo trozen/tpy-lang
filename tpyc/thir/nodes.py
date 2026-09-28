@@ -2523,6 +2523,16 @@ class THIRDelVar(THIRStmt):
 
 
 @dataclass(frozen=True)
+class THIRCloseLocal(THIRStmt):
+    """Close generator locals now -- `name.reset();` per name, on a plain
+    function's `std::optional` and a resumable frame's `frame_slot` alike:
+    the generator is destroyed in place (running a pending `finally`) and
+    the name holds nothing. `del` of such a local lowers here. Never a
+    move: a started frame cannot move."""
+    names: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class THIRDelItem(THIRStmt):
     """Multi-target `del` -- a per-target loop: one call statement line per
     target, in source order. Both del forms sema desugars to a call ride

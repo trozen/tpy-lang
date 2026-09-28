@@ -1,1 +1,1 @@
-main.py:17: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.frame_borrows_local)
+main.py:20: error: cannot use 'g' after the 'if' block it is bound in: it borrows 'ys', and a generator declared in front of the 'if' block may borrow only parameters the function never rebinds, the receiver and module globals, so 'g' is closed when the block ends; use it inside the block only

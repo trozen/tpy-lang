@@ -1,0 +1,1 @@
+main.py:38: error: cannot use 'g' after the loop it is bound in: it borrows 'c', and a generator declared in front of the loop may borrow only parameters the function never rebinds, the receiver and module globals; use 'g' inside the loop only

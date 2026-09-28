@@ -697,8 +697,17 @@ Top-level analyzers (one module each):
 `init_tracker`, `scope_tracker`, `iter_loans`, `flow_facts`, `value_range`,
 `numeric_lattice`, `mutation_propagation`, `method_expansion`,
 `macros`, `builder_trace`, `function_macros`, `reach_analysis`,
-`frame_traits`, `own_copy`, `slot_hint`, `context`. Error classes live in
-`tpyc/diagnostics.py` (see "Compilation pipeline").
+`frame_traits`, `frame_close`, `loop_frames`, `own_copy`, `slot_hint`, `context`.
+Error classes live in `tpyc/diagnostics.py` (see "Compilation pipeline").
+
+`frame_close` decides, per generator or coroutine function, whether closing
+its frame may run user code (`FunctionInfo.frame_close_runs_user_code`, a
+module-end fixpoint); the frame layout and the loop rules read it through
+`TpyType.drop_runs_user_code`. `loop_frames` rejects a generator held across
+passes of a loop (or, in a generator or async body, past a `with` block) that
+may write what it borrows, failing closed on anything it cannot trace -- the
+interim rule until MIR owns that hazard (docs/IR_DESIGN.md, "Loop-bound generators that borrow storage
+the loop writes").
 
 `own_copy` holds the owning-slot copy contract of a body whose payload is
 still a type parameter. The sinks warn at the body line, hedged, at

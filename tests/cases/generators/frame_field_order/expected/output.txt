@@ -1,0 +1,43 @@
+loopvar inner finally 2 1
+loopvar inner finally 2 3
+loopvar [1, 2, 3, 4, 99]
+loopvar first 1
+loopvar inner finally 2 1
+global inner finally 2 30
+global [30, 31, 99]
+global first 30
+global inner finally 2 30
+rebound inner finally 2 3
+rebound [3, 4, 1]
+rebound first 3
+rebound inner finally 2 3
+break inner finally 2 1
+break after inner loop
+break inner finally 2 3
+break after inner loop
+break [1, 3, 99]
+break first 1
+break inner finally 2 1
+return inner finally 2 5
+return outer finally
+return [5]
+return first 5
+return inner finally 2 5
+return outer finally
+exc inner finally 2 5
+exc caught
+exc [5, 100]
+exc first 5
+exc inner finally 2 5
+method inner finally 2 40
+method inner finally 2 42
+method [40, 41, 42, 43, 99]
+method first 40
+method inner finally 2 40
+async inner finally 2 1
+async break inner finally 2 2
+async after inner loop
+async inner finally 2 3
+async break inner finally 2 4
+async after inner loop
+async 16

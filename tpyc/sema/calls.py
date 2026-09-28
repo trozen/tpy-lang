@@ -59,7 +59,8 @@ from .overloads import (
 from .context import (
     CallOperands, _is_self_call_deferred, _root_name_of_expr, call_lend_sources,
 )
-from .receiver_calls import receiver_leaves
+from .receiver_calls import receiver_leaves, record_truth_calls
+from .narrowing import truthy_operands
 from .scope_tracker import lend_roots
 from .compatibility import TupleSink
 from .protocols import dynamic_dispatch_type_conforms
@@ -3681,6 +3682,9 @@ class CallAnalyzer:
                 self.expr.mark_truth_test(arg)
         arg_types = [unwrap_own(unwrap_ref_type(self.expr.analyze_expr(arg)))
                      for arg in expr.args]
+        if td is not None and td.ctor_arg_truth_test:
+            record_truth_calls(self.ctx, [leaf for arg in expr.args
+                                          for leaf in truthy_operands(arg)])
 
         # Resolve the concrete type (e.g. FLOAT32 singleton). __init__ returns None
         # in Python, so we look up the actual type via the type factory.

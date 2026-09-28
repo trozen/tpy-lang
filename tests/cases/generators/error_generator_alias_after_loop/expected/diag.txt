@@ -1,0 +1,1 @@
+main.py:26: error: cannot use 'h' after the loop it is bound in: it is another name for 'g', which ends with the pass; use 'h' inside the loop only

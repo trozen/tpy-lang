@@ -13,11 +13,11 @@ def items(xs: list[int32]) -> Iterator[int32]:
 def main(c: bool, xs: list[int32]) -> None:
     if c:
         ys = [10, 11]
-        # The subject: g outlives the block ys dies with.
-        g = items(ys)  # tpyc: error(/decl.frame_borrows_local/)
+        g = items(ys)
     else:
         g = items(xs)
-    for v in g:
+    # The subject: g borrows ys, which dies with its block.
+    for v in g:  # tpyc: error(/cannot use 'g' after the 'if' block it is bound in: it borrows 'ys'/)
         print(v)
 
 

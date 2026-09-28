@@ -203,9 +203,9 @@ struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, ::tpy::yi
     int32_t n;
     int32_t c;
     using __for_src_0_t = decltype((it));
-    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
     ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
     ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
+    ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> x;
 
     enum : int32_t {
         S_INITIAL = 0,

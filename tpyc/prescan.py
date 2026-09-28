@@ -20,12 +20,13 @@ from .parse import (
     TpyFStringValue, TpyComprehensionGenerator,
     TpyTupleLiteral, TpyFString,
     TpyDelVar, TpyDelAttr, TpyDelItem, TpyNonlocal, TpyGlobal, TpyTry,
-    TpyLambda, TpyMatch,
+    TpyLambda, TpyMatch, TpyWhile, TpyAwait,
 )
 from .parse.nodes import (SourceLocation, is_property_getter_read,
                           iter_capture_bindings,
                           stmts_have_any_suspension, walk_body_stmts,
                           written_names)
+from .identity_map import IdentityMap
 from .value_category import CONTAINER_LITERAL_NODES
 
 
@@ -641,3 +642,142 @@ def _collect_fact_kills(stmts: list[TpyStmt], kills: FactKills) -> None:
             _kills_in_expr(expr, kills)
         for body in stmt.sub_bodies():
             _collect_fact_kills(body, kills)
+
+
+@dataclass(frozen=True)
+class LoopBindings:
+    """What one `for` / `while` binds and writes. `body`: every name a pass
+    can bind -- its body and `else` clause (nested bodies included, nested
+    defs not: their locals are the closure's) and a walrus in its own head.
+    `target`: the for-each's own variable. Kept apart because readers differ
+    on it: a loop over a container that stays put does not refill its
+    variable's storage, while a pull from an iterator does. `stores`: the
+    places a pass stores into -- a field, an element, an augmented or `del`
+    target -- with `deletes` the `del` targets among them, and `effects`:
+    every call, `await`, loop, `with` and augmented assignment it runs (its
+    own head included); sema resolves what they write. `sites`: every
+    statement and expression node it runs, for the calls sema records on
+    them (`sema.receiver_calls.implicit_calls`)."""
+    body: frozenset[str]
+    target: frozenset[str]
+    stores: tuple = field(default=(), compare=False)
+    effects: tuple = field(default=(), compare=False)
+    deletes: tuple = field(default=(), compare=False)
+    sites: tuple = field(default=(), compare=False)
+
+
+def _stmt_binds(s: TpyStmt) -> set[str]:
+    """Every whole name one statement binds, handler and capture names
+    included."""
+    out = bound_names_of(s) | walrus_names_of(s)
+    if isinstance(s, TpyTry):
+        out.update(h.binding for h in s.handlers if h.binding is not None)
+    elif isinstance(s, TpyMatch):
+        for case in s.cases:
+            out.update(cap.name for cap in iter_capture_bindings(case.pattern))
+    return out
+
+
+def _stmt_stores(s: TpyStmt) -> list[TpyExpr]:
+    """The places (not whole names) one statement stores into."""
+    if isinstance(s, (TpyAssign, TpyAugAssign)):
+        targets: list[TpyExpr] = [s.target]
+    elif isinstance(s, (TpyDelAttr, TpyDelItem)):
+        targets = list(s.targets)
+    else:
+        return []
+    return [t for t in targets if not isinstance(t, TpyName)]
+
+
+_CALL_LIKE = (TpyCall, TpyMethodCall, TpyBinOp, TpyUnaryOp, TpyAwait)
+
+
+def _expr_effects(e: TpyExpr | None, out: list, sites: list) -> None:
+    """Every call-shaped node under `e` into `out` (an `await` runs a frame)
+    and every node into `sites`, a lambda's body included (it runs whenever
+    whoever it is handed to calls it)."""
+    if e is None:
+        return
+    sites.append(e)
+    if isinstance(e, _CALL_LIKE):
+        out.append(e)
+    if isinstance(e, TpyLambda):
+        _expr_effects(e.body, out, sites)
+        return
+    for child in e.children():
+        _expr_effects(child, out, sites)
+
+
+def collect_loop_bindings(stmts: list[TpyStmt], table: 'IdentityMap') -> None:
+    """Fill `table` with the `LoopBindings` of every loop in `stmts`, in one
+    bottom-up walk, so a nested loop's names are collected once rather than
+    once per enclosing loop."""
+    _walk_writes(stmts, table)
+
+
+def block_writes(stmts: list[TpyStmt]) -> LoopBindings:
+    """What a statement list binds and writes, in the shape a loop's facts
+    take (no loop variable)."""
+    w = _walk_writes(stmts, IdentityMap())
+    return LoopBindings(body=frozenset(w.body), target=frozenset(),
+                        stores=tuple(w.stores), effects=tuple(w.effects),
+                        deletes=tuple(w.deletes), sites=tuple(w.sites))
+
+
+@dataclass
+class _Writes:
+    body: set[str] = field(default_factory=set)
+    stores: list = field(default_factory=list)
+    effects: list = field(default_factory=list)
+    deletes: list = field(default_factory=list)
+    sites: list = field(default_factory=list)
+
+    def add(self, other: '_Writes') -> None:
+        self.body |= other.body
+        self.stores += other.stores
+        self.effects += other.effects
+        self.deletes += other.deletes
+        self.sites += other.sites
+
+
+def _walk_writes(ss: list[TpyStmt], table: 'IdentityMap') -> _Writes:
+    """What `ss` binds, stores into, runs and deletes, filling `table` with
+    the `LoopBindings` of every loop in it on the way."""
+    out = _Writes()
+    for s in ss:
+        if isinstance(s, TpyNestedDef):
+            continue
+        inner = _Writes()
+        for body in s.sub_bodies():
+            inner.add(_walk_writes(body, table))
+        own = _Writes(sites=[s])
+        for e in s.exprs():
+            _expr_effects(e, own.effects, own.sites)
+        if isinstance(s, (TpyForEach, TpyWith, TpyAugAssign)):
+            own.effects.append(s)
+        own.stores = _stmt_stores(s)
+        own.deletes = (own.stores
+                       if isinstance(s, (TpyDelAttr, TpyDelItem)) else [])
+        if isinstance(s, (TpyForEach, TpyWhile)):
+            names = bound_names_of(s) if isinstance(s, TpyForEach) else set()
+            table[s] = LoopBindings(
+                body=frozenset(inner.body | walrus_names_of(s)),
+                target=frozenset(names),
+                stores=tuple(own.stores + inner.stores),
+                effects=tuple(own.effects + inner.effects),
+                deletes=tuple(own.deletes + inner.deletes),
+                sites=tuple(own.sites + inner.sites))
+        own.body = inner.body | _stmt_binds(s)
+        own.add(inner)
+        out.add(own)
+    return out
+
+
+def loop_bindings_of(table: 'IdentityMap', loop: TpyStmt) -> LoopBindings:
+    """`loop`'s bindings, walking it (and every loop inside it) on first
+    ask."""
+    facts = table.get(loop)
+    if facts is None:
+        collect_loop_bindings([loop], table)
+        facts = table[loop]
+    return facts

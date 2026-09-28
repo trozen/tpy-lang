@@ -16,11 +16,12 @@ def pair(p: tuple[A, A]) -> Iterator[int]:
 
 def main(c: bool, a: A, b: A) -> None:
     if c:
-        # The subject: `it` outlives the block the temporary A(7) dies with.
-        it = pair((A(7), b))  # tpyc: error(/decl.frame_borrows_local/)
+        # `it` borrows the temporary A(7), which dies with the block.
+        it = pair((A(7), b))
     else:
         it = pair((a, b))
-    print(list(it))
+    # The subject: a read after the block of a generator closed with it.
+    print(list(it))  # tpyc: error(/cannot use 'it' after the 'if' block it is bound in: it borrows a temporary/)
 
 
 main(True, A(1), A(2))

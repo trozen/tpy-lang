@@ -200,6 +200,7 @@ __gen_gen_handler_raise_finally gen_handler_raise_finally() {
             continue;
         } catch (const ::tpy::ValueError&) {
             __sub_0.reset();
+            if (__fin_ran_5) throw;
             bool __fin_ran_6 = false;
             try {
                 P __tmp_6 = (*p);

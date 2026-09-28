@@ -45,14 +45,14 @@ from typing import TYPE_CHECKING, Iterable
 
 from ..identity_map import IdentityMap
 from ..parse import (
-    TpyAssign, TpyBreak, TpyCall, TpyCoerce, TpyContinue, TpyDelVar,
+    TpyAssign, TpyAwait, TpyBreak, TpyCall, TpyCoerce, TpyContinue, TpyDelVar,
     TpyExpr, TpyForEach, TpyFunction, TpyGlobal, TpyIf, TpyMatch,
     TpyMethodCall, TpyName, TpyNamedExpr, TpyNestedDef, TpyNoneLiteral,
     TpyRaise, TpyReturn, TpySlice, TpyStmt, TpySubscript, TpyTry,
     TpyTupleUnpack, TpyVarDecl, TpyWhile, TpyWith,
 )
 from ..parse.nodes import RebindStorage, read_names
-from ..prescan import bound_names_of, walrus_names_of
+from ..prescan import bound_names_of, loop_bindings_of, walrus_names_of
 from ..type_def_registry import (
     is_bytes_view_type, is_char_type, is_str_view_type,
 )
@@ -64,9 +64,13 @@ from ..typesys import (
 )
 from ..value_category import is_rvalue_source
 from .context import (
-    BorrowKind, ITER_BORROWER, _borrow_storage_roots, addr_taken_roots,
-    call_borrow_operands, call_lend_sources, call_param_args,
-    frame_borrowed_operands,
+    BorrowKind, ITER_BORROWER, _borrow_storage_roots, _root_name_of_expr,
+    addr_taken_roots, call_borrow_operands, call_lend_sources,
+    call_param_args, frame_binding_calls, frame_borrowed_operands,
+)
+from .loop_frames import (
+    LoopFrameHold, WithExitCheck, binding_value, check_loop_hold,
+    storage_closure,
 )
 
 if TYPE_CHECKING:
@@ -252,6 +256,27 @@ class _Replay:
         self.loops: list[_Loop] = []
         self.try_sinks: list[list[_State]] = []
         self.bound_here: set[str] = set()
+        # The frame-holding locals, and the ones a generator or async body
+        # still holds at each loop's back edge (`loop_frames`).
+        self.frames: frozenset[str] = (
+            frozenset() if ctx.is_top_level
+            else frozenset(ctx.func.frame_local_roots))
+        fn = ctx.func.current_function
+        self.frame_body = (not ctx.is_top_level and isinstance(fn, TpyFunction)
+                           and (fn.is_generator or fn.is_async))
+        self.loop_holds: IdentityMap = IdentityMap()
+        self.bound_any: set[str] = set()
+        # Frame-holding locals bound in a `with` body and still open when
+        # its managers exit.
+        self.with_holds: list[tuple[TpyWith, set[str]]] = []
+        # Each for-each's variables with the root of what it iterates: a
+        # write through the variable is a write into that storage.
+        self.for_edges: list[tuple[set[str], str | None]] = []
+        # A plain function's frame-holding local kept in its loop body's C++
+        # block is gone at the next pass.
+        self.pass_scoped: IdentityMap = IdentityMap()
+        for name, loop in ctx.func.pass_scoped_frames.items():
+            self.pass_scoped.setdefault(loop, set()).add(name)
 
     def id_of(self, node: object) -> int:
         n = self.ids.get(node)
@@ -309,7 +334,14 @@ class _Replay:
                 self.expr_effects(item.context_expr, st, s)
                 if item.target is not None:
                     self.bind_foreign(s, item.target, item.context_expr, st)
-            return self.walk_stmts(s.body, st)
+            out = self.walk_stmts(s.body, st)
+            if self.frame_body and out is not None:
+                bound = _names_bound_in(s.body)
+                held = {h for h, loans in out.loans.items()
+                        if loans and h in self.frames and h in bound}
+                if held:
+                    self.with_holds.append((s, held))
+            return out
         if isinstance(s, TpyTry):
             return self.walk_try(s, st)
         if isinstance(s, TpyDelVar):
@@ -353,15 +385,24 @@ class _Replay:
             self.loops.append(loop)
             out = self.walk_stmts(s.body, body_in)
             self.loops.pop()
+            for gone in self.pass_scoped.get(s, ()):
+                for pass_end in (out, *loop.continues, *loop.breaks):
+                    if pass_end is not None:
+                        pass_end.loans.pop(gone, None)
+                        pass_end.origins.pop(gone, None)
             new_head = _join_all([st, out, *loop.continues])
             assert new_head is not None
             if (new_head.origins == head.origins
                     and new_head.loans == head.loans):
+                if self.frame_body:
+                    self.note_loop_holds(s, _join_all([out, *loop.continues]))
                 return head, loop
             head = new_head
         raise AssertionError("alias-rebind loop replay did not converge")
 
     def walk_for(self, s: TpyForEach, st: _State) -> _State | None:
+        self.for_edges.append((bound_names_of(s),
+                               _root_name_of_expr(_peel(s.iterable))))
         self.expr_effects(s.iterable, st, s, top_is_bind=True)
         groups = self.groups(s)
         iter_key = f"{ITER_BORROWER}#{self.id_of(s)}"
@@ -403,6 +444,7 @@ class _Replay:
             for holder in groups:
                 cs.loans[holder] = self.loans_of(holder, groups, None, cs)
                 cs.origins[holder] = frozenset((FOREIGN,))
+                self.bound_any.add(holder)
             if case.guard is not None:
                 self.expr_effects(case.guard, cs, s)
             outs.append(self.walk_stmts(case.body, cs))
@@ -423,6 +465,7 @@ class _Replay:
             if h.binding is not None:
                 hs.origins[h.binding] = frozenset((FOREIGN,))
                 hs.loans.pop(h.binding, None)
+                self.bound_any.add(h.binding)
             handler_outs.append(self.walk_stmts(h.body, hs))
         normal = (self.walk_stmts(s.else_body, try_out)
                   if try_out is not None else None)
@@ -468,12 +511,14 @@ class _Replay:
         else:
             st.origins[name] = frozenset((FOREIGN,))
         self.bound_here.add(name)
+        self.bound_any.add(name)
 
     def bind_foreign(self, stmt: TpyStmt, name: str, source: TpyExpr | None,
                      st: _State) -> None:
         st.loans[name] = self.loans_of(name, self.groups(stmt), source, st)
         st.origins[name] = frozenset((FOREIGN,))
         self.bound_here.add(name)
+        self.bound_any.add(name)
 
     def bind_other_holders(self, stmt: TpyStmt, st: _State) -> None:
         """Loans registered on a statement for a holder the statement's own
@@ -502,6 +547,15 @@ class _Replay:
         for root in _frame_roots(inner) + self.result_borrow_roots(inner):
             if root != holder:
                 out.add((root, BorrowKind.OPAQUE, self.origins_of(root, st)))
+        if holder in self.frames:
+            # What sema traced the frame to (a loop variable over a
+            # container read as the container) -- the storage a rebind of
+            # that name would pull out from under it.
+            fact = self.ctx.func.frame_local_roots.get(holder)
+            for root in fact[0] if fact is not None else ():
+                if root is not None and root != holder:
+                    out.add((root, BorrowKind.OPAQUE,
+                             self.origins_of(root, st)))
         return frozenset(out)
 
     def result_borrow_roots(self, e: TpyExpr) -> list[str]:
@@ -554,11 +608,106 @@ class _Replay:
         # with the statement.
         for arg in _owned_args(inner):
             arg = _peel(arg)
-            for root in _frame_roots(arg) + self.result_borrow_roots(arg):
+            roots = _frame_roots(arg) + self.result_borrow_roots(arg)
+            if isinstance(arg, TpyName) and arg.name in self.frames:
+                # The generator or coroutine object itself changes hands.
+                roots.append(arg.name)
+            for root in roots:
                 st.loans[_ESCAPED] = st.loans.get(_ESCAPED, frozenset()) | {
                     (root, BorrowKind.OPAQUE, self.origins_of(root, st))}
         for child in inner.children():
             self.expr_effects(child, st, stmt)
+        if isinstance(inner, TpyAwait):
+            # `await c` runs the coroutine to its end: it holds nothing after.
+            awaited = _peel(inner.value)
+            if isinstance(awaited, TpyName) and awaited.name in self.frames:
+                st.loans.pop(awaited.name, None)
+
+    # -- frames held across a loop's back edge --
+
+    def note_loop_holds(self, loop: TpyStmt, back: _State | None) -> None:
+        """The frame-holding locals first bound in `loop`'s body that still
+        hold a loan where the next pass starts."""
+        if back is None:
+            return
+        body = loop_bindings_of(self.ctx.loop_bindings, loop).body
+        held = {h for h, loans in back.loans.items()
+                if loans and h in self.frames and h in body}
+        # One whose borrows cannot be traced holds no loan to see; it is
+        # held while it is still bound.
+        roots = self.ctx.func.frame_local_roots
+        held |= {h for h in back.origins
+                 if h in self.frames and h in body and roots.get(h) is None
+                 and back.origins[h]}
+        if held:
+            self.loop_holds.setdefault(loop, set()).update(held)
+
+    def check_loop_holds(self) -> None:
+        """Reject a frame held across a back edge whose loop may write
+        what it borrows (`loop_frames`)."""
+        for loop, holders in self.loop_holds.items():
+            for holder in sorted(holders):
+                fact = self.ctx.func.frame_local_roots.get(holder)
+                if fact is None:
+                    nodes = self.ctx.func.frame_binding_nodes.get(holder)
+                    raise self.ctx.error(
+                        f"cannot keep '{holder}' open across passes of this "
+                        f"loop: what it borrows cannot be traced; bind it "
+                        f"from a direct call over named storage, close it "
+                        f"with 'del {holder}' before the pass ends, or "
+                        f"iterate it inside a helper function",
+                        nodes[0] if nodes else loop)
+                roots = {r for r in fact[0] if r is not None}
+                upstream, reach = storage_closure(
+                    self.stmt_loans, self.frames, roots, self.for_edges)
+                nodes = self.ctx.func.frame_binding_nodes.get(holder) or [loop]
+                calls = [frame_binding_calls(binding_value(n)) for n in nodes]
+                own_calls = tuple(c for cs in calls for c in cs or ())
+                check_loop_hold(self.ctx, LoopFrameHold(
+                    holder=holder, loop=loop,
+                    upstream=frozenset(upstream), reach=frozenset(reach),
+                    globals_=frozenset(n for n in upstream
+                                       if self.is_module_global(n)),
+                    node=nodes[0], own_calls=own_calls))
+
+    def frame_closure(self, holder: str
+                      ) -> tuple[frozenset[str], frozenset[str]]:
+        """The storage a frame-holding local may see written (reach) and
+        the module globals among what it borrows."""
+        fact = self.ctx.func.frame_local_roots.get(holder)
+        roots = ({r for r in fact[0] if r is not None}
+                 if fact is not None else
+                 {r.split(".", 1)[0] for r, _, _ in self.hold_loans(holder)})
+        upstream, reach = storage_closure(
+            self.stmt_loans, self.frames, roots, self.for_edges)
+        return (frozenset(reach),
+                frozenset(n for n in upstream if self.is_module_global(n)))
+
+    def check_with_holds(self) -> None:
+        """Queue each frame kept open past a `with` block for the check of
+        what the block's exit may write: the exit runs while it is open."""
+        for stmt, holders in self.with_holds:
+            for holder in sorted(holders):
+                reach, globals_ = self.frame_closure(holder)
+                nodes = self.ctx.func.frame_binding_nodes.get(holder)
+                self.ctx.pending_with_exit_checks.append(WithExitCheck(
+                    stmt=stmt, holder=holder, reach=reach, globals_=globals_,
+                    node=nodes[0] if nodes else stmt))
+
+    def hold_loans(self, holder: str) -> frozenset[_Loan]:
+        return frozenset(
+            (storage, kind, frozenset())
+            for entries in self.stmt_loans.values()
+            for storage, h, kind in entries if h == holder)
+
+    def is_module_global(self, name: str) -> bool:
+        """`name` reads a module global here: declared `global`, or bound
+        at module level and nowhere in this body."""
+        if name in self.ctx.func.global_declarations:
+            return True
+        return (name in self.ctx.global_scope.bindings
+                and name not in self.bound_any
+                and name not in self.ctx.func.current_param_names)
 
     # -- the decision --
 
@@ -686,6 +835,18 @@ def _owned_args(e: TpyExpr) -> list[TpyExpr]:
             if isinstance(unwrap_readonly(p.type), OwnType)]
 
 
+def _names_bound_in(body: list[TpyStmt]) -> set[str]:
+    """Every name a statement list binds, nested blocks included and
+    nested defs' bodies not."""
+    out: set[str] = set()
+    for s in body:
+        out |= bound_names_of(s) | walrus_names_of(s)
+        if not isinstance(s, TpyNestedDef):
+            for sub in s.sub_bodies():
+                out |= _names_bound_in(sub)
+    return out
+
+
 def _frame_roots(e: TpyExpr) -> list[str]:
     operands = frame_borrowed_operands(e)
     return [root for src in operands or ()
@@ -728,6 +889,8 @@ def decide_rebind_storage(ctx: 'SemanticContext', stmts: list[TpyStmt], *,
         st.origins[name] = frozenset((FOREIGN,))
     replay.walk_stmts(stmts, st)
     replay.decide()
+    replay.check_loop_holds()
+    replay.check_with_holds()
     # The per-name verdict the frame layout consumes: a local with any site
     # left OWN (decided, or never reached) goes pointer-form on a frame.
     ctx.func.own_rebind_names = frozenset(

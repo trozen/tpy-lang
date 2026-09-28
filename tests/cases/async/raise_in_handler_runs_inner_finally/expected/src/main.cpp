@@ -62,6 +62,7 @@ __coro_fail_value fail_value() {
                 return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret_0));
             } catch (const ::tpy::ValueError&) {
                 __sub_0.reset();
+                if (__fin_ran_2) throw;
                 try {
                     std::cout << "inner-handler" << "\n";
                     throw ::tpy::RuntimeError("handler-raised");
@@ -78,6 +79,7 @@ __coro_fail_value fail_value() {
             }
         } catch (const ::tpy::RuntimeError&) {
             __sub_0.reset();
+            if (__fin_ran_1) throw;
             bool __fin_ran_4 = false;
             try {
                 std::cout << "outer-handler" << "\n";

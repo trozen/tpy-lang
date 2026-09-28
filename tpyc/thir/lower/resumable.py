@@ -417,7 +417,8 @@ def _res_param_ok(t: 'TpyType | None', analyzer, gen_frame: bool) -> bool:
         # handle is refused outright: `Iterator` is not a legal return type.
         # Storage that outlives the block is refused in sema: a rebind
         # borrows nothing (the alias-rebind pass), a hoisted name may not
-        # borrow a temporary (`TpyVarDecl.frame_borrows_local`), and inside a
+        # borrow a temporary (sema's `frame_local_roots` records the adapter
+        # as one, and the hoist rejects it), and inside a
         # generator or async body no generator takes an adapter at all, since
         # the frame would hold it across a suspension
         # (`_reject_frame_held_adapter`). A container literal holding the
@@ -1756,7 +1757,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 return _reject(reason)
             if isinstance(region, rcfg.WithRegion):
                 saw_with_region = True
-            else:
+            elif not isinstance(region, rcfg.LoopSourceRegion):
                 saw_try_region = True
             if (isinstance(region, rcfg.ExceptRegion)
                     and region.handler.binding is not None):

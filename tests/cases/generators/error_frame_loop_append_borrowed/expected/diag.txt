@@ -1,0 +1,2 @@
+main.py:25: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
+main.py:22: error: cannot keep 'g' open across passes of this loop: the loop calls 'append', which may write 'xs' while 'g' from the previous pass still borrows it; close it with 'del g' before the pass ends, or iterate it inside a helper function

@@ -33,7 +33,7 @@ def outer() -> Iterator[int32]:
     src = cells()
     for c in src:
         # The subject: the next pull rebuilds what c refers to.
-        g = cell_gen(c)  # tpyc: error(/cannot bind generator 'g' here: it borrows 'c', which a loop around it binds again/)
+        g = cell_gen(c)  # tpyc: error(/cannot keep 'g' open across passes of this loop: the loop binds 'c' again/)
         yield first(g)
 
 

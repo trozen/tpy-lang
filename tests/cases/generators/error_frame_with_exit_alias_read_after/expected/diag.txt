@@ -1,0 +1,1 @@
+main.py:40: error: cannot use 'h' after the 'with' block it is bound in: it is another name for 'g', which ends with the 'with' block, so 'h' is closed when the block ends; use it inside the block only

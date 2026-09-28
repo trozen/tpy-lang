@@ -498,13 +498,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stop_in_region::__next__() {
             __state = S_JOIN_2;
             continue;
         } catch (const ::tpy::ValueError&) {
+            this->__finally_stop = false;
             __state = S_RESUME_1;
             return -1;
         } catch (...) {
-            if (this->__finally_stop) {
-                __state = S_DONE;
-                return ::tpy::make_unexpected(::tpy::StopIteration{});
-            }
             throw;
         }
     }
@@ -572,13 +569,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stop_in_region::__next__() {
                 continue;
             }
         } catch (const ::tpy::ValueError&) {
+            this->__finally_stop = false;
             __state = S_RESUME_1;
             return -1;
         } catch (...) {
-            if (this->__finally_stop) {
-                __state = S_DONE;
-                return ::tpy::make_unexpected(::tpy::StopIteration{});
-            }
             throw;
         }
     }
@@ -591,13 +585,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stop_in_region::__next__() {
             __state = S_JOIN_1;
             continue;
         } catch (const ::tpy::ValueError&) {
+            this->__finally_stop = false;
             __state = S_RESUME_1;
             return -1;
         } catch (...) {
-            if (this->__finally_stop) {
-                __state = S_DONE;
-                return ::tpy::make_unexpected(::tpy::StopIteration{});
-            }
             throw;
         }
     }
@@ -626,13 +617,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stop_in_region::__next__() {
             __state = S_JOIN_1;
             continue;
         } catch (const ::tpy::ValueError&) {
+            this->__finally_stop = false;
             __state = S_RESUME_1;
             return -1;
         } catch (...) {
-            if (this->__finally_stop) {
-                __state = S_DONE;
-                return ::tpy::make_unexpected(::tpy::StopIteration{});
-            }
             throw;
         }
     }

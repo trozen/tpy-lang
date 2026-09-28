@@ -1,0 +1,1 @@
+main.py:37: error: cannot keep 'g' open past the 'with' block it is bound in: the block's exit may write 'r', which 'g' borrows; close it with 'del g' before the block ends, or iterate it inside a helper function
