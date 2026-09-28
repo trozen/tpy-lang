@@ -1,0 +1,50 @@
+mem fixture True
+mem mtime0 True
+mem mtime True
+mem now True
+mem bytearray True
+mem multi True
+mem padding True
+mem empty b''
+mem header fields b'header fields ok\n'
+mem big True
+err not gzip BadGzipFile Not a gzipped file (b'PK')
+err one byte BadGzipFile Not a gzipped file (b'\x1f')
+err zeros BadGzipFile Not a gzipped file (b'\x00\x00')
+err magic only EOFError Compressed file ended before the end-of-stream marker was reached
+err truncated EOFError Compressed file ended before the end-of-stream marker was reached
+err header only EOFError Compressed file ended before the end-of-stream marker was reached
+err crc BadGzipFile CRC check failed
+err length BadGzipFile Incorrect length of data produced
+err trailing BadGzipFile Not a gzipped file (b'ju')
+err method BadGzipFile Unknown compression method
+err mtime -1.0 raised
+err mtime 4294967296.0 raised
+file read True
+file header fields b'header fields ok\n'
+file decompress True
+method head b'hello' b' hello hello hello\n' gzip_basic.gz
+generator 3
+readline size b'hel' b'lo hello hello hello\n' b''
+readlines 2
+at eof b'' b''
+protocol 3
+flags True False False
+closed True gzip_basic.gz
+closed read I/O operation on closed file
+closed readlines I/O operation on closed file.
+closed first I/O operation on closed file
+read -2 read length must be non-negative or -1
+iter line b'hello hello hello hello\n'
+closed mid-iteration I/O operation on closed file
+comprehension [10, 100000, 0]
+file big 1536000 True
+file pieces 1536000
+file not gzip BadGzipFile Not a gzipped file (b'no')
+file crc BadGzipFile CRC check failed 0x11ce0e4b != 0x11ce0e4a
+file truncated EOFError Compressed file ended before the end-of-stream marker was reached
+file trailing BadGzipFile Not a gzipped file (b'ju')
+file empty ok 0
+file lazy True
+file missing [Errno 2] No such file or directory: 'gzip_basic_missing.gz'
+file directory [Errno 21] Is a directory: 'gzip_basic_dir'

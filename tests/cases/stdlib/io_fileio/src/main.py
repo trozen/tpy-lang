@@ -47,5 +47,12 @@ def main() -> None:
     os.close(fd)
     print("closefd-ok")
 
+    # read(-1) over more than one 8192-byte raw read.
+    payload = bytes(range(256)) * 80
+    big = FileIO(feed(payload))
+    got = big.read()
+    print("read-all", len(got), got == payload)
+    big.close()
+
 
 main()

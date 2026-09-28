@@ -91,5 +91,29 @@ def main() -> None:
     except ValueError:
         print("closed-ValueError")
 
+    # Bytes left past the newline in a small-buffer fill serve the next line.
+    rl = BufferedReader(FileIO(feed(b"ab\ncd\nef")), 4)
+    print("leftover", rl.readline(), rl.readline(), rl.readline(), rl.readline())
+
+    # readline(size) reaching its cap partway through the fills.
+    rcap = BufferedReader(FileIO(feed(b"abcdefghij\nxy")), 3)
+    print("capped", rcap.readline(5), rcap.readline(), rcap.read())
+
+    # read(n) and readline interleaved across fills.
+    rmix = BufferedReader(FileIO(feed(b"0123456789\nabc\n")), 3)
+    print("mixed", rmix.read(4), rmix.readline(), rmix.read(2), rmix.read(-1))
+
+    # A length below -1 is rejected, before and after close.
+    rneg = BufferedReader(FileIO(feed(b"abc")))
+    try:
+        rneg.read(-2)
+    except ValueError as e:
+        print("read -2", str(e))
+    rneg.close()
+    try:
+        rneg.read(-2)
+    except ValueError as e:
+        print("closed -2", str(e))
+
 
 main()

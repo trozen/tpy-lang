@@ -1,0 +1,59 @@
+free fixture True
+free default True
+free level1 True
+free gzip True
+free auto True
+free raw True
+free wbits kw True
+free bufsize True True
+free bytearray True
+free slice True
+free trailing True
+free big True
+free empty True
+crc32 907060870 0 3763548720
+crc32 chain True
+adler32 103547413 1
+adler32 chain 436929629
+crc32 mask 907060870 0x3610a686
+err garbage zlib.error Error -3 while decompressing data: incorrect header check
+err truncated zlib.error Error -5 while decompressing data: incomplete or truncated stream
+err empty zlib.error Error -5 while decompressing data: incomplete or truncated stream
+err bad block zlib.error Error -3 while decompressing data: invalid block type
+err wrong container zlib.error Error -3 while decompressing data: incorrect header check
+err bad wbits zlib.error Error -2 while preparing to decompress data: inconsistent stream state
+err level Bad compression level
+err compress wbits Bad compression level
+err bufsize bufsize must be non-negative
+err decompressobj Invalid initialization option
+err compressobj Invalid initialization option
+method chunks True True b'' b''
+obj unused True True b'XY' b''
+obj after eof b'' b'XYmore'
+obj max_length b'hello' True False
+obj flush True b'' True
+obj flush again b''
+obj after flush Error -2 while decompressing data: inconsistent stream state b'abc'
+obj partial b'hello h' b'' False
+obj error Error -3 while decompressing data: incorrect header check
+obj error sticky Error -3 while decompressing data: incorrect header check
+obj max_length max_length must be non-negative
+obj flush length length must be greater than zero
+cobj roundtrip True
+cobj no flush b''
+cobj after finish Error -2 while compressing data: inconsistent stream state
+cobj flush after finish Error -2 while flushing: inconsistent stream state
+cobj sync True
+cobj bad mode Error -2 while flushing: inconsistent stream state
+cobj rle True
+cobj full flush b'abc'
+cobj sync after finish Error -2 while flushing: buffer error
+obj tail at end 67 b'JUNK' b'JUNK' True
+generator True
+comprehension [3904355907, 3265866552, 214229345] [6422626, 19464390, 39780656]
+with True
+consts 15 8 8 16384
+levels 0 1 9 -1
+strategies 0 1 2 3 4
+flush 0 1 2 3 4 5 6
+versions True True

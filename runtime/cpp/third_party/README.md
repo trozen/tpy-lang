@@ -1,7 +1,7 @@
 # Vendored third-party C/C++ libraries
 
 Source trees for libraries TPy stdlib modules bind to (e.g. PCRE2 for `re`,
-in the future zlib for `gzip`, sqlite3 for `sqlite3`, etc.). Each lib lives
+zlib for `zlib`/`gzip`, in the future sqlite3 for `sqlite3`, etc.). Each lib lives
 in its own subdirectory and is built into TPy programs that import the
 corresponding stdlib module, in `--<lib>=bundled` mode.
 
@@ -53,6 +53,7 @@ on an already-vendored tree is a no-op.
 | `mbedtls/` | `mbedtls.vendor.json` | mbedTLS 3.6.6 | `ssl` (via `_bindings.mbedtls`) | `scripts/vendor_mbedtls.py` |
 | `cacert/` | `cacert.vendor.json` | Mozilla CA roots (certifi 2026.06.17) | `ssl` default trust store (compiled-in blob `cacert_data.c`, built with mbedTLS) | `scripts/vendor_cacert.py` |
 | `date/` | `date.vendor.json` | Howard Hinnant date 3.0.4 | `datetime` tz backend (via `_bindings.hinnant_date`; `tz.cpp` built with `USE_OS_TZDB`, TPy-facing surface is the hand-written `tpy/stdlib/datetime.hpp` facade) | `scripts/vendor_date.py` |
+| `zlib/` | `zlib.vendor.json` | zlib 1.3.2 (core library, no gzFile API) | `zlib` and `gzip` (via `_bindings.zlib` + the `zlib_shim.c` glue) | `scripts/vendor_zlib.py` |
 
 ## Why committed instead of fetched
 

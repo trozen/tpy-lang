@@ -287,6 +287,16 @@ def _opt_flags(args: argparse.Namespace) -> list[str]:
     return ["-g", "-O0"] if args.debug else ["-O3"]
 
 
+# The managed third-party libraries, each with a `--<name>` mode flag. A
+# literal rather than the registry's names, so the warm build-cache path does
+# not import the build layer; a unit test pins it to the registry.
+THIRD_PARTY_LIBS: tuple[str, ...] = ("pcre2", "mbedtls", "date", "zlib")
+
+
+def _third_party_modes(args: argparse.Namespace) -> dict[str, str]:
+    return {name: getattr(args, name) for name in THIRD_PARTY_LIBS}
+
+
 def _cache_options_key(args: argparse.Namespace, input_path: Path,
                        lib_dirs: list[Path],
                        config: CppCompilerConfig) -> dict:
@@ -309,8 +319,7 @@ def _cache_options_key(args: argparse.Namespace, input_path: Path,
         "no_main": bool(args.no_main),
         "emit_source": bool(args.emit_source),
         "lib_dirs": [str(d) for d in lib_dirs],
-        "third_party": {"pcre2": args.pcre2, "mbedtls": args.mbedtls,
-                        "date": args.date},
+        "third_party": _third_party_modes(args),
     }
 
 
@@ -519,6 +528,13 @@ def _run_cli(is_runner: bool) -> int:
              "-ldate-tz), auto (system, fall back to bundled), or none "
              "(disabled -- any module that imports `datetime` becomes a "
              "compile error)",
+    )
+    parser.add_argument(
+        "--zlib", choices=["bundled", "system", "auto", "none"], default="bundled",
+        help="zlib source for the `zlib` and `gzip` modules: bundled (vendored, "
+             "default), system (find_package / -lz), auto (system, fall back "
+             "to bundled), or none (disabled -- any module that imports `zlib` "
+             "or `gzip` becomes a compile error)",
     )
     parser.add_argument(
         "--dsl-plugin", action="append", default=None, metavar="SPEC",
@@ -972,8 +988,7 @@ def _run_cli(is_runner: bool) -> int:
         from .build.third_party import (
             resolve_build_plan, DisabledLibError, SystemLibVersionError,
         )
-        third_party_modes = {"pcre2": args.pcre2, "mbedtls": args.mbedtls,
-                             "date": args.date}
+        third_party_modes = _third_party_modes(args)
         try:
             third_party_plan = resolve_build_plan(
                 dep_names=compiler.collect_third_party_deps(),

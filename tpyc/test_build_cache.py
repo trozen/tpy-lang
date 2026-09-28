@@ -185,7 +185,8 @@ def test_options_key_sensitive_to_each_flag(tmp_path):
     def make_key(entry="/x/prog.py", lib_dirs=(), compiler=("g++",), **over):
         flags = dict(debug=False, default_int="int32", pch=True,
                      no_main=False, emit_source=False,
-                     pcre2="bundled", mbedtls="bundled", date="bundled")
+                     pcre2="bundled", mbedtls="bundled", date="bundled",
+                     zlib="bundled")
         flags.update(over)
         return _cache_options_key(
             Namespace(**flags), Path(entry), [Path(d) for d in lib_dirs],
@@ -196,7 +197,7 @@ def test_options_key_sensitive_to_each_flag(tmp_path):
     variants = [dict(debug=True), dict(default_int="BigInt"),
                 dict(pch=False), dict(no_main=True), dict(emit_source=True),
                 dict(pcre2="system"),
-                dict(mbedtls="none"), dict(date="auto"),
+                dict(mbedtls="none"), dict(date="auto"), dict(zlib="system"),
                 dict(entry="/x/other.py"), dict(lib_dirs=("/L",)),
                 dict(compiler=("clang++",))]
     for over in variants:

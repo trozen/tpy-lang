@@ -468,13 +468,15 @@ class FileIO:
         return self._os_read(int64(size))
 
     def _readall(self) -> bytes:
-        out: bytes = b""
+        # Join once at the end: appending each chunk would copy the whole
+        # result per chunk.
+        chunks: list[bytes] = []
         while True:
-            chunk: bytes = self._os_read(int64(DEFAULT_BUFFER_SIZE))
+            chunk = self._os_read(int64(DEFAULT_BUFFER_SIZE))
             if len(chunk) == 0:
                 break
-            out = out + chunk
-        return out
+            chunks.append(chunk)
+        return b"".join(chunks)
 
     def _os_read(self, n: int64) -> bytes:
         if not self._timeout_mode:
@@ -531,13 +533,16 @@ class BufferedReader(BinaryReadable, Closable):
     """Buffered binary reader over a raw byte source (CPython io.BufferedReader).
 
     Fills an owned bytes buffer from the raw source in `buffer_size` chunks;
-    read()/readline() serve from it, refilling on demand. The buffer logic
-    mirrors asyncio.StreamReader (minus await): read(size>=0) blocks until
-    `size` bytes are buffered or EOF; read(-1) drains to EOF.
+    read()/readline() serve from it, refilling on demand: read(size>=0)
+    blocks until `size` bytes are buffered or EOF; read(-1) drains to EOF.
+    Unread bytes are `_buf[_pos:]`, so a read advances an offset instead of
+    copying the rest of the buffer, and a fill collects its raw chunks and
+    joins them once -- reading n bytes costs O(n) however they are split.
     """
 
     _raw: Box[RawBinaryIO]
     _buf: bytes
+    _pos: int32
     _eof: bool
     _buffer_size: int32
     _closed: bool
@@ -548,46 +553,75 @@ class BufferedReader(BinaryReadable, Closable):
         # any other statement (the buffer_size guard) runs.
         self._raw = Box(raw)
         self._buf = b""
+        self._pos = 0
         self._eof = False
         self._buffer_size = buffer_size
         self._closed = False
         if buffer_size <= 0:
             raise ValueError("buffer size must be strictly positive")
 
-    def _fill(self) -> None:
-        chunk = self._raw.read(self._buffer_size)
-        if len(chunk) == 0:
-            self._eof = True
-        else:
-            self._buf = self._buf + chunk
+    def _available(self) -> int32:
+        return len(self._buf) - self._pos
+
+    def _newline_at(self) -> int32:
+        # Index of the first unread `\n`, relative to `_pos`; -1 if none.
+        # bytes.find takes no start argument (BUGS.md#str-search-start-end-args),
+        # so search the unread view.
+        return self._buf[self._pos:].find(b"\n")
+
+    def _fill(self, want: int32, to_newline: bool) -> None:
+        """Read raw chunks until `want` bytes are unread (`want < 0`: until
+        EOF), or with `to_newline` until a chunk brings a newline."""
+        if self._eof:
+            return
+        have = self._available()
+        # Appended, not a one-element literal, so the leftover is moved in
+        # (BUGS.md#list-literal-owned-elem-initializer-copy).
+        parts: list[bytes] = []
+        parts.append(bytes(self._buf[self._pos:]))
+        while want < 0 or have < want:
+            chunk = self._raw.read(self._buffer_size)
+            if len(chunk) == 0:
+                self._eof = True
+                break
+            have += len(chunk)
+            found = to_newline and chunk.find(b"\n") >= 0
+            parts.append(chunk)
+            if found:
+                break
+        self._buf = b"".join(parts)
+        self._pos = 0
 
     def _take(self, n: int32) -> bytes:
-        # Materialize the owned head before reassigning `_buf` (a slice is a
-        # borrow into the old buffer).
-        head = bytes(self._buf[:n])
-        self._buf = bytes(self._buf[n:])
+        head = bytes(self._buf[self._pos:self._pos + n])
+        self._pos += n
+        if self._pos == len(self._buf):
+            self._buf = b""
+            self._pos = 0
         return head
 
     def read(self, size: int32 = -1) -> bytes:
+        # CPython validates the length before the closed state.
+        if size < -1:
+            raise ValueError("read length must be non-negative or -1")
         self._check_open()
         if size < 0:
-            while not self._eof:
-                self._fill()
-            return self._take(len(self._buf))
-        while len(self._buf) < size and not self._eof:
-            self._fill()
-        take = size if size < len(self._buf) else len(self._buf)
+            self._fill(-1, False)
+            return self._take(self._available())
+        if self._available() < size:
+            self._fill(size, False)
+        take = size if size < self._available() else self._available()
         return self._take(take)
 
     def readline(self, size: int32 = -1) -> bytes:
         """Read through the next `\\n` (included) or EOF; at most `size`
         bytes when `size >= 0`. Matches CPython's BufferedReader.readline."""
         self._check_open()
-        idx = self._buf.find(b"\n")
-        while idx < 0 and not self._eof and (size < 0 or len(self._buf) < size):
-            self._fill()
-            idx = self._buf.find(b"\n")
-        stop = idx + 1 if idx >= 0 else len(self._buf)
+        idx = self._newline_at()
+        if idx < 0 and (size < 0 or self._available() < size):
+            self._fill(size, True)
+            idx = self._newline_at()
+        stop = idx + 1 if idx >= 0 else self._available()
         if size >= 0 and size < stop:
             stop = size
         return self._take(stop)
@@ -616,6 +650,7 @@ class BufferedReader(BinaryReadable, Closable):
             self._closed = True
             self._raw.close()
             self._buf = b""
+            self._pos = 0
 
     @property
     def closed(self) -> bool:

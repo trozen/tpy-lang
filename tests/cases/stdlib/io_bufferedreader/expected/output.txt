@@ -28,3 +28,8 @@ b'z\n'
 True
 bufsize-ValueError
 closed-ValueError
+leftover b'ab\n' b'cd\n' b'ef' b''
+capped b'abcde' b'fghij\n' b'xy'
+mixed b'0123' b'456789\n' b'ab' b'c\n'
+read -2 read length must be non-negative or -1
+closed -2 read length must be non-negative or -1

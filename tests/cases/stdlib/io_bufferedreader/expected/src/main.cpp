@@ -95,6 +95,30 @@ int64_t feed(::tpy::BytesView data) {
 //         print("no-raise")
 //     except ValueError:
 //         print("closed-ValueError")
+//
+//     # Bytes left past the newline in a small-buffer fill serve the next line.
+//     rl = BufferedReader(FileIO(feed(b"ab\ncd\nef")), 4)
+//     print("leftover", rl.readline(), rl.readline(), rl.readline(), rl.readline())
+//
+//     # readline(size) reaching its cap partway through the fills.
+//     rcap = BufferedReader(FileIO(feed(b"abcdefghij\nxy")), 3)
+//     print("capped", rcap.readline(5), rcap.readline(), rcap.read())
+//
+//     # read(n) and readline interleaved across fills.
+//     rmix = BufferedReader(FileIO(feed(b"0123456789\nabc\n")), 3)
+//     print("mixed", rmix.read(4), rmix.readline(), rmix.read(2), rmix.read(-1))
+//
+//     # A length below -1 is rejected, before and after close.
+//     rneg = BufferedReader(FileIO(feed(b"abc")))
+//     try:
+//         rneg.read(-2)
+//     except ValueError as e:
+//         print("read -2", str(e))
+//     rneg.close()
+//     try:
+//         rneg.read(-2)
+//     except ValueError as e:
+//         print("closed -2", str(e))
 void main() {
     ::tpystd::io::BufferedReader br = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello", 43)))));
     std::cout << ::tpy::BytesPrinter(br.readline()) << "\n";
@@ -174,6 +198,28 @@ void main() {
             std::cout << "no-raise" << "\n";
         } catch (const ::tpy::ValueError&) {
             std::cout << "closed-ValueError" << "\n";
+        }
+    }
+    ::tpystd::io::BufferedReader rl = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("ab\ncd\nef", 8)))), 4);
+    std::cout << "leftover" << " " << ::tpy::BytesPrinter(rl.readline()) << " " << ::tpy::BytesPrinter(rl.readline()) << " " << ::tpy::BytesPrinter(rl.readline()) << " " << ::tpy::BytesPrinter(rl.readline()) << "\n";
+    ::tpystd::io::BufferedReader rcap = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("abcdefghij\nxy", 13)))), 3);
+    std::cout << "capped" << " " << ::tpy::BytesPrinter(rcap.readline(5)) << " " << ::tpy::BytesPrinter(rcap.readline()) << " " << ::tpy::BytesPrinter(rcap.read()) << "\n";
+    ::tpystd::io::BufferedReader rmix = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("0123456789\nabc\n", 15)))), 3);
+    std::cout << "mixed" << " " << ::tpy::BytesPrinter(rmix.read(4)) << " " << ::tpy::BytesPrinter(rmix.readline()) << " " << ::tpy::BytesPrinter(rmix.read(2)) << " " << ::tpy::BytesPrinter(rmix.read(-1)) << "\n";
+    ::tpystd::io::BufferedReader rneg = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("abc", 3)))));
+    {
+        try {
+            rneg.read(-2);
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << "read -2" << " " << std::string(::tpy::__str__(e)) << "\n";
+        }
+    }
+    rneg.close();
+    {
+        try {
+            rneg.read(-2);
+        } catch (const ::tpy::ValueError& e) {
+            std::cout << "closed -2" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
