@@ -37,8 +37,10 @@ def free_function() -> None:
     tty.setraw(slave)
     os.write(master, b"\x03")
     print("free: raw read:", os.read(slave, 16))        # Ctrl-C is a byte, no SIGINT
-    # Hands the saved attributes back.
-    termios.tcsetattr(slave, termios.TCSADRAIN, old)  # tpyc: ok
+    # Hands the saved attributes back. Every restore that is compared uses
+    # TCSAFLUSH: on macOS re-entering canonical mode with TCSANOW/TCSADRAIN
+    # sets PENDIN in lflag, so the read-back would differ (CPython too).
+    termios.tcsetattr(slave, termios.TCSAFLUSH, old)  # tpyc: ok
     print("free: restored:", termios.tcgetattr(slave) == old)
     # != compares by value, like CPython's list.
     print("free: restored differs:", termios.tcgetattr(slave) != old)  # tpyc: ok
@@ -101,12 +103,14 @@ def try_finally() -> None:
     master, slave = os.openpty()
     old = termios.tcgetattr(slave)
     try:
-        tty.setcbreak(slave)
+        # TCSADRAIN only where no echo is queued: on macOS it waits for the
+        # pty's unread output to drain, which here nothing ever reads.
+        tty.setcbreak(slave, termios.TCSADRAIN)  # tpyc: ok
         os.write(master, b"x")
         print("finally: read:", os.read(slave, 1))
     finally:
         # Restores even if the body raised.
-        termios.tcsetattr(slave, termios.TCSADRAIN, old)  # tpyc: ok
+        termios.tcsetattr(slave, termios.TCSAFLUSH, old)  # tpyc: ok
     print("finally: restored:", termios.tcgetattr(slave) == old)
     os.close(master)
     os.close(slave)
@@ -125,7 +129,7 @@ class CbreakMode:
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         # Restores when the with block ends.
-        termios.tcsetattr(self.fd, termios.TCSADRAIN, self.saved)  # tpyc: ok
+        termios.tcsetattr(self.fd, termios.TCSAFLUSH, self.saved)  # tpyc: ok
 
 
 def context_manager() -> None:

@@ -36,8 +36,10 @@ std::string expected(int32_t err) {
 //     tty.setraw(slave)
 //     os.write(master, b"\x03")
 //     print("free: raw read:", os.read(slave, 16))        # Ctrl-C is a byte, no SIGINT
-//     # Hands the saved attributes back.
-//     termios.tcsetattr(slave, termios.TCSADRAIN, old)  # tpyc: ok
+//     # Hands the saved attributes back. Every restore that is compared uses
+//     # TCSAFLUSH: on macOS re-entering canonical mode with TCSANOW/TCSADRAIN
+//     # sets PENDIN in lflag, so the read-back would differ (CPython too).
+//     termios.tcsetattr(slave, termios.TCSAFLUSH, old)  # tpyc: ok
 //     print("free: restored:", termios.tcgetattr(slave) == old)
 //     # != compares by value, like CPython's list.
 //     print("free: restored differs:", termios.tcgetattr(slave) != old)  # tpyc: ok
@@ -95,7 +97,7 @@ void free_function() {
     ::tpystd::tty::setraw(slave);
     ::tpystd::os::write(master, ::tpy::bytes_literal("\x03", 1));
     std::cout << "free: raw read:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 16)) << "\n";
-    ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsadrain, old);
+    ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsaflush, old);
     std::cout << "free: restored:" << " " << ::tpy::print_bool(((::tpystd::termios::tcgetattr(slave)) == (old))) << "\n";
     std::cout << "free: restored differs:" << " " << ::tpy::print_bool((::tpystd::termios::tcgetattr(slave) != old)) << "\n";
     ::tpystd::os::write(master, ::tpy::bytes_literal("cd", 2));
@@ -165,12 +167,14 @@ void method() {
 //     master, slave = os.openpty()
 //     old = termios.tcgetattr(slave)
 //     try:
-//         tty.setcbreak(slave)
+//         # TCSADRAIN only where no echo is queued: on macOS it waits for the
+//         # pty's unread output to drain, which here nothing ever reads.
+//         tty.setcbreak(slave, termios.TCSADRAIN)  # tpyc: ok
 //         os.write(master, b"x")
 //         print("finally: read:", os.read(slave, 1))
 //     finally:
 //         # Restores even if the body raised.
-//         termios.tcsetattr(slave, termios.TCSADRAIN, old)  # tpyc: ok
+//         termios.tcsetattr(slave, termios.TCSAFLUSH, old)  # tpyc: ok
 //     print("finally: restored:", termios.tcgetattr(slave) == old)
 //     os.close(master)
 //     os.close(slave)
@@ -181,14 +185,14 @@ void try_finally() {
     ::tpystd::termios::TermAttributes old = ::tpystd::termios::tcgetattr(slave);
     {
         try {
-            ::tpystd::tty::setcbreak(slave);
+            ::tpystd::tty::setcbreak(slave, ::tpy_const_termios_tcsadrain);
             ::tpystd::os::write(master, ::tpy::bytes_literal("x", 1));
             std::cout << "finally: read:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 1)) << "\n";
         } catch (...) {
-            ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsadrain, old);
+            ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsaflush, old);
             throw;
         }
-        ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsadrain, old);
+        ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsaflush, old);
     }
     std::cout << "finally: restored:" << " " << ::tpy::print_bool(((::tpystd::termios::tcgetattr(slave)) == (old))) << "\n";
     ::tpystd::os::close(master);

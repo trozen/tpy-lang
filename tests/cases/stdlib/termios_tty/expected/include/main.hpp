@@ -108,9 +108,9 @@ inline CbreakMode& CbreakMode::__enter__() {
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 //     # Restores when the with block ends.
-//     termios.tcsetattr(self.fd, termios.TCSADRAIN, self.saved)  # tpyc: ok
+//     termios.tcsetattr(self.fd, termios.TCSAFLUSH, self.saved)  # tpyc: ok
 inline void CbreakMode::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    ::tpystd::termios::tcsetattr(this->fd, ::tpy_const_termios_tcsadrain, this->saved);
+    ::tpystd::termios::tcsetattr(this->fd, ::tpy_const_termios_tcsaflush, this->saved);
 }
 void __tpy_init();
 } // namespace tpyapp::main
