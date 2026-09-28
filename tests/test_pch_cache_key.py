@@ -12,6 +12,9 @@ from conftest import _pch_cache_key
 
 def _key(monkeypatch, runtime_dir: Path, path_sensitive: bool) -> str:
     monkeypatch.setattr(conftest, "RUNTIME_DIR", runtime_dir)
+    # _runtime_hash is session-memoized from RUNTIME_DIR: computed here first,
+    # it would pin the fake dir's hash for the rest of the worker's session.
+    monkeypatch.setattr(conftest, "_runtime_hash", lambda: "RUNTIME")
     monkeypatch.setattr(conftest, "pch_is_path_sensitive", lambda cfg: path_sensitive)
     _pch_cache_key.cache_clear()
     try:
@@ -30,6 +33,15 @@ def test_path_sensitive_family_stable_for_one_checkout(tmp_path, monkeypatch):
     """The inverse: same checkout must keep hitting its own cached PCH."""
     a = tmp_path / "checkout-a" / "include"
     assert _key(monkeypatch, a, True) == _key(monkeypatch, a, True)
+
+
+def test_key_probe_leaves_the_session_runtime_hash_alone(tmp_path, monkeypatch):
+    """A worker whose first runtime-hash call came from a fake RUNTIME_DIR
+    keyed its PCH, stdlib .o cache and exec fingerprints on an empty runtime."""
+    conftest._runtime_hash.cache_clear()
+    _key(monkeypatch, tmp_path / "checkout-a" / "include", False)
+    monkeypatch.undo()
+    assert conftest._runtime_hash() == conftest._runtime_hash.__wrapped__()
 
 
 def test_path_agnostic_family_shares_across_checkouts(tmp_path, monkeypatch):

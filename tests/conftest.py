@@ -128,6 +128,17 @@ RUNTIME_DIR = PROJECT_ROOT / "runtime" / "cpp" / "include"
 TPYC_DIR = PROJECT_ROOT / "tpyc"
 
 
+def _run_cxx(cmd: list[str]) -> subprocess.CompletedProcess:
+    """Run a C++ compile or link command from the checkout root.
+
+    ccache rewrites the paths under CCACHE_BASEDIR relative to the working
+    directory before hashing, so every checkout hashes `runtime/...` and
+    `tests/cases/...` alike and worktrees at different paths share entries.
+    """
+    env = {**os.environ, "CCACHE_BASEDIR": str(PROJECT_ROOT)}
+    return subprocess.run(cmd, capture_output=True, text=True, cwd=PROJECT_ROOT, env=env)
+
+
 # ---------------------------------------------------------------------------
 # Pre-compiled stdlib cache
 # ---------------------------------------------------------------------------
@@ -291,7 +302,7 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
         obj_path = obj_dir / obj_name
         prefix = ["ccache"] if CPP_CONFIG.ccache else []
         cmd = [*prefix, *common, "-c", "-o", str(obj_path), str(cpp)]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = _run_cxx(cmd)
         if result.returncode != 0:
             raise RuntimeError(
                 f"stdlib pre-compilation failed for {rel}:\n{result.stderr}"
@@ -334,7 +345,7 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
                 c_src, CPP_CONFIG.compiler, CPP_CONFIG.std)
             cmd = [*prefix, *driver, *CPP_CONFIG.extra_flags,
                    *c_flags, "-c", "-o", str(obj_path), str(c_src)]
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = _run_cxx(cmd)
             if result.returncode != 0:
                 raise RuntimeError(
                     f"third-party pre-compilation failed for {c_src.name}:\n"
@@ -365,7 +376,7 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
             obj_path = obj_dir / obj_name
             prefix = ["ccache"] if CPP_CONFIG.ccache else []
             cmd = [*prefix, *common, "-c", "-o", str(obj_path), str(rt_cpp)]
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = _run_cxx(cmd)
             if result.returncode != 0:
                 raise RuntimeError(
                     f"runtime .cpp pre-compilation failed for "
@@ -2254,7 +2265,7 @@ def build_and_run(build_dir: Path, module_name: str,
         c_sources=c_sources or None,
     )
     for cmd in compile_cmds:
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = _run_cxx(cmd)
         if result.returncode != 0:
             return RunResult(
                 success=False,
