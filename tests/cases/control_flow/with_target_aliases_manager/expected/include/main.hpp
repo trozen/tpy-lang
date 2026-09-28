@@ -59,7 +59,8 @@ struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
     };
 
     __gen_steps(int32_t limit_)
-        : __state(S_INITIAL), limit(std::move(limit_)) {}
+        : __state(S_INITIAL),
+          limit(std::move(limit_)) {}
 
     __gen_steps(__gen_steps&&) = default;
     ~__gen_steps() {

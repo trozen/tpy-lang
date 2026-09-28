@@ -82,7 +82,9 @@ struct __coro_HasEnter___aenter__ {
     };
 
     __coro_HasEnter___aenter__(HasEnter& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -113,7 +115,12 @@ struct __coro_HasBoth___aexit__ {
     };
 
     __coro_HasBoth___aexit__(HasBoth& __self, std::monostate et_, std::monostate ev_, std::monostate tb_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), et(std::move(et_)), ev(std::move(ev_)), tb(std::move(tb_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          et(std::move(et_)),
+          ev(std::move(ev_)),
+          tb(std::move(tb_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -148,7 +155,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

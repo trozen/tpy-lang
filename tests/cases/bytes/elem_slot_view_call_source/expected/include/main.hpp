@@ -43,7 +43,9 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 // def __init__(self) -> None:
 //     self.chunks = []
 //     self.owned = []
-inline Sink::Sink() : chunks(std::vector<::tpy::Bytes>{}), owned(std::vector<::tpy::Bytes>{}) {}
+inline Sink::Sink()
+    : chunks(std::vector<::tpy::Bytes>{}),
+      owned(std::vector<::tpy::Bytes>{}) {}
 
 // def add_view(self, b: bytes) -> None:
 //     # The call's result is a BytesView: materialized into the element.

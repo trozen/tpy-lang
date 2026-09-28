@@ -237,7 +237,18 @@ int32_t _hex_val(int32_t c) {
 //     self._chunk_left = -1
 //     self._eof = False
 //     self.will_close = True
-HTTPResponse::HTTPResponse(::tpystd::io::BufferedReader&& fp, std::string_view method) : _fp(std::move(fp)), _method(method), status(0), reason(""), version(0), _headers(std::vector<std::tuple<std::string, std::string>>{}), _length(::tpy::BigInt(-1)), _chunked(false), _chunk_left(::tpy::BigInt(-1)), _eof(false), will_close(true) {}
+HTTPResponse::HTTPResponse(::tpystd::io::BufferedReader&& fp, std::string_view method)
+    : _fp(std::move(fp)),
+      _method(method),
+      status(0),
+      reason(""),
+      version(0),
+      _headers(std::vector<std::tuple<std::string, std::string>>{}),
+      _length(::tpy::BigInt(-1)),
+      _chunked(false),
+      _chunk_left(::tpy::BigInt(-1)),
+      _eof(false),
+      will_close(true) {}
 
 // def _read_status(self) -> None:
 //     line: str = self._fp.readline().decode()

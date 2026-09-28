@@ -164,7 +164,9 @@ struct __coro_avalues {
     };
 
     __coro_avalues(const ::tpy::ordered_map<int32_t, Box>& m)
-        : __state(S_INITIAL), __cancel_pending(false), m(m) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          m(m) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -199,7 +201,9 @@ struct __coro_anested {
     };
 
     __coro_anested(const std::vector<std::vector<int32_t>>& ds)
-        : __state(S_INITIAL), __cancel_pending(false), ds(ds) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          ds(ds) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -231,7 +235,8 @@ struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested, int32_t> {
     };
 
     __gen_nested(const std::vector<std::vector<int32_t>>& ds)
-        : __state(S_INITIAL), ds(ds) {}
+        : __state(S_INITIAL),
+          ds(ds) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_nested& __iter__() { return *this; }
@@ -263,7 +268,8 @@ struct __gen_fieldhop : public ::tpy::next_iter_mixin<__gen_fieldhop, int32_t> {
     };
 
     __gen_fieldhop(const std::vector<P>& ps)
-        : __state(S_INITIAL), ps(ps) {}
+        : __state(S_INITIAL),
+          ps(ps) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_fieldhop& __iter__() { return *this; }
@@ -299,7 +305,8 @@ struct __gen_items : public ::tpy::next_iter_mixin<__gen_items, int32_t> {
     };
 
     __gen_items(const std::vector<::tpy::ordered_map<int32_t, int32_t>>& ds)
-        : __state(S_INITIAL), ds(ds) {}
+        : __state(S_INITIAL),
+          ds(ds) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_items& __iter__() { return *this; }
@@ -327,7 +334,8 @@ struct __gen_values_ref : public ::tpy::next_iter_mixin<__gen_values_ref, int32_
     };
 
     __gen_values_ref(const ::tpy::ordered_map<int32_t, Box>& m)
-        : __state(S_INITIAL), m(m) {}
+        : __state(S_INITIAL),
+          m(m) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_values_ref& __iter__() { return *this; }
@@ -358,7 +366,8 @@ struct __gen_items_ref : public ::tpy::next_iter_mixin<__gen_items_ref, int32_t>
     };
 
     __gen_items_ref(const ::tpy::ordered_map<int32_t, Box>& m)
-        : __state(S_INITIAL), m(m) {}
+        : __state(S_INITIAL),
+          m(m) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_items_ref& __iter__() { return *this; }
@@ -393,7 +402,8 @@ struct __gen_deep_items : public ::tpy::next_iter_mixin<__gen_deep_items, int32_
     };
 
     __gen_deep_items(const std::vector<::tpy::ordered_map<int32_t, std::vector<int32_t>>>& ms)
-        : __state(S_INITIAL), ms(ms) {}
+        : __state(S_INITIAL),
+          ms(ms) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_deep_items& __iter__() { return *this; }
@@ -421,7 +431,8 @@ struct __gen_values_list : public ::tpy::next_iter_mixin<__gen_values_list, int3
     };
 
     __gen_values_list(const ::tpy::ordered_map<int32_t, std::vector<int32_t>>& m)
-        : __state(S_INITIAL), m(m) {}
+        : __state(S_INITIAL),
+          m(m) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_values_list& __iter__() { return *this; }
@@ -449,7 +460,8 @@ struct __gen_values_mutated : public ::tpy::next_iter_mixin<__gen_values_mutated
     };
 
     __gen_values_mutated(::tpy::ordered_map<int32_t, Box>& m)
-        : __state(S_INITIAL), m(m) {}
+        : __state(S_INITIAL),
+          m(m) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_values_mutated& __iter__() { return *this; }
@@ -476,7 +488,8 @@ struct __gen_over_array_list : public ::tpy::next_iter_mixin<__gen_over_array_li
     };
 
     __gen_over_array_list(const ::tpystd::tplib::array_list::ArrayList<int32_t, 8>& al)
-        : __state(S_INITIAL), al(al) {}
+        : __state(S_INITIAL),
+          al(al) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_over_array_list& __iter__() { return *this; }
@@ -506,7 +519,8 @@ struct __gen_unpack_loop : public ::tpy::next_iter_mixin<__gen_unpack_loop, int3
     };
 
     __gen_unpack_loop(const std::vector<std::tuple<int32_t, Box>>& pairs)
-        : __state(S_INITIAL), pairs(pairs) {}
+        : __state(S_INITIAL),
+          pairs(pairs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_unpack_loop& __iter__() { return *this; }
@@ -531,7 +545,8 @@ struct __gen_unpack_subscript : public ::tpy::next_iter_mixin<__gen_unpack_subsc
     };
 
     __gen_unpack_subscript(const std::vector<std::tuple<int32_t, Box>>& pairs)
-        : __state(S_INITIAL), pairs(pairs) {}
+        : __state(S_INITIAL),
+          pairs(pairs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_unpack_subscript& __iter__() { return *this; }
@@ -556,7 +571,8 @@ struct __gen_unpack_field : public ::tpy::next_iter_mixin<__gen_unpack_field, in
     };
 
     __gen_unpack_field(const H& h)
-        : __state(S_INITIAL), h(h) {}
+        : __state(S_INITIAL),
+          h(h) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_unpack_field& __iter__() { return *this; }
@@ -581,7 +597,8 @@ struct __gen_unpack_readonly : public ::tpy::next_iter_mixin<__gen_unpack_readon
     };
 
     __gen_unpack_readonly(const std::vector<std::tuple<int32_t, Box>>& pairs)
-        : __state(S_INITIAL), pairs(pairs) {}
+        : __state(S_INITIAL),
+          pairs(pairs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_unpack_readonly& __iter__() { return *this; }
@@ -610,7 +627,8 @@ struct __gen_alias_in_loop : public ::tpy::next_iter_mixin<__gen_alias_in_loop, 
     };
 
     __gen_alias_in_loop(const std::vector<std::vector<Box>>& ds)
-        : __state(S_INITIAL), ds(ds) {}
+        : __state(S_INITIAL),
+          ds(ds) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_alias_in_loop& __iter__() { return *this; }
@@ -642,7 +660,8 @@ struct __gen_mutated : public ::tpy::next_iter_mixin<__gen_mutated, int32_t> {
     };
 
     __gen_mutated(std::vector<std::vector<Box>>& ds)
-        : __state(S_INITIAL), ds(ds) {}
+        : __state(S_INITIAL),
+          ds(ds) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_mutated& __iter__() { return *this; }
@@ -674,7 +693,8 @@ struct __gen_Bag_scan : public ::tpy::next_iter_mixin<__gen_Bag_scan, int32_t> {
     };
 
     __gen_Bag_scan(const Bag& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Bag_scan& __iter__() { return *this; }

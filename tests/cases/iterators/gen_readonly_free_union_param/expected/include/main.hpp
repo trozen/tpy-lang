@@ -62,7 +62,8 @@ struct __gen_codes : public ::tpy::next_iter_mixin<__gen_codes, ::tpy::BigInt> {
     };
 
     __gen_codes(::tpy::Union<const Cat*, const Dog*> a_)
-        : __state(S_INITIAL), a(a_) {}
+        : __state(S_INITIAL),
+          a(a_) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_codes& __iter__() { return *this; }

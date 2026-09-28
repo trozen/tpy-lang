@@ -80,6 +80,8 @@ inline B::B(const ::tpy::BigInt& y) : y(y) {}
 // def __init__(self, p: A | B) -> None:
 //     super().__init__("u")
 //     self.payload = p
-inline UErr::UErr(::tpy::Union<const A*, const B*> p) : ::tpy::Exception("u"), payload(::tpy::to_value_variant<::tpy::Union<A, B>>(p)) {}
+inline UErr::UErr(::tpy::Union<const A*, const B*> p)
+    : ::tpy::Exception("u"),
+      payload(::tpy::to_value_variant<::tpy::Union<A, B>>(p)) {}
 void __tpy_init();
 } // namespace tpyapp::main

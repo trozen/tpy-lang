@@ -369,7 +369,13 @@ struct _WaitForFuture {
     //     self._timed_out = False
     //     self._cancel_pending = False
     _WaitForFuture() = default;
-    explicit _WaitForFuture(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro, double timeout) : _inner(::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>(std::move(coro))), _deadline(((::tpy::stdlib::time::monotonic()) + (timeout))), _registered(false), _cleanup(false), _timed_out(false), _cancel_pending(false) {}
+    explicit _WaitForFuture(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro, double timeout)
+        : _inner(::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>(std::move(coro))),
+          _deadline(((::tpy::stdlib::time::monotonic()) + (timeout))),
+          _registered(false),
+          _cleanup(false),
+          _timed_out(false),
+          _cancel_pending(false) {}
     // non-copyable (@nocopy)
     _WaitForFuture(const _WaitForFuture&) = delete;
     _WaitForFuture& operator=(const _WaitForFuture&) = delete;
@@ -493,7 +499,15 @@ struct _GatherFuture {
     //         self._tasks.append(t.clone())
     //         self._settled.append(False)
     _GatherFuture() = default;
-    explicit _GatherFuture(std::vector<::tpystd::asyncio::_executor::Task<T>>& tasks) : _tasks(std::vector<::tpystd::asyncio::_executor::Task<T>>{}), _completion_indices(std::vector<int32_t>{}), _completion_boxes(std::vector<::tpystd::tplib::box::Box<T>>{}), _settled(std::vector<bool>{}), _exc(std::nullopt), _completed(0), _cleanup(false), _cancel_pending(false) {
+    explicit _GatherFuture(std::vector<::tpystd::asyncio::_executor::Task<T>>& tasks)
+        : _tasks(std::vector<::tpystd::asyncio::_executor::Task<T>>{}),
+          _completion_indices(std::vector<int32_t>{}),
+          _completion_boxes(std::vector<::tpystd::tplib::box::Box<T>>{}),
+          _settled(std::vector<bool>{}),
+          _exc(std::nullopt),
+          _completed(0),
+          _cleanup(false),
+          _cancel_pending(false) {
         auto& __obj_0 = tasks;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -707,7 +721,9 @@ struct Settled {
     // def __init__(self) -> None:
     //     self.value = None
     //     self.exception = None
-    Settled() : value(std::nullopt), exception(std::nullopt) {}
+    Settled()
+        : value(std::nullopt),
+          exception(std::nullopt) {}
     // non-copyable (@nocopy)
     Settled(const Settled&) = delete;
     Settled& operator=(const Settled&) = delete;
@@ -759,7 +775,15 @@ struct _GatherSettledFuture {
     //         self._tasks.append(t.clone())
     //         self._settled.append(False)
     _GatherSettledFuture() = default;
-    explicit _GatherSettledFuture(std::vector<::tpystd::asyncio::_executor::Task<T>>& tasks) : _tasks(std::vector<::tpystd::asyncio::_executor::Task<T>>{}), _settled(std::vector<bool>{}), _result_indices(std::vector<int32_t>{}), _result_boxes(std::vector<::tpystd::tplib::box::Box<T>>{}), _exc_indices(std::vector<int32_t>{}), _exc_boxes(std::vector<::tpystd::tplib::box::Box<::tpy::Throwable>>{}), _completed(0), _cancel_pending(false) {
+    explicit _GatherSettledFuture(std::vector<::tpystd::asyncio::_executor::Task<T>>& tasks)
+        : _tasks(std::vector<::tpystd::asyncio::_executor::Task<T>>{}),
+          _settled(std::vector<bool>{}),
+          _result_indices(std::vector<int32_t>{}),
+          _result_boxes(std::vector<::tpystd::tplib::box::Box<T>>{}),
+          _exc_indices(std::vector<int32_t>{}),
+          _exc_boxes(std::vector<::tpystd::tplib::box::Box<::tpy::Throwable>>{}),
+          _completed(0),
+          _cancel_pending(false) {
         auto& __obj_0 = tasks;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -984,11 +1008,21 @@ struct Future {
     //     self._exception = None
     //     self._waiter = Waker()
     //     self._result = UninitStorage[T]()
-    Future() : _done(false), _has_waiter(false), _exception(std::nullopt), _waiter(::tpystd::coro::Waker()), _result(::tpy::UninitStorage<T>()) {}
+    Future()
+        : _done(false),
+          _has_waiter(false),
+          _exception(std::nullopt),
+          _waiter(::tpystd::coro::Waker()),
+          _result(::tpy::UninitStorage<T>()) {}
     // non-copyable (field '_exception')
     Future(const Future&) = delete;
     Future& operator=(const Future&) = delete;
-    Future(Future&& other) noexcept : _done(std::move(other._done)), _has_waiter(std::move(other._has_waiter)), _exception(std::move(other._exception)), _waiter(std::move(other._waiter)), _result(std::move(other._result)) {
+    Future(Future&& other) noexcept
+        : _done(std::move(other._done)),
+          _has_waiter(std::move(other._has_waiter)),
+          _exception(std::move(other._exception)),
+          _waiter(std::move(other._waiter)),
+          _result(std::move(other._result)) {
         other.__tpy_owned_ = false;
     }
     Future& operator=(Future&& other) noexcept {
@@ -1338,7 +1372,13 @@ struct Queue {
     //     self._putters = []
     //     self._joiners = []
     //     self._unfinished = 0
-    explicit Queue(int32_t maxsize = 0) : _items(std::vector<T>{}), maxsize(maxsize), _getters(std::vector<::tpystd::coro::Waker>{}), _putters(std::vector<::tpystd::coro::Waker>{}), _joiners(std::vector<::tpystd::coro::Waker>{}), _unfinished(0) {}
+    explicit Queue(int32_t maxsize = 0)
+        : _items(std::vector<T>{}),
+          maxsize(maxsize),
+          _getters(std::vector<::tpystd::coro::Waker>{}),
+          _putters(std::vector<::tpystd::coro::Waker>{}),
+          _joiners(std::vector<::tpystd::coro::Waker>{}),
+          _unfinished(0) {}
     // non-copyable (@nocopy)
     Queue(const Queue&) = delete;
     Queue& operator=(const Queue&) = delete;
@@ -1477,7 +1517,9 @@ struct _QueueWait {
     //     self._q = q
     //     self._kind = kind
     _QueueWait() = default;
-    explicit _QueueWait(Queue<T>* q, int32_t kind) : _q(q), _kind(kind) {}
+    explicit _QueueWait(Queue<T>* q, int32_t kind)
+        : _q(q),
+          _kind(kind) {}
     // non-copyable (@nocopy)
     _QueueWait(const _QueueWait&) = delete;
     _QueueWait& operator=(const _QueueWait&) = delete;
@@ -1742,7 +1784,9 @@ struct __coro_Event_wait {
     };
 
     __coro_Event_wait(Event& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -1770,7 +1814,9 @@ struct __coro_Lock_acquire {
     };
 
     __coro_Lock_acquire(Lock& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -1798,7 +1844,9 @@ struct __coro_Lock___aenter__ {
     };
 
     __coro_Lock___aenter__(Lock& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -1828,7 +1876,12 @@ struct __coro_Lock___aexit__ {
     };
 
     __coro_Lock___aexit__(Lock& __self, std::monostate exc_type_, std::monostate exc_val_, std::monostate exc_tb_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), exc_type(std::move(exc_type_)), exc_val(std::move(exc_val_)), exc_tb(std::move(exc_tb_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          exc_type(std::move(exc_type_)),
+          exc_val(std::move(exc_val_)),
+          exc_tb(std::move(exc_tb_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -1856,7 +1909,9 @@ struct __coro_Semaphore_acquire {
     };
 
     __coro_Semaphore_acquire(Semaphore& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -1884,7 +1939,9 @@ struct __coro_Semaphore___aenter__ {
     };
 
     __coro_Semaphore___aenter__(Semaphore& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -1914,7 +1971,12 @@ struct __coro_Semaphore___aexit__ {
     };
 
     __coro_Semaphore___aexit__(Semaphore& __self, std::monostate exc_type_, std::monostate exc_val_, std::monostate exc_tb_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), exc_type(std::move(exc_type_)), exc_val(std::move(exc_val_)), exc_tb(std::move(exc_tb_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          exc_type(std::move(exc_type_)),
+          exc_val(std::move(exc_val_)),
+          exc_tb(std::move(exc_tb_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -1944,7 +2006,10 @@ struct __coro_Queue_put {
     };
 
     __coro_Queue_put(Queue<T>& __self, T&& item_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), item(std::move(item_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          item(std::move(item_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2001,7 +2066,9 @@ struct __coro_Queue_get {
     };
 
     __coro_Queue_get(Queue<T>& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2058,7 +2125,9 @@ struct __coro_Queue_join {
     };
 
     __coro_Queue_join(Queue<T>& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2114,7 +2183,9 @@ struct __coro_StreamReader__fill {
     };
 
     __coro_StreamReader__fill(StreamReader& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2148,7 +2219,10 @@ struct __coro_StreamReader_read {
     };
 
     __coro_StreamReader_read(StreamReader& __self, int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<::tpy::Bytes> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2178,7 +2252,10 @@ struct __coro_StreamReader_readexactly {
     };
 
     __coro_StreamReader_readexactly(StreamReader& __self, int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<::tpy::Bytes> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2208,7 +2285,9 @@ struct __coro_StreamReader_readline {
     };
 
     __coro_StreamReader_readline(StreamReader& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::tpy::Bytes> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2239,7 +2318,10 @@ struct __coro_StreamReader_readuntil {
     };
 
     __coro_StreamReader_readuntil(StreamReader& __self, ::tpy::BytesView separator_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), separator(::tpy::Bytes(separator_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          separator(::tpy::Bytes(separator_)) {}
 
     ::tpystd::tpy::Poll<::tpy::Bytes> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2269,7 +2351,9 @@ struct __coro_StreamWriter_drain {
     };
 
     __coro_StreamWriter_drain(StreamWriter& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2295,7 +2379,9 @@ struct __coro_StreamWriter_wait_closed {
     };
 
     __coro_StreamWriter_wait_closed(const StreamWriter& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2325,7 +2411,9 @@ struct __coro_Server_serve_forever {
     };
 
     __coro_Server_serve_forever(Server& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2351,7 +2439,9 @@ struct __coro_Server_wait_closed {
     };
 
     __coro_Server_wait_closed(const Server& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2377,7 +2467,9 @@ struct __coro_Server___aenter__ {
     };
 
     __coro_Server___aenter__(Server& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<Server*> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2407,7 +2499,12 @@ struct __coro_Server___aexit__ {
     };
 
     __coro_Server___aexit__(Server& __self, std::monostate exc_type_, std::monostate exc_val_, std::monostate exc_tb_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), exc_type(std::move(exc_type_)), exc_val(std::move(exc_val_)), exc_tb(std::move(exc_tb_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          exc_type(std::move(exc_type_)),
+          exc_val(std::move(exc_val_)),
+          exc_tb(std::move(exc_tb_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2437,7 +2534,10 @@ struct __coro_wait_for {
     };
 
     __coro_wait_for(std::unique_ptr<::tpystd::coro::Cancellable<T>>&& coro_, double timeout_)
-        : __state(S_INITIAL), __cancel_pending(false), coro(std::move(coro_)), timeout(std::move(timeout_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          coro(std::move(coro_)),
+          timeout(std::move(timeout_)) {}
 
     ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2508,7 +2608,9 @@ struct __coro_gather_list {
     };
 
     __coro_gather_list(std::vector<::tpystd::asyncio::_executor::Task<T>>& tasks)
-        : __state(S_INITIAL), __cancel_pending(false), tasks(tasks) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          tasks(tasks) {}
 
     ::tpystd::tpy::Poll<std::vector<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2576,7 +2678,9 @@ struct __coro_gather_list_settled {
     };
 
     __coro_gather_list_settled(std::vector<::tpystd::asyncio::_executor::Task<T>>& tasks)
-        : __state(S_INITIAL), __cancel_pending(false), tasks(tasks) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          tasks(tasks) {}
 
     ::tpystd::tpy::Poll<std::vector<Settled<T>>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2657,7 +2761,10 @@ struct __coro_open_connection {
     };
 
     __coro_open_connection(std::string_view host_, int32_t port_)
-        : __state(S_INITIAL), __cancel_pending(false), host(std::string(host_)), port(std::move(port_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          host(std::string(host_)),
+          port(std::move(port_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<StreamReader, StreamWriter>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2691,7 +2798,10 @@ struct __coro__accept_loop {
     };
 
     __coro__accept_loop(::tpystd::tplib::rc::Rc<::tpystd::socket::socket>&& listener_, std::function<std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>>(StreamReader&&, StreamWriter&&)> cb_)
-        : __state(S_INITIAL), __cancel_pending(false), listener(std::move(listener_)), cb(std::move(cb_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          listener(std::move(listener_)),
+          cb(std::move(cb_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2721,7 +2831,11 @@ struct __coro_start_server {
     };
 
     __coro_start_server(std::function<std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>>(StreamReader&&, StreamWriter&&)> cb_, std::string_view host_, int32_t port_)
-        : __state(S_INITIAL), __cancel_pending(false), cb(std::move(cb_)), host(std::string(host_)), port(std::move(port_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          cb(std::move(cb_)),
+          host(std::string(host_)),
+          port(std::move(port_)) {}
 
     ::tpystd::tpy::Poll<Server> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -2732,7 +2846,9 @@ struct __coro_start_server {
 };
 
 
-inline _SignalScope::_SignalScope(_SignalScope&& other) noexcept : _armed(std::move(other._armed)), _fd(std::move(other._fd)) {
+inline _SignalScope::_SignalScope(_SignalScope&& other) noexcept
+    : _armed(std::move(other._armed)),
+      _fd(std::move(other._fd)) {
     other.__tpy_owned_ = false;
 }
 inline _SignalScope& _SignalScope::operator=(_SignalScope&& other) noexcept {
@@ -2763,7 +2879,10 @@ inline _SignalScope::~_SignalScope() {
 //     self._sock = sock
 //     self._n = n
 //     self._cancel_pending = False
-inline _SockRecv::_SockRecv(::tpystd::socket::socket* sock, int32_t n) : _sock(sock), _n(n), _cancel_pending(false) {}
+inline _SockRecv::_SockRecv(::tpystd::socket::socket* sock, int32_t n)
+    : _sock(sock),
+      _n(n),
+      _cancel_pending(false) {}
 
 // def cancel(self) -> None:
 //     self._cancel_pending = True
@@ -2776,7 +2895,11 @@ inline void _SockRecv::cancel() {
 //     self._data = data
 //     self._sent = 0
 //     self._cancel_pending = False
-inline _SockSendAll::_SockSendAll(::tpystd::socket::socket* sock, ::tpy::BytesView data) : _sock(sock), _data(::tpy::Bytes(data)), _sent(0), _cancel_pending(false) {}
+inline _SockSendAll::_SockSendAll(::tpystd::socket::socket* sock, ::tpy::BytesView data)
+    : _sock(sock),
+      _data(::tpy::Bytes(data)),
+      _sent(0),
+      _cancel_pending(false) {}
 
 // def cancel(self) -> None:
 //     self._cancel_pending = True
@@ -2787,7 +2910,9 @@ inline void _SockSendAll::cancel() {
 // def __init__(self, sock: Ptr[socket]) -> None:
 //     self._sock = sock
 //     self._cancel_pending = False
-inline _SockAccept::_SockAccept(::tpystd::socket::socket* sock) : _sock(sock), _cancel_pending(false) {}
+inline _SockAccept::_SockAccept(::tpystd::socket::socket* sock)
+    : _sock(sock),
+      _cancel_pending(false) {}
 
 // def cancel(self) -> None:
 //     self._cancel_pending = True
@@ -2800,7 +2925,11 @@ inline void _SockAccept::cancel() {
 //     self._addr = addr
 //     self._started = False
 //     self._cancel_pending = False
-inline _SockConnect::_SockConnect(::tpystd::socket::socket* sock, const std::tuple<std::string, int32_t>& addr) : _sock(sock), _addr(addr), _started(false), _cancel_pending(false) {}
+inline _SockConnect::_SockConnect(::tpystd::socket::socket* sock, const std::tuple<std::string, int32_t>& addr)
+    : _sock(sock),
+      _addr(addr),
+      _started(false),
+      _cancel_pending(false) {}
 
 // def cancel(self) -> None:
 //     self._cancel_pending = True
@@ -2812,7 +2941,10 @@ inline void _SockConnect::cancel() {
 //     self.deadline = monotonic() + seconds
 //     self.registered = False
 //     self._cancel_pending = False
-inline SleepFuture::SleepFuture(double seconds) : deadline(((::tpy::stdlib::time::monotonic()) + (seconds))), registered(false), _cancel_pending(false) {}
+inline SleepFuture::SleepFuture(double seconds)
+    : deadline(((::tpy::stdlib::time::monotonic()) + (seconds))),
+      registered(false),
+      _cancel_pending(false) {}
 
 // # Required for structural conformance to `@dynamic Cancellable[T]`
 // # (in `tpy.coro`). Mirrors the codegen-emitted `cancel()` on
@@ -2827,7 +2959,10 @@ inline void SleepFuture::cancel() {
 //     self._is_set = False
 //     self._has_waiter = False
 //     self._waiter = Waker()
-inline Event::Event() : _is_set(false), _has_waiter(false), _waiter(::tpystd::coro::Waker()) {}
+inline Event::Event()
+    : _is_set(false),
+      _has_waiter(false),
+      _waiter(::tpystd::coro::Waker()) {}
 
 // def is_set(self) -> bool:
 //     return self._is_set
@@ -2891,7 +3026,9 @@ inline ::tpystd::tpy::Poll<std::monostate> Event::__poll__(::tpystd::coro::Waker
 // def __init__(self) -> None:
 //     self._locked = False
 //     self._waiters = []
-inline Lock::Lock() : _locked(false), _waiters(std::vector<::tpystd::coro::Waker>{}) {}
+inline Lock::Lock()
+    : _locked(false),
+      _waiters(std::vector<::tpystd::coro::Waker>{}) {}
 
 // def locked(self) -> bool:
 //     return self._locked
@@ -3060,13 +3197,19 @@ inline _SockConnect EventLoop::sock_connect(::tpystd::socket::socket& sock, cons
 //     super().__init__("incomplete read")
 //     self.partial = partial
 //     self.expected = expected
-inline IncompleteReadError::IncompleteReadError(::tpy::BytesView partial, std::optional<int32_t> expected) : ::tpy::EOFError("incomplete read"), partial(::tpy::Bytes(partial)), expected(expected) {}
+inline IncompleteReadError::IncompleteReadError(::tpy::BytesView partial, std::optional<int32_t> expected)
+    : ::tpy::EOFError("incomplete read"),
+      partial(::tpy::Bytes(partial)),
+      expected(expected) {}
 
 // def __init__(self, sock: Own[Rc[socket]]) -> None:
 //     self._sock = sock
 //     self._buf = bytes()
 //     self._eof = False
-inline StreamReader::StreamReader(::tpystd::tplib::rc::Rc<::tpystd::socket::socket>&& sock) : _sock(std::move(sock)), _buf(::tpy::Bytes()), _eof(false) {}
+inline StreamReader::StreamReader(::tpystd::tplib::rc::Rc<::tpystd::socket::socket>&& sock)
+    : _sock(std::move(sock)),
+      _buf(::tpy::Bytes()),
+      _eof(false) {}
 
 // def at_eof(self) -> bool:
 //     return self._eof and len(self._buf) == 0
@@ -3090,7 +3233,10 @@ inline ::tpy::Bytes StreamReader::_take(int32_t n) {
 //     self._sock = sock
 //     self._buf = bytes()
 //     self._closed = False
-inline StreamWriter::StreamWriter(::tpystd::tplib::rc::Rc<::tpystd::socket::socket>&& sock) : _sock(std::move(sock)), _buf(::tpy::Bytes()), _closed(false) {}
+inline StreamWriter::StreamWriter(::tpystd::tplib::rc::Rc<::tpystd::socket::socket>&& sock)
+    : _sock(std::move(sock)),
+      _buf(::tpy::Bytes()),
+      _closed(false) {}
 
 // def write(self, data: bytes) -> None:
 //     self._buf = self._buf + data
@@ -3148,7 +3294,10 @@ inline const ::tpystd::socket::socket& _ServerSockets::__getitem__(int32_t i) co
 //     self.sockets = _ServerSockets(listener.clone())
 //     self._listener = listener
 //     self._task = task
-inline Server::Server(::tpystd::tplib::rc::Rc<::tpystd::socket::socket>&& listener, ::tpystd::asyncio::_executor::Task<std::monostate>&& task) : sockets(_ServerSockets(listener.clone())), _listener(std::move(listener)), _task(std::move(task)) {}
+inline Server::Server(::tpystd::tplib::rc::Rc<::tpystd::socket::socket>&& listener, ::tpystd::asyncio::_executor::Task<std::monostate>&& task)
+    : sockets(_ServerSockets(listener.clone())),
+      _listener(std::move(listener)),
+      _task(std::move(task)) {}
 
 // def close(self) -> None:
 //     self._listener.get().close()

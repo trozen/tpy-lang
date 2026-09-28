@@ -355,7 +355,9 @@ struct __coro_async_accessor {
     };
 
     __coro_async_accessor(Bag& b)
-        : __state(S_INITIAL), __cancel_pending(false), b(b) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          b(b) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -386,7 +388,9 @@ struct __coro_async_slice {
     };
 
     __coro_async_slice(const std::vector<Cell>& cells)
-        : __state(S_INITIAL), __cancel_pending(false), cells(cells) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          cells(cells) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -418,7 +422,8 @@ struct __coro_async_combinator_temp {
     };
 
     __coro_async_combinator_temp()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -451,7 +456,10 @@ struct __coro_async_zip {
     };
 
     __coro_async_zip(const std::vector<int32_t>& xs, const std::vector<int32_t>& ys)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs), ys(ys) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs),
+          ys(ys) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -472,8 +480,7 @@ struct __gen_gen_cells : public ::tpy::next_iter_mixin<__gen_gen_cells, Cell> {
         S_DONE = 3,
     };
 
-    __gen_gen_cells()
-        : __state(S_INITIAL) {}
+    __gen_gen_cells() : __state(S_INITIAL) {}
 
     std::expected<Cell, ::tpy::StopIteration> __next__();
     __gen_gen_cells& __iter__() { return *this; }
@@ -500,8 +507,7 @@ struct __gen_named_src : public ::tpy::next_iter_mixin<__gen_named_src, std::str
         S_DONE = 4,
     };
 
-    __gen_named_src()
-        : __state(S_INITIAL) {}
+    __gen_named_src() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_named_src& __iter__() { return *this; }
@@ -528,7 +534,8 @@ struct __gen_param_src : public ::tpy::next_iter_mixin<__gen_param_src, std::str
     };
 
     __gen_param_src(std::vector<Cell>& cells)
-        : __state(S_INITIAL), cells(cells) {}
+        : __state(S_INITIAL),
+          cells(cells) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_param_src& __iter__() { return *this; }
@@ -555,7 +562,8 @@ struct __gen_subscript_src : public ::tpy::next_iter_mixin<__gen_subscript_src, 
     };
 
     __gen_subscript_src(::tpy::ordered_map<std::string, std::vector<Cell>>& table)
-        : __state(S_INITIAL), table(table) {}
+        : __state(S_INITIAL),
+          table(table) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_subscript_src& __iter__() { return *this; }
@@ -582,7 +590,8 @@ struct __gen_accessor_src : public ::tpy::next_iter_mixin<__gen_accessor_src, st
     };
 
     __gen_accessor_src(Bag& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_accessor_src& __iter__() { return *this; }
@@ -609,7 +618,8 @@ struct __gen_property_src : public ::tpy::next_iter_mixin<__gen_property_src, st
     };
 
     __gen_property_src(Bag& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_property_src& __iter__() { return *this; }
@@ -636,8 +646,7 @@ struct __gen_own_call_src : public ::tpy::next_iter_mixin<__gen_own_call_src, st
         S_DONE = 4,
     };
 
-    __gen_own_call_src()
-        : __state(S_INITIAL) {}
+    __gen_own_call_src() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_own_call_src& __iter__() { return *this; }
@@ -666,7 +675,8 @@ struct __gen_copy_src : public ::tpy::next_iter_mixin<__gen_copy_src, std::strin
     };
 
     __gen_copy_src(const std::vector<Cell>& cells)
-        : __state(S_INITIAL), cells(cells) {}
+        : __state(S_INITIAL),
+          cells(cells) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_copy_src& __iter__() { return *this; }
@@ -693,8 +703,7 @@ struct __gen_literal_src : public ::tpy::next_iter_mixin<__gen_literal_src, std:
         S_DONE = 4,
     };
 
-    __gen_literal_src()
-        : __state(S_INITIAL) {}
+    __gen_literal_src() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_literal_src& __iter__() { return *this; }
@@ -722,8 +731,7 @@ struct __gen_slice_mut_src : public ::tpy::next_iter_mixin<__gen_slice_mut_src, 
         S_DONE = 4,
     };
 
-    __gen_slice_mut_src()
-        : __state(S_INITIAL) {}
+    __gen_slice_mut_src() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_slice_mut_src& __iter__() { return *this; }
@@ -752,7 +760,8 @@ struct __gen_slice_const_src : public ::tpy::next_iter_mixin<__gen_slice_const_s
     };
 
     __gen_slice_const_src(const std::vector<Cell>& cells)
-        : __state(S_INITIAL), cells(cells) {}
+        : __state(S_INITIAL),
+          cells(cells) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_slice_const_src& __iter__() { return *this; }
@@ -782,7 +791,8 @@ struct __gen_ternary_lvalues_src : public ::tpy::next_iter_mixin<__gen_ternary_l
     };
 
     __gen_ternary_lvalues_src(bool flag_)
-        : __state(S_INITIAL), flag(std::move(flag_)) {}
+        : __state(S_INITIAL),
+          flag(std::move(flag_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_ternary_lvalues_src& __iter__() { return *this; }
@@ -811,7 +821,8 @@ struct __gen_ternary_temps_src : public ::tpy::next_iter_mixin<__gen_ternary_tem
     };
 
     __gen_ternary_temps_src(bool flag_)
-        : __state(S_INITIAL), flag(std::move(flag_)) {}
+        : __state(S_INITIAL),
+          flag(std::move(flag_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_ternary_temps_src& __iter__() { return *this; }
@@ -839,8 +850,7 @@ struct __gen_walrus_src : public ::tpy::next_iter_mixin<__gen_walrus_src, std::s
         S_DONE = 5,
     };
 
-    __gen_walrus_src()
-        : __state(S_INITIAL) {}
+    __gen_walrus_src() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_walrus_src& __iter__() { return *this; }
@@ -869,7 +879,9 @@ struct __gen_str_temp_src : public ::tpy::next_iter_mixin<__gen_str_temp_src, st
     };
 
     __gen_str_temp_src(std::string_view a_, std::string_view b_)
-        : __state(S_INITIAL), a(std::string(a_)), b(std::string(b_)) {}
+        : __state(S_INITIAL),
+          a(std::string(a_)),
+          b(std::string(b_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_str_temp_src& __iter__() { return *this; }
@@ -895,8 +907,7 @@ struct __gen_gen_call_src : public ::tpy::next_iter_mixin<__gen_gen_call_src, st
         S_DONE = 4,
     };
 
-    __gen_gen_call_src()
-        : __state(S_INITIAL) {}
+    __gen_gen_call_src() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen_call_src& __iter__() { return *this; }
@@ -926,7 +937,9 @@ struct __gen_zip_names_src : public ::tpy::next_iter_mixin<__gen_zip_names_src, 
     };
 
     __gen_zip_names_src(const std::vector<int32_t>& xs, const std::vector<int32_t>& ys)
-        : __state(S_INITIAL), xs(xs), ys(ys) {}
+        : __state(S_INITIAL),
+          xs(xs),
+          ys(ys) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_zip_names_src& __iter__() { return *this; }
@@ -955,8 +968,7 @@ struct __gen_enumerate_cells_src : public ::tpy::next_iter_mixin<__gen_enumerate
         S_DONE = 4,
     };
 
-    __gen_enumerate_cells_src()
-        : __state(S_INITIAL) {}
+    __gen_enumerate_cells_src() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_enumerate_cells_src& __iter__() { return *this; }
@@ -983,8 +995,7 @@ struct __gen_reversed_temp_src : public ::tpy::next_iter_mixin<__gen_reversed_te
         S_DONE = 4,
     };
 
-    __gen_reversed_temp_src()
-        : __state(S_INITIAL) {}
+    __gen_reversed_temp_src() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_reversed_temp_src& __iter__() { return *this; }
@@ -1012,7 +1023,8 @@ struct __gen_readonly_view_src : public ::tpy::next_iter_mixin<__gen_readonly_vi
     };
 
     __gen_readonly_view_src(const ::tpy::ordered_map<std::string, Cell>& d)
-        : __state(S_INITIAL), d(d) {}
+        : __state(S_INITIAL),
+          d(d) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_readonly_view_src& __iter__() { return *this; }
@@ -1039,7 +1051,8 @@ struct __gen_const_method_src : public ::tpy::next_iter_mixin<__gen_const_method
     };
 
     __gen_const_method_src(const Bag& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_const_method_src& __iter__() { return *this; }
@@ -1068,7 +1081,10 @@ struct __gen_ternary_params_src : public ::tpy::next_iter_mixin<__gen_ternary_pa
     };
 
     __gen_ternary_params_src(const std::vector<Cell>& xs, const std::vector<Cell>& ys, bool flag_)
-        : __state(S_INITIAL), xs(xs), ys(ys), flag(std::move(flag_)) {}
+        : __state(S_INITIAL),
+          xs(xs),
+          ys(ys),
+          flag(std::move(flag_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_ternary_params_src& __iter__() { return *this; }
@@ -1097,7 +1113,8 @@ struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T_items>, int
     };
 
     __gen_doubled(T_items&& items_)
-        : __state(S_INITIAL), items(std::forward<T_items>(items_)) {}
+        : __state(S_INITIAL),
+          items(std::forward<T_items>(items_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_doubled& __iter__() { return *this; }
@@ -1164,7 +1181,8 @@ struct __gen_delegate_proto_src : public ::tpy::next_iter_mixin<__gen_delegate_p
     };
 
     __gen_delegate_proto_src(std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_delegate_proto_src& __iter__() { return *this; }
@@ -1191,7 +1209,8 @@ struct __gen_iter_object_src : public ::tpy::next_iter_mixin<__gen_iter_object_s
     };
 
     __gen_iter_object_src(Holder& h)
-        : __state(S_INITIAL), h(h) {}
+        : __state(S_INITIAL),
+          h(h) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_iter_object_src& __iter__() { return *this; }
@@ -1223,7 +1242,8 @@ struct __gen_nested_src : public ::tpy::next_iter_mixin<__gen_nested_src, std::s
     };
 
     __gen_nested_src(std::vector<Row>& rows)
-        : __state(S_INITIAL), rows(rows) {}
+        : __state(S_INITIAL),
+          rows(rows) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_nested_src& __iter__() { return *this; }
@@ -1250,8 +1270,7 @@ struct __gen_arg_temp_src : public ::tpy::next_iter_mixin<__gen_arg_temp_src, st
         S_DONE = 4,
     };
 
-    __gen_arg_temp_src()
-        : __state(S_INITIAL) {}
+    __gen_arg_temp_src() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_arg_temp_src& __iter__() { return *this; }
@@ -1280,7 +1299,8 @@ struct __gen_nested_combinator_src : public ::tpy::next_iter_mixin<__gen_nested_
     };
 
     __gen_nested_combinator_src(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_nested_combinator_src& __iter__() { return *this; }
@@ -1308,8 +1328,7 @@ struct __gen_combinator_temp_src : public ::tpy::next_iter_mixin<__gen_combinato
         S_DONE = 3,
     };
 
-    __gen_combinator_temp_src()
-        : __state(S_INITIAL) {}
+    __gen_combinator_temp_src() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_combinator_temp_src& __iter__() { return *this; }
@@ -1336,8 +1355,7 @@ struct __gen_str_literal_src : public ::tpy::next_iter_mixin<__gen_str_literal_s
         S_DONE = 4,
     };
 
-    __gen_str_literal_src()
-        : __state(S_INITIAL) {}
+    __gen_str_literal_src() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_str_literal_src& __iter__() { return *this; }
@@ -1365,7 +1383,8 @@ struct __gen_pairs_of : public ::tpy::next_iter_mixin<__gen_pairs_of, std::tuple
     };
 
     __gen_pairs_of(std::vector<Cell>& cells)
-        : __state(S_INITIAL), cells(cells) {}
+        : __state(S_INITIAL),
+          cells(cells) {}
 
     std::expected<std::tuple<int32_t, Cell*>, ::tpy::StopIteration> __next__();
     __gen_pairs_of& __iter__() { return *this; }
@@ -1394,7 +1413,8 @@ struct __gen_next_unpack_src : public ::tpy::next_iter_mixin<__gen_next_unpack_s
     };
 
     __gen_next_unpack_src(std::vector<Cell>& cells)
-        : __state(S_INITIAL), cells(cells) {}
+        : __state(S_INITIAL),
+          cells(cells) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_next_unpack_src& __iter__() { return *this; }
@@ -1427,7 +1447,8 @@ struct __gen_shared_var_src : public ::tpy::next_iter_mixin<__gen_shared_var_src
     };
 
     __gen_shared_var_src(const std::vector<Cell>& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_shared_var_src& __iter__() { return *this; }
@@ -1453,7 +1474,8 @@ struct __gen_own_param_iter_src : public ::tpy::next_iter_mixin<__gen_own_param_
     };
 
     __gen_own_param_iter_src(Holder&& h_)
-        : __state(S_INITIAL), h(std::move(h_)) {}
+        : __state(S_INITIAL),
+          h(std::move(h_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_own_param_iter_src& __iter__() { return *this; }
@@ -1480,7 +1502,8 @@ struct __genexpr_genexpr_src_4_frame : public ::tpy::next_iter_mixin<__genexpr_g
     };
 
     __genexpr_genexpr_src_4_frame(const std::vector<int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_genexpr_src_4_frame& __iter__() { return *this; }
@@ -1508,7 +1531,8 @@ struct __gen_genexpr_src : public ::tpy::next_iter_mixin<__gen_genexpr_src, int3
     };
 
     __gen_genexpr_src(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_genexpr_src& __iter__() { return *this; }
@@ -1538,7 +1562,9 @@ struct __genexpr_genexpr_capture_src_5_frame : public ::tpy::next_iter_mixin<__g
     };
 
     __genexpr_genexpr_capture_src_5_frame(const std::vector<int32_t>& __src, F_k&& k_)
-        : __state(S_INITIAL), __src(__src), k(std::forward<F_k>(k_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          k(std::forward<F_k>(k_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_genexpr_capture_src_5_frame& __iter__() { return *this; }
@@ -1586,7 +1612,9 @@ struct __gen_genexpr_capture_src : public ::tpy::next_iter_mixin<__gen_genexpr_c
     };
 
     __gen_genexpr_capture_src(const std::vector<int32_t>& xs, int32_t k_)
-        : __state(S_INITIAL), xs(xs), k(std::move(k_)) {}
+        : __state(S_INITIAL),
+          xs(xs),
+          k(std::move(k_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_genexpr_capture_src& __iter__() { return *this; }
@@ -1613,7 +1641,8 @@ struct __genexpr_async_genexpr_6_frame : public ::tpy::next_iter_mixin<__genexpr
     };
 
     __genexpr_async_genexpr_6_frame(const std::vector<int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_async_genexpr_6_frame& __iter__() { return *this; }
@@ -1645,7 +1674,9 @@ struct __coro_async_genexpr {
     };
 
     __coro_async_genexpr(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs) {}
 
     __coro_async_genexpr(__coro_async_genexpr&&) = default;
     ~__coro_async_genexpr() {
@@ -1687,7 +1718,8 @@ struct __gen_Bag_walk : public ::tpy::next_iter_mixin<__gen_Bag_walk, std::strin
     };
 
     __gen_Bag_walk(Bag& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_Bag_walk& __iter__() { return *this; }
@@ -1721,7 +1753,9 @@ struct __gen_Bag_pairs : public ::tpy::next_iter_mixin<__gen_Bag_pairs, std::str
     };
 
     __gen_Bag_pairs(Bag& __self, const std::vector<int32_t>& ys)
-        : __state(S_INITIAL), __self(__self), ys(ys) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          ys(ys) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_Bag_pairs& __iter__() { return *this; }
@@ -1743,7 +1777,9 @@ inline Cell::Cell(int32_t v) : v(v) {}
 // def __init__(self) -> None:
 //     self.cells = [Cell(1), Cell(2)]
 //     self.calls = 0
-inline Bag::Bag() : cells(std::vector<Cell>{Cell(1), Cell(2)}), calls(0) {}
+inline Bag::Bag()
+    : cells(std::vector<Cell>{Cell(1), Cell(2)}),
+      calls(0) {}
 
 // def items(self) -> list[Cell]:
 //     self.calls += 1
@@ -1788,7 +1824,9 @@ inline const std::vector<Cell>& Bag::items_m() const {
 // def __init__(self, n: int32) -> None:
 //     self.n = n
 //     self.calls = 0
-inline Counter::Counter(int32_t n) : n(n), calls(0) {}
+inline Counter::Counter(int32_t n)
+    : n(n),
+      calls(0) {}
 
 // def __iter__(self) -> "Counter":
 //     return self
@@ -1812,7 +1850,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {
 // def __init__(self, n: int32) -> None:
 //     self.it = Counter(n)
 //     self.gets = 0
-inline Holder::Holder(int32_t n) : it(Counter(n)), gets(0) {}
+inline Holder::Holder(int32_t n)
+    : it(Counter(n)),
+      gets(0) {}
 
 // def get(self) -> Counter:
 //     self.gets += 1

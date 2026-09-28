@@ -141,7 +141,6 @@ __gen_gen gen(std::string_view s, bool flag) {
                 __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
                 __state = S_RESUME_0;
                 continue;
-                goto __match_end_2;
             }
             break;
         }
@@ -150,7 +149,6 @@ __gen_gen gen(std::string_view s, bool flag) {
                 __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
                 __state = S_RESUME_1;
                 continue;
-                goto __match_end_2;
             }
             break;
         }
@@ -159,7 +157,6 @@ __gen_gen gen(std::string_view s, bool flag) {
                 __state = S_DONE;
                 std::string __tpy_async_ret = "C";
                 return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
-                goto __match_end_2;
             }
             break;
         }
@@ -168,7 +165,6 @@ __gen_gen gen(std::string_view s, bool flag) {
                 __state = S_DONE;
                 std::string __tpy_async_ret = "D";
                 return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
-                goto __match_end_2;
             }
             break;
         }
@@ -177,7 +173,6 @@ __gen_gen gen(std::string_view s, bool flag) {
                 __state = S_DONE;
                 std::string __tpy_async_ret = "E";
                 return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
-                goto __match_end_2;
             }
             break;
         }
@@ -186,9 +181,7 @@ __gen_gen gen(std::string_view s, bool flag) {
             __sub_2.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_2;
             continue;
-            goto __match_end_2;
         }
-        __match_end_2:;
         ::std::unreachable();
         __builtin_unreachable();
     }
@@ -298,7 +291,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     {
@@ -308,7 +301,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     {
@@ -318,7 +311,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_5);
-        std::cout << v << "\n";
+            std::cout << v << "\n";
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::amain()));

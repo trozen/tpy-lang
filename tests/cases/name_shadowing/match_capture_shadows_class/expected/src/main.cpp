@@ -19,13 +19,11 @@ int32_t pick(::tpy::Union<Item*, Other*> v) {
         auto& Registry = __case_0;
         Registry.code = ::tpy::add_check<int32_t>(Registry.code, 1);
         return Registry.code;
-        break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         auto& o = __case_1;
         return o.tag;
-        break;
     }
     }
     ::std::unreachable();

@@ -50,7 +50,9 @@ struct __gen_Tally_steps : public ::tpy::next_iter_mixin<__gen_Tally_steps, int3
     };
 
     __gen_Tally_steps(Tally& __self, int32_t k_)
-        : __state(S_INITIAL), __self(__self), k(std::move(k_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          k(std::move(k_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Tally_steps& __iter__() { return *this; }

@@ -57,7 +57,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     };
 
     __gen_gen(Color c_)
-        : __state(S_INITIAL), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

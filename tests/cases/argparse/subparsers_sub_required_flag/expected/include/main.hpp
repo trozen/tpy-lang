@@ -58,6 +58,8 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 inline __tpy_builder_argparse_show_args_1::__tpy_builder_argparse_show_args_1(std::string_view key) : key(key) {}
 
 // args = parser.parse_args(["show", "--key", "color"])
-inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::string_view cmd, std::optional<std::string_view> key) : cmd(cmd), key(key ? std::make_optional(std::string(*key)) : std::nullopt) {}
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::string_view cmd, std::optional<std::string_view> key)
+    : cmd(cmd),
+      key(key ? std::make_optional(std::string(*key)) : std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

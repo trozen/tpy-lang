@@ -59,6 +59,8 @@ inline Inner::Inner(const ::tpy::BigInt& n) : n(n) {}
 // def __init__(self, inner: Inner, tag: int) -> None:
 //     self.inner = inner
 //     self.tag = tag
-inline Holder::Holder(const Inner& inner, const ::tpy::BigInt& tag) : inner(inner), tag(tag) {}
+inline Holder::Holder(const Inner& inner, const ::tpy::BigInt& tag)
+    : inner(inner),
+      tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -71,7 +71,8 @@ struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__, ::
     };
 
     __gen_Bag___iter__(Bag& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __next__();
     __gen_Bag___iter__& __iter__() { return *this; }
@@ -103,7 +104,8 @@ struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
     };
 
     __gen_bump(Bag& bag)
-        : __state(S_INITIAL), bag(bag) {}
+        : __state(S_INITIAL),
+          bag(bag) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_bump& __iter__() { return *this; }

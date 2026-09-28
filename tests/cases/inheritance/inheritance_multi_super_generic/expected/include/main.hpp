@@ -72,6 +72,8 @@ inline void Logger::log(std::string_view msg) const {
 
 // def __init__(self, v: int32) -> None:
 //     super().__init__(v)
-inline IntBox::IntBox(int32_t v) : Box<int32_t>(v), Logger() {}
+inline IntBox::IntBox(int32_t v)
+    : Box<int32_t>(v),
+      Logger() {}
 void __tpy_init();
 } // namespace tpyapp::main

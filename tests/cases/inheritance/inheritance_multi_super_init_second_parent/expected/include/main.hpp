@@ -64,6 +64,8 @@ inline HasInit::HasInit(int32_t x) : x(x) {}
 
 // def __init__(self, x: int32) -> None:
 //     super().__init__(x)
-inline C::C(int32_t x) : NoInitMixin(), HasInit(x) {}
+inline C::C(int32_t x)
+    : NoInitMixin(),
+      HasInit(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

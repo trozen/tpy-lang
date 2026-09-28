@@ -43,7 +43,9 @@ inline std::ostream& operator<<(std::ostream& os, const Conn& obj) {
 // def __init__(self, h: str, t: float | None) -> None:
 //     self.host = h
 //     self.timeout = t
-inline Conn::Conn(std::string_view h, std::optional<double> t) : host(h), timeout(t) {}
+inline Conn::Conn(std::string_view h, std::optional<double> t)
+    : host(h),
+      timeout(t) {}
 
 // def whole(self) -> int32:
 //     return dialer.dial(self.host, self.timeout)

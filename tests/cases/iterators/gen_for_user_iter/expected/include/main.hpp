@@ -81,7 +81,8 @@ struct __gen_doubled_range : public ::tpy::next_iter_mixin<__gen_doubled_range, 
     };
 
     __gen_doubled_range(NumberRange& r)
-        : __state(S_INITIAL), r(r) {}
+        : __state(S_INITIAL),
+          r(r) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_doubled_range& __iter__() { return *this; }
@@ -95,7 +96,9 @@ struct __gen_doubled_range : public ::tpy::next_iter_mixin<__gen_doubled_range, 
 // def __init__(self, start: int32, limit: int32) -> None:
 //     self.current = start
 //     self.limit = limit
-inline RangeIter::RangeIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
+inline RangeIter::RangeIter(int32_t start, int32_t limit)
+    : current(start),
+      limit(limit) {}
 
 // def __next__(self) -> int32:
 //     if self.current < self.limit:
@@ -115,7 +118,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> RangeIter::__next__() {
 // def __init__(self, start: int32, limit: int32) -> None:
 //     self.start = start
 //     self.limit = limit
-inline NumberRange::NumberRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
+inline NumberRange::NumberRange(int32_t start, int32_t limit)
+    : start(start),
+      limit(limit) {}
 
 // def __iter__(self) -> Own[RangeIter]:
 //     return RangeIter(self.start, self.limit)

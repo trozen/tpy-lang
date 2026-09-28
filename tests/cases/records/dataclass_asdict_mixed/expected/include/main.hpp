@@ -122,7 +122,9 @@ inline std::ostream& operator<<(std::ostream& os, const Group& obj) {
 }
 
 
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 inline bool Point::__eq__(const Point& other) const {
     return ((this->x == other.x) && (this->y == other.y));
@@ -132,7 +134,9 @@ inline std::string Point::__repr__() const {
     return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 
-inline Person::Person(std::string_view name, int32_t age) : name(name), age(age) {}
+inline Person::Person(std::string_view name, int32_t age)
+    : name(name),
+      age(age) {}
 
 inline bool Person::__eq__(const Person& other) const {
     return ((this->name == other.name) && (this->age == other.age));
@@ -142,7 +146,9 @@ inline std::string Person::__repr__() const {
     return std::format("Person(name={}, age={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->age));
 }
 
-inline NamedPoint::NamedPoint(std::string_view name, Point&& pos) : name(name), pos(std::move(pos)) {}
+inline NamedPoint::NamedPoint(std::string_view name, Point&& pos)
+    : name(name),
+      pos(std::move(pos)) {}
 
 inline bool NamedPoint::__eq__(const NamedPoint& other) const {
     return ((this->name == other.name) && (this->pos == other.pos));
@@ -152,7 +158,9 @@ inline std::string NamedPoint::__repr__() const {
     return std::format("NamedPoint(name={}, pos={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->pos));
 }
 
-inline Group::Group(std::string_view label, std::vector<Point>&& members) : label(label), members(std::move(members)) {}
+inline Group::Group(std::string_view label, std::vector<Point>&& members)
+    : label(label),
+      members(std::move(members)) {}
 
 inline bool Group::__eq__(const Group& other) const {
     return ((this->label == other.label) && (this->members == other.members));

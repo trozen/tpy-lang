@@ -33,7 +33,9 @@ struct __gen_two_yields : public ::tpy::next_iter_mixin<__gen_two_yields<T>, ::t
     };
 
     __gen_two_yields(::tpy::param_val_or_ref_t<T> a_, ::tpy::param_val_or_ref_t<T> b_)
-        : __state(S_INITIAL), a(a_), b(b_) {}
+        : __state(S_INITIAL),
+          a(a_),
+          b(b_) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_two_yields& __iter__() { return *this; }

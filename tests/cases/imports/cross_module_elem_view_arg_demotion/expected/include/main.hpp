@@ -75,7 +75,8 @@ struct __gen_sec_gen : public ::tpy::next_iter_mixin<__gen_sec_gen, int32_t> {
     };
 
     __gen_sec_gen(std::vector<std::string>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_sec_gen& __iter__() { return *this; }

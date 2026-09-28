@@ -94,9 +94,13 @@ inline Base::~Base() {
 // def __init__(self, b: int32, c: int32):
 //     super().__init__(b)
 //     self._c = c
-inline Child::Child(int32_t b, int32_t c) : Base(b), _c(c) {}
+inline Child::Child(int32_t b, int32_t c)
+    : Base(b),
+      _c(c) {}
 
-inline Child::Child(Child&& other) noexcept : Base(std::move(other)), _c(std::move(other._c)) {
+inline Child::Child(Child&& other) noexcept
+    : Base(std::move(other)),
+      _c(std::move(other._c)) {
     other.__tpy_owned_ = false;
 }
 inline Child& Child::operator=(Child&& other) noexcept {

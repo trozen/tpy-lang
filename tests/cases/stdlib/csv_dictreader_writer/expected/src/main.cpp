@@ -21,7 +21,7 @@ void read_header_derived() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::__getitem__(row, "name") << " " << ::tpy::__getitem__(row, "age") << " " << ::tpy::__getitem__(row, "city") << "\n";
+            std::cout << ::tpy::__getitem__(row, "name") << " " << ::tpy::__getitem__(row, "age") << " " << ::tpy::__getitem__(row, "city") << "\n";
         }
     }
 }
@@ -38,14 +38,14 @@ void read_explicit_fieldnames() {
     std::string_view data = "Alice,30\nBob,25\n";
     std::vector<std::string> fn = {"name", "age"};
     {
-        ::tpystd::io::StringIO __tmp_2 = ::tpystd::io::StringIO(data);
-        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_2, std::move(fn));
+        ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO(data);
+        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1, std::move(fn));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::__getitem__(row, "name") << " " << ::tpy::__getitem__(row, "age") << "\n";
+            std::cout << ::tpy::__getitem__(row, "name") << " " << ::tpy::__getitem__(row, "age") << "\n";
         }
     }
 }
@@ -57,14 +57,14 @@ void read_explicit_fieldnames() {
 void read_quoted() {
     std::string_view data = "name,note\nAlice,\"says, hi\"\nBob,\"line\nbreak\"\n";
     {
-        ::tpystd::io::StringIO __tmp_3 = ::tpystd::io::StringIO(data);
-        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_3);
+        ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO(data);
+        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::__getitem__(row, "name") << " " << "::" << " " << ::tpy::__getitem__(row, "note") << "\n";
+            std::cout << ::tpy::__getitem__(row, "name") << " " << "::" << " " << ::tpy::__getitem__(row, "note") << "\n";
         }
     }
 }
@@ -80,14 +80,14 @@ void read_quoted() {
 void read_short_row() {
     std::string_view data = "a,b,c\n1,2\n";
     {
-        ::tpystd::io::StringIO __tmp_4 = ::tpystd::io::StringIO(data);
-        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_4);
+        ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO(data);
+        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::__len__(row) << " " << ::tpy::print_bool((row.contains("c"))) << " " << ::tpy::__getitem__(row, "a") << " " << ::tpy::__getitem__(row, "b") << "\n";
+            std::cout << ::tpy::__len__(row) << " " << ::tpy::print_bool((row.contains("c"))) << " " << ::tpy::__getitem__(row, "a") << " " << ::tpy::__getitem__(row, "b") << "\n";
         }
     }
 }
@@ -102,14 +102,14 @@ void read_short_row() {
 void read_long_row() {
     std::string_view data = "a,b\n1,2,3,4\n";
     {
-        ::tpystd::io::StringIO __tmp_5 = ::tpystd::io::StringIO(data);
-        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_5);
+        ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO(data);
+        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::__getitem__(row, "a") << " " << ::tpy::__getitem__(row, "b") << "\n";
+            std::cout << ::tpy::__getitem__(row, "a") << " " << ::tpy::__getitem__(row, "b") << "\n";
         }
     }
 }
@@ -192,14 +192,14 @@ void roundtrip() {
     w.writeheader();
     w.writerow(::tpy::ordered_map<std::string, std::string>({{"name", "Alice"}, {"note", "says, hi"}}));
     {
-        ::tpystd::io::StringIO __tmp_6 = ::tpystd::io::StringIO(out.getvalue());
-        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_6);
+        ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO(out.getvalue());
+        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::__getitem__(row, "name") << " " << "->" << " " << ::tpy::__getitem__(row, "note") << "\n";
+            std::cout << ::tpy::__getitem__(row, "name") << " " << "->" << " " << ::tpy::__getitem__(row, "note") << "\n";
         }
     }
 }

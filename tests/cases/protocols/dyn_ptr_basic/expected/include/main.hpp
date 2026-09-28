@@ -157,7 +157,9 @@ inline void ExecutorB::mark(int32_t task_id) {
 // def __init__(self) -> None:
 //     self.awaker = None  # Ptr[T] is implicitly nullable
 //     self.task_id = 0
-inline Notifier::Notifier() : awaker(nullptr), task_id(0) {}
+inline Notifier::Notifier()
+    : awaker(nullptr),
+      task_id(0) {}
 
 // def aim(self, p: Ptr[Awaker], tid: int32) -> None:
 //     self.awaker = p

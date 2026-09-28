@@ -42,7 +42,8 @@ struct __gen_sums : public ::tpy::next_iter_mixin<__gen_sums, int32_t> {
     };
 
     __gen_sums(const std::vector<std::tuple<int32_t, int32_t>>& pairs)
-        : __state(S_INITIAL), pairs(pairs) {}
+        : __state(S_INITIAL),
+          pairs(pairs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_sums& __iter__() { return *this; }
@@ -70,7 +71,8 @@ struct __gen_firsts : public ::tpy::next_iter_mixin<__gen_firsts, int32_t> {
     };
 
     __gen_firsts(const std::vector<std::tuple<int32_t, int32_t>>& pairs)
-        : __state(S_INITIAL), pairs(pairs) {}
+        : __state(S_INITIAL),
+          pairs(pairs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_firsts& __iter__() { return *this; }
@@ -108,7 +110,9 @@ struct __gen_multi : public ::tpy::next_iter_mixin<__gen_multi, int32_t> {
     };
 
     __gen_multi(const std::vector<std::tuple<int32_t, int32_t>>& p1, const std::vector<std::tuple<int32_t, int32_t>>& p2)
-        : __state(S_INITIAL), p1(p1), p2(p2) {}
+        : __state(S_INITIAL),
+          p1(p1),
+          p2(p2) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_multi& __iter__() { return *this; }

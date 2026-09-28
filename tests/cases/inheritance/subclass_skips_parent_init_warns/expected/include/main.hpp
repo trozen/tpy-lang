@@ -229,13 +229,20 @@ inline Bag::Bag(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32) -> None:  # tpyc: warning(/'Tag.__init__' does not call 'super\(\).__init__\(...\)'; TPy default-constructs the 'Labeled' part instead$/)
 //     self.n = n
-inline Tag::Tag(int32_t n) : Labeled(), n(n) {}
+inline Tag::Tag(int32_t n)
+    : Labeled(),
+      n(n) {}
 
 // def __init__(self, n: int32) -> None:  # tpyc: warning(/'Both.__init__' does not call 'Animal.__init__\(self, ...\)'/) warning(/'Both.__init__' does not call 'Labeled.__init__\(self, ...\)'/)
 //     self.n = n
-inline Both::Both(int32_t n) : Animal(), Labeled(), n(n) {}
+inline Both::Both(int32_t n)
+    : Animal(),
+      Labeled(),
+      n(n) {}
 
-inline Kid::Kid(int32_t z) : Animal(), z(z) {}
+inline Kid::Kid(int32_t z)
+    : Animal(),
+      z(z) {}
 
 inline bool Kid::__eq__(const Kid& other) const {
     return (this->z == other.z);
@@ -247,10 +254,14 @@ inline std::string Kid::__repr__() const {
 
 // def __init__(self, code: int32) -> None:  # tpyc: warning(/'CodeError.__init__' does not call 'super\(\).__init__\(...\)'; TPy default-constructs the 'AppError' part instead$/)
 //     self.code = code
-inline CodeError::CodeError(int32_t code) : AppError(), code(code) {}
+inline CodeError::CodeError(int32_t code)
+    : AppError(),
+      code(code) {}
 
 // def __init__(self, n: int32) -> None:  # tpyc: warning(/'Dog.__init__' does not call 'super\(\).__init__\(...\)'; TPy default-constructs the 'Pet' part instead, which runs 'Animal.__init__\(\)'$/)
 //     self.n = n
-inline Dog::Dog(int32_t n) : Pet(), n(n) {}
+inline Dog::Dog(int32_t n)
+    : Pet(),
+      n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

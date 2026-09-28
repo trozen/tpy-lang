@@ -41,10 +41,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        auto& __tup_1 = __for_tup_0;
-        int32_t n = std::get<0>(__tup_1);
-        auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        c.v = ::tpy::add_check<int32_t>(c.v, (::tpy::mul_check<int32_t>(n, 10)));
+            auto& __tup_1 = __for_tup_0;
+            int32_t n = std::get<0>(__tup_1);
+            auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            c.v = ::tpy::add_check<int32_t>(c.v, (::tpy::mul_check<int32_t>(n, 10)));
         }
     }
     std::cout << "free" << " " << ::tpy::ListPrinter(({
@@ -68,10 +68,10 @@ void main() {
             auto __r_4 = __itr_3.__next__();
             if (!__r_4.has_value()) break;
             auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_4);
-        auto& __tup_3 = __for_tup_1;
-        int32_t n = std::get<0>(__tup_3);
-        auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
-        c.v = ::tpy::add_check<int32_t>(c.v, n);
+            auto& __tup_3 = __for_tup_1;
+            int32_t n = std::get<0>(__tup_3);
+            auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
+            c.v = ::tpy::add_check<int32_t>(c.v, n);
         }
     }
     std::cout << "twice" << " " << ::tpy::ListPrinter(({
@@ -96,10 +96,10 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_7);
-        auto& __tup_5 = __for_tup_2;
-        int32_t n = std::get<0>(__tup_5);
-        auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_5)));
-        c.v = ::tpy::add_check<int32_t>(c.v, n);
+            auto& __tup_5 = __for_tup_2;
+            int32_t n = std::get<0>(__tup_5);
+            auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_5)));
+            c.v = ::tpy::add_check<int32_t>(c.v, n);
         }
     }
     std::cout << "method" << " " << ::tpy::ListPrinter(({

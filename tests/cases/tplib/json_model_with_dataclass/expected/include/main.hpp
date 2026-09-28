@@ -96,7 +96,9 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 }
 
 
-inline Item::Item(std::string_view name, int32_t value) : name(name), value(value) {}
+inline Item::Item(std::string_view name, int32_t value)
+    : name(name),
+      value(value) {}
 
 inline bool Item::__eq__(const Item& other) const {
     return ((this->name == other.name) && (this->value == other.value));
@@ -205,7 +207,9 @@ inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_l
     return Item::try_from_json(__data);
 }
 
-inline Container::Container(std::string_view label, std::vector<Item>&& items) : label(label), items(std::move(items)) {}
+inline Container::Container(std::string_view label, std::vector<Item>&& items)
+    : label(label),
+      items(std::move(items)) {}
 
 inline bool Container::__eq__(const Container& other) const {
     return ((this->label == other.label) && (this->items == other.items));

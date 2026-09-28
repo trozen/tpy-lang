@@ -59,8 +59,7 @@ struct __gen_gen_with_outer_return_in_finally : public ::tpy::next_iter_mixin<__
         S_DONE = 6,
     };
 
-    __gen_gen_with_outer_return_in_finally()
-        : __state(S_INITIAL) {}
+    __gen_gen_with_outer_return_in_finally() : __state(S_INITIAL) {}
 
     __gen_gen_with_outer_return_in_finally(__gen_gen_with_outer_return_in_finally&&) = default;
     ~__gen_gen_with_outer_return_in_finally() {
@@ -106,8 +105,7 @@ struct __gen_gen_nested_with_return_in_finally : public ::tpy::next_iter_mixin<_
         S_DONE = 8,
     };
 
-    __gen_gen_nested_with_return_in_finally()
-        : __state(S_INITIAL) {}
+    __gen_gen_nested_with_return_in_finally() : __state(S_INITIAL) {}
 
     __gen_gen_nested_with_return_in_finally(__gen_gen_nested_with_return_in_finally&&) = default;
     ~__gen_gen_nested_with_return_in_finally() {

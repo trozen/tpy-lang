@@ -92,7 +92,9 @@ struct __coro_async_field_write {
     };
 
     __coro_async_field_write(const Src& src)
-        : __state(S_INITIAL), __cancel_pending(false), src(src) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          src(src) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -115,7 +117,8 @@ struct __gen_gen_field_write : public ::tpy::next_iter_mixin<__gen_gen_field_wri
     };
 
     __gen_gen_field_write(const Src& src)
-        : __state(S_INITIAL), src(src) {}
+        : __state(S_INITIAL),
+          src(src) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_field_write& __iter__() { return *this; }

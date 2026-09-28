@@ -131,11 +131,9 @@ bool in_match(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
     switch (__match_subject_1) {
     case 1: {
         return (xs == ys);
-        break;
     }
     default: {
         return false;
-        break;
     }
     }
     ::std::unreachable();
@@ -314,7 +312,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             bool g = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "generator" << " " << ::tpy::print_bool(g) << "\n";
+            std::cout << "generator" << " " << ::tpy::print_bool(g) << "\n";
         }
     }
     std::cout << "closure" << " " << ::tpy::print_bool(::tpyapp::main::in_closure(mi, mf)) << "\n";

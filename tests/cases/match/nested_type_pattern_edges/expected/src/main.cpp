@@ -48,8 +48,6 @@ std::string or_nested(::tpy::Union<const Tag*, const Wrapper*> x) {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         auto& l = __case_0.label;
         return (::tpy::str_concat("tag: ", l));
-        goto __match_end_2;
-        break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
@@ -58,7 +56,6 @@ std::string or_nested(::tpy::Union<const Tag*, const Wrapper*> x) {
                 auto& __field_case_1_pet = std::get<Cat>(__case_1.pet);
                 auto& n = __field_case_1_pet.name;
                 return (::tpy::str_concat("pet: ", n));
-                goto __match_end_2;
             }
         }
         {
@@ -66,13 +63,11 @@ std::string or_nested(::tpy::Union<const Tag*, const Wrapper*> x) {
                 auto& __field_case_1_pet = std::get<Dog>(__case_1.pet);
                 auto& n = __field_case_1_pet.name;
                 return (::tpy::str_concat("pet: ", n));
-                goto __match_end_2;
             }
         }
         break;
     }
     }
-__match_end_2:;
     return "";
 }
 
@@ -90,13 +85,11 @@ std::string deep3(::tpy::Union<const Box<Box<Box<int32_t>>>*, const Box<Box<Box<
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& v = __case_0.value.value.value;
         return (::tpy::str_concat("string: ", v));
-        break;
     }
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto n = __case_1.value.value.value;
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
-        break;
     }
     }
     ::std::unreachable();
@@ -116,13 +109,11 @@ std::string positional_nested(::tpy::Union<const Box<int32_t>*, const Box<std::s
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& v = __case_0.value;
         return (::tpy::str_concat("string: ", v));
-        break;
     }
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto n = __case_1.value;
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
-        break;
     }
     }
     ::std::unreachable();
@@ -171,26 +162,21 @@ std::string guard_combo(const Wrapper& w) {
         auto& n = __field_match_subject_1_pet.name;
         if ((n == "Luna")) {
             return "special cat";
-            goto __match_end_2;
         }
     }
     if (std::holds_alternative<Cat>(__match_subject_1.pet)) {
         auto& __field_match_subject_1_pet = std::get<Cat>(__match_subject_1.pet);
         auto& n = __field_match_subject_1_pet.name;
         return (::tpy::str_concat("cat: ", n));
-        goto __match_end_2;
     }
     if (std::holds_alternative<Dog>(__match_subject_1.pet)) {
         auto& __field_match_subject_1_pet = std::get<Dog>(__match_subject_1.pet);
         auto& n = __field_match_subject_1_pet.name;
         return (::tpy::str_concat("dog: ", n));
-        goto __match_end_2;
     }
     {
         return "other";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 

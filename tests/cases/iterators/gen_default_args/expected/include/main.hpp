@@ -136,7 +136,9 @@ struct __gen_upto : public ::tpy::next_iter_mixin<__gen_upto, int32_t> {
     };
 
     __gen_upto(int32_t stop_ = 3, int32_t step_ = 1)
-        : __state(S_INITIAL), stop(std::move(stop_)), step(std::move(step_)) {}
+        : __state(S_INITIAL),
+          stop(std::move(stop_)),
+          step(std::move(step_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_upto& __iter__() { return *this; }
@@ -160,7 +162,8 @@ struct __gen_upto_final : public ::tpy::next_iter_mixin<__gen_upto_final, int32_
     };
 
     __gen_upto_final(int32_t stop_ = DEFAULT_STOP)
-        : __state(S_INITIAL), stop(std::move(stop_)) {}
+        : __state(S_INITIAL),
+          stop(std::move(stop_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_upto_final& __iter__() { return *this; }
@@ -185,7 +188,8 @@ struct __gen_bounded : public ::tpy::next_iter_mixin<__gen_bounded, int32_t> {
     };
 
     __gen_bounded(int32_t limit_ = 2)
-        : __state(S_INITIAL), limit(std::move(limit_)) {}
+        : __state(S_INITIAL),
+          limit(std::move(limit_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_bounded& __iter__() { return *this; }
@@ -216,7 +220,9 @@ struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, ::tpy::yi
     };
 
     __gen_head(T_it&& it_, int32_t n_ = 2)
-        : __state(S_INITIAL), it(std::forward<T_it>(it_)), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          it(std::forward<T_it>(it_)),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_head& __iter__() { return *this; }
@@ -295,7 +301,9 @@ struct __gen_Box_upto_m : public ::tpy::next_iter_mixin<__gen_Box_upto_m, int32_
     };
 
     __gen_Box_upto_m(const Box& __self, int32_t stop_ = 2)
-        : __state(S_INITIAL), __self(__self), stop(std::move(stop_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          stop(std::move(stop_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Box_upto_m& __iter__() { return *this; }
@@ -325,7 +333,9 @@ struct __gen_Box_bounded_m : public ::tpy::next_iter_mixin<__gen_Box_bounded_m, 
     };
 
     __gen_Box_bounded_m(const Box& __self, int32_t limit_ = 2)
-        : __state(S_INITIAL), __self(__self), limit(std::move(limit_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          limit(std::move(limit_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Box_bounded_m& __iter__() { return *this; }
@@ -362,7 +372,16 @@ struct __gen_Box_shapes : public ::tpy::next_iter_mixin<__gen_Box_shapes, int32_
     };
 
     __gen_Box_shapes(const Box& __self, std::string_view tag_ = "t", bool flag_ = true, double ratio_ = 0.5, Mode m_ = Mode::B, Rec* r_ = nullptr, int32_t w_ = 3, int32_t neg_ = -1, int32_t f_ = WIDTH)
-        : __state(S_INITIAL), __self(__self), tag(std::string(tag_)), flag(std::move(flag_)), ratio(std::move(ratio_)), m(std::move(m_)), r(r_), w(std::move(w_)), neg(std::move(neg_)), f(std::move(f_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          tag(std::string(tag_)),
+          flag(std::move(flag_)),
+          ratio(std::move(ratio_)),
+          m(std::move(m_)),
+          r(r_),
+          w(std::move(w_)),
+          neg(std::move(neg_)),
+          f(std::move(f_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Box_shapes& __iter__() { return *this; }
@@ -398,7 +417,9 @@ struct __gen_Box2_take : public ::tpy::next_iter_mixin<__gen_Box2_take<T>, ::tpy
     };
 
     __gen_Box2_take(Box2<T>& __self, int32_t n_ = 2)
-        : __state(S_INITIAL), __self(__self), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Box2_take& __iter__() { return *this; }

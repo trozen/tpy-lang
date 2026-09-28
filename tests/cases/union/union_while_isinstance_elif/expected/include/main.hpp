@@ -76,7 +76,9 @@ inline Circle::Circle(double radius) : radius(radius) {}
 // def __init__(self, width: float, height: float) -> None:
 //     self.width = width
 //     self.height = height
-inline Rect::Rect(double width, double height) : width(width), height(height) {}
+inline Rect::Rect(double width, double height)
+    : width(width),
+      height(height) {}
 
 // def __init__(self, base: float) -> None:
 //     self.base = base

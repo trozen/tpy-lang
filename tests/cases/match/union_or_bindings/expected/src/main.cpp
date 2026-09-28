@@ -18,19 +18,16 @@ std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
         auto& __case_0_0 = *std::get<2>(__match_subject_1);
         auto& n = __case_0_0.name;
         return (::tpy::str_concat("pet: ", n));
-        break;
     }
     case 1: {
         auto& __case_0_1 = *std::get<1>(__match_subject_1);
         auto& n = __case_0_1.name;
         return (::tpy::str_concat("pet: ", n));
-        break;
     }
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto& n = __case_1.name;
         return (::tpy::str_concat("bird: ", n));
-        break;
     }
     }
     ::std::unreachable();

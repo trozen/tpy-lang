@@ -22,32 +22,27 @@ std::string describe(const Pet& p) {
         const Dog& __case_0 = *__mpoly_0;
         if (__case_0.legs == 4 && (__case_0.weight > 10)) {
             return "big quad dog";
-            goto __match_end_2;
         }
     }
     if (const Dog* __mpoly_1 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_1 = *__mpoly_1;
         if (__case_1.legs == 4) {
             return "small quad dog";
-            goto __match_end_2;
         }
     }
     if (const Dog* __mpoly_2 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_2 = *__mpoly_2;
         if (__case_2.legs == 3) {
             return "tripod dog";
-            goto __match_end_2;
         }
     }
     if (const Dog* __mpoly_3 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_3 = *__mpoly_3;
         return "odd dog";
-        goto __match_end_2;
     }
     {
         return "not a dog";
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 

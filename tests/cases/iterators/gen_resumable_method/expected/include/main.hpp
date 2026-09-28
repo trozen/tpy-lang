@@ -55,7 +55,9 @@ struct __gen_Source_windowed : public ::tpy::next_iter_mixin<__gen_Source_window
     };
 
     __gen_Source_windowed(const Source& __self, const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __self(__self), xs(xs) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          xs(xs) {}
 
     __gen_Source_windowed(__gen_Source_windowed&&) = default;
     ~__gen_Source_windowed() {
@@ -98,7 +100,8 @@ struct __gen_Source_doubled : public ::tpy::next_iter_mixin<__gen_Source_doubled
     };
 
     __gen_Source_doubled(const Source& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Source_doubled& __iter__() { return *this; }

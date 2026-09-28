@@ -62,7 +62,8 @@ struct __gen_gen_double_x : public ::tpy::next_iter_mixin<__gen_gen_double_x<T_i
     };
 
     __gen_gen_double_x(T_items&& items_)
-        : __state(S_INITIAL), items(std::forward<T_items>(items_)) {}
+        : __state(S_INITIAL),
+          items(std::forward<T_items>(items_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_double_x& __iter__() { return *this; }
@@ -112,7 +113,9 @@ __gen_gen_double_x<T_items> gen_double_x(T_items&& items) {
 // def __init__(self, x: int, y: int) -> None:
 //     self.x = x
 //     self.y = y
-inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
+inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y)
+    : x(x),
+      y(y) {}
 // def mutate_via_iterable(items: Iterable[Point]) -> None:
 //     for p in items:
 //         p.x += 100

@@ -18,12 +18,10 @@ std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
     case 1:
     {
         return "mammal";
-        break;
     }
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         return "bird";
-        break;
     }
     }
     ::std::unreachable();
@@ -42,11 +40,9 @@ std::string with_default(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
     case 2: {
         auto& __case_0 = *std::get<2>(__match_subject_1);
         return "dog";
-        break;
     }
     default: {
         return "other";
-        break;
     }
     }
     ::std::unreachable();

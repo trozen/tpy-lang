@@ -49,7 +49,9 @@ struct __coro_sender {
     };
 
     __coro_sender(::tpystd::socket::socket& sock)
-        : __state(S_INITIAL), __cancel_pending(false), sock(sock) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          sock(sock) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -81,7 +83,9 @@ struct __coro_receiver {
     };
 
     __coro_receiver(::tpystd::socket::socket& sock)
-        : __state(S_INITIAL), __cancel_pending(false), sock(sock) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          sock(sock) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -109,7 +113,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

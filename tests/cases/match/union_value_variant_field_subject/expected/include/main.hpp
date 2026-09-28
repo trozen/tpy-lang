@@ -93,13 +93,11 @@ inline std::string W::get_label() const {
         auto& __case_0 = std::get<0>(__match_subject_1);
         auto& v = __case_0.x;
         return (::tpy::str_concat("a:", v));
-        break;
     }
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1);
         auto& v = __case_1.y;
         return (::tpy::str_concat("b:", v));
-        break;
     }
     }
     ::std::unreachable();

@@ -26,10 +26,10 @@ void mutate_observe() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& v = ::tpy::unwrap_ref(*__r_1);
-        seen = ::tpy::add_check<int32_t>(seen, 1);
-        if ((seen == 1)) {
-            v.push_back(2);
-        }
+            seen = ::tpy::add_check<int32_t>(seen, 1);
+            if ((seen == 1)) {
+                v.push_back(2);
+            }
         }
     }
 }
@@ -55,21 +55,21 @@ void walk_prune() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        auto& __tup_1 = __for_tup_0;
-        std::string_view name = std::get<0>(__tup_1);
-        auto&& dirs = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        auto&& files = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-        std::vector<std::string> kept = std::vector<std::string>{};
-        auto& __obj_2 = dirs;
-        auto __beg_2 = __obj_2.begin();
-        auto __end_2 = __obj_2.end();
-        for (; __beg_2 != __end_2; ++__beg_2) {
-            std::string_view d = *__beg_2;
-            if ((d != "skip")) {
-                kept.push_back(std::string(d));
+            auto& __tup_1 = __for_tup_0;
+            std::string_view name = std::get<0>(__tup_1);
+            auto&& dirs = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            auto&& files = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
+            std::vector<std::string> kept = std::vector<std::string>{};
+            auto& __obj_2 = dirs;
+            auto __beg_2 = __obj_2.begin();
+            auto __end_2 = __obj_2.end();
+            for (; __beg_2 != __end_2; ++__beg_2) {
+                std::string_view d = *__beg_2;
+                if ((d != "skip")) {
+                    kept.push_back(std::string(d));
+                }
             }
-        }
-        ::tpy::list_set_slice(dirs, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::move(kept));
+            ::tpy::list_set_slice(dirs, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::move(kept));
         }
     }
 }
@@ -91,7 +91,7 @@ void read_once() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "once:" << " " << ::tpy::ListPrinter(v) << "\n";
+            std::cout << "once:" << " " << ::tpy::ListPrinter(v) << "\n";
         }
     }
 }

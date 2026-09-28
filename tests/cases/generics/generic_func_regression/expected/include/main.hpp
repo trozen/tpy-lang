@@ -49,7 +49,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // def __init__(self, x: int32, y: int32):
 //     self.x = x
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 // # Uppercase generic function (tests routing: function vs type)
 // def First[T](items: list[T]) -> T:
 //     return items[0]

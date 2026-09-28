@@ -77,7 +77,10 @@ inline std::ostream& operator<<(std::ostream& os, const Runner& obj) {
 //     self.value = value
 //     self.other = 0
 //     self.flag = False
-inline Cell::Cell(int32_t value) : value(value), other(0), flag(false) {}
+inline Cell::Cell(int32_t value)
+    : value(value),
+      other(0),
+      flag(false) {}
 
 // def update(self, value: int32):
 //     # A method caller must pass its receiver by reference to the free setter.

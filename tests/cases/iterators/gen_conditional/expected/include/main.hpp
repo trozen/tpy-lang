@@ -31,7 +31,8 @@ struct __gen_evens : public ::tpy::next_iter_mixin<__gen_evens, int32_t> {
     };
 
     __gen_evens(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_evens& __iter__() { return *this; }

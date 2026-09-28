@@ -207,7 +207,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "free" << " " << n << "\n";
+            std::cout << "free" << " " << n << "\n";
         }
     }
     std::cout << "free src" << " " << std::get<1>(::tpy::__getitem__(xs, 0)).v << " " << std::get<1>(::tpy::__getitem__(xs, 1)).v << "\n";
@@ -219,7 +219,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "value" << " " << n << "\n";
+            std::cout << "value" << " " << n << "\n";
         }
     }
     Holder h = Holder({::tpy::tuple_to_storage<std::tuple<int32_t, A>>(std::tuple<int32_t, A>{3, A(30)})});
@@ -230,7 +230,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_5);
-        std::cout << "method" << " " << n << "\n";
+            std::cout << "method" << " " << n << "\n";
         }
     }
     std::cout << "method src" << " " << std::get<1>(::tpy::__getitem__(h.xs, 0)).v << "\n";
@@ -241,7 +241,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_7);
-        std::cout << "readonly" << " " << n << "\n";
+            std::cout << "readonly" << " " << n << "\n";
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_section()));
@@ -253,7 +253,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_9);
-        std::cout << "items" << " " << n << "\n";
+            std::cout << "items" << " " << n << "\n";
         }
     }
     std::cout << "items src" << " " << ::tpy::__getitem__(d, 7).v << "\n";

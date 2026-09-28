@@ -142,7 +142,9 @@ struct __coro_coro {
     };
 
     __coro_coro(Dog& d)
-        : __state(S_INITIAL), __cancel_pending(false), d(d) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          d(d) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -166,7 +168,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     };
 
     __gen_gen(Dog& d)
-        : __state(S_INITIAL), d(d) {}
+        : __state(S_INITIAL),
+          d(d) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -189,7 +192,8 @@ struct __gen_gen_same : public ::tpy::next_iter_mixin<__gen_gen_same, std::strin
     };
 
     __gen_gen_same(Pet& x)
-        : __state(S_INITIAL), x(x) {}
+        : __state(S_INITIAL),
+          x(x) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen_same& __iter__() { return *this; }
@@ -203,7 +207,9 @@ struct __gen_gen_same : public ::tpy::next_iter_mixin<__gen_gen_same, std::strin
 // def __init__(self, name: str) -> None:
 //     self.name = name
 //     self.tag = 0
-inline Pet::Pet(std::string_view name) : name(name), tag(::tpy::BigInt(0)) {}
+inline Pet::Pet(std::string_view name)
+    : name(name),
+      tag(::tpy::BigInt(0)) {}
 
 // def rename(self, name: str) -> None:
 //     self.name = name

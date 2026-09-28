@@ -45,7 +45,9 @@ struct __coro_count_chars {
     };
 
     __coro_count_chars(std::optional<std::string_view> s_)
-        : __state(S_INITIAL), __cancel_pending(false), s(s_ ? std::make_optional(std::string(*s_)) : std::nullopt) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          s(s_ ? std::make_optional(std::string(*s_)) : std::nullopt) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -73,7 +75,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -100,7 +103,8 @@ struct __gen_each_byte : public ::tpy::next_iter_mixin<__gen_each_byte, ::tpy::B
     };
 
     __gen_each_byte(std::optional<::tpy::BytesView> b_)
-        : __state(S_INITIAL), b(b_ ? std::make_optional(::tpy::Bytes(*b_)) : std::nullopt) {}
+        : __state(S_INITIAL),
+          b(b_ ? std::make_optional(::tpy::Bytes(*b_)) : std::nullopt) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_each_byte& __iter__() { return *this; }

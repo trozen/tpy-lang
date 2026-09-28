@@ -186,7 +186,8 @@ struct __coro_async_handler_raise_finally {
     };
 
     __coro_async_handler_raise_finally()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     __coro_async_handler_raise_finally(__coro_async_handler_raise_finally&&) = default;
     ~__coro_async_handler_raise_finally() {
@@ -223,8 +224,7 @@ struct __gen_gen_handler_raise_finally : public ::tpy::next_iter_mixin<__gen_gen
         S_DONE = 3,
     };
 
-    __gen_gen_handler_raise_finally()
-        : __state(S_INITIAL) {}
+    __gen_gen_handler_raise_finally() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_handler_raise_finally& __iter__() { return *this; }

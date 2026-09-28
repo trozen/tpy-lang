@@ -78,7 +78,9 @@ inline Payload::Payload(int32_t n) : n(n) {}
 // def __init__(self) -> None:
 //     self.items = [1, 2]
 //     self.p = Payload(1)
-inline Holder::Holder() : items(std::vector<int32_t>{1, 2}), p(Payload(1)) {}
+inline Holder::Holder()
+    : items(std::vector<int32_t>{1, 2}),
+      p(Payload(1)) {}
 
 // def bctr(self) -> list[int32]:
 //     return self.items

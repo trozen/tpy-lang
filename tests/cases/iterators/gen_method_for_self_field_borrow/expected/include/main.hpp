@@ -68,7 +68,8 @@ struct __gen_Holder_bump : public ::tpy::next_iter_mixin<__gen_Holder_bump, int3
     };
 
     __gen_Holder_bump(Holder& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Holder_bump& __iter__() { return *this; }

@@ -40,7 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 //     # The subject: a second assignment to an already-initialized field,
 //     # reading the value the member init gave it.
 //     self.total = self.total * SCALE  # tpyc: ok
-inline Acc::Acc(int32_t base) : total(base), label(1) {
+inline Acc::Acc(int32_t base)
+    : total(base),
+      label(1) {
     this->total = (::tpy::mul_check<int32_t>(this->total, SCALE));
 }
 void __tpy_init();

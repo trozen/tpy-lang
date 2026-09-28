@@ -25,8 +25,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_1);
-        std::cout << std::get<0>(pair)->x << "\n";
-        std::cout << std::get<1>(pair)->x << "\n";
+            std::cout << std::get<0>(pair)->x << "\n";
+            std::cout << std::get<1>(pair)->x << "\n";
         }
     }
 }

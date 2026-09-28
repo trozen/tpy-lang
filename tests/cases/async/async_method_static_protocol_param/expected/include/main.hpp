@@ -58,7 +58,11 @@ struct __coro_Runner_with_timeout {
     };
 
     __coro_Runner_with_timeout(const Runner& __self, std::unique_ptr<::tpystd::coro::Cancellable<T>>&& coro_, double timeout_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), coro(std::move(coro_)), timeout(std::move(timeout_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          coro(std::move(coro_)),
+          timeout(std::move(timeout_)) {}
 
     ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -112,7 +116,8 @@ struct __coro_inner {
     };
 
     __coro_inner()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -137,7 +142,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

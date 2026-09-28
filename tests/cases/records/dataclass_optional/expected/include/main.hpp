@@ -41,7 +41,9 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 }
 
 
-inline Node::Node(int32_t value, std::optional<std::string_view> label) : value(value), label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
+inline Node::Node(int32_t value, std::optional<std::string_view> label)
+    : value(value),
+      label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
 
 inline bool Node::__eq__(const Node& other) const {
     return ((this->value == other.value) && (this->label == other.label));

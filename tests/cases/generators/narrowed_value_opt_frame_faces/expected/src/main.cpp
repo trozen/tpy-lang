@@ -67,7 +67,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << x << "\n";
+            std::cout << x << "\n";
         }
     }
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d = ::tpy::ordered_map<std::string, std::optional<int32_t>>({{"a", 1}, {"b", std::nullopt}, {"c", 2}});
@@ -78,7 +78,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_3);
-        std::cout << x << "\n";
+            std::cout << x << "\n";
         }
     }
     {
@@ -88,11 +88,11 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             std::optional<int32_t> w = ::tpy::unwrap_ref(*__r_5);
-        if ((w.has_value())) {
-            std::cout << ::tpy::print_optional_val(w) << "\n";
-        } else {
-            std::cout << "none" << "\n";
-        }
+            if ((w.has_value())) {
+                std::cout << ::tpy::print_optional_val(w) << "\n";
+            } else {
+                std::cout << "none" << "\n";
+            }
         }
     }
     {
@@ -102,7 +102,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_7);
-        std::cout << x << "\n";
+            std::cout << x << "\n";
         }
     }
     {
@@ -112,7 +112,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_9);
-        std::cout << "global" << " " << x << "\n";
+            std::cout << "global" << " " << x << "\n";
         }
     }
     {
@@ -123,7 +123,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_11);
-        std::cout << s << "\n";
+            std::cout << s << "\n";
         }
     }
 }

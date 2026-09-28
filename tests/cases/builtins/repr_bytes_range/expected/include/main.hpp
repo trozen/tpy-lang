@@ -75,7 +75,9 @@ struct __gen_reprs : public ::tpy::next_iter_mixin<__gen_reprs, std::string> {
     };
 
     __gen_reprs(::tpy::BytesView b_, int32_t n_)
-        : __state(S_INITIAL), b(::tpy::Bytes(b_)), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          b(::tpy::Bytes(b_)),
+          n(std::move(n_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_reprs& __iter__() { return *this; }

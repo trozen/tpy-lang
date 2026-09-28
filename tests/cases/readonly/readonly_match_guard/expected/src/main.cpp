@@ -20,8 +20,6 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> pet) {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         auto& n = __case_0.name;
         return (::tpy::str_concat("cat: ", n));
-        goto __match_end_2;
-        break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
@@ -29,18 +27,14 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> pet) {
             auto& n = __case_1.name;
             if ((::tpy::__len__(n) > 3)) {
                 return (::tpy::str_concat("long-named dog: ", n));
-                goto __match_end_2;
             }
         }
         {
             auto& n = __case_1.name;
             return (::tpy::str_concat("dog: ", n));
-            goto __match_end_2;
         }
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
 }
 

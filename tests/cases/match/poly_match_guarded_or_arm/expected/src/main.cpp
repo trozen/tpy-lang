@@ -16,16 +16,13 @@ std::string size_of(const Pet& p, bool flag) {
     auto& __match_subject_1 = p;
     if (((dynamic_cast<const Cat*>(&__match_subject_1) != nullptr) || (dynamic_cast<const Hamster*>(&__match_subject_1) != nullptr)) && flag) {
         return "small";
-        goto __match_end_2;
     }
     if ((!(flag))) {
         return "unflagged";
-        goto __match_end_2;
     }
     {
         return "?";
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 

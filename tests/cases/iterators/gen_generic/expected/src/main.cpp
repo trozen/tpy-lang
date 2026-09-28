@@ -55,7 +55,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << x << "\n";
+            std::cout << x << "\n";
         }
     }
     {
@@ -65,7 +65,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-        std::cout << s << "\n";
+            std::cout << s << "\n";
         }
     }
     std::array<std::string, 3> words = {"hello", "world", "foo"};
@@ -76,10 +76,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_5);
-        const auto& __tup_1 = __for_tup_0;
-        int32_t i = std::get<0>(__tup_1);
-        std::string_view w = std::get<1>(__tup_1);
-        std::cout << i << " " << w << "\n";
+            const auto& __tup_1 = __for_tup_0;
+            int32_t i = std::get<0>(__tup_1);
+            std::string_view w = std::get<1>(__tup_1);
+            std::cout << i << " " << w << "\n";
         }
     }
     std::array<int32_t, 3> nums = {10, 20, 30};
@@ -90,10 +90,10 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_7);
-        const auto& __tup_2 = __for_tup_1;
-        int32_t i = std::get<0>(__tup_2);
-        int32_t n = std::get<1>(__tup_2);
-        std::cout << i << " " << n << "\n";
+            const auto& __tup_2 = __for_tup_1;
+            int32_t i = std::get<0>(__tup_2);
+            int32_t n = std::get<1>(__tup_2);
+            std::cout << i << " " << n << "\n";
         }
     }
     {
@@ -104,10 +104,10 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_9);
-        const auto& __tup_3 = __for_tup_2;
-        int32_t i = std::get<0>(__tup_3);
-        std::string_view s = std::get<1>(__tup_3);
-        std::cout << i << " " << s << "\n";
+            const auto& __tup_3 = __for_tup_2;
+            int32_t i = std::get<0>(__tup_3);
+            std::string_view s = std::get<1>(__tup_3);
+            std::cout << i << " " << s << "\n";
         }
     }
     Bin b = Bin();
@@ -118,7 +118,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t k = ::tpy::unwrap_ref(*__r_11);
-        std::cout << "bump" << " " << k << "\n";
+            std::cout << "bump" << " " << k << "\n";
         }
     }
     std::cout << "bump total" << " " << b.total << "\n";
@@ -129,7 +129,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t k = ::tpy::unwrap_ref(*__r_13);
-        std::cout << "size" << " " << k << "\n";
+            std::cout << "size" << " " << k << "\n";
         }
     }
     std::string_view word = "ro";
@@ -140,7 +140,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t t = ::tpy::unwrap_ref(*__r_15);
-        std::cout << "len" << " " << t << "\n";
+            std::cout << "len" << " " << t << "\n";
         }
     }
     {
@@ -150,7 +150,7 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t t = ::tpy::unwrap_ref(*__r_17);
-        std::cout << "rvalue" << " " << t << "\n";
+            std::cout << "rvalue" << " " << t << "\n";
         }
     }
 }

@@ -99,7 +99,9 @@ inline std::ostream& operator<<(std::ostream& os, const Fixed& obj) {
 // def __init__(self, b: bytearray, xs: list[int32]) -> None:
 //     self.buf = b  # tpyc: warning(/copies bytearray into field/)
 //     self.xs = xs  # tpyc: warning(/copies list\[int32\] into field/)
-inline Base::Base(const ::tpy::ByteArray& b, const std::vector<int32_t>& xs) : buf(b), xs(xs) {}
+inline Base::Base(const ::tpy::ByteArray& b, const std::vector<int32_t>& xs)
+    : buf(b),
+      xs(xs) {}
 
 // def __init__(self, s: StrView) -> None:
 //     self.s = str(s)
@@ -108,7 +110,9 @@ inline Label::Label(std::string_view s) : s(std::string(s)) {}
 // def __init__(self, b: bytearray, xs: list[int32]) -> None:
 //     super().__init__(b, xs)  # tpyc: ok
 //     self.n = 1
-inline Child::Child(const ::tpy::ByteArray& b, const std::vector<int32_t>& xs) : Base(b, xs), n(1) {}
+inline Child::Child(const ::tpy::ByteArray& b, const std::vector<int32_t>& xs)
+    : Base(b, xs),
+      n(1) {}
 
 // def __init__(self, n: int32) -> None:
 //     # a conversion at a `StrView` base parameter

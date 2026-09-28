@@ -86,11 +86,11 @@ inline Picture::Picture(const ::tpy::BigInt& w) : width(w) {}
 //     self.label = name
 //     self.b = math.hypot(float(p2x), float(p2y))
 inline Triangle::Triangle(const ::tpy::BigInt& p1x, const ::tpy::BigInt& p1y, const ::tpy::BigInt& p2x, const ::tpy::BigInt& p2y, std::string_view name) {
-    std::array<const double, 2> __tmp_2{static_cast<double>(p1x), static_cast<double>(p1y)};
-    this->a = ::tpystd::math::hypot(::tpy::varargs<const double>(__tmp_2));
+    std::array<const double, 2> __tmp_1{static_cast<double>(p1x), static_cast<double>(p1y)};
+    this->a = ::tpystd::math::hypot(::tpy::varargs<const double>(__tmp_1));
     this->label = name;
-    std::array<const double, 2> __tmp_3{static_cast<double>(p2x), static_cast<double>(p2y)};
-    this->b = ::tpystd::math::hypot(::tpy::varargs<const double>(__tmp_3));
+    std::array<const double, 2> __tmp_2{static_cast<double>(p2x), static_cast<double>(p2y)};
+    this->b = ::tpystd::math::hypot(::tpy::varargs<const double>(__tmp_2));
 }
 void __tpy_init();
 } // namespace tpyapp::main

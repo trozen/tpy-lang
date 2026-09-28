@@ -108,7 +108,9 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
 }
 
 
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 inline bool Point::__eq__(const Point& other) const {
     return ((this->x == other.x) && (this->y == other.y));
@@ -147,7 +149,9 @@ inline int32_t Point::field_count() {
     return 2;
 }
 
-inline Person::Person(std::string_view name, int32_t age) : name(name), age(age) {}
+inline Person::Person(std::string_view name, int32_t age)
+    : name(name),
+      age(age) {}
 
 inline bool Person::__eq__(const Person& other) const {
     return ((this->name == other.name) && (this->age == other.age));

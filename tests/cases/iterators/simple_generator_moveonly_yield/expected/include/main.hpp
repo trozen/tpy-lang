@@ -57,7 +57,8 @@ struct __gen_toks_while : public ::tpy::next_iter_mixin<__gen_toks_while, Tok> {
     };
 
     __gen_toks_while(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<Tok, ::tpy::StopIteration> __next__();
     __gen_toks_while& __iter__() { return *this; }
@@ -83,7 +84,8 @@ struct __gen_toks_for : public ::tpy::next_iter_mixin<__gen_toks_for, Tok> {
     };
 
     __gen_toks_for(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<Tok, ::tpy::StopIteration> __next__();
     __gen_toks_for& __iter__() { return *this; }

@@ -135,7 +135,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView m = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen" << " " << ::tpy::BytesPrinter(m) << "\n";
+            std::cout << "gen" << " " << ::tpy::BytesPrinter(m) << "\n";
         }
     }
     std::vector<::tpy::Bytes> __tmp_6 = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("skip", 4), ::tpy::bytes_literal_owned("c", 1)};

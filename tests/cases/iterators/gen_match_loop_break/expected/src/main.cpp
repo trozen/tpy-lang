@@ -47,7 +47,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         if (__match_subject_1 == 0) {
             __state = S_JOIN_1;
             continue;
-            goto __match_end_2;
         }
         {
             v = __match_subject_1;
@@ -94,7 +93,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_1);
-        std::cout << y << "\n";
+            std::cout << y << "\n";
         }
     }
 }

@@ -44,7 +44,9 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 // def __init__(self, key: int32, tag: int32) -> None:
 //     self.key = key
 //     self.tag = tag
-inline Item::Item(int32_t key, int32_t tag) : key(key), tag(tag) {}
+inline Item::Item(int32_t key, int32_t tag)
+    : key(key),
+      tag(tag) {}
 
 // def __lt__(self, other: 'Item') -> bool:
 //     return self.key < other.key

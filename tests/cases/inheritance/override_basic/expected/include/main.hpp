@@ -71,7 +71,9 @@ inline std::string Shape::describe() const {
 
 // def __init__(self, side: int32) -> None:
 //     self.side = side
-inline Square::Square(int32_t side) : Shape(), side(side) {}
+inline Square::Square(int32_t side)
+    : Shape(),
+      side(side) {}
 
 // @override
 // def area(self) -> int32:  # tpyc: warning(/non-polymorphic/)

@@ -142,6 +142,8 @@ inline std::string Dog::name() const {
 // def __init__(self, name_: str, pet: Own[Box[Pet]]) -> None:
 //     self.name_ = name_
 //     self.pet = pet
-inline Owner::Owner(std::string_view name_, ::tpystd::tplib::box::Box<Pet>&& pet) : name_(name_), pet(std::move(pet)) {}
+inline Owner::Owner(std::string_view name_, ::tpystd::tplib::box::Box<Pet>&& pet)
+    : name_(name_),
+      pet(std::move(pet)) {}
 void __tpy_init();
 } // namespace tpyapp::main

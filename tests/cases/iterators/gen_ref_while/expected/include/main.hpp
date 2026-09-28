@@ -51,7 +51,8 @@ struct __gen_my_enumerate : public ::tpy::next_iter_mixin<__gen_my_enumerate, st
     };
 
     __gen_my_enumerate(std::vector<Point>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<std::tuple<int32_t, Point*>, ::tpy::StopIteration> __next__();
     __gen_my_enumerate& __iter__() { return *this; }
@@ -65,6 +66,8 @@ struct __gen_my_enumerate : public ::tpy::next_iter_mixin<__gen_my_enumerate, st
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

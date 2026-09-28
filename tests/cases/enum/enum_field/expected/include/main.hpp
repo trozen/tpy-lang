@@ -63,6 +63,9 @@ inline std::ostream& operator<<(std::ostream& os, const Pixel& obj) {
 //     self.x = x
 //     self.y = y
 //     self.color = color
-inline Pixel::Pixel(const ::tpy::BigInt& x, const ::tpy::BigInt& y, Color color) : x(x), y(y), color(color) {}
+inline Pixel::Pixel(const ::tpy::BigInt& x, const ::tpy::BigInt& y, Color color)
+    : x(x),
+      y(y),
+      color(color) {}
 void __tpy_init();
 } // namespace tpyapp::main

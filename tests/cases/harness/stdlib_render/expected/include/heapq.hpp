@@ -69,7 +69,8 @@ struct __gen_merge : public ::tpy::next_iter_mixin<__gen_merge<T>, T> {
     };
 
     __gen_merge(::tpy::varargs<const std::vector<T>> iterables_)
-        : __state(S_INITIAL), iterables(std::move(iterables_)) {}
+        : __state(S_INITIAL),
+          iterables(std::move(iterables_)) {}
 
     std::expected<T, ::tpy::StopIteration> __next__();
     __gen_merge& __iter__() { return *this; }

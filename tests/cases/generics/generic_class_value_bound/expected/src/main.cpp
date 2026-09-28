@@ -20,6 +20,8 @@ namespace tpyapp::main {
 //     ring.put(20)
 //     print(ring.get(0))
 //     print(ring.get(1))
+//     print("pop:", ring.pop())
+//     print("pop: size", ring.size)
 //
 //     v: int32 = 99
 //     print(identity(v))
@@ -37,6 +39,8 @@ void main() {
     ring.put(20);
     std::cout << ring.get(0) << "\n";
     std::cout << ring.get(1) << "\n";
+    std::cout << "pop:" << " " << ring.pop() << "\n";
+    std::cout << "pop: size" << " " << ring.size << "\n";
     int32_t v = 99;
     std::cout << ::tpyapp::main::identity<int32_t>(v) << "\n";
 }

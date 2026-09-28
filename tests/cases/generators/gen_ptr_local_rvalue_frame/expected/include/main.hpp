@@ -66,8 +66,7 @@ struct __gen_rvalue_init : public ::tpy::next_iter_mixin<__gen_rvalue_init, int3
         S_DONE = 5,
     };
 
-    __gen_rvalue_init()
-        : __state(S_INITIAL) {}
+    __gen_rvalue_init() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_rvalue_init& __iter__() { return *this; }
@@ -94,7 +93,8 @@ struct __gen_rebind_after_alias : public ::tpy::next_iter_mixin<__gen_rebind_aft
     };
 
     __gen_rebind_after_alias(std::vector<Point>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_rebind_after_alias& __iter__() { return *this; }
@@ -119,8 +119,7 @@ struct __gen_rebind_after_none : public ::tpy::next_iter_mixin<__gen_rebind_afte
         S_DONE = 5,
     };
 
-    __gen_rebind_after_none()
-        : __state(S_INITIAL) {}
+    __gen_rebind_after_none() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_rebind_after_none& __iter__() { return *this; }
@@ -145,8 +144,7 @@ struct __gen_own_opt_call : public ::tpy::next_iter_mixin<__gen_own_opt_call, in
         S_DONE = 5,
     };
 
-    __gen_own_opt_call()
-        : __state(S_INITIAL) {}
+    __gen_own_opt_call() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_own_opt_call& __iter__() { return *this; }
@@ -174,7 +172,8 @@ struct __gen_loop_rebind : public ::tpy::next_iter_mixin<__gen_loop_rebind, int3
     };
 
     __gen_loop_rebind(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_loop_rebind& __iter__() { return *this; }

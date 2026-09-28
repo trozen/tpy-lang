@@ -54,7 +54,8 @@ struct __gen_Box_vals : public ::tpy::next_iter_mixin<__gen_Box_vals, ::tpy::Big
     };
 
     __gen_Box_vals(const Box& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_Box_vals& __iter__() { return *this; }
@@ -73,6 +74,9 @@ inline __gen_Box_vals Box::vals() const {
 //     self.a = a
 //     self.b = b
 //     self.c = c
-inline Box::Box(const ::tpy::BigInt& a, const ::tpy::BigInt& b, const ::tpy::BigInt& c) : a(a), b(b), c(c) {}
+inline Box::Box(const ::tpy::BigInt& a, const ::tpy::BigInt& b, const ::tpy::BigInt& c)
+    : a(a),
+      b(b),
+      c(c) {}
 void __tpy_init();
 } // namespace tpyapp::main

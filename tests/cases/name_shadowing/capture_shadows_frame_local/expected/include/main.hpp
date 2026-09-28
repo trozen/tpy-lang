@@ -33,7 +33,8 @@ struct __gen_run : public ::tpy::next_iter_mixin<__gen_run, int32_t> {
     };
 
     __gen_run(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_run& __iter__() { return *this; }

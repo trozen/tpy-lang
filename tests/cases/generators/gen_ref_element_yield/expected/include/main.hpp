@@ -174,7 +174,8 @@ struct __gen_each_list : public ::tpy::next_iter_mixin<__gen_each_list, ::tpy::v
     };
 
     __gen_each_list(std::vector<std::vector<int32_t>>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_each_list& __iter__() { return *this; }
@@ -202,7 +203,8 @@ struct __gen_each_rec : public ::tpy::next_iter_mixin<__gen_each_rec, ::tpy::val
     };
 
     __gen_each_rec(std::vector<Box>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __next__();
     __gen_each_rec& __iter__() { return *this; }
@@ -230,7 +232,8 @@ struct __gen_each_pack : public ::tpy::next_iter_mixin<__gen_each_pack, ::tpy::v
     };
 
     __gen_each_pack(::tpy::varargs<std::vector<int32_t>> xs_)
-        : __state(S_INITIAL), xs(std::move(xs_)) {}
+        : __state(S_INITIAL),
+          xs(std::move(xs_)) {}
 
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_each_pack& __iter__() { return *this; }
@@ -257,8 +260,7 @@ struct __gen_each_local : public ::tpy::next_iter_mixin<__gen_each_local, ::tpy:
         S_DONE = 4,
     };
 
-    __gen_each_local()
-        : __state(S_INITIAL) {}
+    __gen_each_local() : __state(S_INITIAL) {}
 
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_each_local& __iter__() { return *this; }
@@ -282,7 +284,8 @@ struct __gen_each_alias : public ::tpy::next_iter_mixin<__gen_each_alias, ::tpy:
     };
 
     __gen_each_alias(std::vector<Box>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __next__();
     __gen_each_alias& __iter__() { return *this; }
@@ -307,7 +310,8 @@ struct __gen_each_ternary : public ::tpy::next_iter_mixin<__gen_each_ternary, ::
     };
 
     __gen_each_ternary(bool flag_)
-        : __state(S_INITIAL), flag(std::move(flag_)) {}
+        : __state(S_INITIAL),
+          flag(std::move(flag_)) {}
 
     std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __next__();
     __gen_each_ternary& __iter__() { return *this; }
@@ -335,7 +339,8 @@ struct __gen_each_dict : public ::tpy::next_iter_mixin<__gen_each_dict, ::tpy::v
     };
 
     __gen_each_dict(std::vector<::tpy::ordered_map<int32_t, int32_t>>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<::tpy::val_or_ref<::tpy::ordered_map<int32_t, int32_t>>, ::tpy::StopIteration> __next__();
     __gen_each_dict& __iter__() { return *this; }
@@ -363,7 +368,8 @@ struct __gen_each_set : public ::tpy::next_iter_mixin<__gen_each_set, ::tpy::val
     };
 
     __gen_each_set(std::vector<::tpy::ordered_set<int32_t>>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<::tpy::val_or_ref<::tpy::ordered_set<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_each_set& __iter__() { return *this; }
@@ -394,7 +400,8 @@ struct __gen_each_with : public ::tpy::next_iter_mixin<__gen_each_with, ::tpy::v
     };
 
     __gen_each_with(std::vector<std::vector<int32_t>>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     __gen_each_with(__gen_each_with&&) = default;
     ~__gen_each_with() {
@@ -442,7 +449,8 @@ struct __gen_each_finally : public ::tpy::next_iter_mixin<__gen_each_finally, ::
     };
 
     __gen_each_finally(std::vector<std::vector<int32_t>>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_each_finally& __iter__() { return *this; }
@@ -470,7 +478,8 @@ struct __gen_boxes : public ::tpy::next_iter_mixin<__gen_boxes, ::tpy::val_or_re
     };
 
     __gen_boxes(std::vector<Box>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __next__();
     __gen_boxes& __iter__() { return *this; }
@@ -499,7 +508,8 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T_it>, int32_t> {
     };
 
     __gen_relay(T_it&& it_)
-        : __state(S_INITIAL), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_relay& __iter__() { return *this; }
@@ -571,7 +581,9 @@ struct __gen_Rows_each : public ::tpy::next_iter_mixin<__gen_Rows_each, ::tpy::v
     };
 
     __gen_Rows_each(const Rows& __self, std::vector<std::vector<int32_t>>& xs)
-        : __state(S_INITIAL), __self(__self), xs(xs) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          xs(xs) {}
 
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_Rows_each& __iter__() { return *this; }
@@ -598,7 +610,8 @@ struct __gen_Rows_field_twice : public ::tpy::next_iter_mixin<__gen_Rows_field_t
     };
 
     __gen_Rows_field_twice(Rows& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_Rows_field_twice& __iter__() { return *this; }
@@ -625,7 +638,8 @@ struct __gen_ROBag_twice : public ::tpy::next_iter_mixin<__gen_ROBag_twice, ::tp
     };
 
     __gen_ROBag_twice(const ROBag& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::val_or_ref<const std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_ROBag_twice& __iter__() { return *this; }

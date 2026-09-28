@@ -23,28 +23,22 @@ std::string greet(std::string_view s, bool formal) {
     if (__match_subject_1 == "hello") {
         if (formal) {
             return "Good day";
-            goto __match_end_2;
         }
     }
     if (__match_subject_1 == "hello") {
         return "Hey";
-        goto __match_end_2;
     }
     if (__match_subject_1 == "bye") {
         if (formal) {
             return "Farewell";
-            goto __match_end_2;
         }
     }
     if (__match_subject_1 == "bye") {
         return "Later";
-        goto __match_end_2;
     }
     {
         return "?";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
     return "";
 }
@@ -63,18 +57,14 @@ std::string bucket(double x) {
     if (__match_subject_1 == 0.0) {
         if (true) {
             return "zero";
-            goto __match_end_2;
         }
     }
     if (__match_subject_1 == 1.0) {
         return "one";
-        goto __match_end_2;
     }
     {
         return "other";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
     return "";
 }

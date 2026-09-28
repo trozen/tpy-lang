@@ -27,8 +27,7 @@ struct __gen_gen_values : public ::tpy::next_iter_mixin<__gen_gen_values, int32_
         S_DONE = 3,
     };
 
-    __gen_gen_values()
-        : __state(S_INITIAL) {}
+    __gen_gen_values() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_values& __iter__() { return *this; }

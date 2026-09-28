@@ -39,7 +39,8 @@ struct __coro_coro {
     };
 
     __coro_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     __coro_coro(__coro_coro&&) = default;
     ~__coro_coro() {

@@ -63,6 +63,8 @@ inline std::ostream& operator<<(std::ostream& os, const Record& obj) {
 // def __init__(self, age: int32, name: str) -> None:
 //     self.data_age = age
 //     self.data_name = name
-inline Record::Record(int32_t age, std::string_view name) : data_age(age), data_name(name) {}
+inline Record::Record(int32_t age, std::string_view name)
+    : data_age(age),
+      data_name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

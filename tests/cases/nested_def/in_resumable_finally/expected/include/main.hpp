@@ -42,7 +42,8 @@ struct __coro_def_in_finally {
     };
 
     __coro_def_in_finally()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     __coro_def_in_finally(__coro_def_in_finally&&) = default;
     ~__coro_def_in_finally() {
@@ -84,7 +85,8 @@ struct __coro_called_from_finally {
     };
 
     __coro_called_from_finally()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     __coro_called_from_finally(__coro_called_from_finally&&) = default;
     ~__coro_called_from_finally() {
@@ -128,7 +130,8 @@ struct __coro_main {
     };
 
     __coro_main()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -152,8 +155,7 @@ struct __gen_gen_def_in_finally : public ::tpy::next_iter_mixin<__gen_gen_def_in
         S_DONE = 5,
     };
 
-    __gen_gen_def_in_finally()
-        : __state(S_INITIAL) {}
+    __gen_gen_def_in_finally() : __state(S_INITIAL) {}
 
     __gen_gen_def_in_finally(__gen_gen_def_in_finally&&) = default;
     ~__gen_gen_def_in_finally() {

@@ -155,8 +155,8 @@ __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        std::array<::tpystd::asyncio::_executor::Task<std::monostate>*, 2> __tmp_2{&(*pt), &(*ct)};
-        __sub_1.emplace(std::move(::tpystd::asyncio::gather<std::monostate>(::tpy::varargs<::tpystd::asyncio::_executor::Task<std::monostate>>(__tmp_2))));
+        std::array<::tpystd::asyncio::_executor::Task<std::monostate>*, 2> __tmp_1{&(*pt), &(*ct)};
+        __sub_1.emplace(std::move(::tpystd::asyncio::gather<std::monostate>(::tpy::varargs<::tpystd::asyncio::_executor::Task<std::monostate>>(__tmp_1))));
         __state = S_RESUME_1;
         continue;
     }

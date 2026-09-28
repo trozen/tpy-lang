@@ -25,14 +25,11 @@ std::string classify(const ::tpy::BigInt& x) {
     if (__match_subject_1 == 1) {
         if ((static_cast<void>(::tpyapp::main::make()), true)) {
             return "one";
-            goto __match_end_2;
         }
     }
     {
         return "other";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 

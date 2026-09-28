@@ -305,9 +305,13 @@ inline std::ostream& operator<<(std::ostream& os, const SSLZeroReturnError& obj)
 // def __init__(self, s: Ptr[mbedtls.Session], sock: Own[socket]) -> None:
 //     self._s = s
 //     self._sock = sock
-inline _SslSession::_SslSession(::tpy_tls_session* s, ::tpystd::socket::socket&& sock) : _s(s), _sock(std::move(sock)) {}
+inline _SslSession::_SslSession(::tpy_tls_session* s, ::tpystd::socket::socket&& sock)
+    : _s(s),
+      _sock(std::move(sock)) {}
 
-inline _SslSession::_SslSession(_SslSession&& other) noexcept : _s(std::move(other._s)), _sock(std::move(other._sock)) {
+inline _SslSession::_SslSession(_SslSession&& other) noexcept
+    : _s(std::move(other._s)),
+      _sock(std::move(other._sock)) {
     other.__tpy_owned_ = false;
 }
 inline _SslSession& _SslSession::operator=(_SslSession&& other) noexcept {
@@ -427,7 +431,10 @@ inline void SSLContext::_config_server(::tpy_tls_session* s) const {
 //     self._session = session
 //     self._handshaked = False
 //     self._closed = False
-inline SSLSocket::SSLSocket(::tpystd::tplib::rc::Rc<_SslSession>&& session) : _session(std::move(session)), _handshaked(false), _closed(false) {}
+inline SSLSocket::SSLSocket(::tpystd::tplib::rc::Rc<_SslSession>&& session)
+    : _session(std::move(session)),
+      _handshaked(false),
+      _closed(false) {}
 
 // def do_handshake_blocking(self) -> None:
 //     """Drive the handshake to completion (expects a blocking socket)."""

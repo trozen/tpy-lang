@@ -25,7 +25,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        out = ::tpy::add_check<int32_t>(out, v);
+            out = ::tpy::add_check<int32_t>(out, v);
         }
     }
     std::cout << out << "\n";

@@ -97,7 +97,8 @@ struct __gen_alias_param : public ::tpy::next_iter_mixin<__gen_alias_param, int3
     };
 
     __gen_alias_param(Holder& h)
-        : __state(S_INITIAL), h(h) {}
+        : __state(S_INITIAL),
+          h(h) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_alias_param& __iter__() { return *this; }
@@ -125,7 +126,8 @@ struct __gen_Holder_direct : public ::tpy::next_iter_mixin<__gen_Holder_direct, 
     };
 
     __gen_Holder_direct(const Holder& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Holder_direct& __iter__() { return *this; }
@@ -158,7 +160,8 @@ struct __gen_Holder_via_alias : public ::tpy::next_iter_mixin<__gen_Holder_via_a
     };
 
     __gen_Holder_via_alias(const Holder& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Holder_via_alias& __iter__() { return *this; }
@@ -190,7 +193,8 @@ struct __gen_Holder_simple_alias : public ::tpy::next_iter_mixin<__gen_Holder_si
     };
 
     __gen_Holder_simple_alias(const Holder& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Holder_simple_alias& __iter__() { return *this; }
@@ -218,7 +222,8 @@ struct __gen_Holder_live_alias : public ::tpy::next_iter_mixin<__gen_Holder_live
     };
 
     __gen_Holder_live_alias(Holder& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Holder_live_alias& __iter__() { return *this; }
@@ -249,7 +254,8 @@ struct __gen_Bumper_bump : public ::tpy::next_iter_mixin<__gen_Bumper_bump, int3
     };
 
     __gen_Bumper_bump(Bumper& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Bumper_bump& __iter__() { return *this; }
@@ -267,7 +273,9 @@ inline __gen_Bumper_bump Bumper::bump() {
 // def __init__(self):
 //     self.lst = [1, 2, 3]
 //     self.plain = [10, 20]
-inline Holder::Holder() : lst(std::vector<int32_t>{1, 2, 3}), plain(std::vector<int32_t>{10, 20}) {}
+inline Holder::Holder()
+    : lst(std::vector<int32_t>{1, 2, 3}),
+      plain(std::vector<int32_t>{10, 20}) {}
 
 // def __init__(self, v: int32):
 //     self.v = v

@@ -195,7 +195,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_1);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
     std::cout << "ref" << " " << ::tpy::__getitem__(pts, 0).x << " " << ::tpy::__getitem__(pts, 1).x << "\n";
@@ -207,7 +207,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& t = ::tpy::unwrap_ref(*__r_3);
-        t.n = ::tpy::add_check<int32_t>(t.n, 10);
+            t.n = ::tpy::add_check<int32_t>(t.n, 10);
         }
     }
     std::cout << "nocopy" << " " << ::tpy::__getitem__(toks, 0).n << " " << ::tpy::__getitem__(toks, 1).n << "\n";
@@ -218,7 +218,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             const auto& t = ::tpy::unwrap_ref(*__r_5);
-        std::cout << "ro" << " " << t.n << "\n";
+            std::cout << "ro" << " " << t.n << "\n";
         }
     }
     int32_t total = 0;
@@ -230,7 +230,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_7);
-        total = ::tpy::add_check<int32_t>(total, n);
+            total = ::tpy::add_check<int32_t>(total, n);
         }
     }
     std::cout << "value" << " " << total << "\n";
@@ -242,7 +242,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             std::string_view w = ::tpy::unwrap_ref(*__r_9);
-        std::cout << "str" << " " << w << "\n";
+            std::cout << "str" << " " << w << "\n";
         }
     }
     Bin b = Bin();
@@ -254,7 +254,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             auto&& v = ::tpy::unwrap_ref(*__r_11);
-        v.append(10);
+            v.append(10);
         }
     }
     std::cout << "bound" << " " << b.size() << "\n";
@@ -267,7 +267,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_13);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
     std::cout << "nested" << " " << ::tpy::__getitem__(more, 0).x << " " << ::tpy::__getitem__(more, 1).x << "\n";
@@ -279,7 +279,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_15);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
     std::cout << "subscript" << " " << ::tpy::__getitem__(subs, 0).x << " " << ::tpy::__getitem__(subs, 1).x << "\n";
@@ -291,7 +291,7 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_17);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
     std::cout << "local" << " " << ::tpy::__getitem__(locs, 0).x << " " << ::tpy::__getitem__(locs, 1).x << "\n";
@@ -303,7 +303,7 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_19);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
     std::cout << "method" << " " << ::tpy::__getitem__(h.items, 0).x << " " << ::tpy::__getitem__(h.items, 1).x << "\n";
@@ -315,7 +315,7 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_21);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
     std::cout << "field" << " " << c.v.x << "\n";
@@ -326,7 +326,7 @@ void main() {
             auto __r_23 = __itr_22.__next__();
             if (!__r_23.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_23);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
     std::cout << "property" << " " << c.v.x << "\n";
@@ -338,7 +338,7 @@ void main() {
             auto __r_25 = __itr_24.__next__();
             if (!__r_25.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_25);
-        std::cout << "property-value" << " " << n << "\n";
+            std::cout << "property-value" << " " << n << "\n";
         }
     }
     std::cout << "property-value-src" << " " << c2.v << "\n";
@@ -350,7 +350,7 @@ void main() {
             auto __r_27 = __itr_26.__next__();
             if (!__r_27.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_27);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
     std::cout << "with" << " " << ::tpy::__getitem__(ws, 0).x << " " << ::tpy::__getitem__(ws, 1).x << "\n";
@@ -362,7 +362,7 @@ void main() {
             auto __r_29 = __itr_28.__next__();
             if (!__r_29.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_29);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
     std::cout << "try" << " " << ::tpy::__getitem__(ts, 0).x << " " << ::tpy::__getitem__(ts, 1).x << "\n";
@@ -374,7 +374,7 @@ void main() {
             auto __r_31 = __itr_30.__next__();
             if (!__r_31.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_31);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
     std::cout << "match" << " " << ::tpy::__getitem__(mt, 0).x << " " << ::tpy::__getitem__(mt, 1).x << "\n";
@@ -386,8 +386,8 @@ void main() {
             auto __r_33 = __itr_32.__next__();
             if (!__r_33.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_33);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
-        std::cout << "local-container" << " " << p.x << "\n";
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            std::cout << "local-container" << " " << p.x << "\n";
         }
     }
     std::vector<Point> tls = {Point(1), Point(2)};
@@ -398,7 +398,7 @@ void main() {
             auto __r_35 = __itr_34.__next__();
             if (!__r_35.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_35);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
     std::cout << "trial-local" << " " << ::tpy::__getitem__(tls, 0).x << " " << ::tpy::__getitem__(tls, 1).x << "\n";
@@ -410,7 +410,7 @@ void main() {
             auto __r_37 = __itr_36.__next__();
             if (!__r_37.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_37);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
     std::cout << "nested-def" << " " << ::tpy::__getitem__(nd, 0).x << " " << ::tpy::__getitem__(nd, 1).x << "\n";
@@ -421,7 +421,7 @@ void main() {
             auto __r_39 = __itr_38.__next__();
             if (!__r_39.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_39);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
     std::vector<Point> sh = {Point(1), Point(2)};
@@ -432,7 +432,7 @@ void main() {
             auto __r_41 = __itr_40.__next__();
             if (!__r_41.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_41);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
     std::cout << "shadow-local" << " " << ::tpy::__getitem__(sh, 0).x << " " << ::tpy::__getitem__(sh, 1).x << "\n";
@@ -445,7 +445,7 @@ void main() {
             auto __r_43 = __itr_42.__next__();
             if (!__r_43.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_43);
-        p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            p.x = ::tpy::add_check<int32_t>(p.x, 100);
         }
     }
     std::cout << "named-fn" << " " << ::tpy::__getitem__(ns, 0).x << " " << ::tpy::__getitem__(ns, 1).x << "\n";
@@ -457,7 +457,7 @@ void main() {
             auto __r_45 = __itr_44.__next__();
             if (!__r_45.has_value()) break;
             const auto& p = ::tpy::unwrap_ref(*__r_45);
-        std::cout << "fn" << " " << p.x << "\n";
+            std::cout << "fn" << " " << p.x << "\n";
         }
     }
     {
@@ -467,7 +467,7 @@ void main() {
             auto __r_47 = __itr_46.__next__();
             if (!__r_47.has_value()) break;
             const auto& p = ::tpy::unwrap_ref(*__r_47);
-        std::cout << "own-fn" << " " << p.x << "\n";
+            std::cout << "own-fn" << " " << p.x << "\n";
         }
     }
     std::array<Point, 2> rs = {Point(1), Point(2)};
@@ -479,7 +479,7 @@ void main() {
             auto __r_49 = __itr_48.__next__();
             if (!__r_49.has_value()) break;
             const auto& p = ::tpy::unwrap_ref(*__r_49);
-        std::cout << "relay" << " " << p.x << "\n";
+            std::cout << "relay" << " " << p.x << "\n";
         }
     }
     std::cout << "relay-src" << " " << ::tpy::__getitem__(rs, 0).x << " " << ::tpy::__getitem__(rs, 1).x << "\n";
@@ -493,7 +493,7 @@ void main() {
             auto __r_51 = __itr_50.__next__();
             if (!__r_51.has_value()) break;
             const auto& p = ::tpy::unwrap_ref(*__r_51);
-        std::cout << "mixed" << " " << p.x << "\n";
+            std::cout << "mixed" << " " << p.x << "\n";
         }
     }
 }

@@ -60,11 +60,9 @@ std::string classify(Color c) {
     case Color::Blue:
     {
         return "warm-ish";
-        break;
     }
     case Color::Green: {
         return "green";
-        break;
     }
     }
     ::std::unreachable();
@@ -89,11 +87,9 @@ std::string check(Color c, bool allow_red) {
         } else {
             return "red blocked";
         }
-        break;
     }
     default: {
         return "other";
-        break;
     }
     }
     ::std::unreachable();
@@ -116,7 +112,6 @@ std::string mixed(Color c, bool allow) {
     case Color::Blue:
     {
         return "warm";
-        break;
     }
     case Color::Green: {
         if (allow) {
@@ -127,7 +122,6 @@ std::string mixed(Color c, bool allow) {
     }
     default: __match_default_2: {
         return "other";
-        break;
     }
     }
     ::std::unreachable();
@@ -155,7 +149,6 @@ std::string or_guard(Color c, bool flag) {
     }
     default: __match_default_2: {
         return "other";
-        break;
     }
     }
     ::std::unreachable();
@@ -184,11 +177,9 @@ std::string multi_guard(Color c, bool x, bool y) {
         } else {
             return "green";
         }
-        break;
     }
     default: {
         return "other";
-        break;
     }
     }
     ::std::unreachable();
@@ -213,18 +204,14 @@ std::string or_overlap(Color c, bool flag) {
     if ((__match_subject_1 == Color::Red || __match_subject_1 == Color::Blue)) {
         if (flag) {
             return "warm+flag";
-            goto __match_end_2;
         }
     }
     if (__match_subject_1 == Color::Blue) {
         return "blue";
-        goto __match_end_2;
     }
     {
         return "other";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
     return "";
 }

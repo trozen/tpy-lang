@@ -197,7 +197,10 @@ inline std::ostream& operator<<(std::ostream& os, const Extended& obj) {
 }
 
 
-inline User::User(std::string_view first_name, std::string_view last_name, int32_t age) : first_name(first_name), last_name(last_name), age(age) {}
+inline User::User(std::string_view first_name, std::string_view last_name, int32_t age)
+    : first_name(first_name),
+      last_name(last_name),
+      age(age) {}
 
 inline bool User::__eq__(const User& other) const {
     return (((this->first_name == other.first_name) && (this->last_name == other.last_name)) && (this->age == other.age));
@@ -297,7 +300,10 @@ inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_l
     return User::try_from_json(__data);
 }
 
-inline WithDefault::WithDefault(std::string_view label, std::optional<std::string_view> note, int32_t score) : label(label), note(note ? std::make_optional(std::string(*note)) : std::nullopt), score(score) {}
+inline WithDefault::WithDefault(std::string_view label, std::optional<std::string_view> note, int32_t score)
+    : label(label),
+      note(note ? std::make_optional(std::string(*note)) : std::nullopt),
+      score(score) {}
 
 inline bool WithDefault::__eq__(const WithDefault& other) const {
     return (((this->label == other.label) && (this->note == other.note)) && (this->score == other.score));
@@ -504,7 +510,9 @@ inline std::expected<Base, ::tpystd::tplib::json::parser::JsonError> Base::try_l
     return Base::try_from_json(__data);
 }
 
-inline Extended::Extended(int32_t item_id, std::string_view label) : Base(item_id), label(label) {}
+inline Extended::Extended(int32_t item_id, std::string_view label)
+    : Base(item_id),
+      label(label) {}
 
 inline bool Extended::__eq__(const Extended& other) const {
     return ((this->item_id == other.item_id) && (this->label == other.label));

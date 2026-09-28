@@ -65,7 +65,10 @@ struct __coro_first {
     };
 
     __coro_first(std::vector<P>& items, int32_t i_)
-        : __state(S_INITIAL), __cancel_pending(false), items(items), i(std::move(i_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          items(items),
+          i(std::move(i_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -90,7 +93,9 @@ struct __coro_second {
     };
 
     __coro_second(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -118,7 +123,8 @@ struct __coro_driver {
     };
 
     __coro_driver()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

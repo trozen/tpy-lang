@@ -116,7 +116,8 @@ struct __coro_tick {
     };
 
     __coro_tick()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -147,7 +148,9 @@ struct __coro_drain {
     };
 
     __coro_drain(const Snap& s)
-        : __state(S_INITIAL), __cancel_pending(false), s(s) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          s(s) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -175,7 +178,8 @@ struct __gen_gen_snapshot : public ::tpy::next_iter_mixin<__gen_gen_snapshot, in
     };
 
     __gen_gen_snapshot(const Snap& s)
-        : __state(S_INITIAL), s(s) {}
+        : __state(S_INITIAL),
+          s(s) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_snapshot& __iter__() { return *this; }
@@ -197,7 +201,8 @@ struct __gen_Snap_yield_own : public ::tpy::next_iter_mixin<__gen_Snap_yield_own
     };
 
     __gen_Snap_yield_own(const Snap& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<std::vector<int32_t>, ::tpy::StopIteration> __next__();
     __gen_Snap_yield_own& __iter__() { return *this; }
@@ -223,7 +228,8 @@ struct __gen_Holder_yield_rec : public ::tpy::next_iter_mixin<__gen_Holder_yield
     };
 
     __gen_Holder_yield_rec(Holder& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __next__();
     __gen_Holder_yield_rec& __iter__() { return *this; }
@@ -249,7 +255,8 @@ struct __gen_Holder_yield_data : public ::tpy::next_iter_mixin<__gen_Holder_yiel
     };
 
     __gen_Holder_yield_data(Holder& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_Holder_yield_data& __iter__() { return *this; }
@@ -293,7 +300,9 @@ inline Point::Point(int32_t x) : x(x) {}
 // def __init__(self) -> None:
 //     self.p = Point(1)
 //     self.xs = [1, 2]
-inline Holder::Holder() : p(Point(1)), xs(std::vector<int32_t>{1, 2}) {}
+inline Holder::Holder()
+    : p(Point(1)),
+      xs(std::vector<int32_t>{1, 2}) {}
 
 // @property
 // def rec(self) -> Point:

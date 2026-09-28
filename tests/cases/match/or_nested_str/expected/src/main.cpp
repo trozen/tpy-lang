@@ -24,63 +24,54 @@ std::string classify(std::string_view s) {
         case 'a': {
             if (__match_subject_1 == "cat") {
                 return "animal";
-                goto __match_end_2;
             }
             break;
         }
         case 'e': {
             if (__match_subject_1 == "red") {
                 return "color";
-                goto __match_end_2;
             }
             break;
         }
         case 'h': {
             if (__match_subject_1 == "three") {
                 return "number";
-                goto __match_end_2;
             }
             break;
         }
         case 'i': {
             if (__match_subject_1 == "bird") {
                 return "animal";
-                goto __match_end_2;
             }
             break;
         }
         case 'l': {
             if (__match_subject_1 == "blue") {
                 return "color";
-                goto __match_end_2;
             }
             break;
         }
         case 'n': {
             if (__match_subject_1 == "one") {
                 return "number";
-                goto __match_end_2;
             }
             break;
         }
         case 'o': {
             if (__match_subject_1 == "dog") {
                 return "animal";
-                goto __match_end_2;
             }
             break;
         }
         case 'r': {
             if (__match_subject_1 == "green") {
                 return "color";
-                goto __match_end_2;
             }
             break;
         }
         case 'w': {
             if (__match_subject_1 == "two") {
                 return "number";
-                goto __match_end_2;
             }
             break;
         }
@@ -88,9 +79,7 @@ std::string classify(std::string_view s) {
     }
     {
         return "unknown";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 

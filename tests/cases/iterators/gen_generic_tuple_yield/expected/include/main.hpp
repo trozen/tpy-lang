@@ -36,7 +36,9 @@ struct __gen_zip_pairs : public ::tpy::next_iter_mixin<__gen_zip_pairs<K, V>, st
     };
 
     __gen_zip_pairs(const std::vector<K>& ks, const std::vector<V>& vs)
-        : __state(S_INITIAL), ks(ks), vs(vs) {}
+        : __state(S_INITIAL),
+          ks(ks),
+          vs(vs) {}
 
     __gen_zip_pairs(__gen_zip_pairs&&) = default;
     ~__gen_zip_pairs() {

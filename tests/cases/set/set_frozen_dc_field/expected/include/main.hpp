@@ -105,7 +105,9 @@ inline std::ostream& operator<<(std::ostream& os, const DictItem& obj) {
 }
 
 
-inline Tag::Tag(std::string_view name, int32_t value) : name(name), value(value) {}
+inline Tag::Tag(std::string_view name, int32_t value)
+    : name(name),
+      value(value) {}
 
 inline bool Tag::__eq__(const Tag& other) const {
     return ((this->name == other.name) && (this->value == other.value));
@@ -121,7 +123,9 @@ inline uint64_t Tag::__hash__() const {
     return h;
 }
 
-inline SetItem::SetItem(std::string_view name, ::tpy::ordered_set<Tag>&& tags) : name(name), tags(std::move(tags)) {}
+inline SetItem::SetItem(std::string_view name, ::tpy::ordered_set<Tag>&& tags)
+    : name(name),
+      tags(std::move(tags)) {}
 
 inline bool SetItem::__eq__(const SetItem& other) const {
     return ((this->name == other.name) && (this->tags == other.tags));

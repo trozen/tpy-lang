@@ -87,6 +87,8 @@ inline B::B(int32_t y) : y(y) {}
 // def __init__(self):
 //     self.a = A(1)
 //     self.b = A(2)
-inline Holder::Holder() : a(A(1)), b(A(2)) {}
+inline Holder::Holder()
+    : a(A(1)),
+      b(A(2)) {}
 void __tpy_init();
 } // namespace tpyapp::main

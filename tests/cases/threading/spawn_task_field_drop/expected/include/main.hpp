@@ -121,7 +121,9 @@ inline State::State() : done(0) {}
 // def __init__(self, m: Own[Mutex[State]], cv: Own[Condvar]) -> None:
 //     self.m = m
 //     self.cv = cv
-inline Shared::Shared(::tpystd::tpy::sync::Mutex<State>&& m, ::tpystd::tpy::sync::Condvar&& cv) : m(std::move(m)), cv(std::move(cv)) {}
+inline Shared::Shared(::tpystd::tpy::sync::Mutex<State>&& m, ::tpystd::tpy::sync::Condvar&& cv)
+    : m(std::move(m)),
+      cv(std::move(cv)) {}
 
 // def __init__(self, shared: Own[Arc[Shared]]) -> None:
 //     self.shared = shared

@@ -42,7 +42,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 // def __init__(self, big: int | None, small: int32 | None) -> None:
 //     self.big = big
 //     self.small = small
-inline Counter::Counter(std::optional<::tpy::BigInt> big, std::optional<int32_t> small) : big(big), small(small) {}
+inline Counter::Counter(std::optional<::tpy::BigInt> big, std::optional<int32_t> small)
+    : big(big),
+      small(small) {}
 
 // def show(self) -> None:
 //     print(self.big, self.small)

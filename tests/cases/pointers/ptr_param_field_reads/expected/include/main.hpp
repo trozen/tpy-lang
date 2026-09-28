@@ -89,7 +89,10 @@ inline Picture::Picture(int32_t width) : width(width) {}
 //     self.flags = [True, False, True]
 //     self.nums = [4, 5, 6]
 //     self.ceil_pic = Picture(width)
-inline Sector::Sector(int32_t width) : flags(std::vector<bool>{true, false, true}), nums(std::vector<int32_t>{4, 5, 6}), ceil_pic(Picture(width)) {}
+inline Sector::Sector(int32_t width)
+    : flags(std::vector<bool>{true, false, true}),
+      nums(std::vector<int32_t>{4, 5, 6}),
+      ceil_pic(Picture(width)) {}
 
 // def __init__(self, sector_front: Ptr[Sector]) -> None:
 //     self.sector_front = sector_front

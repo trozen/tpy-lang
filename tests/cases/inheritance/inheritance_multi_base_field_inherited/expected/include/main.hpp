@@ -74,7 +74,9 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
 // def __init__(self) -> None:
 //     Middle.token = 10  # resolves to Root.token through Middle's MRO
 //     Other.token = "hi"
-inline Leaf::Leaf() : Middle(), Other() {
+inline Leaf::Leaf()
+    : Middle(),
+      Other() {
     this->Middle::token = 10;
     this->Other::token = "hi";
 }

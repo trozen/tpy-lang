@@ -60,7 +60,8 @@ struct __gen_gen_with_yield : public ::tpy::next_iter_mixin<__gen_gen_with_yield
     };
 
     __gen_gen_with_yield(const std::vector<::tpy::BigInt>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     __gen_gen_with_yield(__gen_gen_with_yield&&) = default;
     ~__gen_gen_with_yield() {

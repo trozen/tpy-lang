@@ -32,11 +32,9 @@ namespace tpyapp::main {
             }
         }
         return ((best) + (::tpy::BigInt(1)));
-        break;
     }
     default: {
         return ::tpy::BigInt(0);
-        break;
     }
     }
     ::std::unreachable();

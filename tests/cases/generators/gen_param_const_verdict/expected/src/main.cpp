@@ -28,7 +28,7 @@ int32_t drive_ro(const std::vector<int32_t>& xs) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        t = ::tpy::add_check<int32_t>(t, v);
+            t = ::tpy::add_check<int32_t>(t, v);
         }
     }
     return t;
@@ -208,7 +208,7 @@ int32_t drive_views(const ::tpy::ordered_map<int32_t, int32_t>& d) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t a = ::tpy::unwrap_ref(*__r_1);
-        t = ::tpy::add_check<int32_t>(t, a);
+            t = ::tpy::add_check<int32_t>(t, a);
         }
     }
     {
@@ -218,7 +218,7 @@ int32_t drive_views(const ::tpy::ordered_map<int32_t, int32_t>& d) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t b = ::tpy::unwrap_ref(*__r_3);
-        t = ::tpy::add_check<int32_t>(t, b);
+            t = ::tpy::add_check<int32_t>(t, b);
         }
     }
     return t;
@@ -244,7 +244,7 @@ int32_t drive_match(const Box& b) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        t = ::tpy::add_check<int32_t>(t, v);
+            t = ::tpy::add_check<int32_t>(t, v);
         }
     }
     return t;
@@ -342,7 +342,7 @@ int32_t drive_scan(Bag& g, const std::vector<int32_t>& ys) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        t = ::tpy::add_check<int32_t>(t, v);
+            t = ::tpy::add_check<int32_t>(t, v);
         }
     }
     return t;
@@ -402,7 +402,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& r = ::tpy::unwrap_ref(*__r_1);
-        r.n = ::tpy::add_check<int32_t>(r.n, 10);
+            r.n = ::tpy::add_check<int32_t>(r.n, 10);
         }
     }
     std::cout << "mut" << " " << ::tpy::__getitem__(recs, 0).n << " " << ::tpy::__getitem__(recs, 1).n << " " << ::tpy::__getitem__(recs, 2).n << "\n";
@@ -414,7 +414,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "sub hop" << " " << v << "\n";
+            std::cout << "sub hop" << " " << v << "\n";
         }
     }
     std::cout << "sub hop after" << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(grid, 0), 0), 0).n << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(grid, 1), 0), 0).n << "\n";
@@ -426,7 +426,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        std::cout << "chain hop" << " " << v << "\n";
+            std::cout << "chain hop" << " " << v << "\n";
         }
     }
     std::cout << "chain hop after" << " " << ::tpy::__getitem__(::tpy::__getitem__(d0.shelf.rows, 0), 0).n << " " << ::tpy::__getitem__(::tpy::__getitem__(d0.shelf.rows, 0), 1).n << "\n";
@@ -440,7 +440,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        std::cout << "alias ro" << " " << v << "\n";
+            std::cout << "alias ro" << " " << v << "\n";
         }
     }
     {
@@ -450,7 +450,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        std::cout << "alias mut" << " " << v << "\n";
+            std::cout << "alias mut" << " " << v << "\n";
         }
     }
     std::cout << "alias async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::aalias_mut(ds))) << " " << ::tpy::__getitem__(::tpy::__getitem__(::tpy::__getitem__(ds, 0).shelf.rows, 0), 0).n << "\n";
@@ -462,7 +462,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-        std::cout << "callee" << " " << v << "\n";
+            std::cout << "callee" << " " << v << "\n";
         }
     }
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});

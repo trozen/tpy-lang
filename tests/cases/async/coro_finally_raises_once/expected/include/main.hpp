@@ -90,7 +90,8 @@ struct __coro_normal_exit {
     };
 
     __coro_normal_exit()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     __coro_normal_exit(__coro_normal_exit&&) = default;
     ~__coro_normal_exit() {
@@ -129,7 +130,8 @@ struct __coro_return_exit {
     };
 
     __coro_return_exit()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     __coro_return_exit(__coro_return_exit&&) = default;
     ~__coro_return_exit() {
@@ -170,7 +172,8 @@ struct __coro_with_exit {
     };
 
     __coro_with_exit()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     __coro_with_exit(__coro_with_exit&&) = default;
     ~__coro_with_exit() {
@@ -210,7 +213,8 @@ struct __coro_handler_exit {
     };
 
     __coro_handler_exit()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     __coro_handler_exit(__coro_handler_exit&&) = default;
     ~__coro_handler_exit() {
@@ -251,7 +255,8 @@ struct __coro_nested_exit {
     };
 
     __coro_nested_exit()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     __coro_nested_exit(__coro_nested_exit&&) = default;
     ~__coro_nested_exit() {
@@ -309,7 +314,8 @@ struct __coro_main {
     };
 
     __coro_main()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -323,7 +329,9 @@ struct __coro_main {
 // def __init__(self, code: int) -> None:
 //     super().__init__()
 //     self.code = code
-inline Err::Err(const ::tpy::BigInt& code) : ::tpy::Exception(), code(code) {}
+inline Err::Err(const ::tpy::BigInt& code)
+    : ::tpy::Exception(),
+      code(code) {}
 
 // def __enter__(self) -> int:
 //     return 1

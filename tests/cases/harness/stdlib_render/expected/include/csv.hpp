@@ -94,7 +94,12 @@ struct _Writer {
     //     self._doublequote = doublequote
     //     self._lineterminator = lineterminator
     _Writer() = default;
-    explicit _Writer(::tpy::param_val_or_ref_t<W> fp, std::string_view delimiter, std::string_view quotechar, bool doublequote, std::string_view lineterminator) : _fp(&fp), _delimiter(delimiter), _quotechar(quotechar), _doublequote(doublequote), _lineterminator(lineterminator) {}
+    explicit _Writer(::tpy::param_val_or_ref_t<W> fp, std::string_view delimiter, std::string_view quotechar, bool doublequote, std::string_view lineterminator)
+        : _fp(&fp),
+          _delimiter(delimiter),
+          _quotechar(quotechar),
+          _doublequote(doublequote),
+          _lineterminator(lineterminator) {}
 
     // def writerow(self, row: list[str]) -> None:
     //     self._fp.write(_format_row(
@@ -162,7 +167,13 @@ struct DictReader {
     //     if fieldnames is not None:
     //         self.fieldnames = fieldnames
     DictReader() = default;
-    explicit DictReader(::tpy::param_val_or_ref_t<W> fp, std::optional<std::vector<std::string>> fieldnames = std::nullopt, std::string_view delimiter = ",", std::string_view quotechar = "\"", bool doublequote = true, bool skipinitialspace = false) : _fp(&fp), _delimiter(delimiter), _quotechar(quotechar), _doublequote(doublequote), _skipinitialspace(skipinitialspace), fieldnames(std::vector<std::string>{}) {
+    explicit DictReader(::tpy::param_val_or_ref_t<W> fp, std::optional<std::vector<std::string>> fieldnames = std::nullopt, std::string_view delimiter = ",", std::string_view quotechar = "\"", bool doublequote = true, bool skipinitialspace = false)
+        : _fp(&fp),
+          _delimiter(delimiter),
+          _quotechar(quotechar),
+          _doublequote(doublequote),
+          _skipinitialspace(skipinitialspace),
+          fieldnames(std::vector<std::string>{}) {
         if ((fieldnames.has_value())) {
             this->fieldnames = std::move((*fieldnames));
         }
@@ -203,7 +214,10 @@ struct DictWriter {
     //     self.fieldnames = fieldnames
     //     self._restval = restval
     DictWriter() = default;
-    explicit DictWriter(::tpy::param_val_or_ref_t<W> fp, std::vector<std::string>&& fieldnames, std::string_view restval = "", std::string_view delimiter = ",", std::string_view quotechar = "\"", bool doublequote = true, std::string_view lineterminator = "\r\n") : _w(_Writer<W>(fp, delimiter, quotechar, doublequote, lineterminator)), fieldnames(std::move(fieldnames)), _restval(restval) {}
+    explicit DictWriter(::tpy::param_val_or_ref_t<W> fp, std::vector<std::string>&& fieldnames, std::string_view restval = "", std::string_view delimiter = ",", std::string_view quotechar = "\"", bool doublequote = true, std::string_view lineterminator = "\r\n")
+        : _w(_Writer<W>(fp, delimiter, quotechar, doublequote, lineterminator)),
+          fieldnames(std::move(fieldnames)),
+          _restval(restval) {}
 
     // def writeheader(self) -> None:
     //     self._w.writerow(self.fieldnames)
@@ -307,7 +321,12 @@ struct __gen__parse_rows : public ::tpy::next_iter_mixin<__gen__parse_rows<R>, s
     };
 
     __gen__parse_rows(R* fp_, std::string_view delimiter_, std::string_view quotechar_, bool doublequote_, bool skipinitialspace_)
-        : __state(S_INITIAL), fp(std::move(fp_)), delimiter(std::string(delimiter_)), quotechar(std::string(quotechar_)), doublequote(std::move(doublequote_)), skipinitialspace(std::move(skipinitialspace_)) {}
+        : __state(S_INITIAL),
+          fp(std::move(fp_)),
+          delimiter(std::string(delimiter_)),
+          quotechar(std::string(quotechar_)),
+          doublequote(std::move(doublequote_)),
+          skipinitialspace(std::move(skipinitialspace_)) {}
 
     std::expected<std::vector<std::string>, ::tpy::StopIteration> __next__();
     __gen__parse_rows& __iter__() { return *this; }
@@ -539,7 +558,12 @@ struct __gen_reader : public ::tpy::next_iter_mixin<__gen_reader<T_fp>, std::vec
     };
 
     __gen_reader(T_fp&& fp_, std::string_view delimiter_ = ",", std::string_view quotechar_ = "\"", bool doublequote_ = true, bool skipinitialspace_ = false)
-        : __state(S_INITIAL), fp(std::forward<T_fp>(fp_)), delimiter(std::string(delimiter_)), quotechar(std::string(quotechar_)), doublequote(std::move(doublequote_)), skipinitialspace(std::move(skipinitialspace_)) {}
+        : __state(S_INITIAL),
+          fp(std::forward<T_fp>(fp_)),
+          delimiter(std::string(delimiter_)),
+          quotechar(std::string(quotechar_)),
+          doublequote(std::move(doublequote_)),
+          skipinitialspace(std::move(skipinitialspace_)) {}
 
     std::expected<std::vector<std::string>, ::tpy::StopIteration> __next__();
     __gen_reader& __iter__() { return *this; }
@@ -758,7 +782,8 @@ struct __gen_DictReader___iter__ : public ::tpy::next_iter_mixin<__gen_DictReade
     };
 
     __gen_DictReader___iter__(DictReader<W>& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration> __next__();
     __gen_DictReader___iter__& __iter__() { return *this; }

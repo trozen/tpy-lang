@@ -78,7 +78,9 @@ struct __coro_Counter_bump {
     };
 
     __coro_Counter_bump(const Counter& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -104,7 +106,9 @@ struct __coro_inner {
     };
 
     __coro_inner(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -129,7 +133,9 @@ struct __coro_outer {
     };
 
     __coro_outer(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -151,7 +157,9 @@ struct __coro_borrowing {
     };
 
     __coro_borrowing(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -176,7 +184,9 @@ struct __coro_chained {
     };
 
     __coro_chained(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -198,7 +208,9 @@ struct __coro_tup_ref {
     };
 
     __coro_tup_ref(std::tuple<const Counter*, const Counter*> pair_)
-        : __state(S_INITIAL), __cancel_pending(false), pair(pair_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          pair(pair_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -220,7 +232,9 @@ struct __coro_tup_val {
     };
 
     __coro_tup_val(std::tuple<int32_t, int32_t> pair_)
-        : __state(S_INITIAL), __cancel_pending(false), pair(std::move(pair_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          pair(std::move(pair_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -244,7 +258,8 @@ struct __gen_gen_while : public ::tpy::next_iter_mixin<__gen_gen_while, int32_t>
     };
 
     __gen_gen_while(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_while& __iter__() { return *this; }
@@ -270,7 +285,8 @@ struct __gen_gen_for : public ::tpy::next_iter_mixin<__gen_gen_for, int32_t> {
     };
 
     __gen_gen_for(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_for& __iter__() { return *this; }
@@ -292,7 +308,8 @@ struct __gen_gen_str : public ::tpy::next_iter_mixin<__gen_gen_str, int32_t> {
     };
 
     __gen_gen_str(std::string_view s_)
-        : __state(S_INITIAL), s(std::string(s_)) {}
+        : __state(S_INITIAL),
+          s(std::string(s_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_str& __iter__() { return *this; }
@@ -315,7 +332,8 @@ struct __gen_gen_own : public ::tpy::next_iter_mixin<__gen_gen_own, int32_t> {
     };
 
     __gen_gen_own(std::vector<int32_t>&& xs_)
-        : __state(S_INITIAL), xs(std::move(xs_)) {}
+        : __state(S_INITIAL),
+          xs(std::move(xs_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_own& __iter__() { return *this; }

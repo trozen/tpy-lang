@@ -199,7 +199,8 @@ struct __gen_frame_manager : public ::tpy::next_iter_mixin<__gen_frame_manager, 
     };
 
     __gen_frame_manager(Bag& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     __gen_frame_manager(__gen_frame_manager&&) = default;
     ~__gen_frame_manager() {
@@ -252,7 +253,11 @@ inline void Guard::__exit__(std::monostate kind, const ::tpy::BaseException* val
 //     self._rec = Rec()
 //     self._guard = Guard()
 //     self.tag = "a"
-inline Bag::Bag() : _items(std::vector<int32_t>{1, 2}), _rec(Rec()), _guard(Guard()), tag("a") {}
+inline Bag::Bag()
+    : _items(std::vector<int32_t>{1, 2}),
+      _rec(Rec()),
+      _guard(Guard()),
+      tag("a") {}
 
 // @property
 // def items(self) -> list[int32]:

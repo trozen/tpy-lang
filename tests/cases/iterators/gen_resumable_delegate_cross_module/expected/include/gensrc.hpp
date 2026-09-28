@@ -107,8 +107,7 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_walk()
-        : __state(S_INITIAL) {}
+    __gen_walk() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_walk& __iter__() { return *this; }
@@ -132,8 +131,7 @@ struct __gen_walk_once : public ::tpy::next_iter_mixin<__gen_walk_once, int32_t>
         S_DONE = 3,
     };
 
-    __gen_walk_once()
-        : __state(S_INITIAL) {}
+    __gen_walk_once() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_walk_once& __iter__() { return *this; }
@@ -158,7 +156,9 @@ struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, ::tpy::yield_sl
     };
 
     __gen_pair(::tpy::param_val_or_ref_t<T> a_, ::tpy::param_val_or_ref_t<T> b_)
-        : __state(S_INITIAL), a(a_), b(b_) {}
+        : __state(S_INITIAL),
+          a(a_),
+          b(b_) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_pair& __iter__() { return *this; }
@@ -209,8 +209,7 @@ struct __gen_chatty : public ::tpy::next_iter_mixin<__gen_chatty, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_chatty()
-        : __state(S_INITIAL) {}
+    __gen_chatty() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_chatty& __iter__() { return *this; }
@@ -233,8 +232,7 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, int32_t> {
         S_DONE = 5,
     };
 
-    __gen_guarded()
-        : __state(S_INITIAL) {}
+    __gen_guarded() : __state(S_INITIAL) {}
 
     __gen_guarded(__gen_guarded&&) = default;
     ~__gen_guarded() {
@@ -273,7 +271,8 @@ struct __gen_Src_steps : public ::tpy::next_iter_mixin<__gen_Src_steps, int32_t>
     };
 
     __gen_Src_steps(const Src& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Src_steps& __iter__() { return *this; }
@@ -300,7 +299,8 @@ struct __gen_Bag_readings : public ::tpy::next_iter_mixin<__gen_Bag_readings, in
     };
 
     __gen_Bag_readings(const Bag& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Bag_readings& __iter__() { return *this; }
@@ -328,7 +328,8 @@ struct __gen_Box_two : public ::tpy::next_iter_mixin<__gen_Box_two<T>, ::tpy::yi
     };
 
     __gen_Box_two(Box<T>& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Box_two& __iter__() { return *this; }

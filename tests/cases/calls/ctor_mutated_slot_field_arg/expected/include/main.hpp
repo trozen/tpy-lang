@@ -154,7 +154,12 @@ inline Rec::Rec(int32_t x) : x(x) {}
 //     self.tags = {1}
 //     self.recs = [Rec(1)]
 //     self.buf = bytearray(b"a")
-inline W::W() : items(std::vector<int32_t>{1}), counts(::tpy::ordered_map<std::string, int32_t>({{"a", 1}})), tags(::tpy::ordered_set<int32_t>({1})), recs(std::vector<Rec>{Rec(1)}), buf(::tpy::ByteArray(::tpy::bytes_literal("a", 1))) {}
+inline W::W()
+    : items(std::vector<int32_t>{1}),
+      counts(::tpy::ordered_map<std::string, int32_t>({{"a", 1}})),
+      tags(::tpy::ordered_set<int32_t>({1})),
+      recs(std::vector<Rec>{Rec(1)}),
+      buf(::tpy::ByteArray(::tpy::bytes_literal("a", 1))) {}
 
 // def __init__(self, xs: list[int32]) -> None:
 //     xs.append(9)  # tpyc: ok

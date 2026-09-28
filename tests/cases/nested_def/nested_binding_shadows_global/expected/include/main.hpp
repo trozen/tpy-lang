@@ -193,7 +193,8 @@ struct __coro_async_host {
     };
 
     __coro_async_host()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -225,7 +226,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     };
 
     __gen_gen(const std::vector<Holder>& rs)
-        : __state(S_INITIAL), rs(rs) {}
+        : __state(S_INITIAL),
+          rs(rs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -253,8 +255,7 @@ struct __gen_gen_frame_field : public ::tpy::next_iter_mixin<__gen_gen_frame_fie
         S_DONE = 3,
     };
 
-    __gen_gen_frame_field()
-        : __state(S_INITIAL) {}
+    __gen_gen_frame_field() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_frame_field& __iter__() { return *this; }

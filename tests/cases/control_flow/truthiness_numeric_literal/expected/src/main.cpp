@@ -122,11 +122,13 @@ struct __genexpr_filters_1_frame : public ::tpy::next_iter_mixin<__genexpr_filte
     };
 
     __genexpr_filters_1_frame(T___src&& __src_)
-        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)) {}
+        : __state(S_INITIAL),
+          __src(std::forward<T___src>(__src_)) {}
 
     template <typename F_make>
     __genexpr_filters_1_frame(std::in_place_t, F_make&& make_)
-        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()) {}
+        : __state(S_INITIAL),
+          __src(std::forward<F_make>(make_)()) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_filters_1_frame& __iter__() { return *this; }
@@ -221,7 +223,6 @@ std::string guard(int32_t k) {
         } else {
             return "none";
         }
-        break;
     }
     }
     ::std::unreachable();

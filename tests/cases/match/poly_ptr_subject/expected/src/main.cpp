@@ -58,18 +58,15 @@ std::string loud(Pet* p, bool k) {
         Dog& __case_0 = *__mpoly_0;
         if (k) {
             return "loud-dog";
-            goto __match_end_2;
         }
     }
     if (Dog* __mpoly_1 = dynamic_cast<Dog*>(__match_subject_1)) {
         Dog& __case_1 = *__mpoly_1;
         return "dog";
-        goto __match_end_2;
     }
     {
         return "other";
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 

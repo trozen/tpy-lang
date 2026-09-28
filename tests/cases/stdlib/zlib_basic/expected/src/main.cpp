@@ -368,7 +368,7 @@ void generator_body() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView piece = ::tpy::unwrap_ref(*__r_1);
-        got = (::tpy::bytes_concat(got, piece));
+            got = (::tpy::bytes_concat(got, piece));
         }
     }
     std::cout << "generator" << " " << ::tpy::print_bool((got == RAW)) << "\n";

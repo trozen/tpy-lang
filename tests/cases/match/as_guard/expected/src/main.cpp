@@ -23,11 +23,9 @@ std::string literal_as_guard(int32_t x) {
         } else {
             return "one";
         }
-        break;
     }
     default: {
         return "other";
-        break;
     }
     }
     ::std::unreachable();
@@ -51,7 +49,6 @@ std::string wildcard_as_guard(int32_t x) {
         } else {
             return "small";
         }
-        break;
     }
     }
     ::std::unreachable();

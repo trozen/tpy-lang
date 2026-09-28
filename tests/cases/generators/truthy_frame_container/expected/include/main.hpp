@@ -171,7 +171,8 @@ struct __gen_drain_list : public ::tpy::next_iter_mixin<__gen_drain_list, int32_
     };
 
     __gen_drain_list(std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_drain_list& __iter__() { return *this; }
@@ -196,7 +197,9 @@ struct __gen_drain_dict : public ::tpy::next_iter_mixin<__gen_drain_dict, int32_
     };
 
     __gen_drain_dict(::tpy::ordered_map<int32_t, int32_t>& d, const std::vector<int32_t>& order)
-        : __state(S_INITIAL), d(d), order(order) {}
+        : __state(S_INITIAL),
+          d(d),
+          order(order) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_drain_dict& __iter__() { return *this; }
@@ -219,7 +222,8 @@ struct __gen_drain_set : public ::tpy::next_iter_mixin<__gen_drain_set, int32_t>
     };
 
     __gen_drain_set(::tpy::ordered_set<int32_t>& s)
-        : __state(S_INITIAL), s(s) {}
+        : __state(S_INITIAL),
+          s(s) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_drain_set& __iter__() { return *this; }
@@ -243,7 +247,8 @@ struct __gen_str_branch : public ::tpy::next_iter_mixin<__gen_str_branch, int32_
     };
 
     __gen_str_branch(std::string_view t_)
-        : __state(S_INITIAL), t(std::string(t_)) {}
+        : __state(S_INITIAL),
+          t(std::string(t_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_str_branch& __iter__() { return *this; }
@@ -267,7 +272,8 @@ struct __gen_bytes_branch : public ::tpy::next_iter_mixin<__gen_bytes_branch, in
     };
 
     __gen_bytes_branch(::tpy::BytesView b_)
-        : __state(S_INITIAL), b(::tpy::Bytes(b_)) {}
+        : __state(S_INITIAL),
+          b(::tpy::Bytes(b_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_bytes_branch& __iter__() { return *this; }
@@ -291,7 +297,8 @@ struct __gen_record_len_branch : public ::tpy::next_iter_mixin<__gen_record_len_
     };
 
     __gen_record_len_branch(const Bag& g)
-        : __state(S_INITIAL), g(g) {}
+        : __state(S_INITIAL),
+          g(g) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_record_len_branch& __iter__() { return *this; }
@@ -315,7 +322,8 @@ struct __gen_record_bool_branch : public ::tpy::next_iter_mixin<__gen_record_boo
     };
 
     __gen_record_bool_branch(const Flag& f)
-        : __state(S_INITIAL), f(f) {}
+        : __state(S_INITIAL),
+          f(f) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_record_bool_branch& __iter__() { return *this; }
@@ -339,7 +347,8 @@ struct __gen_enum_branch : public ::tpy::next_iter_mixin<__gen_enum_branch, int3
     };
 
     __gen_enum_branch(Color c_)
-        : __state(S_INITIAL), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_enum_branch& __iter__() { return *this; }
@@ -363,7 +372,8 @@ struct __gen_int_enum_branch : public ::tpy::next_iter_mixin<__gen_int_enum_bran
     };
 
     __gen_int_enum_branch(Level lv_)
-        : __state(S_INITIAL), lv(std::move(lv_)) {}
+        : __state(S_INITIAL),
+          lv(std::move(lv_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_int_enum_branch& __iter__() { return *this; }
@@ -387,7 +397,8 @@ struct __gen_plain_record_branch : public ::tpy::next_iter_mixin<__gen_plain_rec
     };
 
     __gen_plain_record_branch(const Plain& p)
-        : __state(S_INITIAL), p(p) {}
+        : __state(S_INITIAL),
+          p(p) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_plain_record_branch& __iter__() { return *this; }
@@ -411,7 +422,8 @@ struct __gen_any_branch : public ::tpy::next_iter_mixin<__gen_any_branch, int32_
     };
 
     __gen_any_branch(::tpy::Any v_)
-        : __state(S_INITIAL), v(std::move(v_)) {}
+        : __state(S_INITIAL),
+          v(std::move(v_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_any_branch& __iter__() { return *this; }
@@ -436,7 +448,9 @@ struct __gen_and_branch : public ::tpy::next_iter_mixin<__gen_and_branch, int32_
     };
 
     __gen_and_branch(const std::vector<int32_t>& xs, std::string_view t_)
-        : __state(S_INITIAL), xs(xs), t(std::string(t_)) {}
+        : __state(S_INITIAL),
+          xs(xs),
+          t(std::string(t_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_and_branch& __iter__() { return *this; }
@@ -461,7 +475,9 @@ struct __gen_peephole_or : public ::tpy::next_iter_mixin<__gen_peephole_or, int3
     };
 
     __gen_peephole_or(std::vector<int32_t>& xs, std::string_view t_)
-        : __state(S_INITIAL), xs(xs), t(std::string(t_)) {}
+        : __state(S_INITIAL),
+          xs(xs),
+          t(std::string(t_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_peephole_or& __iter__() { return *this; }

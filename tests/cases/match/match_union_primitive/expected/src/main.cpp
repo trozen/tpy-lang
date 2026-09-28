@@ -22,25 +22,21 @@ std::string describe(::tpy::Union<const Cat*, const Dog*, const int32_t*, const 
         auto& __case_0 = *std::get<2>(__match_subject_1);
         auto n = __case_0;
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
-        break;
     }
     case 3: {
         auto& __case_1 = *std::get<3>(__match_subject_1);
         auto& s = __case_1;
         return (::tpy::str_concat("string: ", s));
-        break;
     }
     case 0: {
         auto& __case_2 = *std::get<0>(__match_subject_1);
         auto& n = __case_2.name;
         return (::tpy::str_concat("cat: ", n));
-        break;
     }
     case 1: {
         auto& __case_3 = *std::get<1>(__match_subject_1);
         auto& n = __case_3.name;
         return (::tpy::str_concat("dog: ", n));
-        break;
     }
     }
     ::std::unreachable();
@@ -63,7 +59,6 @@ int32_t depth(const Tree& t) {
     case 0: {
         auto& __case_0 = std::get<0>(__match_subject_1.value);
         return 0;
-        break;
     }
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1.value);
@@ -80,7 +75,6 @@ int32_t depth(const Tree& t) {
             }
         }
         return (::tpy::add_check<int32_t>(m, 1));
-        break;
     }
     }
     ::std::unreachable();
@@ -99,13 +93,11 @@ std::string unbox(::tpy::Union<const Box<std::string>*, const int32_t*> x) {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto n = __case_0;
         return ::tpy::fixed_to_str<int32_t>(n);
-        break;
     }
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto& b = __case_1;
         return b.value;
-        break;
     }
     }
     ::std::unreachable();

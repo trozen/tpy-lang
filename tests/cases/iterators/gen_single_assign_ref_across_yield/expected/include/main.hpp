@@ -48,7 +48,8 @@ struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, ::tpy::BigInt> {
     };
 
     __gen_g(std::vector<Box>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_g& __iter__() { return *this; }

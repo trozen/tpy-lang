@@ -24,15 +24,12 @@ std::string classify(int32_t x) {
         } else {
             return "one (fallthrough)";
         }
-        break;
     }
     case 2: {
         return "two";
-        break;
     }
     default: {
         return "other";
-        break;
     }
     }
     ::std::unreachable();

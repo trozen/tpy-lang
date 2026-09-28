@@ -199,7 +199,9 @@ struct __gen_cells : public ::tpy::next_iter_mixin<__gen_cells, std::tuple<Cell*
     };
 
     __gen_cells(Cell& a, Cell& b)
-        : __state(S_INITIAL), a(a), b(b) {}
+        : __state(S_INITIAL),
+          a(a),
+          b(b) {}
 
     std::expected<std::tuple<Cell*, int32_t>, ::tpy::StopIteration> __next__();
     __gen_cells& __iter__() { return *this; }

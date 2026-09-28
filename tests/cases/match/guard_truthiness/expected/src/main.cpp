@@ -96,7 +96,6 @@ int32_t opt_guard(int32_t k, std::optional<int32_t> v) {
     }
     default: __match_default_2: {
         return 20;
-        break;
     }
     }
     ::std::unreachable();
@@ -120,7 +119,6 @@ int32_t str_guard(int32_t k, std::string_view t) {
     }
     default: __match_default_2: {
         return 20;
-        break;
     }
     }
     ::std::unreachable();
@@ -144,7 +142,6 @@ int32_t list_guard(int32_t k, const std::vector<int32_t>& xs) {
     }
     default: __match_default_2: {
         return 20;
-        break;
     }
     }
     ::std::unreachable();
@@ -168,7 +165,6 @@ int32_t record_guard(int32_t k, const Bag& g) {
     }
     default: __match_default_2: {
         return 20;
-        break;
     }
     }
     ::std::unreachable();
@@ -192,7 +188,6 @@ int32_t not_guard(int32_t k, std::string_view t) {
     }
     default: __match_default_2: {
         return 20;
-        break;
     }
     }
     ::std::unreachable();
@@ -216,7 +211,6 @@ int32_t enum_guard(int32_t k, Color c) {
     }
     default: __match_default_2: {
         return 20;
-        break;
     }
     }
     ::std::unreachable();
@@ -240,7 +234,6 @@ int32_t int_enum_guard(int32_t k, Level lv) {
     }
     default: __match_default_2: {
         return 20;
-        break;
     }
     }
     ::std::unreachable();
@@ -264,7 +257,6 @@ int32_t plain_record_guard(int32_t k, const Plain& p) {
     }
     default: __match_default_2: {
         return 20;
-        break;
     }
     }
     ::std::unreachable();
@@ -288,7 +280,6 @@ int32_t any_guard(int32_t k, ::tpy::Any v) {
     }
     default: __match_default_2: {
         return 20;
-        break;
     }
     }
     ::std::unreachable();
@@ -312,7 +303,6 @@ int32_t and_guard(int32_t k, std::string_view t, const std::vector<int32_t>& xs)
     }
     default: __match_default_2: {
         return 20;
-        break;
     }
     }
     ::std::unreachable();

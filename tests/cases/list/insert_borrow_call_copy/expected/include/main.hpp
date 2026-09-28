@@ -62,7 +62,9 @@ inline Payload::Payload(int32_t v) : v(v) {}
 // def __init__(self) -> None:
 //     self.p = Payload(42)
 //     self.items = [1, 2]
-inline Holder::Holder() : p(Payload(42)), items(std::vector<int32_t>{1, 2}) {}
+inline Holder::Holder()
+    : p(Payload(42)),
+      items(std::vector<int32_t>{1, 2}) {}
 
 // def brec(self) -> Payload:
 //     return self.p

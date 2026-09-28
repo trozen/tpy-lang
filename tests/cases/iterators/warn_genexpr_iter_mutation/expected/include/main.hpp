@@ -128,7 +128,10 @@ struct __coro_async_body {
     };
 
     __coro_async_body(std::vector<int32_t>& xs, bool big_)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs), big(std::move(big_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs),
+          big(std::move(big_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -155,7 +158,8 @@ struct __genexpr_run_2_frame : public ::tpy::next_iter_mixin<__genexpr_run_2_fra
     };
 
     __genexpr_run_2_frame(const std::vector<int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_run_2_frame& __iter__() { return *this; }
@@ -182,7 +186,8 @@ struct __genexpr_gen_body_8_frame : public ::tpy::next_iter_mixin<__genexpr_gen_
     };
 
     __genexpr_gen_body_8_frame(const std::vector<int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_gen_body_8_frame& __iter__() { return *this; }
@@ -211,7 +216,9 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
     };
 
     __gen_gen_body(std::vector<int32_t>& xs, bool big_)
-        : __state(S_INITIAL), xs(xs), big(std::move(big_)) {}
+        : __state(S_INITIAL),
+          xs(xs),
+          big(std::move(big_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_body& __iter__() { return *this; }
@@ -238,7 +245,8 @@ struct __genexpr_async_body_9_frame : public ::tpy::next_iter_mixin<__genexpr_as
     };
 
     __genexpr_async_body_9_frame(const std::vector<int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_async_body_9_frame& __iter__() { return *this; }
@@ -274,10 +282,10 @@ inline int32_t Bag::run(bool big) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        if (big) {
-            this->items.push_back(v);
-        }
-        t = ::tpy::add_check<int32_t>(t, v);
+            if (big) {
+                this->items.push_back(v);
+            }
+            t = ::tpy::add_check<int32_t>(t, v);
         }
     }
     return t;

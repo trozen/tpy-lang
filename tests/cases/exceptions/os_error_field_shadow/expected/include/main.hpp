@@ -37,6 +37,8 @@ inline std::ostream& operator<<(std::ostream& os, const Weird& obj) {
 // def __init__(self, message: String = "") -> None:
 //     super().__init__(message)
 //     self.strerror = "own-field"
-inline Weird::Weird(const ::tpy::String& message) : ::tpy::OSError(message), strerror("own-field") {}
+inline Weird::Weird(const ::tpy::String& message)
+    : ::tpy::OSError(message),
+      strerror("own-field") {}
 void __tpy_init();
 } // namespace tpyapp::main

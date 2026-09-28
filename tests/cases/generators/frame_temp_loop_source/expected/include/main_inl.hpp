@@ -364,10 +364,10 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_break_finally:
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 int32_t v = ::tpy::unwrap_ref(*__r_1);
-            t = ::tpy::add_check<int32_t>(t, v);
-            if ((v == 2)) {
-                break;
-            }
+                t = ::tpy::add_check<int32_t>(t, v);
+                if ((v == 2)) {
+                    break;
+                }
             }
         }
         __state = S_RESUME_0;
@@ -485,7 +485,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_rsum::__next__() {
                     auto __r_1 = __itr_0.__next__();
                     if (!__r_1.has_value()) break;
                     int32_t v = ::tpy::unwrap_ref(*__r_1);
-                t = ::tpy::add_check<int32_t>(t, v);
+                    t = ::tpy::add_check<int32_t>(t, v);
                 }
             }
             __state = S_RESUME_1;
@@ -529,10 +529,10 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_combinator::__
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            const auto& __tup_1 = __for_tup_0;
-            int32_t i = std::get<0>(__tup_1);
-            int32_t v = std::get<1>(__tup_1);
-            t = ::tpy::add_check<int32_t>(t, (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(i, 100)), v)));
+                const auto& __tup_1 = __for_tup_0;
+                int32_t i = std::get<0>(__tup_1);
+                int32_t v = std::get<1>(__tup_1);
+                t = ::tpy::add_check<int32_t>(t, (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(i, 100)), v)));
             }
         }
         __state = S_RESUME_0;
@@ -577,9 +577,9 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_user_iter::__n
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 auto&& x = ::tpy::unwrap_ref(*__r_1);
-            held = &(x);
-            held->v = ::tpy::add_check<int32_t>(held->v, 100);
-            t = ::tpy::add_check<int32_t>(t, x.v);
+                held = &(x);
+                held->v = ::tpy::add_check<int32_t>(held->v, 100);
+                t = ::tpy::add_check<int32_t>(t, x.v);
             }
         }
         __state = S_RESUME_0;

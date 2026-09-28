@@ -38,6 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 
 
 // args = parser.parse_args(["--width", "42", "--depth", "9999999999"])
-inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::optional<int32_t> width, uint16_t height, std::optional<int64_t> depth) : width(width), height(height), depth(depth) {}
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::optional<int32_t> width, uint16_t height, std::optional<int64_t> depth)
+    : width(width),
+      height(height),
+      depth(depth) {}
 void __tpy_init();
 } // namespace tpyapp::main

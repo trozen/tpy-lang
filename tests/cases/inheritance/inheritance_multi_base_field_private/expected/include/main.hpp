@@ -68,7 +68,9 @@ inline std::ostream& operator<<(std::ostream& os, const Service& obj) {
 // def __init__(self) -> None:
 //     RateLimiter._count = 0
 //     CacheStats._count = 0
-inline Service::Service() : RateLimiter(), CacheStats() {
+inline Service::Service()
+    : RateLimiter(),
+      CacheStats() {
     this->RateLimiter::_count = 0;
     this->CacheStats::_count = 0;
 }

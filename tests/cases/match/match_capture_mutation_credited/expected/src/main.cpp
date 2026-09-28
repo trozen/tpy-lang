@@ -246,7 +246,6 @@ __gen_gen_body gen_body(::tpy::Union<Cat*, Counter*> a) {
             __state = S_DONE;
             int32_t __tpy_async_ret = c.n;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
-            break;
         }
         case 0: {
             auto& __case_1 = *std::get<0>(__match_subject_1);
@@ -254,7 +253,6 @@ __gen_gen_body gen_body(::tpy::Union<Cat*, Counter*> a) {
             __state = S_DONE;
             int32_t __tpy_async_ret = k.hunger;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
-            break;
         }
         }
         ::std::unreachable();
@@ -288,13 +286,11 @@ int32_t read_only(::tpy::Union<const Cat*, const Counter*> a) {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& c = __case_0;
         return c.n;
-        break;
     }
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto& k = __case_1;
         return k.hunger;
-        break;
     }
     }
     ::std::unreachable();
@@ -341,7 +337,6 @@ int32_t scalar_capture(int32_t n) {
         v = __match_subject_1;
         v = (::tpy::add_check<int32_t>(v, 1));
         return v;
-        break;
     }
     }
     ::std::unreachable();
@@ -493,7 +488,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen_body:" << " " << got << "\n";
+            std::cout << "gen_body:" << " " << got << "\n";
         }
     }
     std::cout << "gen_body after:" << " " << gen_ctr.n << "\n";

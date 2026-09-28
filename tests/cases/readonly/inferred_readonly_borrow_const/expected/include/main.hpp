@@ -114,7 +114,9 @@ inline Cell::Cell() : v(7) {}
 // def __init__(self):
 //     self._cell = Cell()
 //     self._present = True
-inline Store::Store() : _cell(Cell()), _present(true) {}
+inline Store::Store()
+    : _cell(Cell()),
+      _present(true) {}
 
 // def __getitem__(self, k: int32) -> Cell | None:
 //     if self._present:

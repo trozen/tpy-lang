@@ -36,7 +36,9 @@ struct __coro_sub {
     };
 
     __coro_sub(::tpy::BigInt n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -64,7 +66,9 @@ struct __coro_caller {
     };
 
     __coro_caller(::tpy::BigInt tag_)
-        : __state(S_INITIAL), __cancel_pending(false), tag(std::move(tag_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          tag(std::move(tag_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -90,7 +94,9 @@ struct __coro_opt_chain {
     };
 
     __coro_opt_chain(std::optional<int32_t> o_)
-        : __state(S_INITIAL), __cancel_pending(false), o(std::move(o_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          o(std::move(o_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

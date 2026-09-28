@@ -40,7 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 }
 
 
-inline Pair::Pair(int32_t x, int32_t y) : x(x), y(y) {}
+inline Pair::Pair(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 inline bool Pair::__eq__(const Pair& other) const {
     return ((this->x == other.x) && (this->y == other.y));

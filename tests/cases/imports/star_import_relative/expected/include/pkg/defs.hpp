@@ -36,6 +36,8 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
 // def __init__(self, x: int32, y: int32):
 //     self.x = x
 //     self.y = y
-inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+inline Vec2::Vec2(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 void __tpy_init();
 } // namespace tpyapp::pkg::defs

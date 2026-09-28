@@ -57,8 +57,8 @@ bool or_rhs(std::vector<int32_t>& xs) {
 //     # The `and` RHS: the same region at the other logical operator.
 //     return (xs.pop() > 0) and seen("and", xs)  # tpyc: warning(/copies list\[int32\] into owned storage/)
 bool and_rhs(std::vector<int32_t>& xs) {
-    std::optional<std::vector<int32_t>> __tmp_2;
-    return ((::tpy::pop_back(xs) > 0) && (__tmp_2.emplace(xs), ::tpyapp::main::seen("and", std::move((*__tmp_2)))));
+    std::optional<std::vector<int32_t>> __tmp_1;
+    return ((::tpy::pop_back(xs) > 0) && (__tmp_1.emplace(xs), ::tpyapp::main::seen("and", std::move((*__tmp_1)))));
 }
 
 // def nested(xs: list[int32], flag: bool) -> bool:
@@ -66,24 +66,24 @@ bool and_rhs(std::vector<int32_t>& xs) {
 //     # `or` RHS region.
 //     return flag or (xs.pop() > 0 and seen("nested", xs))  # tpyc: warning(/copies list\[int32\] into owned storage/)
 bool nested(std::vector<int32_t>& xs, bool flag) {
-    std::optional<std::vector<int32_t>> __tmp_3;
-    return (flag || ((::tpy::pop_back(xs) > 0) && (__tmp_3.emplace(xs), ::tpyapp::main::seen("nested", std::move((*__tmp_3))))));
+    std::optional<std::vector<int32_t>> __tmp_1;
+    return (flag || ((::tpy::pop_back(xs) > 0) && (__tmp_1.emplace(xs), ::tpyapp::main::seen("nested", std::move((*__tmp_1))))));
 }
 
 // def ternary(xs: list[int32]) -> bool:
 //     # A ternary ARM: each arm opens its own region.
 //     return seen("ternary", xs) if xs.pop() > 0 else False  # tpyc: warning(/copies list\[int32\] into owned storage/)
 bool ternary(std::vector<int32_t>& xs) {
-    std::optional<std::vector<int32_t>> __tmp_4;
-    return (((::tpy::pop_back(xs) > 0)) ? (__tmp_4.emplace(xs), ::tpyapp::main::seen("ternary", std::move((*__tmp_4)))) : (false));
+    std::optional<std::vector<int32_t>> __tmp_1;
+    return (((::tpy::pop_back(xs) > 0)) ? (__tmp_1.emplace(xs), ::tpyapp::main::seen("ternary", std::move((*__tmp_1)))) : (false));
 }
 
 // def chained(xs: list[int32]) -> bool:
 //     # Comparators past the first are conditional operands too.
 //     return 0 < xs.pop() < seen_n("chained", xs)  # tpyc: warning(/copies list\[int32\] into owned storage/)
 bool chained(std::vector<int32_t>& xs) {
-    std::optional<std::vector<int32_t>> __tmp_5;
-    return ({ auto&& _cmp1 = ::tpy::pop_back(xs); (0 < _cmp1) && (_cmp1 < (__tmp_5.emplace(xs), ::tpyapp::main::seen_n("chained", std::move((*__tmp_5))))); });
+    std::optional<std::vector<int32_t>> __tmp_1;
+    return ({ auto&& _cmp1 = ::tpy::pop_back(xs); (0 < _cmp1) && (_cmp1 < (__tmp_1.emplace(xs), ::tpyapp::main::seen_n("chained", std::move((*__tmp_1))))); });
 }
 
 // def value_select(xs: list[int32]) -> int32:
@@ -94,8 +94,8 @@ bool chained(std::vector<int32_t>& xs) {
 //     return v
 int32_t value_select(std::vector<int32_t>& xs) {
     int32_t n = ::tpy::pop_back(xs);
-    std::optional<std::vector<int32_t>> __tmp_6;
-    int32_t v = (n ? n : (__tmp_6.emplace(xs), ::tpyapp::main::seen_n("valuesel", std::move((*__tmp_6)))));
+    std::optional<std::vector<int32_t>> __tmp_1;
+    int32_t v = (n ? n : (__tmp_1.emplace(xs), ::tpyapp::main::seen_n("valuesel", std::move((*__tmp_1)))));
     return v;
 }
 
@@ -106,8 +106,8 @@ int32_t value_select(std::vector<int32_t>& xs) {
 //     return (b.vals.pop() > 0) or seen_rec("record", b)  # tpyc: warning(/copies Bag into owned storage/)
 bool record_payload(const std::vector<int32_t>& xs) {
     Bag b = Bag(xs);
-    std::optional<Bag> __tmp_7;
-    return ((::tpy::pop_back(b.vals) > 0) || (__tmp_7.emplace(b), ::tpyapp::main::seen_rec("record", std::move((*__tmp_7)))));
+    std::optional<Bag> __tmp_1;
+    return ((::tpy::pop_back(b.vals) > 0) || (__tmp_1.emplace(b), ::tpyapp::main::seen_rec("record", std::move((*__tmp_1)))));
 }
 
 // def own_str_name(xs: list[int32], tail: str) -> bool:
@@ -117,8 +117,8 @@ bool record_payload(const std::vector<int32_t>& xs) {
 //     return (xs.pop() > 0) or seen_str("ownstr", s)
 bool own_str_name(std::vector<int32_t>& xs, std::string_view tail) {
     ::tpy::String s = (::tpy::str_concat(tail, "!"));
-    std::optional<std::string> __tmp_8;
-    return ((::tpy::pop_back(xs) > 0) || (__tmp_8.emplace(std::string{s}), ::tpyapp::main::seen_str("ownstr", std::move((*__tmp_8)))));
+    std::optional<std::string> __tmp_1;
+    return ((::tpy::pop_back(xs) > 0) || (__tmp_1.emplace(std::string{s}), ::tpyapp::main::seen_str("ownstr", std::move((*__tmp_1)))));
 }
 
 // def ref_param_rvalue(flag: bool) -> bool:
@@ -127,8 +127,8 @@ bool own_str_name(std::vector<int32_t>& xs, std::string_view tail) {
 //     # whether it ran in the skipped branch.
 //     return flag or seen_bag("refparam", Bag([1, 2]))
 bool ref_param_rvalue(bool flag) {
-    std::optional<Bag> __tmp_9;
-    return (flag || (__tmp_9.emplace(Bag({1, 2})), ::tpyapp::main::seen_bag("refparam", (*__tmp_9))));
+    std::optional<Bag> __tmp_1;
+    return (flag || (__tmp_1.emplace(Bag({1, 2})), ::tpyapp::main::seen_bag("refparam", (*__tmp_1))));
 }
 
 // def left_operand(xs: list[int32]) -> bool:
@@ -136,8 +136,8 @@ bool ref_param_rvalue(bool flag) {
 //     # the enclosing statement -- no region, no optional slot.
 //     return seen("left", xs) or xs.pop() > 0  # tpyc: warning(/copies list\[int32\] into owned storage/)
 bool left_operand(std::vector<int32_t>& xs) {
-    std::vector<int32_t> __tmp_10 = xs;
-    return (::tpyapp::main::seen("left", std::move(__tmp_10)) || (::tpy::pop_back(xs) > 0));
+    std::vector<int32_t> __tmp_1 = xs;
+    return (::tpyapp::main::seen("left", std::move(__tmp_1)) || (::tpy::pop_back(xs) > 0));
 }
 
 // def main() -> None:
@@ -167,36 +167,36 @@ bool left_operand(std::vector<int32_t>& xs) {
 //     i = left_operand([1, 2, 3])
 //     print("left", i)
 void main() {
-    std::vector<int32_t> __tmp_11 = {1, 2, 0};
-    bool a = ::tpyapp::main::or_rhs(__tmp_11);
+    std::vector<int32_t> __tmp_1 = {1, 2, 0};
+    bool a = ::tpyapp::main::or_rhs(__tmp_1);
     std::cout << "or" << " " << ::tpy::print_bool(a) << "\n";
-    std::vector<int32_t> __tmp_12 = {1, 2, 3};
-    bool b = ::tpyapp::main::and_rhs(__tmp_12);
+    std::vector<int32_t> __tmp_2 = {1, 2, 3};
+    bool b = ::tpyapp::main::and_rhs(__tmp_2);
     std::cout << "and" << " " << ::tpy::print_bool(b) << "\n";
-    std::vector<int32_t> __tmp_13 = {1, 2, 3};
-    bool c = ::tpyapp::main::nested(__tmp_13, false);
+    std::vector<int32_t> __tmp_3 = {1, 2, 3};
+    bool c = ::tpyapp::main::nested(__tmp_3, false);
     std::cout << "nested" << " " << ::tpy::print_bool(c) << "\n";
-    std::vector<int32_t> __tmp_14 = {1, 2, 3};
-    bool d = ::tpyapp::main::ternary(__tmp_14);
+    std::vector<int32_t> __tmp_4 = {1, 2, 3};
+    bool d = ::tpyapp::main::ternary(__tmp_4);
     std::cout << "ternary" << " " << ::tpy::print_bool(d) << "\n";
-    std::vector<int32_t> __tmp_15 = {1, 2, 3};
-    bool e = ::tpyapp::main::chained(__tmp_15);
+    std::vector<int32_t> __tmp_5 = {1, 2, 3};
+    bool e = ::tpyapp::main::chained(__tmp_5);
     std::cout << "chained" << " " << ::tpy::print_bool(e) << "\n";
-    std::vector<int32_t> __tmp_16 = {1, 2, 0};
-    int32_t f = ::tpyapp::main::value_select(__tmp_16);
+    std::vector<int32_t> __tmp_6 = {1, 2, 0};
+    int32_t f = ::tpyapp::main::value_select(__tmp_6);
     std::cout << "valuesel" << " " << f << "\n";
-    std::vector<int32_t> __tmp_17 = {1, 2, 0};
-    bool g = ::tpyapp::main::record_payload(__tmp_17);
+    std::vector<int32_t> __tmp_7 = {1, 2, 0};
+    bool g = ::tpyapp::main::record_payload(__tmp_7);
     std::cout << "record" << " " << ::tpy::print_bool(g) << "\n";
-    std::vector<int32_t> __tmp_18 = {1, 2, 0};
-    bool h = ::tpyapp::main::own_str_name(__tmp_18, "kept");
+    std::vector<int32_t> __tmp_8 = {1, 2, 0};
+    bool h = ::tpyapp::main::own_str_name(__tmp_8, "kept");
     std::cout << "ownstr" << " " << ::tpy::print_bool(h) << "\n";
     bool j = ::tpyapp::main::ref_param_rvalue(true);
     std::cout << "refparam_skipped" << " " << ::tpy::print_bool(j) << "\n";
     bool k = ::tpyapp::main::ref_param_rvalue(false);
     std::cout << "refparam_taken" << " " << ::tpy::print_bool(k) << "\n";
-    std::vector<int32_t> __tmp_19 = {1, 2, 3};
-    bool i = ::tpyapp::main::left_operand(__tmp_19);
+    std::vector<int32_t> __tmp_9 = {1, 2, 3};
+    bool i = ::tpyapp::main::left_operand(__tmp_9);
     std::cout << "left" << " " << ::tpy::print_bool(i) << "\n";
 }
 

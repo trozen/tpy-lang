@@ -18,22 +18,16 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
         {
             if (__case_1.legs == 4) {
                 return "four-legged dog";
-                goto __match_end_2;
             }
         }
         {
             return "other";
-            goto __match_end_2;
         }
-        break;
     }
     default: {
         return "other";
-        goto __match_end_2;
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
 }
 

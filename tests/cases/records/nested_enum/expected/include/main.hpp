@@ -60,6 +60,8 @@ inline std::ostream& operator<<(std::ostream& __os, Message::Kind __e) {
 // def __init__(self, kind: Kind, data: int32) -> None:
 //     self.kind = kind
 //     self.data = data
-inline Message::Message(Message::Kind kind, int32_t data) : kind(kind), data(data) {}
+inline Message::Message(Message::Kind kind, int32_t data)
+    : kind(kind),
+      data(data) {}
 void __tpy_init();
 } // namespace tpyapp::main

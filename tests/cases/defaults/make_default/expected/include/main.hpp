@@ -41,6 +41,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // def __init__(self) -> None:
 //     self.x = 0
 //     self.y = 0
-inline Point::Point() : x(0), y(0) {}
+inline Point::Point()
+    : x(0),
+      y(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

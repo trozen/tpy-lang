@@ -76,7 +76,8 @@ struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
     };
 
     __gen_steps(int32_t start_)
-        : __state(S_INITIAL), start(std::move(start_)) {}
+        : __state(S_INITIAL),
+          start(std::move(start_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_steps& __iter__() { return *this; }

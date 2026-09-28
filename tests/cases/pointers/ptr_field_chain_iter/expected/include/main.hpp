@@ -112,7 +112,9 @@ inline SubSector::SubSector(std::vector<Seg*>&& segs) : segs(std::move(segs)) {}
 //     segs.append(self.segs[0])
 //     segs.append(self.segs[1])
 //     self.subsectors = [SubSector(segs)]
-inline Map::Map() : sectors(std::vector<Sector>{Sector(42), Sector(7)}), segs(std::vector<Seg>{Seg(&::tpy::__getitem__(this->sectors, 0)), Seg(&::tpy::__getitem__(this->sectors, 1))}) {
+inline Map::Map()
+    : sectors(std::vector<Sector>{Sector(42), Sector(7)}),
+      segs(std::vector<Seg>{Seg(&::tpy::__getitem__(this->sectors, 0)), Seg(&::tpy::__getitem__(this->sectors, 1))}) {
     std::vector<Seg*> segs = std::vector<Seg*>{};
     segs.push_back(&::tpy::__getitem__(this->segs, 0));
     segs.push_back(&::tpy::__getitem__(this->segs, 1));

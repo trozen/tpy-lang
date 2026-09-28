@@ -100,11 +100,15 @@ inline Base::~Base() {
 //     super().__init__(value)
 //     self._extra = extra
 //     print("Child.init", extra)
-inline Child::Child(int32_t value, int32_t extra) : Base(value), _extra(extra) {
+inline Child::Child(int32_t value, int32_t extra)
+    : Base(value),
+      _extra(extra) {
     std::cout << "Child.init" << " " << extra << "\n";
 }
 
-inline Child::Child(Child&& other) noexcept : Base(std::move(other)), _extra(std::move(other._extra)) {
+inline Child::Child(Child&& other) noexcept
+    : Base(std::move(other)),
+      _extra(std::move(other._extra)) {
     other.__tpy_owned_ = false;
 }
 inline Child& Child::operator=(Child&& other) noexcept {

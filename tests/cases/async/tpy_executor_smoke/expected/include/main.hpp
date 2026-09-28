@@ -79,7 +79,9 @@ struct __coro_returns_value {
     };
 
     __coro_returns_value(::tpy::BigInt x_)
-        : __state(S_INITIAL), __cancel_pending(false), x(std::move(x_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          x(std::move(x_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -100,7 +102,8 @@ struct __coro_void_coro {
     };
 
     __coro_void_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

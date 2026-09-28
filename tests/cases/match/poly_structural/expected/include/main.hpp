@@ -109,7 +109,9 @@ inline ::tpy::BigInt Square::area() const {
 // def __init__(self, w: int, h: int) -> None:
 //     self.w = w
 //     self.h = h
-inline Rect::Rect(const ::tpy::BigInt& w, const ::tpy::BigInt& h) : w(w), h(h) {}
+inline Rect::Rect(const ::tpy::BigInt& w, const ::tpy::BigInt& h)
+    : w(w),
+      h(h) {}
 
 // def area(self) -> int:
 //     return self.w * self.h

@@ -134,7 +134,8 @@ struct __coro_async_code {
     };
 
     __coro_async_code()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -154,8 +155,7 @@ struct __gen_gen_codes : public ::tpy::next_iter_mixin<__gen_gen_codes, ::tpy::B
         S_DONE = 2,
     };
 
-    __gen_gen_codes()
-        : __state(S_INITIAL) {}
+    __gen_gen_codes() : __state(S_INITIAL) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_codes& __iter__() { return *this; }

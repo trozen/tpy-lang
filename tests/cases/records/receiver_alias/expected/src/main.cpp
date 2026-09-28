@@ -77,8 +77,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "generator" << " " << value << " " << cell.n << "\n";
-        cell.n = ::tpy::add_check<int32_t>(cell.n, 10);
+            std::cout << "generator" << " " << value << " " << cell.n << "\n";
+            cell.n = ::tpy::add_check<int32_t>(cell.n, 10);
         }
     }
     std::cout << "generator_done" << " " << cell.n << "\n";
@@ -89,8 +89,8 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "generator_rebind" << " " << value << " " << cell.n << "\n";
-        cell.n = ::tpy::add_check<int32_t>(cell.n, 10);
+            std::cout << "generator_rebind" << " " << value << " " << cell.n << "\n";
+            cell.n = ::tpy::add_check<int32_t>(cell.n, 10);
         }
     }
     {
@@ -100,8 +100,8 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_5);
-        std::cout << "readonly_generator" << " " << value << " " << cell.n << "\n";
-        cell.n = ::tpy::add_check<int32_t>(cell.n, 10);
+            std::cout << "readonly_generator" << " " << value << " " << cell.n << "\n";
+            cell.n = ::tpy::add_check<int32_t>(cell.n, 10);
         }
     }
     std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(cell.update())) << " " << cell.n << "\n";

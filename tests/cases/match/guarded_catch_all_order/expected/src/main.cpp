@@ -62,18 +62,14 @@ int32_t enum_first(Color c, bool k) {
     {
         if (k) {
             return 1;
-            goto __match_end_2;
         }
     }
     if (__match_subject_1 == Color::GREEN) {
         return 2;
-        goto __match_end_2;
     }
     {
         return 3;
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -92,23 +88,18 @@ int32_t enum_middle(Color c, bool k) {
     auto& __match_subject_1 = c;
     if (__match_subject_1 == Color::RED) {
         return 1;
-        goto __match_end_2;
     }
     {
         if (k) {
             return 2;
-            goto __match_end_2;
         }
     }
     if (__match_subject_1 == Color::BLUE) {
         return 3;
-        goto __match_end_2;
     }
     {
         return 4;
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -126,18 +117,14 @@ int32_t int_or_group(int32_t n, bool k) {
     {
         if (k) {
             return 1;
-            goto __match_end_2;
         }
     }
     if (__match_subject_1 == 2) {
         return 2;
-        goto __match_end_2;
     }
     {
         return 3;
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -156,7 +143,6 @@ int32_t int_or_group_last(int32_t n, bool k) {
     switch (__match_subject_1) {
     case 2: {
         return 2;
-        break;
     }
     default: {
         if (k) {
@@ -164,7 +150,6 @@ int32_t int_or_group_last(int32_t n, bool k) {
         } else {
             return 3;
         }
-        break;
     }
     }
     ::std::unreachable();
@@ -194,34 +179,26 @@ int32_t str_table(std::string_view s, bool k) {
         auto& x = __match_subject_1;
         if (k) {
             return ::tpy::__len__(x);
-            goto __match_end_2;
         }
     }
     if (__match_subject_1 == "a") {
         return 1;
-        goto __match_end_2;
     }
     if (__match_subject_1 == "b") {
         return 2;
-        goto __match_end_2;
     }
     if (__match_subject_1 == "c") {
         return 3;
-        goto __match_end_2;
     }
     if (__match_subject_1 == "dd") {
         return 4;
-        goto __match_end_2;
     }
     if (__match_subject_1 == "ee") {
         return 5;
-        goto __match_end_2;
     }
     {
         return 0;
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -241,23 +218,18 @@ int32_t opt_enum(std::optional<Color> c, bool k) {
     auto& __match_subject_1 = c;
     if (!__match_subject_1.has_value()) {
         return 0;
-        goto __match_end_2;
     }
     {
         if (k) {
             return 1;
-            goto __match_end_2;
         }
     }
     if (__match_subject_1.has_value() && (*__match_subject_1) == Color::GREEN) {
         return 2;
-        goto __match_end_2;
     }
     {
         return 3;
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -356,7 +328,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen_true:" << " " << v << "\n";
+            std::cout << "gen_true:" << " " << v << "\n";
         }
     }
     {
@@ -366,7 +338,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "gen_false:" << " " << v << "\n";
+            std::cout << "gen_false:" << " " << v << "\n";
         }
     }
 }

@@ -95,6 +95,9 @@ inline void Counted::inc() {
 //     Named.__init__(self, name)
 //     Counted.__init__(self, count)
 //     self.tag = tag
-inline Widget::Widget(std::string_view name, int32_t count, std::string_view tag) : Named(name), Counted(count), tag(tag) {}
+inline Widget::Widget(std::string_view name, int32_t count, std::string_view tag)
+    : Named(name),
+      Counted(count),
+      tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -48,7 +48,9 @@ struct Wrapper : Container<T> {
     //     super().__init__(value)
     //     self.extra = extra
     Wrapper() = default;
-    explicit Wrapper(::tpy::param_val_or_ref_t<T> value, int32_t extra) : Container<T>(value), extra(extra) {}
+    explicit Wrapper(::tpy::param_val_or_ref_t<T> value, int32_t extra)
+        : Container<T>(value),
+          extra(extra) {}
 
     // def get_extra(self) -> int32:
     //     return self.extra

@@ -439,7 +439,12 @@ inline void HTTPResponse::__exit__(std::monostate exc_type, const ::tpy::BaseExc
 //     self.timeout = timeout
 //     self.sock = None
 //     self._method = ""
-inline HTTPConnection::HTTPConnection(std::string_view host, int32_t port, std::optional<double> timeout) : host(host), port(port), timeout(timeout), sock(std::nullopt), _method("") {}
+inline HTTPConnection::HTTPConnection(std::string_view host, int32_t port, std::optional<double> timeout)
+    : host(host),
+      port(port),
+      timeout(timeout),
+      sock(std::nullopt),
+      _method("") {}
 
 // def connect(self) -> None:
 //     if self.sock is None:
@@ -509,7 +514,13 @@ inline void HTTPConnection::close() {
 //                      else ssl.create_default_context())
 //     self._tls = None
 //     self._method = ""
-inline HTTPSConnection::HTTPSConnection(std::string_view host, int32_t port, std::optional<double> timeout, const ::tpystd::ssl::SSLContext* context) : host(host), port(port), timeout(timeout), _context((((context != nullptr)) ? (::tpystd::ssl::SSLContext((*context))) : (::tpystd::ssl::create_default_context()))), _tls(std::nullopt), _method("") {}
+inline HTTPSConnection::HTTPSConnection(std::string_view host, int32_t port, std::optional<double> timeout, const ::tpystd::ssl::SSLContext* context)
+    : host(host),
+      port(port),
+      timeout(timeout),
+      _context((((context != nullptr)) ? (::tpystd::ssl::SSLContext((*context))) : (::tpystd::ssl::create_default_context()))),
+      _tls(std::nullopt),
+      _method("") {}
 
 // def connect(self) -> None:
 //     if self._tls is None:

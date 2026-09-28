@@ -89,7 +89,9 @@ struct __coro_a_assert {
     };
 
     __coro_a_assert(::tpy::Union<Cat*, Dog*> a_)
-        : __state(S_INITIAL), __cancel_pending(false), a(a_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(a_) {}
 
     __coro_a_assert(__coro_a_assert&&) = default;
     ~__coro_a_assert() {
@@ -130,7 +132,9 @@ struct __coro_a_post_if {
     };
 
     __coro_a_post_if(::tpy::Union<Cat*, Dog*> a_)
-        : __state(S_INITIAL), __cancel_pending(false), a(a_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(a_) {}
 
     __coro_a_post_if(__coro_a_post_if&&) = default;
     ~__coro_a_post_if() {
@@ -174,7 +178,10 @@ struct __coro_a_nested {
     };
 
     __coro_a_nested(::tpy::Union<Cat*, Dog*> a_, ::tpy::Union<Cat*, Dog*> b_)
-        : __state(S_INITIAL), __cancel_pending(false), a(a_), b(b_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(a_),
+          b(b_) {}
 
     __coro_a_nested(__coro_a_nested&&) = default;
     ~__coro_a_nested() {
@@ -225,7 +232,8 @@ struct __coro_amain {
     };
 
     __coro_amain()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -249,7 +257,8 @@ struct __gen_g_assert : public ::tpy::next_iter_mixin<__gen_g_assert, std::strin
     };
 
     __gen_g_assert(::tpy::Union<Cat*, Dog*> a_)
-        : __state(S_INITIAL), a(a_) {}
+        : __state(S_INITIAL),
+          a(a_) {}
 
     __gen_g_assert(__gen_g_assert&&) = default;
     ~__gen_g_assert() {
@@ -288,7 +297,8 @@ struct __gen_g_post_if : public ::tpy::next_iter_mixin<__gen_g_post_if, std::str
     };
 
     __gen_g_post_if(::tpy::Union<Cat*, Dog*> a_)
-        : __state(S_INITIAL), a(a_) {}
+        : __state(S_INITIAL),
+          a(a_) {}
 
     __gen_g_post_if(__gen_g_post_if&&) = default;
     ~__gen_g_post_if() {

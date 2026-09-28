@@ -218,7 +218,8 @@ struct __gen_free_gen : public ::tpy::next_iter_mixin<__gen_free_gen, int32_t> {
     };
 
     __gen_free_gen(Src& s)
-        : __state(S_INITIAL), s(s) {}
+        : __state(S_INITIAL),
+          s(s) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_free_gen& __iter__() { return *this; }
@@ -241,7 +242,8 @@ struct __gen_ro_gen : public ::tpy::next_iter_mixin<__gen_ro_gen, int32_t> {
     };
 
     __gen_ro_gen(const RoSrc& s)
-        : __state(S_INITIAL), s(s) {}
+        : __state(S_INITIAL),
+          s(s) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_ro_gen& __iter__() { return *this; }
@@ -264,7 +266,8 @@ struct __gen_generic_gen : public ::tpy::next_iter_mixin<__gen_generic_gen, int3
     };
 
     __gen_generic_gen(Src2<int32_t>& s)
-        : __state(S_INITIAL), s(s) {}
+        : __state(S_INITIAL),
+          s(s) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_generic_gen& __iter__() { return *this; }
@@ -293,7 +296,8 @@ struct __gen_forward_gen : public ::tpy::next_iter_mixin<__gen_forward_gen, int3
     };
 
     __gen_forward_gen(Src& s)
-        : __state(S_INITIAL), s(s) {}
+        : __state(S_INITIAL),
+          s(s) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_forward_gen& __iter__() { return *this; }
@@ -316,7 +320,8 @@ struct __gen_own_gen : public ::tpy::next_iter_mixin<__gen_own_gen, int32_t> {
     };
 
     __gen_own_gen(std::unique_ptr<Src>&& s_)
-        : __state(S_INITIAL), s(std::move(s_)) {}
+        : __state(S_INITIAL),
+          s(std::move(s_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_own_gen& __iter__() { return *this; }
@@ -340,7 +345,9 @@ struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk, int3
     };
 
     __gen_Holder_walk(const Holder& __self, Src& s)
-        : __state(S_INITIAL), __self(__self), s(s) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          s(s) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Holder_walk& __iter__() { return *this; }

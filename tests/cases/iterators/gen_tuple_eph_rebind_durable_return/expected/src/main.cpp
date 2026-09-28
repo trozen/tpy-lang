@@ -25,9 +25,9 @@ std::tuple<int32_t, Box*> pick(Holder& h) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_1);
-        std::tuple<int32_t, Box*> q = p;
-        q = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
-        return q;
+            std::tuple<int32_t, Box*> q = p;
+            q = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
+            return q;
         }
     }
     throw ::tpy::RuntimeError("empty");

@@ -56,7 +56,10 @@ inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
 //     self.data = bytearray()
 //     self.tags = []
 //     self.boxes = []
-inline Buf::Buf() : data(::tpy::ByteArray()), tags(std::vector<int32_t>{}), boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>{}) {}
+inline Buf::Buf()
+    : data(::tpy::ByteArray()),
+      tags(std::vector<int32_t>{}),
+      boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>{}) {}
 
 // def reset(self, n: int32) -> None:
 //     fresh = bytearray(n)

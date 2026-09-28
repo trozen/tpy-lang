@@ -36,7 +36,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     };
 
     __gen_gen(::tpy::Union<::tpy::BigInt, std::string> a_)
-        : __state(S_INITIAL), a(std::move(a_)) {}
+        : __state(S_INITIAL),
+          a(std::move(a_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

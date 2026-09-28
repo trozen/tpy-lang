@@ -53,7 +53,9 @@ struct __coro_make {
     };
 
     __coro_make(::tpy::BigInt v_)
-        : __state(S_INITIAL), __cancel_pending(false), v(std::move(v_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          v(std::move(v_)) {}
 
     ::tpystd::tpy::Poll<Box2> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -81,7 +83,8 @@ struct __coro_main {
     };
 
     __coro_main()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

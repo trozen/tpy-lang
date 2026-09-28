@@ -98,7 +98,9 @@ struct __gen_inner : public ::tpy::next_iter_mixin<__gen_inner, int32_t> {
     };
 
     __gen_inner(std::string_view tag_, const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), tag(std::string(tag_)), xs(xs) {}
+        : __state(S_INITIAL),
+          tag(std::string(tag_)),
+          xs(xs) {}
 
     __gen_inner(__gen_inner&&) = default;
     ~__gen_inner() {
@@ -156,7 +158,9 @@ struct __coro_async_rows {
     };
 
     __coro_async_rows(const std::vector<std::vector<int32_t>>& rows)
-        : __state(S_INITIAL), __cancel_pending(false), rows(rows) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          rows(rows) {}
 
     __coro_async_rows(__coro_async_rows&&) = default;
     ~__coro_async_rows() {
@@ -203,7 +207,8 @@ struct __gen_rows_outer : public ::tpy::next_iter_mixin<__gen_rows_outer, int32_
     };
 
     __gen_rows_outer(const std::vector<std::vector<int32_t>>& rows)
-        : __state(S_INITIAL), rows(rows) {}
+        : __state(S_INITIAL),
+          rows(rows) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_rows_outer& __iter__() { return *this; }
@@ -229,8 +234,7 @@ struct __gen_global_outer : public ::tpy::next_iter_mixin<__gen_global_outer, in
         S_DONE = 4,
     };
 
-    __gen_global_outer()
-        : __state(S_INITIAL) {}
+    __gen_global_outer() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_global_outer& __iter__() { return *this; }
@@ -262,7 +266,8 @@ struct __gen_rebound_outer : public ::tpy::next_iter_mixin<__gen_rebound_outer, 
     };
 
     __gen_rebound_outer(bool c_)
-        : __state(S_INITIAL), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_rebound_outer& __iter__() { return *this; }
@@ -297,7 +302,8 @@ struct __gen_break_outer : public ::tpy::next_iter_mixin<__gen_break_outer, int3
     };
 
     __gen_break_outer(const std::vector<std::vector<int32_t>>& rows)
-        : __state(S_INITIAL), rows(rows) {}
+        : __state(S_INITIAL),
+          rows(rows) {}
 
     __gen_break_outer(__gen_break_outer&&) = default;
     ~__gen_break_outer() {
@@ -341,7 +347,8 @@ struct __gen_return_outer : public ::tpy::next_iter_mixin<__gen_return_outer, in
     };
 
     __gen_return_outer(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     __gen_return_outer(__gen_return_outer&&) = default;
     ~__gen_return_outer() {
@@ -388,7 +395,8 @@ struct __gen_exc_outer : public ::tpy::next_iter_mixin<__gen_exc_outer, int32_t>
     };
 
     __gen_exc_outer(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     __gen_exc_outer(__gen_exc_outer&&) = default;
     ~__gen_exc_outer() {
@@ -435,7 +443,8 @@ struct __gen_Holder_items : public ::tpy::next_iter_mixin<__gen_Holder_items, in
     };
 
     __gen_Holder_items(const Holder& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Holder_items& __iter__() { return *this; }

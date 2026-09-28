@@ -212,14 +212,19 @@ inline Counter::Counter(int32_t start) {
 //     Exception.__init__(self, f"code {code}")
 //     Tagged.__init__(self, "t")
 //     self.code = code
-inline TaggedError::TaggedError(int32_t code) : ::tpy::Exception(std::format("code {}", code)), Tagged("t"), code(code) {}
+inline TaggedError::TaggedError(int32_t code)
+    : ::tpy::Exception(std::format("code {}", code)),
+      Tagged("t"),
+      code(code) {}
 
 // # annotation-only parent: nothing to call
 // def __init__(self, x: int32, y: int32, z: int32) -> None:  # tpyc: ok
 //     self.x = x
 //     self.y = y
 //     self.z = z
-inline Point3::Point3(int32_t x, int32_t y, int32_t z) : Point(), z(z) {
+inline Point3::Point3(int32_t x, int32_t y, int32_t z)
+    : Point(),
+      z(z) {
     this->x = x;
     this->y = y;
 }
@@ -235,6 +240,8 @@ inline void Child::bump() {
 //     # the explicit form reaches the grandparent's inherited `__init__`
 //     Ticker.__init__(self, start)  # tpyc: ok
 //     self.name = name
-inline Named::Named(std::string_view name, int32_t start) : Ticker(start), name(name) {}
+inline Named::Named(std::string_view name, int32_t start)
+    : Ticker(start),
+      name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -422,7 +422,10 @@ struct __coro_in_async {
     };
 
     __coro_in_async(::tpy::Union<double, int32_t> a_, ::tpy::Union<double, int32_t> b_)
-        : __state(S_INITIAL), __cancel_pending(false), a(std::move(a_)), b(std::move(b_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(std::move(a_)),
+          b(std::move(b_)) {}
 
     ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -448,7 +451,10 @@ struct __coro_amain {
     };
 
     __coro_amain(::tpy::Union<double, int32_t> x_, ::tpy::Union<double, int32_t> y_)
-        : __state(S_INITIAL), __cancel_pending(false), x(std::move(x_)), y(std::move(y_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          x(std::move(x_)),
+          y(std::move(y_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -471,7 +477,9 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, bool> {
     };
 
     __gen_gen(::tpy::Union<double, int32_t> a_, ::tpy::Union<double, int32_t> b_)
-        : __state(S_INITIAL), a(std::move(a_)), b(std::move(b_)) {}
+        : __state(S_INITIAL),
+          a(std::move(a_)),
+          b(std::move(b_)) {}
 
     std::expected<bool, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

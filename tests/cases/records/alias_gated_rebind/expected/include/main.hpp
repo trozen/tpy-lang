@@ -252,7 +252,8 @@ struct __coro_async_section {
     };
 
     __coro_async_section()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -278,8 +279,7 @@ struct __gen_gen_section : public ::tpy::next_iter_mixin<__gen_gen_section, int3
         S_DONE = 4,
     };
 
-    __gen_gen_section()
-        : __state(S_INITIAL) {}
+    __gen_gen_section() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_section& __iter__() { return *this; }
@@ -301,8 +301,7 @@ struct __gen_gen_drop : public ::tpy::next_iter_mixin<__gen_gen_drop, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_gen_drop()
-        : __state(S_INITIAL) {}
+    __gen_gen_drop() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_drop& __iter__() { return *this; }
@@ -325,7 +324,8 @@ struct __gen_Walker_walk : public ::tpy::next_iter_mixin<__gen_Walker_walk, int3
     };
 
     __gen_Walker_walk(const Walker& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Walker_walk& __iter__() { return *this; }
@@ -363,9 +363,13 @@ inline Point& Holder::peek() {
 // def __init__(self, name: str) -> None:
 //     self.name = name
 //     self.armed = True
-inline Noisy::Noisy(std::string_view name) : name(name), armed(true) {}
+inline Noisy::Noisy(std::string_view name)
+    : name(name),
+      armed(true) {}
 
-inline Noisy::Noisy(Noisy&& other) noexcept : name(std::move(other.name)), armed(std::move(other.armed)) {
+inline Noisy::Noisy(Noisy&& other) noexcept
+    : name(std::move(other.name)),
+      armed(std::move(other.armed)) {
     other.__tpy_owned_ = false;
 }
 inline Noisy& Noisy::operator=(Noisy&& other) noexcept {

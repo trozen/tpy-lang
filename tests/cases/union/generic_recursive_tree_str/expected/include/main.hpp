@@ -64,11 +64,9 @@ int32_t depth(const Tree<T>& t) {
             }
         }
         return (::tpy::add_check<int32_t>(best, 1));
-        break;
     }
     default: {
         return 0;
-        break;
     }
     }
     ::std::unreachable();

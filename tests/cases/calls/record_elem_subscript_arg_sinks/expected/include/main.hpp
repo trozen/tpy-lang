@@ -169,7 +169,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, double> {
     };
 
     __gen_gen(std::vector<Thing>& things)
-        : __state(S_INITIAL), things(things) {}
+        : __state(S_INITIAL),
+          things(things) {}
 
     std::expected<double, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

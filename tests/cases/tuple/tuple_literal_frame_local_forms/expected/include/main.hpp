@@ -117,7 +117,9 @@ struct __coro_coro {
     };
 
     __coro_coro(A& a)
-        : __state(S_INITIAL), __cancel_pending(false), a(a) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(a) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -142,7 +144,8 @@ struct __coro_async_section {
     };
 
     __coro_async_section()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -164,8 +167,7 @@ struct __gen_fresh : public ::tpy::next_iter_mixin<__gen_fresh, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_fresh()
-        : __state(S_INITIAL) {}
+    __gen_fresh() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_fresh& __iter__() { return *this; }
@@ -187,8 +189,7 @@ struct __gen_own_call : public ::tpy::next_iter_mixin<__gen_own_call, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_own_call()
-        : __state(S_INITIAL) {}
+    __gen_own_call() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_own_call& __iter__() { return *this; }
@@ -212,7 +213,8 @@ struct __gen_lvalue : public ::tpy::next_iter_mixin<__gen_lvalue, int32_t> {
     };
 
     __gen_lvalue(A& a)
-        : __state(S_INITIAL), a(a) {}
+        : __state(S_INITIAL),
+          a(a) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_lvalue& __iter__() { return *this; }
@@ -236,7 +238,8 @@ struct __gen_mixed_fresh_first : public ::tpy::next_iter_mixin<__gen_mixed_fresh
     };
 
     __gen_mixed_fresh_first(A& a)
-        : __state(S_INITIAL), a(a) {}
+        : __state(S_INITIAL),
+          a(a) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_mixed_fresh_first& __iter__() { return *this; }
@@ -260,7 +263,8 @@ struct __gen_mixed_lvalue_first : public ::tpy::next_iter_mixin<__gen_mixed_lval
     };
 
     __gen_mixed_lvalue_first(A& a)
-        : __state(S_INITIAL), a(a) {}
+        : __state(S_INITIAL),
+          a(a) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_mixed_lvalue_first& __iter__() { return *this; }
@@ -283,8 +287,7 @@ struct __gen_moved_last_use : public ::tpy::next_iter_mixin<__gen_moved_last_use
         S_DONE = 3,
     };
 
-    __gen_moved_last_use()
-        : __state(S_INITIAL) {}
+    __gen_moved_last_use() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_moved_last_use& __iter__() { return *this; }
@@ -308,8 +311,7 @@ struct __gen_loop_reassigned : public ::tpy::next_iter_mixin<__gen_loop_reassign
         S_DONE = 4,
     };
 
-    __gen_loop_reassigned()
-        : __state(S_INITIAL) {}
+    __gen_loop_reassigned() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_loop_reassigned& __iter__() { return *this; }
@@ -333,7 +335,8 @@ struct __gen_literal_then_call : public ::tpy::next_iter_mixin<__gen_literal_the
     };
 
     __gen_literal_then_call(bool c_)
-        : __state(S_INITIAL), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_literal_then_call& __iter__() { return *this; }
@@ -357,7 +360,8 @@ struct __gen_call_then_literal : public ::tpy::next_iter_mixin<__gen_call_then_l
     };
 
     __gen_call_then_literal(bool c_)
-        : __state(S_INITIAL), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_call_then_literal& __iter__() { return *this; }
@@ -379,8 +383,7 @@ struct __gen_call_reassigned : public ::tpy::next_iter_mixin<__gen_call_reassign
         S_DONE = 3,
     };
 
-    __gen_call_reassigned()
-        : __state(S_INITIAL) {}
+    __gen_call_reassigned() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_call_reassigned& __iter__() { return *this; }
@@ -402,8 +405,7 @@ struct __gen_own_elem_call : public ::tpy::next_iter_mixin<__gen_own_elem_call, 
         S_DONE = 3,
     };
 
-    __gen_own_elem_call()
-        : __state(S_INITIAL) {}
+    __gen_own_elem_call() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_own_elem_call& __iter__() { return *this; }
@@ -427,8 +429,7 @@ struct __gen_try_body : public ::tpy::next_iter_mixin<__gen_try_body, int32_t> {
         S_DONE = 5,
     };
 
-    __gen_try_body()
-        : __state(S_INITIAL) {}
+    __gen_try_body() : __state(S_INITIAL) {}
 
     __gen_try_body(__gen_try_body&&) = default;
     ~__gen_try_body() {
@@ -468,7 +469,8 @@ struct __gen_H_g : public ::tpy::next_iter_mixin<__gen_H_g, int32_t> {
     };
 
     __gen_H_g(const H& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_H_g& __iter__() { return *this; }

@@ -21,36 +21,36 @@ bool and_skips_rhs(Counter& c) {
 // def and_runs_rhs(c: Counter) -> bool:
 //     return True and take(Probe(c, 2))  # LHS true -> Probe IS built
 bool and_runs_rhs(Counter& c) {
-    std::optional<Probe> __tmp_2;
-    return (true && (__tmp_2.emplace(Probe(c, 2)), ::tpyapp::main::take(&((*__tmp_2)))));
+    std::optional<Probe> __tmp_1;
+    return (true && (__tmp_1.emplace(Probe(c, 2)), ::tpyapp::main::take(&((*__tmp_1)))));
 }
 
 // def or_skips_rhs(c: Counter) -> bool:
 //     return True or take(Probe(c, 3))  # LHS true -> Probe must NOT be built
 bool or_skips_rhs(Counter& c) {
-    std::optional<Probe> __tmp_3;
-    return (true || (__tmp_3.emplace(Probe(c, 3)), ::tpyapp::main::take(&((*__tmp_3)))));
+    std::optional<Probe> __tmp_1;
+    return (true || (__tmp_1.emplace(Probe(c, 3)), ::tpyapp::main::take(&((*__tmp_1)))));
 }
 
 // def or_runs_rhs(c: Counter) -> bool:
 //     return False or take(Probe(c, 4))  # LHS false -> Probe IS built
 bool or_runs_rhs(Counter& c) {
-    std::optional<Probe> __tmp_4;
-    return (false || (__tmp_4.emplace(Probe(c, 4)), ::tpyapp::main::take(&((*__tmp_4)))));
+    std::optional<Probe> __tmp_1;
+    return (false || (__tmp_1.emplace(Probe(c, 4)), ::tpyapp::main::take(&((*__tmp_1)))));
 }
 
 // def ternary_skips_else(c: Counter) -> bool:
 //     return True if True else take(Probe(c, 5))  # else arm must NOT be built
 bool ternary_skips_else(Counter& c) {
-    std::optional<Probe> __tmp_5;
-    return ((true) ? (true) : (__tmp_5.emplace(Probe(c, 5)), ::tpyapp::main::take(&((*__tmp_5)))));
+    std::optional<Probe> __tmp_1;
+    return ((true) ? (true) : (__tmp_1.emplace(Probe(c, 5)), ::tpyapp::main::take(&((*__tmp_1)))));
 }
 
 // def ternary_skips_then(c: Counter, cond: bool) -> bool:
 //     return take(Probe(c, 6)) if cond else False  # then arm skipped when cond false
 bool ternary_skips_then(Counter& c, bool cond) {
-    std::optional<Probe> __tmp_6;
-    return ((cond) ? (__tmp_6.emplace(Probe(c, 6)), ::tpyapp::main::take(&((*__tmp_6)))) : (false));
+    std::optional<Probe> __tmp_1;
+    return ((cond) ? (__tmp_1.emplace(Probe(c, 6)), ::tpyapp::main::take(&((*__tmp_1)))) : (false));
 }
 
 // def nested_and(c: Counter, inner: bool) -> bool:
@@ -58,8 +58,8 @@ bool ternary_skips_then(Counter& c, bool cond) {
 //     # `inner` skips it even though the outer `and` was taken.
 //     return True and (inner and take(Probe(c, 7)))
 bool nested_and(Counter& c, bool inner) {
-    std::optional<Probe> __tmp_7;
-    return (true && (inner && (__tmp_7.emplace(Probe(c, 7)), ::tpyapp::main::take(&((*__tmp_7))))));
+    std::optional<Probe> __tmp_1;
+    return (true && (inner && (__tmp_1.emplace(Probe(c, 7)), ::tpyapp::main::take(&((*__tmp_1))))));
 }
 
 // def nested_mixed(c: Counter, first: bool, deep: bool) -> bool:
@@ -72,24 +72,24 @@ bool nested_and(Counter& c, bool inner) {
 //     return True and ((take(Probe(c, 8)) and first)
 //                      or (deep and take(Probe(c, 9))))
 bool nested_mixed(Counter& c, bool first, bool deep) {
-    std::optional<Probe> __tmp_8;
-    std::optional<Probe> __tmp_9;
-    return (true && (__tmp_8.emplace(Probe(c, 8)), ((::tpyapp::main::take(&((*__tmp_8))) && first) || (deep && (__tmp_9.emplace(Probe(c, 9)), ::tpyapp::main::take(&((*__tmp_9))))))));
+    std::optional<Probe> __tmp_1;
+    std::optional<Probe> __tmp_2;
+    return (true && (__tmp_1.emplace(Probe(c, 8)), ((::tpyapp::main::take(&((*__tmp_1))) && first) || (deep && (__tmp_2.emplace(Probe(c, 9)), ::tpyapp::main::take(&((*__tmp_2))))))));
 }
 
 // def nested_ternary(c: Counter, inner: bool) -> bool:
 //     return (take(Probe(c, 10)) if inner else False) if True else False
 bool nested_ternary(Counter& c, bool inner) {
-    std::optional<Probe> __tmp_10;
-    return ((true) ? (((inner) ? (__tmp_10.emplace(Probe(c, 10)), ::tpyapp::main::take(&((*__tmp_10)))) : (false))) : (false));
+    std::optional<Probe> __tmp_1;
+    return ((true) ? (((inner) ? (__tmp_1.emplace(Probe(c, 10)), ::tpyapp::main::take(&((*__tmp_1)))) : (false))) : (false));
 }
 
 // def unconditional(c: Counter) -> bool:
 //     """Inverse: a temp in an unconditional position must still materialize."""
 //     return take(Probe(c, 11))
 bool unconditional(Counter& c) {
-    Probe __tmp_11 = Probe(c, 11);
-    return ::tpyapp::main::take(&(__tmp_11));
+    Probe __tmp_1 = Probe(c, 11);
+    return ::tpyapp::main::take(&(__tmp_1));
 }
 
 // def main() -> None:

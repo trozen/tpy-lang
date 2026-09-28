@@ -74,6 +74,8 @@ inline Box::Box(int32_t v) : val(v) {}
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.a = Box(x)
 //     self.b = Box(y)
-inline Pair::Pair(int32_t x, int32_t y) : a(Box(x)), b(Box(y)) {}
+inline Pair::Pair(int32_t x, int32_t y)
+    : a(Box(x)),
+      b(Box(y)) {}
 void __tpy_init();
 } // namespace tpyapp::main

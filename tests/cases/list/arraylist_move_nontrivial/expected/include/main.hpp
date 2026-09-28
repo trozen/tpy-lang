@@ -46,6 +46,8 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 // def __init__(self, name: str, n: int) -> None:
 //     self.name = name
 //     self.n = n
-inline Item::Item(std::string_view name, const ::tpy::BigInt& n) : name(name), n(n) {}
+inline Item::Item(std::string_view name, const ::tpy::BigInt& n)
+    : name(name),
+      n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

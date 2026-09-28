@@ -93,12 +93,16 @@ inline std::ostream& operator<<(std::ostream& os, const Worker& obj) {
 // def __init__(self) -> None:
 //     self.turn = 0
 //     self.log = []
-inline PingState::PingState() : turn(0), log(std::vector<int32_t>{}) {}
+inline PingState::PingState()
+    : turn(0),
+      log(std::vector<int32_t>{}) {}
 
 // def __init__(self, m: Own[Mutex[PingState]], cv: Own[Condvar]) -> None:
 //     self.m = m
 //     self.cv = cv
-inline Shared::Shared(::tpystd::tpy::sync::Mutex<PingState>&& m, ::tpystd::tpy::sync::Condvar&& cv) : m(std::move(m)), cv(std::move(cv)) {}
+inline Shared::Shared(::tpystd::tpy::sync::Mutex<PingState>&& m, ::tpystd::tpy::sync::Condvar&& cv)
+    : m(std::move(m)),
+      cv(std::move(cv)) {}
 
 // def __init__(self, shared: Own[Arc[Shared]]) -> None:
 //     self.shared = shared

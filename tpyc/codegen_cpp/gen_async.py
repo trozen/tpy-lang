@@ -2635,8 +2635,8 @@ class AsyncCoroCodegen:
         rcfg.resumable_state(func).ctor_loop_seed = ctor_seed
         ctor_body = " ".join(ctor_seed or ())
         ctor_body = f"{{ {ctor_body} }}" if ctor_body else "{}"
-        out.write(f"{INDENT}{struct_name}({ctor_param_list})\n")
-        out.write(f"{INDENT}{INDENT}: {', '.join(init_parts)} {ctor_body}\n\n")
+        out.write(f"{INDENT}{struct_name}({ctor_param_list})"
+                  f"{emit_prims.member_init_list(init_parts, INDENT)} {ctor_body}\n\n")
         if self._builds_source_in_place(func):
             # An rvalue source is built IN PLACE from a factory: the prvalue
             # the factory returns initializes the field directly, so a source
@@ -2653,8 +2653,8 @@ class AsyncCoroCodegen:
                 f"{src.cpp_name}(std::forward<F_{make}>({make}_)())",
                 *(p.ctor_init() for p in rest)]
             out.write(f"{INDENT}template <typename F_{make}>\n")
-            out.write(f"{INDENT}{struct_name}({in_place_params})\n")
-            out.write(f"{INDENT}{INDENT}: {', '.join(in_place_inits)} {{}}\n\n")
+            out.write(f"{INDENT}{struct_name}({in_place_params})"
+                      f"{emit_prims.member_init_list(in_place_inits, INDENT)} {{}}\n\n")
 
         if dtor_cases:
             self._emit_frame_dtor(out, struct_name, dtor_cases)
@@ -2919,7 +2919,8 @@ class AsyncCoroCodegen:
             self.ctx.generator_field_names.add(lname)
 
         try:
-            yield
+            with self.ctx.temps.function_scope():
+                yield
         finally:
             self.ctx.in_generator_body = old_in_gen
             self.ctx.generator_field_names = old_field_names

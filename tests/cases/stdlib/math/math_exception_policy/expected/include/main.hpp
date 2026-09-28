@@ -145,7 +145,9 @@ struct __coro_async_root {
     };
 
     __coro_async_root(double x_)
-        : __state(S_INITIAL), __cancel_pending(false), x(std::move(x_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          x(std::move(x_)) {}
 
     ::tpystd::tpy::Poll<double> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -173,7 +175,8 @@ struct __coro_async_position {
     };
 
     __coro_async_position()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -194,8 +197,7 @@ struct __gen_values : public ::tpy::next_iter_mixin<__gen_values, double> {
         S_DONE = 3,
     };
 
-    __gen_values()
-        : __state(S_INITIAL) {}
+    __gen_values() : __state(S_INITIAL) {}
 
     std::expected<double, ::tpy::StopIteration> __next__();
     __gen_values& __iter__() { return *this; }

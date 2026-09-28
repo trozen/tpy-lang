@@ -73,8 +73,7 @@ struct __gen_run : public ::tpy::next_iter_mixin<__gen_run, ::tpy::BigInt> {
         S_DONE = 5,
     };
 
-    __gen_run()
-        : __state(S_INITIAL) {}
+    __gen_run() : __state(S_INITIAL) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_run& __iter__() { return *this; }
@@ -96,7 +95,8 @@ struct __gen_first_value : public ::tpy::next_iter_mixin<__gen_first_value, ::tp
     };
 
     __gen_first_value(::tpy::Union<const Emit*, const Push*> t_)
-        : __state(S_INITIAL), t(t_) {}
+        : __state(S_INITIAL),
+          t(t_) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_first_value& __iter__() { return *this; }

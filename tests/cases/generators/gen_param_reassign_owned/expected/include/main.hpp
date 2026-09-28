@@ -63,7 +63,9 @@ struct __gen_gs : public ::tpy::next_iter_mixin<__gen_gs, std::string> {
     };
 
     __gen_gs(std::string_view s_, int32_t n_)
-        : __state(S_INITIAL), s(std::string(s_)), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          s(std::string(s_)),
+          n(std::move(n_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gs& __iter__() { return *this; }
@@ -90,7 +92,9 @@ struct __gen_gb : public ::tpy::next_iter_mixin<__gen_gb, int32_t> {
     };
 
     __gen_gb(::tpy::BytesView b_, int32_t n_)
-        : __state(S_INITIAL), b(::tpy::Bytes(b_)), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          b(::tpy::Bytes(b_)),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gb& __iter__() { return *this; }
@@ -117,7 +121,9 @@ struct __gen_gi : public ::tpy::next_iter_mixin<__gen_gi, ::tpy::BigInt> {
     };
 
     __gen_gi(::tpy::BigInt v_, int32_t n_)
-        : __state(S_INITIAL), v(std::move(v_)), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          v(std::move(v_)),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gi& __iter__() { return *this; }
@@ -144,7 +150,9 @@ struct __gen_gstr : public ::tpy::next_iter_mixin<__gen_gstr, std::string> {
     };
 
     __gen_gstr(::tpy::String s_, int32_t n_)
-        : __state(S_INITIAL), s(std::move(s_)), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          s(std::move(s_)),
+          n(std::move(n_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gstr& __iter__() { return *this; }
@@ -172,7 +180,10 @@ struct __gen_Box_walk : public ::tpy::next_iter_mixin<__gen_Box_walk, std::strin
     };
 
     __gen_Box_walk(const Box& __self, std::string_view s_, int32_t n_)
-        : __state(S_INITIAL), __self(__self), s(std::string(s_)), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          s(std::string(s_)),
+          n(std::move(n_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_Box_walk& __iter__() { return *this; }

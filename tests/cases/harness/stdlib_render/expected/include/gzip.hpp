@@ -250,7 +250,8 @@ struct __gen_GzipFile___iter__ : public ::tpy::next_iter_mixin<__gen_GzipFile___
     };
 
     __gen_GzipFile___iter__(GzipFile& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::Bytes, ::tpy::StopIteration> __next__();
     __gen_GzipFile___iter__& __iter__() { return *this; }
@@ -270,7 +271,10 @@ inline __gen_GzipFile___iter__ GzipFile::__iter__() {
 //     self._buffer = b""
 //     # -1: the pushed-back buffer is used up; reads go to the file.
 //     self._read = -1
-inline _PaddedFile::_PaddedFile(::tpystd::io::FileIO&& f) : _file(std::move(f)), _buffer(::tpy::Bytes{}), _read(-1) {}
+inline _PaddedFile::_PaddedFile(::tpystd::io::FileIO&& f)
+    : _file(std::move(f)),
+      _buffer(::tpy::Bytes{}),
+      _read(-1) {}
 
 // def prepend(self, data: bytes) -> None:
 //     if self._read < 0:
@@ -302,7 +306,12 @@ inline void _PaddedFile::close() {
 //     self._new_member = True
 //     self._crc = 0
 //     self._stream_size = 0
-inline _GzipReader::_GzipReader(int64_t fd) : _fp(_PaddedFile(::tpystd::io::FileIO(fd))), _decompressor(::tpystd::gzip::_raw_decompressor()), _new_member(true), _crc(0), _stream_size(0) {}
+inline _GzipReader::_GzipReader(int64_t fd)
+    : _fp(_PaddedFile(::tpystd::io::FileIO(fd))),
+      _decompressor(::tpystd::gzip::_raw_decompressor()),
+      _new_member(true),
+      _crc(0),
+      _stream_size(0) {}
 
 // def _readall(self) -> bytes:
 //     chunks: list[bytes] = []
@@ -335,7 +344,10 @@ inline void _GzipReader::close() {
 //                                   READ_BUFFER_SIZE)
 //     self.name = filename
 //     self._closed = False
-inline GzipFile::GzipFile(std::string_view filename) : _buffer(::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(_GzipReader(::tpystd::gzip::_open_for_read(filename))), READ_BUFFER_SIZE)), name(filename), _closed(false) {}
+inline GzipFile::GzipFile(std::string_view filename)
+    : _buffer(::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(_GzipReader(::tpystd::gzip::_open_for_read(filename))), READ_BUFFER_SIZE)),
+      name(filename),
+      _closed(false) {}
 
 // def _check_not_closed(self) -> None:
 //     if self._closed:

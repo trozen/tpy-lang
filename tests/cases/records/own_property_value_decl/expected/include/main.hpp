@@ -84,7 +84,8 @@ struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain, int32_t> {
     };
 
     __gen_drain(const Snap& s)
-        : __state(S_INITIAL), s(s) {}
+        : __state(S_INITIAL),
+          s(s) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_drain& __iter__() { return *this; }

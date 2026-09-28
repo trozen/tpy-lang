@@ -125,7 +125,9 @@ inline Base::Base(int32_t v) : res(Resource(v)) {}
 // def __init__(self, v: int32, extra: int32) -> None:
 //     super().__init__(v)
 //     self.extra = extra
-inline Child::Child(int32_t v, int32_t extra) : Base(v), extra(extra) {}
+inline Child::Child(int32_t v, int32_t extra)
+    : Base(v),
+      extra(extra) {}
 
 inline bool Child::__eq__(const Child& other) const {
     return (this->extra == other.extra);

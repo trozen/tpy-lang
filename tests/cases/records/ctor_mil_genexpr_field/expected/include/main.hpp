@@ -74,7 +74,8 @@ struct __genexpr___init___1_frame : public ::tpy::next_iter_mixin<__genexpr___in
     };
 
     __genexpr___init___1_frame(const ::tpy::ordered_map<int32_t, int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr___init___1_frame& __iter__() { return *this; }
@@ -101,7 +102,8 @@ struct __genexpr___init___2_frame : public ::tpy::next_iter_mixin<__genexpr___in
     };
 
     __genexpr___init___2_frame(const ::tpy::ordered_map<int32_t, int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr___init___2_frame& __iter__() { return *this; }

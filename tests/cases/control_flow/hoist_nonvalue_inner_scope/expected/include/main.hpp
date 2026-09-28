@@ -255,7 +255,9 @@ inline int32_t Sq::area() const {
 // def __init__(self, w: int32, h: int32) -> None:
 //     self.w = w
 //     self.h = h
-inline Rect::Rect(int32_t w, int32_t h) : w(w), h(h) {}
+inline Rect::Rect(int32_t w, int32_t h)
+    : w(w),
+      h(h) {}
 
 // def area(self) -> int32:
 //     return self.w * self.h

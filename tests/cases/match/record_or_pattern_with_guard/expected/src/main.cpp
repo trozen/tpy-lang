@@ -17,13 +17,10 @@ int32_t f(Point& p, bool ok) {
     if (((__match_subject_1.x == 0 && __match_subject_1.y == 0) || (__match_subject_1.x == 1 && __match_subject_1.y == 1)) && ok) {
         p.x = 9;
         return 1;
-        goto __match_end_2;
     }
     {
         return 0;
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 

@@ -88,7 +88,9 @@ inline std::string Greeter::greet() const {
 
 // def __init__(self) -> None:
 //     super().__init__()
-inline Both::Both() : Counter(), Greeter() {}
+inline Both::Both()
+    : Counter(),
+      Greeter() {}
 
 // @readonly
 // def describe(self) -> str:

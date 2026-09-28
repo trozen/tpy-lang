@@ -66,7 +66,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 
-inline Point::Point(int64_t x, int64_t y) : x(x), y(y) {}
+inline Point::Point(int64_t x, int64_t y)
+    : x(x),
+      y(y) {}
 
 inline bool Point::__eq__(Point other) const {
     return ((this->x == other.x) && (this->y == other.y));

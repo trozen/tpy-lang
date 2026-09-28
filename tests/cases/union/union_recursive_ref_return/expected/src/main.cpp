@@ -29,11 +29,9 @@ Expr g;
             total = ::tpy::add_check<int32_t>(total, (::tpyapp::main::leaf_count(child)).to_fixed_check<int32_t>());
         }
         return ::tpy::BigInt(total);
-        break;
     }
     default: {
         return ::tpy::BigInt(1);
-        break;
     }
     }
     ::std::unreachable();

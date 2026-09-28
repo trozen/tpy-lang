@@ -126,7 +126,9 @@ namespace tpyapp::main {
 // def __init__(self, w: int32, h: int32) -> None:
 //     self._w = w
 //     self._h = h
-inline Rect::Rect(int32_t w, int32_t h) : _w(w), _h(h) {}
+inline Rect::Rect(int32_t w, int32_t h)
+    : _w(w),
+      _h(h) {}
 
 // @readonly
 // def area(self) -> int32:

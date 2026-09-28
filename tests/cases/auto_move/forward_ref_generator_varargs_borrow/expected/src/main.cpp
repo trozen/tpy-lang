@@ -199,10 +199,10 @@ int32_t Caller::run() const {
     std::vector<int32_t> a = {1, 2, 3};
     std::vector<int32_t> b = {4};
     Collector c = Collector();
-    std::array<const std::vector<int32_t>*, 2> __tmp_13{&a, &b};
-    __gen_Collector_sizes g = c.sizes(::tpy::varargs<const std::vector<int32_t>>(__tmp_13));
-    std::vector<int32_t> __tmp_14 = a;
-    int32_t n = ::tpyapp::main::drop(std::move(__tmp_14));
+    std::array<const std::vector<int32_t>*, 2> __tmp_1{&a, &b};
+    __gen_Collector_sizes g = c.sizes(::tpy::varargs<const std::vector<int32_t>>(__tmp_1));
+    std::vector<int32_t> __tmp_2 = a;
+    int32_t n = ::tpyapp::main::drop(std::move(__tmp_2));
     int32_t total = 0;
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

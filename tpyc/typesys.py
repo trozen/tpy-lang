@@ -1000,12 +1000,17 @@ class TypeParamRef(TpyType):
     def to_cpp_return(self) -> str:
         if self.kind == TypeParamKind.INT:
             return "std::size_t"
+        if self.is_value_type():
+            # The trait's value arm, spelled out: a value-bounded T returns T.
+            return self.name
         # Use trait-based return type: T for value types, T& for object types
         return f"::tpy::val_or_ref_t<{self.name}>"
 
     def to_cpp_return_const(self) -> str:
         if self.kind == TypeParamKind.INT:
             return "std::size_t"
+        if self.is_value_type():
+            return self.name
         # Use trait-based return type: T for value types, const T& for object types
         return f"::tpy::val_or_cref_t<{self.name}>"
 
@@ -2419,7 +2424,7 @@ class RefType(TpyType):
 
     def to_cpp(self) -> str:
         if isinstance(self.wrapped, TypeParamRef):
-            return f"::tpy::val_or_ref_t<{self.wrapped.name}>"
+            return self.wrapped.to_cpp_return()
         return f"{self.wrapped.to_cpp()}&"
 
     def to_cpp_return(self) -> str:
@@ -2427,7 +2432,7 @@ class RefType(TpyType):
 
     def to_cpp_return_const(self) -> str:
         if isinstance(self.wrapped, TypeParamRef):
-            return f"::tpy::val_or_cref_t<{self.wrapped.name}>"
+            return self.wrapped.to_cpp_return_const()
         return f"const {self.wrapped.to_cpp()}&"
 
     def to_cpp_param_type(self) -> str:

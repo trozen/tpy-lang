@@ -95,7 +95,9 @@ struct __coro_walk_async {
     };
 
     __coro_walk_async(std::vector<std::tuple<int32_t, A>>& xs)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -126,7 +128,9 @@ struct __coro_sum_items {
     };
 
     __coro_sum_items(const ::tpy::ordered_map<int32_t, int32_t>& d)
-        : __state(S_INITIAL), __cancel_pending(false), d(d) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          d(d) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -155,7 +159,8 @@ struct __coro_async_section {
     };
 
     __coro_async_section()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -183,7 +188,8 @@ struct __gen_walk_free : public ::tpy::next_iter_mixin<__gen_walk_free, int32_t>
     };
 
     __gen_walk_free(std::vector<std::tuple<int32_t, A>>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_walk_free& __iter__() { return *this; }
@@ -211,7 +217,8 @@ struct __gen_walk_value : public ::tpy::next_iter_mixin<__gen_walk_value, int32_
     };
 
     __gen_walk_value(const std::vector<std::tuple<int32_t, int32_t>>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_walk_value& __iter__() { return *this; }
@@ -240,7 +247,8 @@ struct __gen_walk_items : public ::tpy::next_iter_mixin<__gen_walk_items, int32_
     };
 
     __gen_walk_items(::tpy::ordered_map<int32_t, A>& d)
-        : __state(S_INITIAL), d(d) {}
+        : __state(S_INITIAL),
+          d(d) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_walk_items& __iter__() { return *this; }
@@ -268,7 +276,8 @@ struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk, int3
     };
 
     __gen_Holder_walk(Holder& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Holder_walk& __iter__() { return *this; }
@@ -301,7 +310,8 @@ struct __gen_Holder_peek : public ::tpy::next_iter_mixin<__gen_Holder_peek, int3
     };
 
     __gen_Holder_peek(const Holder& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Holder_peek& __iter__() { return *this; }

@@ -119,7 +119,9 @@ inline void Counter::bump_via_union() {
 // def __init__(self, m: int32, n: int32) -> None:
 //     self.a1 = A(m)
 //     self.a2 = A(n)
-inline Pair::Pair(int32_t m, int32_t n) : a1(A(m)), a2(A(n)) {}
+inline Pair::Pair(int32_t m, int32_t n)
+    : a1(A(m)),
+      a2(A(n)) {}
 
 // def bump_picked(self, flip: bool) -> None:
 //     p = self.a1

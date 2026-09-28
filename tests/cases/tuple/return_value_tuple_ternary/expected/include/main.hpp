@@ -58,7 +58,9 @@ struct __coro_coro {
     };
 
     __coro_coro(bool f_)
-        : __state(S_INITIAL), __cancel_pending(false), f(std::move(f_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          f(std::move(f_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<int32_t, std::string>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

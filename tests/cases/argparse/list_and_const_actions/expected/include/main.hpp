@@ -48,6 +48,9 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 // args = parser.parse_args(
 //     ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
 // )
-inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::optional<std::vector<std::string>>&& tag, std::optional<std::vector<::tpy::BigInt>>&& num, std::string_view mode) : tag(std::move(tag)), num(std::move(num)), mode(mode) {}
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::optional<std::vector<std::string>>&& tag, std::optional<std::vector<::tpy::BigInt>>&& num, std::string_view mode)
+    : tag(std::move(tag)),
+      num(std::move(num)),
+      mode(mode) {}
 void __tpy_init();
 } // namespace tpyapp::main

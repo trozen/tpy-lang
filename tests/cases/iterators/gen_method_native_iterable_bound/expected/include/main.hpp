@@ -55,7 +55,8 @@ struct __gen_Wrap_summary : public ::tpy::next_iter_mixin<__gen_Wrap_summary<T>,
     };
 
     __gen_Wrap_summary(const Wrap<T>& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Wrap_summary& __iter__() { return *this; }

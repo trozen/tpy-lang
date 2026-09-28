@@ -78,7 +78,9 @@ struct Pair {
     //     self.first = first
     //     self.second = second
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second) : first(first), second(second) {}
+    explicit Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second)
+        : first(first),
+          second(second) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -92,7 +94,9 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // def __init__(self) -> None:
 //     self.items = []

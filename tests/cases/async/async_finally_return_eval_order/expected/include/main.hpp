@@ -34,7 +34,8 @@ struct __coro_f {
     };
 
     __coro_f()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     __coro_f(__coro_f&&) = default;
     ~__coro_f() {

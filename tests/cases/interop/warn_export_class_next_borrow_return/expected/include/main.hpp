@@ -158,7 +158,9 @@ inline Node::Node(int32_t v) : v(v) {}
 // def __init__(self):
 //     self._cur = Node(0)
 //     self._n = 0
-inline Repeat::Repeat() : _cur(Node(0)), _n(0) {}
+inline Repeat::Repeat()
+    : _cur(Node(0)),
+      _n(0) {}
 
 // def __iter__(self) -> "Repeat":  # tpyc: ok
 //     return self
@@ -182,7 +184,9 @@ inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> Repeat::__ne
 // def __init__(self):
 //     self._row = [1, 2]
 //     self._n = 0
-inline Rows::Rows() : _row(std::vector<int32_t>{1, 2}), _n(0) {}
+inline Rows::Rows()
+    : _row(std::vector<int32_t>{1, 2}),
+      _n(0) {}
 
 // def __next__(self) -> list[int32]:
 //     if self._n >= 2:
@@ -200,7 +204,9 @@ inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIterati
 // def __init__(self):
 //     self._cur = Node(0)
 //     self._n = 0
-inline Peek::Peek() : _cur(Node(0)), _n(0) {}
+inline Peek::Peek()
+    : _cur(Node(0)),
+      _n(0) {}
 
 // def __next__(self) -> "readonly[Node]":
 //     if self._n >= 3:
@@ -218,7 +224,9 @@ inline std::expected<::tpy::val_or_ref<const Node>, ::tpy::StopIteration> Peek::
 // def __init__(self):
 //     self._cur = Node(0)
 //     self._n = 0
-inline Swapping::Swapping() : _cur(Node(0)), _n(0) {}
+inline Swapping::Swapping()
+    : _cur(Node(0)),
+      _n(0) {}
 
 // def reset(self) -> None:
 //     self._cur = Node(1)

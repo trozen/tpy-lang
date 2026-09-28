@@ -55,6 +55,8 @@ inline Base::Base(int32_t x) : x(x) {}
 // def __init__(self, x: int32, y: int32):
 //     super().__init__(x)
 //     self.y = y          # new own field, inferred from the param
-inline Child::Child(int32_t x, int32_t y) : Base(x), y(y) {}
+inline Child::Child(int32_t x, int32_t y)
+    : Base(x),
+      y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

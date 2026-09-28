@@ -38,6 +38,8 @@ inline std::ostream& operator<<(std::ostream& os, const MyErr& obj) {
 // def __init__(self, e: int32 | None) -> None:
 //     super().__init__("boom")
 //     self.e = e
-inline MyErr::MyErr(std::optional<int32_t> e) : ::tpy::Exception("boom"), e(e) {}
+inline MyErr::MyErr(std::optional<int32_t> e)
+    : ::tpy::Exception("boom"),
+      e(e) {}
 void __tpy_init();
 } // namespace tpyapp::main

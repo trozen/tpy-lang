@@ -80,7 +80,9 @@ inline ::tpy::Any Bag::__getattr__(std::string_view name) const {
 // def __init__(self) -> None:
 //     self._n = ""
 //     self._v = ""
-inline Strict::Strict() : _n(""), _v("") {}
+inline Strict::Strict()
+    : _n(""),
+      _v("") {}
 
 // def __setattr__(self, name: str, value: str) -> None:
 //     self._n = name

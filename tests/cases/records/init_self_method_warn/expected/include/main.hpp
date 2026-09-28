@@ -42,7 +42,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 //     self.x = x
 //     self.y = y
 //     self.z = self.magnitude()  # tpyc: warning(/instance method called in __init__ before all fields/)
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y), z(this->magnitude()) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y),
+      z(this->magnitude()) {}
 
 // def magnitude(self) -> int32:
 //     return self.x  # simplified

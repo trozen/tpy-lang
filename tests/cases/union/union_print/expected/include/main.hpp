@@ -39,7 +39,9 @@ inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
-inline Pt::Pt(int32_t x, int32_t y) : x(x), y(y) {}
+inline Pt::Pt(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // def __repr__(self) -> str:
 //     return "Pt(" + str(self.x) + ", " + str(self.y) + ")"

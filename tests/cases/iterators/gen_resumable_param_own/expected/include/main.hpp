@@ -33,7 +33,8 @@ struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain, int32_t> {
     };
 
     __gen_drain(::tpystd::tplib::box::Box<int32_t>&& b_)
-        : __state(S_INITIAL), b(std::move(b_)) {}
+        : __state(S_INITIAL),
+          b(std::move(b_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_drain& __iter__() { return *this; }

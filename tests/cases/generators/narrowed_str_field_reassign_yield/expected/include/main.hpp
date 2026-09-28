@@ -48,7 +48,8 @@ struct __gen_Box_gen_reassigned : public ::tpy::next_iter_mixin<__gen_Box_gen_re
     };
 
     __gen_Box_gen_reassigned(const Box& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_Box_gen_reassigned& __iter__() { return *this; }

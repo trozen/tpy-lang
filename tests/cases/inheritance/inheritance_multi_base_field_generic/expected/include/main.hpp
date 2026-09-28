@@ -68,7 +68,9 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
 // def __init__(self, n: int32, s: str) -> None:
 //     Box.value = n  # Box[int32].value inferred from MRO: int32
 //     Label.value = s
-inline Combined::Combined(int32_t n, std::string_view s) : Box<int32_t>(), Label() {
+inline Combined::Combined(int32_t n, std::string_view s)
+    : Box<int32_t>(),
+      Label() {
     this->Box<int32_t>::value = n;
     this->Label::value = s;
 }

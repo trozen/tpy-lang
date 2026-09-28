@@ -39,7 +39,9 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 // def __init__(self, name: str, value: int) -> None:
 //     self.name = name
 //     self.value = value
-inline Config::Config(std::string_view name, const ::tpy::BigInt& value) : name(name), value(value) {}
+inline Config::Config(std::string_view name, const ::tpy::BigInt& value)
+    : name(name),
+      value(value) {}
 
 // def inc(self) -> None:
 //     self.value += 1

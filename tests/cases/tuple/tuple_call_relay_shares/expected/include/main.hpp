@@ -62,7 +62,9 @@ inline Box::Box(int32_t v) : val(v) {}
 // def __init__(self, b: Box, n: int32) -> None:
 //     self.box = b
 //     self.n = n
-inline Holder::Holder(const Box& b, int32_t n) : box(b), n(n) {}
+inline Holder::Holder(const Box& b, int32_t n)
+    : box(b),
+      n(n) {}
 
 // def get_pair(self) -> tuple[Box, int32]:
 //     return (self.box, self.n)

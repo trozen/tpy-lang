@@ -75,7 +75,17 @@ void main() {
 //     self.from_field = o.name  # tpyc: ok
 //     # Reads a field an earlier member-init set.
 //     self.echo = self.full + "?"  # tpyc: ok
-Tags::Tags(std::string_view a, const ::tpy::BigInt& x, const Owner& o, std::optional<std::string_view> m) : full((::tpy::str_concat(a, "!"))), conv((::tpy::str_concat("p", (x).to_string()))), fmt(std::format("{}-{}", a, (x).to_string())), pick((((x > 0)) ? (a) : ("z"))), opt((((m.has_value())) ? ((*m)) : ("none"))), tail(std::string(::tpy::str_slice(a, ::tpy::BasicSlice{1, std::nullopt}))), twice((::tpy::str_repeat(a, 2))), upper((::tpy::str_concat(::tpy::str_upper(a), "!"))), from_field(o.name), echo((::tpy::str_concat(this->full, "?"))) {}
+Tags::Tags(std::string_view a, const ::tpy::BigInt& x, const Owner& o, std::optional<std::string_view> m)
+    : full((::tpy::str_concat(a, "!"))),
+      conv((::tpy::str_concat("p", (x).to_string()))),
+      fmt(std::format("{}-{}", a, (x).to_string())),
+      pick((((x > 0)) ? (a) : ("z"))),
+      opt((((m.has_value())) ? ((*m)) : ("none"))),
+      tail(std::string(::tpy::str_slice(a, ::tpy::BasicSlice{1, std::nullopt}))),
+      twice((::tpy::str_repeat(a, 2))),
+      upper((::tpy::str_concat(::tpy::str_upper(a), "!"))),
+      from_field(o.name),
+      echo((::tpy::str_concat(this->full, "?"))) {}
 // main()
 void __tpy_init() {
     static bool initialized = false;

@@ -67,7 +67,8 @@ struct __gen_Source___iter__ : public ::tpy::next_iter_mixin<__gen_Source___iter
     };
 
     __gen_Source___iter__(Source& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Source___iter__& __iter__() { return *this; }

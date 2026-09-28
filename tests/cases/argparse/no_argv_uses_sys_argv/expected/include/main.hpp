@@ -37,6 +37,8 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 
 
 // args = parser.parse_args()
-inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::string_view name, const ::tpy::BigInt& count) : name(name), count(count) {}
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::string_view name, const ::tpy::BigInt& count)
+    : name(name),
+      count(count) {}
 void __tpy_init();
 } // namespace tpyapp::main

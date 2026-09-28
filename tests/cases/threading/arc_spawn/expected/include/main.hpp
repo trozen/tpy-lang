@@ -73,7 +73,9 @@ inline Counter::Counter(int32_t n) : n(n) {}
 // def __init__(self, shared: Own[Arc[Counter]], iters: int32) -> None:
 //     self.shared = shared
 //     self.iters = iters
-inline Hammer::Hammer(::tpystd::tplib::arc::Arc<Counter>&& shared, int32_t iters) : shared(std::move(shared)), iters(iters) {}
+inline Hammer::Hammer(::tpystd::tplib::arc::Arc<Counter>&& shared, int32_t iters)
+    : shared(std::move(shared)),
+      iters(iters) {}
 
 // def run(self) -> int32:
 //     total = 0

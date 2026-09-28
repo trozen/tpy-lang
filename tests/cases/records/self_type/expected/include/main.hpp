@@ -64,7 +64,9 @@ struct Stack {
     //     self.items = []
     //     self.label = label
     Stack() = default;
-    explicit Stack(std::string_view label) : items(std::vector<T>{}), label(label) {}
+    explicit Stack(std::string_view label)
+        : items(std::vector<T>{}),
+          label(label) {}
 
     // def push(self, item: T) -> Self:
     //     self.items.append(item)
@@ -93,7 +95,9 @@ inline std::ostream& operator<<(std::ostream& os, const Stack<T>& obj) {
 // def __init__(self, name: str, value: int32) -> None:
 //     self.name = name
 //     self.value = value
-inline Builder::Builder(std::string_view name, int32_t value) : name(name), value(value) {}
+inline Builder::Builder(std::string_view name, int32_t value)
+    : name(name),
+      value(value) {}
 
 // def set_name(self, name: str) -> Self:
 //     self.name = name

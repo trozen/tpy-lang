@@ -28,8 +28,7 @@ struct __gen_gen3 : public ::tpy::next_iter_mixin<__gen_gen3, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_gen3()
-        : __state(S_INITIAL) {}
+    __gen_gen3() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen3& __iter__() { return *this; }

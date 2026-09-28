@@ -78,7 +78,8 @@ struct __gen_counts : public ::tpy::next_iter_mixin<__gen_counts, int32_t> {
     };
 
     __gen_counts(const Cat& c)
-        : __state(S_INITIAL), c(c) {}
+        : __state(S_INITIAL),
+          c(c) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_counts& __iter__() { return *this; }
@@ -106,7 +107,9 @@ struct __gen_counts_ordered : public ::tpy::next_iter_mixin<__gen_counts_ordered
     };
 
     __gen_counts_ordered(const Cat& c, bool k_)
-        : __state(S_INITIAL), c(c), k(std::move(k_)) {}
+        : __state(S_INITIAL),
+          c(c),
+          k(std::move(k_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_counts_ordered& __iter__() { return *this; }
@@ -135,13 +138,10 @@ inline std::string Shelter::status() const {
     auto& __match_subject_1 = this->resident;
     {
         return "in";
-        goto __match_end_2;
     }
     {
         return "out";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 void __tpy_init();

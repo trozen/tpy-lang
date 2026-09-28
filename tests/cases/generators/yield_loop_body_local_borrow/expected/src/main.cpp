@@ -67,8 +67,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& v = ::tpy::unwrap_ref(*__r_1);
-        seen = ::tpy::add_check<int32_t>(seen, 1);
-        ::tpy::list_set_slice(v, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{});
+            seen = ::tpy::add_check<int32_t>(seen, 1);
+            ::tpy::list_set_slice(v, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{});
         }
     }
     {
@@ -78,7 +78,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& w = ::tpy::unwrap_ref(*__r_3);
-        ::tpy::list_set_slice(w, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{});
+            ::tpy::list_set_slice(w, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{});
         }
     }
     {
@@ -88,7 +88,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& t = ::tpy::unwrap_ref(*__r_5);
-        ::tpy::list_set_slice(t, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{});
+            ::tpy::list_set_slice(t, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{});
         }
     }
     {
@@ -98,7 +98,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             auto&& u = ::tpy::unwrap_ref(*__r_7);
-        ::tpy::list_set_slice(u, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{});
+            ::tpy::list_set_slice(u, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{});
         }
     }
     Source s = Source();
@@ -109,7 +109,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             auto&& m = ::tpy::unwrap_ref(*__r_9);
-        ::tpy::list_set_slice(m, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{});
+            ::tpy::list_set_slice(m, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{});
         }
     }
     {
@@ -119,13 +119,13 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_11);
-        auto& __tup_1 = __for_tup_0;
-        int32_t level = std::get<0>(__tup_1);
-        auto&& kids = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        std::cout << "level" << " " << level << " " << "kids" << " " << ::tpy::__len__(kids) << "\n";
-        if ((level == 1)) {
-            kids.clear();
-        }
+            auto& __tup_1 = __for_tup_0;
+            int32_t level = std::get<0>(__tup_1);
+            auto&& kids = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            std::cout << "level" << " " << level << " " << "kids" << " " << ::tpy::__len__(kids) << "\n";
+            if ((level == 1)) {
+                kids.clear();
+            }
         }
     }
 }

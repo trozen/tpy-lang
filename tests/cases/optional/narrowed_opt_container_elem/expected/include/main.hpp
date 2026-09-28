@@ -177,7 +177,8 @@ struct __coro_coro {
     };
 
     __coro_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -205,8 +206,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_gen()
-        : __state(S_INITIAL) {}
+    __gen_gen() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -232,7 +232,11 @@ inline void Counter::bump() {
 //     self.rows = [n]
 //     self.kids = {}
 //     self.sub = None
-inline Node::Node(int32_t n) : n(n), rows(std::vector<int32_t>{n}), kids(::tpy::ordered_map<std::string, int32_t>()), sub(std::nullopt) {}
+inline Node::Node(int32_t n)
+    : n(n),
+      rows(std::vector<int32_t>{n}),
+      kids(::tpy::ordered_map<std::string, int32_t>()),
+      sub(std::nullopt) {}
 
 // def __enter__(self) -> int32:
 //     return 7
@@ -253,7 +257,9 @@ inline void Guard::__exit__(std::monostate kind, const ::tpy::BaseException* val
 //     if local is not None:
 //         local["c"].append(6)  # the constructor position
 //         self.n = local["c"][1]
-inline Holder::Holder() : d(::tpy::ordered_map<std::string, std::vector<int32_t>>({{"o", {1, 2}}})), recs(::tpy::ordered_map<std::string, Node>({{"o", Node(1)}})) {
+inline Holder::Holder()
+    : d(::tpy::ordered_map<std::string, std::vector<int32_t>>({{"o", {1, 2}}})),
+      recs(::tpy::ordered_map<std::string, Node>({{"o", Node(1)}})) {
     ::tpy::ordered_map<std::string, std::vector<int32_t>> __slot_1 = ::tpy::ordered_map<std::string, std::vector<int32_t>>({{"c", {5}}});
     ::tpy::ordered_map<std::string, std::vector<int32_t>>* local = &__slot_1;
     this->n = 0;

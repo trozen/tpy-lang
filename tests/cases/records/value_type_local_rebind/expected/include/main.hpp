@@ -122,7 +122,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // def __init__(self, column: int32, row: int32) -> None:
 //     self.column = column
 //     self.row = row
-inline Coord::Coord(int32_t column, int32_t row) : column(column), row(row) {}
+inline Coord::Coord(int32_t column, int32_t row)
+    : column(column),
+      row(row) {}
 
 // def __init__(self) -> None:
 //     self.start = Coord(7, 8)

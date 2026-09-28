@@ -147,7 +147,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t g = ::tpy::unwrap_ref(*__r_1);
-        gtotal = ::tpy::add_check<int32_t>(gtotal, g);
+            gtotal = ::tpy::add_check<int32_t>(gtotal, g);
         }
     }
     std::cout << "generator" << " " << gtotal << "\n";

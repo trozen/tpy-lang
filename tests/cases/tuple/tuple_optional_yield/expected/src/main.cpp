@@ -46,12 +46,12 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        auto& __tup_1 = __for_tup_0;
-        P* a = std::get<0>(__tup_1);
-        P* b = std::get<1>(__tup_1);
-        if ((a != nullptr)) {
-            std::cout << a->x << "\n";
-        }
+            auto& __tup_1 = __for_tup_0;
+            P* a = std::get<0>(__tup_1);
+            P* b = std::get<1>(__tup_1);
+            if ((a != nullptr)) {
+                std::cout << a->x << "\n";
+            }
         }
     }
     {
@@ -61,12 +61,12 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
-        auto& __tup_2 = __for_tup_1;
-        P* a = std::get<0>(__tup_2);
-        P* b = std::get<1>(__tup_2);
-        if ((a != nullptr)) {
-            std::cout << a->x << "\n";
-        }
+            auto& __tup_2 = __for_tup_1;
+            P* a = std::get<0>(__tup_2);
+            P* b = std::get<1>(__tup_2);
+            if ((a != nullptr)) {
+                std::cout << a->x << "\n";
+            }
         }
     }
     {
@@ -76,12 +76,12 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
-        auto& __tup_3 = __for_tup_2;
-        P* a = std::get<0>(__tup_3);
-        P* b = std::get<1>(__tup_3);
-        if ((a != nullptr)) {
-            std::cout << a->x << "\n";
-        }
+            auto& __tup_3 = __for_tup_2;
+            P* a = std::get<0>(__tup_3);
+            P* b = std::get<1>(__tup_3);
+            if ((a != nullptr)) {
+                std::cout << a->x << "\n";
+            }
         }
     }
 }

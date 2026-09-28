@@ -104,7 +104,9 @@ struct __coro_co_param {
     };
 
     __coro_co_param(std::tuple<A*, A*> p_)
-        : __state(S_INITIAL), __cancel_pending(false), p(p_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          p(p_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -128,7 +130,8 @@ struct __gen_ro_param : public ::tpy::next_iter_mixin<__gen_ro_param, int32_t> {
     };
 
     __gen_ro_param(std::tuple<const A*, const A*> p_)
-        : __state(S_INITIAL), p(p_) {}
+        : __state(S_INITIAL),
+          p(p_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_ro_param& __iter__() { return *this; }
@@ -152,7 +155,8 @@ struct __gen_mut_param : public ::tpy::next_iter_mixin<__gen_mut_param, int32_t>
     };
 
     __gen_mut_param(std::tuple<A*, A*> p_)
-        : __state(S_INITIAL), p(p_) {}
+        : __state(S_INITIAL),
+          p(p_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_mut_param& __iter__() { return *this; }
@@ -176,7 +180,8 @@ struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested, int32_t> {
     };
 
     __gen_nested(std::tuple<A*, A*> p_)
-        : __state(S_INITIAL), p(p_) {}
+        : __state(S_INITIAL),
+          p(p_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_nested& __iter__() { return *this; }
@@ -203,7 +208,9 @@ struct __gen_frame_local : public ::tpy::next_iter_mixin<__gen_frame_local, int3
     };
 
     __gen_frame_local(A& r0, A& r1)
-        : __state(S_INITIAL), r0(r0), r1(r1) {}
+        : __state(S_INITIAL),
+          r0(r0),
+          r1(r1) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_frame_local& __iter__() { return *this; }
@@ -228,7 +235,8 @@ struct __gen_mixed_borrowed : public ::tpy::next_iter_mixin<__gen_mixed_borrowed
     };
 
     __gen_mixed_borrowed(A& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_mixed_borrowed& __iter__() { return *this; }
@@ -251,8 +259,7 @@ struct __gen_owning_no_rebind : public ::tpy::next_iter_mixin<__gen_owning_no_re
         S_DONE = 3,
     };
 
-    __gen_owning_no_rebind()
-        : __state(S_INITIAL) {}
+    __gen_owning_no_rebind() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_owning_no_rebind& __iter__() { return *this; }
@@ -277,7 +284,8 @@ struct __gen_mixed_owned_no_rebind : public ::tpy::next_iter_mixin<__gen_mixed_o
     };
 
     __gen_mixed_owned_no_rebind(A& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_mixed_owned_no_rebind& __iter__() { return *this; }
@@ -304,7 +312,9 @@ struct __gen_mixed_borrowed_rebound : public ::tpy::next_iter_mixin<__gen_mixed_
     };
 
     __gen_mixed_borrowed_rebound(A& b, A& c)
-        : __state(S_INITIAL), b(b), c(c) {}
+        : __state(S_INITIAL),
+          b(b),
+          c(c) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_mixed_borrowed_rebound& __iter__() { return *this; }
@@ -329,7 +339,8 @@ struct __gen_rebind_before_alias : public ::tpy::next_iter_mixin<__gen_rebind_be
     };
 
     __gen_rebind_before_alias(bool c_)
-        : __state(S_INITIAL), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_rebind_before_alias& __iter__() { return *this; }
@@ -352,8 +363,7 @@ struct __gen_alias_after_last_rebind : public ::tpy::next_iter_mixin<__gen_alias
         S_DONE = 3,
     };
 
-    __gen_alias_after_last_rebind()
-        : __state(S_INITIAL) {}
+    __gen_alias_after_last_rebind() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_alias_after_last_rebind& __iter__() { return *this; }
@@ -380,8 +390,7 @@ struct __gen_orelse_alias : public ::tpy::next_iter_mixin<__gen_orelse_alias, in
         S_DONE = 4,
     };
 
-    __gen_orelse_alias()
-        : __state(S_INITIAL) {}
+    __gen_orelse_alias() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_orelse_alias& __iter__() { return *this; }
@@ -406,7 +415,9 @@ struct __gen_Walker_walk : public ::tpy::next_iter_mixin<__gen_Walker_walk, int3
     };
 
     __gen_Walker_walk(const Walker& __self, std::tuple<A*, A*> p_)
-        : __state(S_INITIAL), __self(__self), p(p_) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          p(p_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Walker_walk& __iter__() { return *this; }

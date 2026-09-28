@@ -78,7 +78,9 @@ inline Base::Base() : tag(1) {}
 //     self.tag = int32(3)  # an inherited field: written in the body
 //     # The subject: reading that inherited field demotes this init.
 //     self.b = self.a + self.tag  # tpyc: ok
-inline Inherited::Inherited() : Base(), a(5) {
+inline Inherited::Inherited()
+    : Base(),
+      a(5) {
     this->tag = 3;
     this->b = (::tpy::add_check<int32_t>(this->a, this->tag));
 }
@@ -88,7 +90,9 @@ inline Inherited::Inherited() : Base(), a(5) {
 //     self.a = int32(5)
 //     # The subject: reading a default-only field demotes this init.
 //     self.b = self.a + self.d  # tpyc: ok
-inline Defaulted::Defaulted() : Base(), a(5) {
+inline Defaulted::Defaulted()
+    : Base(),
+      a(5) {
     this->b = (::tpy::add_check<int32_t>(this->a, this->d));
 }
 void __tpy_init();

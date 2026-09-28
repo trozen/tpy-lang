@@ -62,7 +62,9 @@ struct __gen_mapped : public ::tpy::next_iter_mixin<__gen_mapped<F_f>, int32_t> 
     };
 
     __gen_mapped(F_f&& f_, const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), f(std::forward<F_f>(f_)), xs(xs) {}
+        : __state(S_INITIAL),
+          f(std::forward<F_f>(f_)),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_mapped& __iter__() { return *this; }
@@ -126,7 +128,9 @@ struct __genexpr_small_1_frame : public ::tpy::next_iter_mixin<__genexpr_small_1
     };
 
     __genexpr_small_1_frame(const std::vector<int32_t>& __src, F_self&& self_)
-        : __state(S_INITIAL), __src(__src), self(std::forward<F_self>(self_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          self(std::forward<F_self>(self_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_small_1_frame& __iter__() { return *this; }

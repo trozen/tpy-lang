@@ -89,7 +89,9 @@ inline std::span<const int32_t> Base::items() const {
 // def __init__(self) -> None:
 //     super().__init__()
 //     self._extra = [int32(3), int32(4)]
-inline Child::Child() : Base(), _extra(std::vector<int32_t>{3, 4}) {}
+inline Child::Child()
+    : Base(),
+      _extra(std::vector<int32_t>{3, 4}) {}
 
 // @override
 // @auto_readonly

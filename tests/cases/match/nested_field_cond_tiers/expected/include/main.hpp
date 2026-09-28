@@ -182,7 +182,8 @@ struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
     };
 
     __gen_steps(const Outer& o)
-        : __state(S_INITIAL), o(o) {}
+        : __state(S_INITIAL),
+          o(o) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_steps& __iter__() { return *this; }

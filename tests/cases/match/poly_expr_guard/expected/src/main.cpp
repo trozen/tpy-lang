@@ -21,26 +21,22 @@ std::string describe(const Owner& o) {
         auto& s = __case_0;
         if ((s.legs == 0)) {
             return "legless snake";
-            goto __match_end_2;
         }
     }
     if (const Dog* __mpoly_1 = dynamic_cast<const Dog*>(&(__match_subject_1.__deref__()))) {
         const Dog& __case_1 = *__mpoly_1;
         if (__case_1.legs == 4) {
             return "quadruped dog";
-            goto __match_end_2;
         }
     }
     if (const Dog* __mpoly_2 = dynamic_cast<const Dog*>(&(__match_subject_1.__deref__()))) {
         const Dog& __case_2 = *__mpoly_2;
         auto& d = __case_2;
         return (::tpy::str_concat("dog legs=", (d.legs).to_string()));
-        goto __match_end_2;
     }
     {
         return "?";
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 

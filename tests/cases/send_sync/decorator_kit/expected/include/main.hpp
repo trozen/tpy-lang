@@ -109,7 +109,9 @@ struct __coro_forced {
     };
 
     __coro_forced(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -134,7 +136,8 @@ struct __gen_gen_forced : public ::tpy::next_iter_mixin<__gen_gen_forced, int32_
     };
 
     __gen_gen_forced(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_forced& __iter__() { return *this; }
@@ -148,7 +151,9 @@ struct __gen_gen_forced : public ::tpy::next_iter_mixin<__gen_gen_forced, int32_
 // def __init__(self, sym: int32, qty: int32) -> None:
 //     self.sym = sym
 //     self.qty = qty
-inline Trade::Trade(int32_t sym, int32_t qty) : sym(sym), qty(qty) {}
+inline Trade::Trade(int32_t sym, int32_t qty)
+    : sym(sym),
+      qty(qty) {}
 
 // def __init__(self, raw: Ptr[int32]) -> None:
 //     self.raw = raw

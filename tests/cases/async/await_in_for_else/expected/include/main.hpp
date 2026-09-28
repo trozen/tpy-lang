@@ -36,7 +36,9 @@ struct __coro_tick {
     };
 
     __coro_tick(std::string_view label_)
-        : __state(S_INITIAL), __cancel_pending(false), label(std::string(label_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          label(std::string(label_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -67,7 +69,9 @@ struct __coro_drive {
     };
 
     __coro_drive(int32_t brk_)
-        : __state(S_INITIAL), __cancel_pending(false), brk(std::move(brk_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          brk(std::move(brk_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -92,7 +96,8 @@ struct __coro_caller {
     };
 
     __coro_caller()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

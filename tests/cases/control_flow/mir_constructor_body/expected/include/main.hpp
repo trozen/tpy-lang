@@ -42,7 +42,9 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 //         # This must mutate the receiver, not a copy held by the tuple.
 //         saved[0].value = 7  # tpyc: ok
 //     self.before = saved[1]
-inline Cell::Cell(int32_t value, bool reset) : value(value), before(0) {
+inline Cell::Cell(int32_t value, bool reset)
+    : value(value),
+      before(0) {
     auto saved = std::tuple<Cell*, int32_t>{this, this->value};
     if (reset) {
         std::get<0>(saved)->value = 7;

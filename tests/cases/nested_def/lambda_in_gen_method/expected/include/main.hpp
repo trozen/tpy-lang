@@ -132,7 +132,8 @@ struct __gen_two_yield : public ::tpy::next_iter_mixin<__gen_two_yield, int32_t>
     };
 
     __gen_two_yield(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_two_yield& __iter__() { return *this; }
@@ -156,7 +157,9 @@ struct __gen_store : public ::tpy::next_iter_mixin<__gen_store, int32_t> {
     };
 
     __gen_store(int32_t n_, Registry& r)
-        : __state(S_INITIAL), n(std::move(n_)), r(r) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)),
+          r(r) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_store& __iter__() { return *this; }
@@ -179,8 +182,7 @@ struct __gen_cell : public ::tpy::next_iter_mixin<__gen_cell, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_cell()
-        : __state(S_INITIAL) {}
+    __gen_cell() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_cell& __iter__() { return *this; }
@@ -203,7 +205,8 @@ struct __gen_ref_capture : public ::tpy::next_iter_mixin<__gen_ref_capture, int3
     };
 
     __gen_ref_capture(std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_ref_capture& __iter__() { return *this; }
@@ -226,7 +229,8 @@ struct __gen_own_capture : public ::tpy::next_iter_mixin<__gen_own_capture, int3
     };
 
     __gen_own_capture(Pt&& p_)
-        : __state(S_INITIAL), p(std::move(p_)) {}
+        : __state(S_INITIAL),
+          p(std::move(p_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_own_capture& __iter__() { return *this; }
@@ -253,7 +257,9 @@ struct __gen_C_emit : public ::tpy::next_iter_mixin<__gen_C_emit, int32_t> {
     };
 
     __gen_C_emit(const C& __self, int32_t k_)
-        : __state(S_INITIAL), __self(__self), k(std::move(k_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          k(std::move(k_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_C_emit& __iter__() { return *this; }
@@ -280,7 +286,8 @@ struct __gen_D_emit : public ::tpy::next_iter_mixin<__gen_D_emit, int32_t> {
     };
 
     __gen_D_emit(D& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_D_emit& __iter__() { return *this; }

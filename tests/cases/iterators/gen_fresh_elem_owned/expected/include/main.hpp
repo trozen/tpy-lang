@@ -89,7 +89,8 @@ struct __gen_collect : public ::tpy::next_iter_mixin<__gen_collect, int32_t> {
     };
 
     __gen_collect(Fresh& src)
-        : __state(S_INITIAL), src(src) {}
+        : __state(S_INITIAL),
+          src(src) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_collect& __iter__() { return *this; }

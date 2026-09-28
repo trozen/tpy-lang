@@ -34,7 +34,9 @@ struct __coro_add_one {
     };
 
     __coro_add_one(int32_t x_)
-        : __state(S_INITIAL), __cancel_pending(false), x(std::move(x_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          x(std::move(x_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -61,7 +63,8 @@ struct __coro_caller {
     };
 
     __coro_caller()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

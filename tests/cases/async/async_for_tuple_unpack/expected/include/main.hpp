@@ -74,7 +74,9 @@ struct __coro_PairIter___anext__ {
     };
 
     __coro_PairIter___anext__(PairIter& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<std::tuple<::tpy::BigInt, ::tpy::BigInt>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -110,7 +112,9 @@ struct __coro_sum_squares {
     };
 
     __coro_sum_squares(const Pairs& p)
-        : __state(S_INITIAL), __cancel_pending(false), p(p) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          p(p) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -135,7 +139,8 @@ struct __coro_main {
     };
 
     __coro_main()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -149,7 +154,9 @@ struct __coro_main {
 // def __init__(self, limit: int) -> None:
 //     self.n = 0
 //     self.limit = limit
-inline PairIter::PairIter(const ::tpy::BigInt& limit) : n(::tpy::BigInt(0)), limit(limit) {}
+inline PairIter::PairIter(const ::tpy::BigInt& limit)
+    : n(::tpy::BigInt(0)),
+      limit(limit) {}
 
 // def __init__(self, limit: int) -> None:
 //     self.limit = limit

@@ -40,7 +40,9 @@ struct __coro_fill_buf {
     };
 
     __coro_fill_buf(::tpy::ByteArray& b)
-        : __state(S_INITIAL), __cancel_pending(false), b(b) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          b(b) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -64,7 +66,9 @@ struct __coro_bump_arr {
     };
 
     __coro_bump_arr(std::array<int32_t, 2>& a)
-        : __state(S_INITIAL), __cancel_pending(false), a(a) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(a) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -88,7 +92,9 @@ struct __coro_push_list {
     };
 
     __coro_push_list(std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -121,7 +127,8 @@ struct __coro_drive {
     };
 
     __coro_drive()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

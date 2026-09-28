@@ -118,7 +118,11 @@ inline Entry::Entry(int64_t v) : v(v) {}
 
 inline Cell::Cell(int64_t n) : n(n) {}
 
-inline Vault::Vault(int64_t owner, int64_t secret) : owner(owner), _secret(secret), _log(Entry(secret)), _cell(Cell(secret)) {}
+inline Vault::Vault(int64_t owner, int64_t secret)
+    : owner(owner),
+      _secret(secret),
+      _log(Entry(secret)),
+      _cell(Cell(secret)) {}
 
 inline int64_t Vault::reveal() const {
     return this->_secret;
@@ -136,8 +140,13 @@ inline Entry Vault::snapshot() const {
     return Entry(this->_log.v);
 }
 
-inline OpError::OpError(std::string_view message, int32_t code, int32_t trace) : ::tpy::ValueError(message), code(code), _trace(std::vector<int32_t>{trace}) {}
+inline OpError::OpError(std::string_view message, int32_t code, int32_t trace)
+    : ::tpy::ValueError(message),
+      code(code),
+      _trace(std::vector<int32_t>{trace}) {}
 
-inline SilentError::SilentError(std::string_view message, int32_t note) : ::tpy::ValueError(message), _note(note) {}
+inline SilentError::SilentError(std::string_view message, int32_t note)
+    : ::tpy::ValueError(message),
+      _note(note) {}
 void __tpy_init();
 } // namespace tpyapp::internal_fields

@@ -34,8 +34,7 @@ struct __gen_cell : public ::tpy::next_iter_mixin<__gen_cell, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_cell()
-        : __state(S_INITIAL) {}
+    __gen_cell() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_cell& __iter__() { return *this; }
@@ -59,7 +58,8 @@ struct __gen_copied : public ::tpy::next_iter_mixin<__gen_copied, int32_t> {
     };
 
     __gen_copied(std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_copied& __iter__() { return *this; }

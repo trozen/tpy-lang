@@ -116,7 +116,8 @@ struct __genexpr_sec_comp_1_frame : public ::tpy::next_iter_mixin<__genexpr_sec_
     };
 
     __genexpr_sec_comp_1_frame(const std::vector<Inner>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __genexpr_sec_comp_1_frame& __iter__() { return *this; }
@@ -296,20 +297,20 @@ void main() {
     Runner(Outer(Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2))).run();
     (void)(Snap(Outer(Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2))));
     {
-        Outer __tmp_2 = Outer(Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2));
-        auto __src_0 = ::tpyapp::main::sec_gen(__tmp_2);
+        Outer __tmp_1 = Outer(Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2));
+        auto __src_0 = ::tpyapp::main::sec_gen(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen yield" << " " << v << "\n";
+            std::cout << "gen yield" << " " << v << "\n";
         }
     }
-    std::vector<Inner> __tmp_3 = {Inner(::tpy::bytes_literal_owned("b1", 2), "s1", "v1", 1), Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2)};
-    ::tpyapp::main::sec_comp(__tmp_3);
-    Outer __tmp_4 = Outer(Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2));
-    ::tpyapp::main::sec_blocks(__tmp_4);
+    std::vector<Inner> __tmp_2 = {Inner(::tpy::bytes_literal_owned("b1", 2), "s1", "v1", 1), Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2)};
+    ::tpyapp::main::sec_comp(__tmp_2);
+    Outer __tmp_3 = Outer(Inner(::tpy::bytes_literal_owned("b2", 2), "s2", "v2", 2));
+    ::tpyapp::main::sec_blocks(__tmp_3);
 }
 
 // main()

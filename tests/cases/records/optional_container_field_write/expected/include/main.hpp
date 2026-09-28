@@ -69,7 +69,10 @@ inline std::ostream& operator<<(std::ostream& os, const Slot& obj) {
 //     self.b = None
 //     self.xs = None
 //     self.boxes = None
-inline Slot::Slot() : b(std::nullopt), xs(std::nullopt), boxes(std::nullopt) {}
+inline Slot::Slot()
+    : b(std::nullopt),
+      xs(std::nullopt),
+      boxes(std::nullopt) {}
 
 // def take(self, v: Own[bytearray]) -> None:
 //     self.b = v  # tpyc: ok

@@ -33,11 +33,9 @@ int32_t depth(const Expr& e) {
             }
         }
         return (::tpy::add_check<int32_t>(best, 1));
-        break;
     }
     default: {
         return 0;
-        break;
     }
     }
     ::std::unreachable();

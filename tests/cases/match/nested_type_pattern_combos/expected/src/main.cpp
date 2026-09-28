@@ -18,13 +18,11 @@ std::string nested_param(::tpy::Union<const Box<Box<int32_t>>*, const Box<Box<st
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& v = __case_0.value.value;
         return (::tpy::str_concat("string: ", v));
-        break;
     }
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto n = __case_1.value.value;
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
-        break;
     }
     }
     ::std::unreachable();
@@ -48,14 +46,12 @@ std::string union_subj_union_field(::tpy::Union<const Container*, const int32_t*
             if (std::holds_alternative<std::string>(__case_0.value)) {
                 auto& s = std::get<std::string>(__case_0.value);
                 return (::tpy::str_concat("string: ", s));
-                goto __match_end_2;
             }
         }
         {
             if (std::holds_alternative<int32_t>(__case_0.value)) {
                 auto n = std::get<int32_t>(__case_0.value);
                 return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
-                goto __match_end_2;
             }
         }
         break;
@@ -64,11 +60,8 @@ std::string union_subj_union_field(::tpy::Union<const Container*, const int32_t*
         auto& __case_1 = *std::get<1>(__match_subject_1);
         auto n = __case_1;
         return (::tpy::str_concat("bare: ", ::tpy::fixed_to_str<int32_t>(n)));
-        goto __match_end_2;
-        break;
     }
     }
-__match_end_2:;
     return "";
 }
 

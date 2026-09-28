@@ -37,37 +37,31 @@ std::string kind(const V& v) {
     switch (__match_subject_1.value.index()) {
     case 0: {
         return "null";
-        break;
     }
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1.value);
         auto b = __case_1;
         return "bool";
-        break;
     }
     case 3: {
         auto& __case_2 = std::get<3>(__match_subject_1.value);
         auto& n = __case_2;
         return "int";
-        break;
     }
     case 5: {
         auto& __case_3 = std::get<5>(__match_subject_1.value);
         auto& s = __case_3;
         return "str";
-        break;
     }
     case 4: {
         auto& __case_4 = std::get<4>(__match_subject_1.value);
         auto& items = __case_4;
         return "list";
-        break;
     }
     case 2: {
         auto& __case_5 = std::get<2>(__match_subject_1.value);
         auto& d = __case_5;
         return "dict";
-        break;
     }
     }
     ::std::unreachable();

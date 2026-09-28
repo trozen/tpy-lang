@@ -42,8 +42,7 @@ struct __gen_dicts : public ::tpy::next_iter_mixin<__gen_dicts, ::tpy::ordered_m
         S_DONE = 3,
     };
 
-    __gen_dicts()
-        : __state(S_INITIAL) {}
+    __gen_dicts() : __state(S_INITIAL) {}
 
     std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration> __next__();
     __gen_dicts& __iter__() { return *this; }
@@ -64,8 +63,7 @@ struct __gen_lists : public ::tpy::next_iter_mixin<__gen_lists, std::vector<::tp
         S_DONE = 2,
     };
 
-    __gen_lists()
-        : __state(S_INITIAL) {}
+    __gen_lists() : __state(S_INITIAL) {}
 
     std::expected<std::vector<::tpy::BigInt>, ::tpy::StopIteration> __next__();
     __gen_lists& __iter__() { return *this; }

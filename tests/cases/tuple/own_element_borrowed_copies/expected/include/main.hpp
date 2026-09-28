@@ -232,7 +232,9 @@ struct __coro_ret_async {
     };
 
     __coro_ret_async(const P& p)
-        : __state(S_INITIAL), __cancel_pending(false), p(p) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          p(p) {}
 
     ::tpystd::tpy::Poll<std::tuple<P, int32_t>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -255,7 +257,9 @@ struct __coro_ret_async_name {
     };
 
     __coro_ret_async_name(P& p)
-        : __state(S_INITIAL), __cancel_pending(false), p(p) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          p(p) {}
 
     ::tpystd::tpy::Poll<std::tuple<P, int32_t>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -278,7 +282,9 @@ struct __coro_arg_async_name {
     };
 
     __coro_arg_async_name(P& p)
-        : __state(S_INITIAL), __cancel_pending(false), p(p) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          p(p) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -311,7 +317,8 @@ struct __coro_async_main {
     };
 
     __coro_async_main()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -335,7 +342,8 @@ struct __gen_arg_generator : public ::tpy::next_iter_mixin<__gen_arg_generator, 
     };
 
     __gen_arg_generator(P& p)
-        : __state(S_INITIAL), p(p) {}
+        : __state(S_INITIAL),
+          p(p) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_arg_generator& __iter__() { return *this; }
@@ -353,7 +361,9 @@ inline P::P(int32_t x) : xs(std::vector<int32_t>{x}) {}
 // def __init__(self, a: P, b: P) -> None:
 //     self.a = copy(a)
 //     self.b = copy(b)
-inline Holder::Holder(const P& a, const P& b) : a(a), b(b) {}
+inline Holder::Holder(const P& a, const P& b)
+    : a(a),
+      b(b) {}
 
 // def first(self) -> P:
 //     return self.a

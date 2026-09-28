@@ -81,7 +81,12 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 }
 
 
-inline Rect::Rect(int32_t w, int32_t h) : name("rect"), _w(w), _h(h), _color(Color::RED), _tags(std::vector<int32_t>{}) {}
+inline Rect::Rect(int32_t w, int32_t h)
+    : name("rect"),
+      _w(w),
+      _h(h),
+      _color(Color::RED),
+      _tags(std::vector<int32_t>{}) {}
 
 inline int32_t Rect::area() const {
     return (::tpy::mul_check<int32_t>(this->_w, this->_h));

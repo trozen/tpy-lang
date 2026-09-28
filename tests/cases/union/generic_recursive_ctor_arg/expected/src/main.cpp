@@ -27,11 +27,9 @@ int32_t count_leaves(const Tree<int32_t>& t) {
             n = ::tpy::add_check<int32_t>(n, ::tpyapp::main::count_leaves(c));
         }
         return n;
-        break;
     }
     default: {
         return 1;
-        break;
     }
     }
     ::std::unreachable();

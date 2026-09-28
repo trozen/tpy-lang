@@ -16,14 +16,14 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_receiver::__next__
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         log.emplace(std::vector<std::string>{});
-        std::optional<C> __select_slot_29;
+        std::optional<C> __select_slot_1;
         __state = S_RESUME_0;
-        return ((c) ? (a) : (__select_slot_29.emplace(::tpyapp::main::make((*log))))).inc();
+        return ((c) ? (a) : (__select_slot_1.emplace(::tpyapp::main::make((*log))))).inc();
     }
     case S_RESUME_0: {  // after: yield (a if c else make(log)).inc()  # tpyc: ok
-        std::optional<C> __select_slot_30;
+        std::optional<C> __select_slot_2;
         __state = S_RESUME_1;
-        return (::tpy::__bool__(a) ? a : __select_slot_30.emplace(C(5))).inc();
+        return (::tpy::__bool__(a) ? a : __select_slot_2.emplace(C(5))).inc();
     }
     case S_RESUME_1: {  // after: yield (a or C(5)).inc()  # tpyc: ok
         __state = S_DONE;

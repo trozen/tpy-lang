@@ -114,7 +114,7 @@ struct VHolder {
 
     // def borrow(self) -> T:
     //     return self.val
-    ::tpy::val_or_cref_t<T> borrow() const {
+    T borrow() const {
         return this->val;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.VHolder";

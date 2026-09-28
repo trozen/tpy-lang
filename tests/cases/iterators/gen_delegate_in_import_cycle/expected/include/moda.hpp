@@ -55,8 +55,7 @@ struct __gen_local_walk : public ::tpy::next_iter_mixin<__gen_local_walk, int32_
         S_DONE = 3,
     };
 
-    __gen_local_walk()
-        : __state(S_INITIAL) {}
+    __gen_local_walk() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_local_walk& __iter__() { return *this; }
@@ -82,8 +81,7 @@ struct __gen_free_delegator : public ::tpy::next_iter_mixin<__gen_free_delegator
         S_DONE = 4,
     };
 
-    __gen_free_delegator()
-        : __state(S_INITIAL) {}
+    __gen_free_delegator() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_free_delegator& __iter__() { return *this; }
@@ -106,7 +104,8 @@ struct __gen_Src_steps : public ::tpy::next_iter_mixin<__gen_Src_steps, int32_t>
     };
 
     __gen_Src_steps(const Src& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Src_steps& __iter__() { return *this; }
@@ -138,7 +137,8 @@ struct __gen_method_delegator : public ::tpy::next_iter_mixin<__gen_method_deleg
     };
 
     __gen_method_delegator(Src& s)
-        : __state(S_INITIAL), s(s) {}
+        : __state(S_INITIAL),
+          s(s) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_method_delegator& __iter__() { return *this; }

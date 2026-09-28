@@ -37,7 +37,8 @@ struct __gen_indexed : public ::tpy::next_iter_mixin<__gen_indexed<T, T_items>, 
     };
 
     __gen_indexed(T_items&& items_)
-        : __state(S_INITIAL), items(std::forward<T_items>(items_)) {}
+        : __state(S_INITIAL),
+          items(std::forward<T_items>(items_)) {}
 
     std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __next__();
     __gen_indexed& __iter__() { return *this; }

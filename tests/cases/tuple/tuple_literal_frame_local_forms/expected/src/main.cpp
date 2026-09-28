@@ -290,7 +290,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "fresh" << " " << n << "\n";
+            std::cout << "fresh" << " " << n << "\n";
         }
     }
     {
@@ -300,7 +300,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "own_call" << " " << n << "\n";
+            std::cout << "own_call" << " " << n << "\n";
         }
     }
     A a = A(1);
@@ -311,7 +311,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_5);
-        std::cout << "lvalue" << " " << n << "\n";
+            std::cout << "lvalue" << " " << n << "\n";
         }
     }
     A b = A(5);
@@ -322,7 +322,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_7);
-        std::cout << "mixed_fresh_first" << " " << n << "\n";
+            std::cout << "mixed_fresh_first" << " " << n << "\n";
         }
     }
     A c = A(5);
@@ -333,7 +333,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_9);
-        std::cout << "mixed_lvalue_first" << " " << n << "\n";
+            std::cout << "mixed_lvalue_first" << " " << n << "\n";
         }
     }
     {
@@ -343,7 +343,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_11);
-        std::cout << "moved" << " " << n << "\n";
+            std::cout << "moved" << " " << n << "\n";
         }
     }
     {
@@ -353,7 +353,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_13);
-        std::cout << "loop" << " " << n << "\n";
+            std::cout << "loop" << " " << n << "\n";
         }
     }
     {
@@ -363,7 +363,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_15);
-        std::cout << "literal_then_call literal" << " " << n << "\n";
+            std::cout << "literal_then_call literal" << " " << n << "\n";
         }
     }
     {
@@ -373,7 +373,7 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_17);
-        std::cout << "literal_then_call call" << " " << n << "\n";
+            std::cout << "literal_then_call call" << " " << n << "\n";
         }
     }
     {
@@ -383,7 +383,7 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_19);
-        std::cout << "call_then_literal call" << " " << n << "\n";
+            std::cout << "call_then_literal call" << " " << n << "\n";
         }
     }
     {
@@ -393,7 +393,7 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_21);
-        std::cout << "call_then_literal literal" << " " << n << "\n";
+            std::cout << "call_then_literal literal" << " " << n << "\n";
         }
     }
     {
@@ -403,7 +403,7 @@ void main() {
             auto __r_23 = __itr_22.__next__();
             if (!__r_23.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_23);
-        std::cout << "call_reassigned" << " " << n << "\n";
+            std::cout << "call_reassigned" << " " << n << "\n";
         }
     }
     {
@@ -413,7 +413,7 @@ void main() {
             auto __r_25 = __itr_24.__next__();
             if (!__r_25.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_25);
-        std::cout << "own_elem_call" << " " << n << "\n";
+            std::cout << "own_elem_call" << " " << n << "\n";
         }
     }
     {
@@ -423,7 +423,7 @@ void main() {
             auto __r_27 = __itr_26.__next__();
             if (!__r_27.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_27);
-        std::cout << "try" << " " << n << "\n";
+            std::cout << "try" << " " << n << "\n";
         }
     }
     H h = H(1);
@@ -434,7 +434,7 @@ void main() {
             auto __r_29 = __itr_28.__next__();
             if (!__r_29.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_29);
-        std::cout << "method" << " " << n << "\n";
+            std::cout << "method" << " " << n << "\n";
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_section()));

@@ -52,7 +52,9 @@ struct __coro_bump {
     };
 
     __coro_bump(std::tuple<int32_t, Box*> p_)
-        : __state(S_INITIAL), __cancel_pending(false), p(p_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          p(p_) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -77,7 +79,8 @@ struct __coro_driver {
     };
 
     __coro_driver()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

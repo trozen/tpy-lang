@@ -181,7 +181,9 @@ inline std::expected<Seconds, ::tpystd::tplib::json::parser::JsonError> Seconds:
     return Seconds(::tpy::int_cast_check<int32_t>(raw));
 }
 
-inline Event::Event(std::string_view name, Seconds&& when) : name(name), when(std::move(when)) {}
+inline Event::Event(std::string_view name, Seconds&& when)
+    : name(name),
+      when(std::move(when)) {}
 
 inline bool Event::__eq__(const Event& other) const {
     return ((this->name == other.name) && (this->when == other.when));
@@ -290,7 +292,10 @@ inline std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::try
     return Event::try_from_json(__data);
 }
 
-inline Schedule::Schedule(std::vector<Event>&& events, Seconds&& default_duration, std::optional<Seconds>&& deadline) : events(std::move(events)), default_duration(std::move(default_duration)), deadline(std::move(deadline)) {}
+inline Schedule::Schedule(std::vector<Event>&& events, Seconds&& default_duration, std::optional<Seconds>&& deadline)
+    : events(std::move(events)),
+      default_duration(std::move(default_duration)),
+      deadline(std::move(deadline)) {}
 
 inline bool Schedule::__eq__(const Schedule& other) const {
     return (((this->events == other.events) && (this->default_duration == other.default_duration)) && (this->deadline == other.deadline));

@@ -103,23 +103,23 @@ int64_t free_call(bool flag) {
 // def user_ctor() -> int64:
 //     return 0 or Holder([1, 2, 3]).n  # tpyc: ok
 int64_t user_ctor() {
-    auto&& __tmp_2 = 0;
-    std::optional<std::vector<int64_t>> __tmp_3;
-    return (__tmp_2 ? int64_t(__tmp_2) : (__tmp_3.emplace(std::vector<int64_t>{1, 2, 3}), Holder((*__tmp_3)).n));
+    auto&& __tmp_1 = 0;
+    std::optional<std::vector<int64_t>> __tmp_2;
+    return (__tmp_1 ? int64_t(__tmp_1) : (__tmp_2.emplace(std::vector<int64_t>{1, 2, 3}), Holder((*__tmp_2)).n));
 }
 
 // def generic_ctor(flag: bool) -> int64:
 //     return Boxed[int64]([1, 2, 3]).n if flag else 0  # tpyc: ok
 int64_t generic_ctor(bool flag) {
-    std::optional<std::vector<int64_t>> __tmp_4;
-    return ((flag) ? (__tmp_4.emplace(std::vector<int64_t>{1, 2, 3}), Boxed<int64_t>((*__tmp_4)).n) : (0));
+    std::optional<std::vector<int64_t>> __tmp_1;
+    return ((flag) ? (__tmp_1.emplace(std::vector<int64_t>{1, 2, 3}), Boxed<int64_t>((*__tmp_1)).n) : (0));
 }
 
 // def free_type_param(flag: bool) -> int64:
 //     return 0 if not flag else take_any([1, 2, 3])  # tpyc: ok
 int64_t free_type_param(bool flag) {
-    std::optional<std::vector<int32_t>> __tmp_5;
-    return (((!(flag))) ? (0) : (__tmp_5.emplace(std::vector<int32_t>{1, 2, 3}), ::tpyapp::main::take_any<std::vector<int32_t>>((*__tmp_5))));
+    std::optional<std::vector<int32_t>> __tmp_1;
+    return (((!(flag))) ? (0) : (__tmp_1.emplace(std::vector<int32_t>{1, 2, 3}), ::tpyapp::main::take_any<std::vector<int32_t>>((*__tmp_1))));
 }
 
 // def free_generator(flag: bool) -> int64:
@@ -130,15 +130,15 @@ int64_t free_type_param(bool flag) {
 int64_t free_generator(bool flag) {
     int64_t total = 0;
     {
-        std::optional<std::vector<int64_t>> __tmp_6;
-        std::optional<std::vector<int64_t>> __tmp_7;
-        auto __src_0 = ((flag) ? (__tmp_6.emplace(std::vector<int64_t>{1, 2, 3}), ::tpyapp::main::gen((*__tmp_6))) : (__tmp_7.emplace(std::vector<int64_t>{9}), ::tpyapp::main::gen((*__tmp_7))));
+        std::optional<std::vector<int64_t>> __tmp_1;
+        std::optional<std::vector<int64_t>> __tmp_2;
+        auto __src_0 = ((flag) ? (__tmp_1.emplace(std::vector<int64_t>{1, 2, 3}), ::tpyapp::main::gen((*__tmp_1))) : (__tmp_2.emplace(std::vector<int64_t>{9}), ::tpyapp::main::gen((*__tmp_2))));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int64_t v = ::tpy::unwrap_ref(*__r_1);
-        total = ::tpy::add_check<int64_t>(total, v);
+            total = ::tpy::add_check<int64_t>(total, v);
         }
     }
     return total;
@@ -152,15 +152,15 @@ int64_t free_generator(bool flag) {
 int64_t method_generator(Bx& bx, bool flag) {
     int64_t total = 0;
     {
-        std::optional<std::vector<int64_t>> __tmp_8;
-        std::optional<std::vector<int64_t>> __tmp_9;
-        auto __src_0 = ((flag) ? (__tmp_8.emplace(std::vector<int64_t>{1, 2, 3}), bx.gen((*__tmp_8))) : (__tmp_9.emplace(std::vector<int64_t>{9}), bx.gen((*__tmp_9))));
+        std::optional<std::vector<int64_t>> __tmp_1;
+        std::optional<std::vector<int64_t>> __tmp_2;
+        auto __src_0 = ((flag) ? (__tmp_1.emplace(std::vector<int64_t>{1, 2, 3}), bx.gen((*__tmp_1))) : (__tmp_2.emplace(std::vector<int64_t>{9}), bx.gen((*__tmp_2))));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int64_t v = ::tpy::unwrap_ref(*__r_1);
-        total = ::tpy::add_check<int64_t>(total, v);
+            total = ::tpy::add_check<int64_t>(total, v);
         }
     }
     return total;
@@ -170,22 +170,22 @@ int64_t method_generator(Bx& bx, bool flag) {
 //     # The everyday-code shape: a stdlib constructor taking an iterable.
 //     return len(Counter([1, 1, 2])) if flag else 0  # tpyc: ok
 int64_t protocol_union(bool flag) {
-    std::optional<std::array<int32_t, 3>> __tmp_10;
-    return static_cast<int64_t>(((flag) ? (__tmp_10.emplace(std::array<int32_t, 3>{1, 1, 2}), ::tpy::__len__(::tpystd::collections::Counter<int32_t>(&((*__tmp_10))))) : (0)));
+    std::optional<std::array<int32_t, 3>> __tmp_1;
+    return static_cast<int64_t>(((flag) ? (__tmp_1.emplace(std::array<int32_t, 3>{1, 1, 2}), ::tpy::__len__(::tpystd::collections::Counter<int32_t>(&((*__tmp_1))))) : (0)));
 }
 
 // def narrow_int(flag: bool) -> bool:
 //     return flag and take_i8([1, 2, 3]) > 0  # tpyc: ok
 bool narrow_int(bool flag) {
-    std::optional<std::vector<int8_t>> __tmp_11;
-    return (flag && (__tmp_11.emplace(std::vector<int8_t>{1, 2, 3}), (::tpyapp::main::take_i8((*__tmp_11)) > 0)));
+    std::optional<std::vector<int8_t>> __tmp_1;
+    return (flag && (__tmp_1.emplace(std::vector<int8_t>{1, 2, 3}), (::tpyapp::main::take_i8((*__tmp_1)) > 0)));
 }
 
 // def narrow_float(flag: bool) -> float32:
 //     return take_f32([1.0, 2.0]) if flag else float32(0.0)  # tpyc: ok
 float narrow_float(bool flag) {
-    std::optional<std::vector<float>> __tmp_12;
-    return ((flag) ? (__tmp_12.emplace(std::vector<float>{1.0, 2.0}), ::tpyapp::main::take_f32((*__tmp_12))) : (0.0f));
+    std::optional<std::vector<float>> __tmp_1;
+    return ((flag) ? (__tmp_1.emplace(std::vector<float>{1.0, 2.0}), ::tpyapp::main::take_f32((*__tmp_1))) : (0.0f));
 }
 
 // def fixed_array(flag: bool) -> int64:
@@ -193,96 +193,96 @@ float narrow_float(bool flag) {
 //     # fails even for an element type that would otherwise survive.
 //     return take_arr([1, 2, 3]) if flag else 0  # tpyc: ok
 int64_t fixed_array(bool flag) {
-    std::optional<std::array<int64_t, 3>> __tmp_13;
-    return ((flag) ? (__tmp_13.emplace(std::array<int64_t, 3>{1, 2, 3}), ::tpyapp::main::take_arr((*__tmp_13))) : (0));
+    std::optional<std::array<int64_t, 3>> __tmp_1;
+    return ((flag) ? (__tmp_1.emplace(std::array<int64_t, 3>{1, 2, 3}), ::tpyapp::main::take_arr((*__tmp_1))) : (0));
 }
 
 // def nested_list(flag: bool) -> int64:
 //     return take_nested([[1, 2], [3]]) if flag else 0  # tpyc: ok
 int64_t nested_list(bool flag) {
-    std::optional<std::vector<std::vector<int64_t>>> __tmp_14;
-    return ((flag) ? (__tmp_14.emplace(std::vector<std::vector<int64_t>>{{1, 2}, {3}}), ::tpyapp::main::take_nested((*__tmp_14))) : (0));
+    std::optional<std::vector<std::vector<int64_t>>> __tmp_1;
+    return ((flag) ? (__tmp_1.emplace(std::vector<std::vector<int64_t>>{{1, 2}, {3}}), ::tpyapp::main::take_nested((*__tmp_1))) : (0));
 }
 
 // # --- shapes that compiled either way: only the render pins them ------------
 // def same_width_int(flag: bool) -> int32:
 //     return take_i32([1, 2, 3]) if flag else int32(0)  # tpyc: ok
 int32_t same_width_int(bool flag) {
-    std::optional<std::vector<int32_t>> __tmp_15;
-    return ((flag) ? (__tmp_15.emplace(std::vector<int32_t>{1, 2, 3}), ::tpyapp::main::take_i32((*__tmp_15))) : (0));
+    std::optional<std::vector<int32_t>> __tmp_1;
+    return ((flag) ? (__tmp_1.emplace(std::vector<int32_t>{1, 2, 3}), ::tpyapp::main::take_i32((*__tmp_1))) : (0));
 }
 
 // def same_width_float(flag: bool) -> float64:
 //     return take_f64([1.0, 2.0]) if flag else 0.0  # tpyc: ok
 double same_width_float(bool flag) {
-    std::optional<std::vector<double>> __tmp_16;
-    return ((flag) ? (__tmp_16.emplace(std::vector<double>{1.0, 2.0}), ::tpyapp::main::take_f64((*__tmp_16))) : (0.0));
+    std::optional<std::vector<double>> __tmp_1;
+    return ((flag) ? (__tmp_1.emplace(std::vector<double>{1.0, 2.0}), ::tpyapp::main::take_f64((*__tmp_1))) : (0.0));
 }
 
 // # --- shapes whose render already carries its type --------------------------
 // def empty_literal(flag: bool) -> int64:
 //     return take_i64([]) if flag else 0  # tpyc: ok
 int64_t empty_literal(bool flag) {
-    std::optional<std::vector<int64_t>> __tmp_17;
-    return ((flag) ? (__tmp_17.emplace(std::vector<int64_t>{}), ::tpyapp::main::take_i64((*__tmp_17))) : (0));
+    std::optional<std::vector<int64_t>> __tmp_1;
+    return ((flag) ? (__tmp_1.emplace(std::vector<int64_t>{}), ::tpyapp::main::take_i64((*__tmp_1))) : (0));
 }
 
 // def repeat_literal(flag: bool, n: int32) -> int64:
 //     return take_i64([0] * n) if flag else 0  # tpyc: ok
 int64_t repeat_literal(bool flag, int32_t n) {
-    std::optional<std::vector<int64_t>> __tmp_18;
-    return ((flag) ? (__tmp_18.emplace(::tpy::from_range<std::vector<int64_t>>(::tpy::repeat_range<int64_t>(n, {0}))), ::tpyapp::main::take_i64((*__tmp_18))) : (0));
+    std::optional<std::vector<int64_t>> __tmp_1;
+    return ((flag) ? (__tmp_1.emplace(::tpy::from_range<std::vector<int64_t>>(::tpy::repeat_range<int64_t>(n, {0}))), ::tpyapp::main::take_i64((*__tmp_1))) : (0));
 }
 
 // def dict_literal(flag: bool) -> int64:
 //     return take_dict({1: 2}) if flag else 0  # tpyc: ok
 int64_t dict_literal(bool flag) {
-    std::optional<::tpy::ordered_map<int64_t, int64_t>> __tmp_19;
-    return ((flag) ? (__tmp_19.emplace(::tpy::ordered_map<int64_t, int64_t>({{1, 2}})), ::tpyapp::main::take_dict((*__tmp_19))) : (0));
+    std::optional<::tpy::ordered_map<int64_t, int64_t>> __tmp_1;
+    return ((flag) ? (__tmp_1.emplace(::tpy::ordered_map<int64_t, int64_t>({{1, 2}})), ::tpyapp::main::take_dict((*__tmp_1))) : (0));
 }
 
 // def set_literal(flag: bool) -> int64:
 //     return take_set({1, 2}) if flag else 0  # tpyc: ok
 int64_t set_literal(bool flag) {
-    std::optional<::tpy::ordered_set<int64_t>> __tmp_20;
-    return ((flag) ? (__tmp_20.emplace(::tpy::ordered_set<int64_t>({1, 2})), ::tpyapp::main::take_set((*__tmp_20))) : (0));
+    std::optional<::tpy::ordered_set<int64_t>> __tmp_1;
+    return ((flag) ? (__tmp_1.emplace(::tpy::ordered_set<int64_t>({1, 2})), ::tpyapp::main::take_set((*__tmp_1))) : (0));
 }
 
 // # --- every conditional-operand position ------------------------------------
 // def and_rhs(flag: bool) -> bool:
 //     return flag and take_i64([1, 2, 3]) > 0  # tpyc: ok
 bool and_rhs(bool flag) {
-    std::optional<std::vector<int64_t>> __tmp_21;
-    return (flag && (__tmp_21.emplace(std::vector<int64_t>{1, 2, 3}), (::tpyapp::main::take_i64((*__tmp_21)) > 0)));
+    std::optional<std::vector<int64_t>> __tmp_1;
+    return (flag && (__tmp_1.emplace(std::vector<int64_t>{1, 2, 3}), (::tpyapp::main::take_i64((*__tmp_1)) > 0)));
 }
 
 // def or_rhs(flag: bool) -> bool:
 //     return flag or take_i64([1, 2, 3]) > 0  # tpyc: ok
 bool or_rhs(bool flag) {
-    std::optional<std::vector<int64_t>> __tmp_22;
-    return (flag || (__tmp_22.emplace(std::vector<int64_t>{1, 2, 3}), (::tpyapp::main::take_i64((*__tmp_22)) > 0)));
+    std::optional<std::vector<int64_t>> __tmp_1;
+    return (flag || (__tmp_1.emplace(std::vector<int64_t>{1, 2, 3}), (::tpyapp::main::take_i64((*__tmp_1)) > 0)));
 }
 
 // def ternary_then(flag: bool) -> int64:
 //     return take_i64([1, 2, 3]) if flag else 0  # tpyc: ok
 int64_t ternary_then(bool flag) {
-    std::optional<std::vector<int64_t>> __tmp_23;
-    return ((flag) ? (__tmp_23.emplace(std::vector<int64_t>{1, 2, 3}), ::tpyapp::main::take_i64((*__tmp_23))) : (0));
+    std::optional<std::vector<int64_t>> __tmp_1;
+    return ((flag) ? (__tmp_1.emplace(std::vector<int64_t>{1, 2, 3}), ::tpyapp::main::take_i64((*__tmp_1))) : (0));
 }
 
 // def ternary_else(flag: bool) -> int64:
 //     return 0 if flag else take_i64([1, 2, 3])  # tpyc: ok
 int64_t ternary_else(bool flag) {
-    std::optional<std::vector<int64_t>> __tmp_24;
-    return ((flag) ? (0) : (__tmp_24.emplace(std::vector<int64_t>{1, 2, 3}), ::tpyapp::main::take_i64((*__tmp_24))));
+    std::optional<std::vector<int64_t>> __tmp_1;
+    return ((flag) ? (0) : (__tmp_1.emplace(std::vector<int64_t>{1, 2, 3}), ::tpyapp::main::take_i64((*__tmp_1))));
 }
 
 // def chained(a: int64, b: int64) -> bool:
 //     # A later comparator is conditional too: skipped once an earlier pair fails.
 //     return a < b < take_i64([1, 2, 3])  # tpyc: ok
 bool chained(int64_t a, int64_t b) {
-    std::optional<std::vector<int64_t>> __tmp_25;
-    return ((a < b) && (__tmp_25.emplace(std::vector<int64_t>{1, 2, 3}), (b < ::tpyapp::main::take_i64((*__tmp_25)))));
+    std::optional<std::vector<int64_t>> __tmp_1;
+    return ((a < b) && (__tmp_1.emplace(std::vector<int64_t>{1, 2, 3}), (b < ::tpyapp::main::take_i64((*__tmp_1)))));
 }
 
 // def relocated_decl(flag: bool) -> int64:
@@ -296,8 +296,8 @@ int64_t relocated_decl(bool flag) {
         const int32_t __stop_0 = 2;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t _ = 0; _ < __stop_0; ++_) {
-            std::optional<std::vector<int64_t>> __tmp_26 = std::vector<int64_t>{1, 2, 3};
-            __result.push_back(::tpyapp::main::take_i64((*__tmp_26)));
+            std::optional<std::vector<int64_t>> __tmp_1 = std::vector<int64_t>{1, 2, 3};
+            __result.push_back(::tpyapp::main::take_i64((*__tmp_1)));
         }
         std::move(__result);
     }))) : (0));
@@ -309,8 +309,8 @@ int64_t relocated_decl(bool flag) {
 //     # what the deferral buys over initializing at the enclosing statement.
 //     return take_i64([bump(t), 2, 3]) if flag else 0  # tpyc: ok
 int64_t side_effect(Tally& t, bool flag) {
-    std::optional<std::vector<int64_t>> __tmp_27;
-    return ((flag) ? (__tmp_27.emplace(std::vector<int64_t>{::tpyapp::main::bump(t), 2, 3}), ::tpyapp::main::take_i64((*__tmp_27))) : (0));
+    std::optional<std::vector<int64_t>> __tmp_1;
+    return ((flag) ? (__tmp_1.emplace(std::vector<int64_t>{::tpyapp::main::bump(t), 2, 3}), ::tpyapp::main::take_i64((*__tmp_1))) : (0));
 }
 
 // def main() -> None:

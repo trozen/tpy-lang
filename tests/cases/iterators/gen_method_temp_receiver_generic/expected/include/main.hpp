@@ -56,7 +56,8 @@ struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk<T>, :
     };
 
     __gen_Holder_walk(Holder<T>& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_Holder_walk& __iter__() { return *this; }

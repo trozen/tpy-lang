@@ -55,7 +55,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<P*, P*>> 
     };
 
     __gen_gen(std::vector<P>& items)
-        : __state(S_INITIAL), items(items) {}
+        : __state(S_INITIAL),
+          items(items) {}
 
     std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

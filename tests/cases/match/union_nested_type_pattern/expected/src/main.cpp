@@ -18,13 +18,11 @@ std::string unwrap(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x)
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& v = __case_0.value;
         return (::tpy::str_concat("string: ", v));
-        break;
     }
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto n = __case_1.value;
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
-        break;
     }
     }
     ::std::unreachable();
@@ -43,12 +41,10 @@ std::string describe(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> 
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         return "is string";
-        break;
     }
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         return "is number";
-        break;
     }
     }
     ::std::unreachable();
@@ -68,14 +64,12 @@ std::string mixed(::tpy::Union<const Pair<int32_t>*, const Pair<std::string>*> x
         auto& f = __case_0.first;
         auto& s = __case_0.second;
         return (::tpy::str_concat((::tpy::str_concat(f, " / ")), s));
-        break;
     }
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto n = __case_1.first;
         auto& s = __case_1.second;
         return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(n), " / ")), s));
-        break;
     }
     }
     ::std::unreachable();

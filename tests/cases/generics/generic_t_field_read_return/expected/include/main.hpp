@@ -26,7 +26,9 @@ struct Cell {
     //     self.value = v
     //     self.other = o
     Cell() = default;
-    explicit Cell(::tpy::own_param_t<T> v, ::tpy::own_param_t<T> o) : value(std::move(v)), other(std::move(o)) {}
+    explicit Cell(::tpy::own_param_t<T> v, ::tpy::own_param_t<T> o)
+        : value(std::move(v)),
+          other(std::move(o)) {}
 
     // def get(self) -> T:
     //     return self.value

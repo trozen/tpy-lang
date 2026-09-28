@@ -16,11 +16,9 @@ int32_t f(int32_t n) {
     switch (__match_subject_1) {
     case 1: {
         return 10;
-        break;
     }
     case 2: {
         return 20;
-        break;
     }
     default: break;
     }

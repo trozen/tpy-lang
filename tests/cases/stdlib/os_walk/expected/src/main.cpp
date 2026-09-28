@@ -140,27 +140,27 @@ void walk_sorted(std::string_view root) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        auto& __tup_1 = __for_tup_0;
-        std::string_view dirpath = std::get<0>(__tup_1);
-        auto&& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        auto&& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-        std::vector<std::string> kept = std::vector<std::string>{};
-        auto& __obj_2 = dirnames;
-        auto __beg_2 = __obj_2.begin();
-        auto __end_2 = __obj_2.end();
-        for (; __beg_2 != __end_2; ++__beg_2) {
-            std::string_view d = *__beg_2;
-            if ((d != "skip")) {
-                kept.push_back(std::string(d));
+            auto& __tup_1 = __for_tup_0;
+            std::string_view dirpath = std::get<0>(__tup_1);
+            auto&& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            auto&& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
+            std::vector<std::string> kept = std::vector<std::string>{};
+            auto& __obj_2 = dirnames;
+            auto __beg_2 = __obj_2.begin();
+            auto __end_2 = __obj_2.end();
+            for (; __beg_2 != __end_2; ++__beg_2) {
+                std::string_view d = *__beg_2;
+                if ((d != "skip")) {
+                    kept.push_back(std::string(d));
+                }
             }
-        }
-        ::tpy::list_set_slice(dirnames, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::move(kept));
-        std::vector<std::string> files = ::tpy::builtin_sorted<std::string>(filenames);
-        std::string_view rel = ::tpy::str_slice(dirpath, ::tpy::BasicSlice{::tpy::__len__(root), std::nullopt});
-        if ((::tpy::__len__(rel) == 0)) {
-            rel = ".";
-        }
-        rows.push_back((::tpy::str_concat((::tpy::str_concat(rel, " files=")), ::tpy::str_join(",", files))));
+            ::tpy::list_set_slice(dirnames, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::move(kept));
+            std::vector<std::string> files = ::tpy::builtin_sorted<std::string>(filenames);
+            std::string_view rel = ::tpy::str_slice(dirpath, ::tpy::BasicSlice{::tpy::__len__(root), std::nullopt});
+            if ((::tpy::__len__(rel) == 0)) {
+                rel = ".";
+            }
+            rows.push_back((::tpy::str_concat((::tpy::str_concat(rel, " files=")), ::tpy::str_join(",", files))));
         }
     }
     ::tpy::sort_in_place(rows);
@@ -187,11 +187,11 @@ int32_t count_dirs(std::string_view root, bool follow) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
-        auto& __tup_1 = __for_tup_1;
-        std::string_view dp = std::get<0>(__tup_1);
-        auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-        n = ::tpy::add_check<int32_t>(n, 1);
+            auto& __tup_1 = __for_tup_1;
+            std::string_view dp = std::get<0>(__tup_1);
+            auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
+            n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
     return n;
@@ -214,13 +214,13 @@ int32_t prune_all(std::string_view root) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_1);
-        auto& __tup_1 = __for_tup_2;
-        std::string_view dp = std::get<0>(__tup_1);
-        auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-        std::vector<std::string> empty = std::vector<std::string>{};
-        ::tpy::list_set_slice(dn, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::move(empty));
-        n = ::tpy::add_check<int32_t>(n, 1);
+            auto& __tup_1 = __for_tup_2;
+            std::string_view dp = std::get<0>(__tup_1);
+            auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
+            std::vector<std::string> empty = std::vector<std::string>{};
+            ::tpy::list_set_slice(dn, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::move(empty));
+            n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
     return n;
@@ -258,11 +258,11 @@ bool order_ok(std::string_view root) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_3 = ::tpy::unwrap_ref(*__r_1);
-        auto& __tup_1 = __for_tup_3;
-        std::string_view dp = std::get<0>(__tup_1);
-        auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-        seen.push_back(std::string(dp));
+            auto& __tup_1 = __for_tup_3;
+            std::string_view dp = std::get<0>(__tup_1);
+            auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
+            seen.push_back(std::string(dp));
         }
     }
     int32_t i = 0;
@@ -332,11 +332,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_4 = ::tpy::unwrap_ref(*__r_1);
-        auto& __tup_1 = __for_tup_4;
-        std::string_view dp = std::get<0>(__tup_1);
-        auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-        n = ::tpy::add_check<int32_t>(n, 1);
+            auto& __tup_1 = __for_tup_4;
+            std::string_view dp = std::get<0>(__tup_1);
+            auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
+            n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
     std::cout << "missing yields:" << " " << n << "\n";
@@ -350,11 +350,11 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& __for_tup_5 = ::tpy::unwrap_ref(*__r_3);
-        auto& __tup_2 = __for_tup_5;
-        std::string_view dp = std::get<0>(__tup_2);
-        auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
-        auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_2)));
-        nf = ::tpy::add_check<int32_t>(nf, 1);
+            auto& __tup_2 = __for_tup_5;
+            std::string_view dp = std::get<0>(__tup_2);
+            auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
+            auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_2)));
+            nf = ::tpy::add_check<int32_t>(nf, 1);
         }
     }
     std::cout << "file-as-top yields:" << " " << nf << "\n";

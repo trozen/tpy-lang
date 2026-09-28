@@ -53,7 +53,9 @@ inline std::ostream& operator<<(std::ostream& os, const CachingContainer& obj) {
 // def __init__(self, data: int32) -> None:
 //     self.data = data
 //     self.last_access = -1
-inline CachingContainer::CachingContainer(int32_t data) : data(data), last_access(-1) {}
+inline CachingContainer::CachingContainer(int32_t data)
+    : data(data),
+      last_access(-1) {}
 
 // @readonly(False)
 // def __getitem__(self, index: int32) -> int32:

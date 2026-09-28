@@ -30,8 +30,7 @@ struct __gen_matrix : public ::tpy::next_iter_mixin<__gen_matrix, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_matrix()
-        : __state(S_INITIAL) {}
+    __gen_matrix() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_matrix& __iter__() { return *this; }

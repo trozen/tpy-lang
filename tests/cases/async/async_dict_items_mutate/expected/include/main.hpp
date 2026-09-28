@@ -60,7 +60,9 @@ struct __coro_bump {
     };
 
     __coro_bump(::tpy::ordered_map<int32_t, C>& d)
-        : __state(S_INITIAL), __cancel_pending(false), d(d) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          d(d) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

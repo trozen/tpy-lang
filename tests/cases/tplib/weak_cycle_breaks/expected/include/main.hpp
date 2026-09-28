@@ -53,11 +53,17 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 //     self.parent = None
 //     self.children = []
 //     print("init", name)
-inline Node::Node(std::string_view name) : name(name), parent(std::nullopt), children(std::vector<::tpystd::tplib::rc::Rc<Node>>{}) {
+inline Node::Node(std::string_view name)
+    : name(name),
+      parent(std::nullopt),
+      children(std::vector<::tpystd::tplib::rc::Rc<Node>>{}) {
     std::cout << "init" << " " << name << "\n";
 }
 
-inline Node::Node(Node&& other) noexcept : name(std::move(other.name)), parent(std::move(other.parent)), children(std::move(other.children)) {
+inline Node::Node(Node&& other) noexcept
+    : name(std::move(other.name)),
+      parent(std::move(other.parent)),
+      children(std::move(other.children)) {
     other.__tpy_owned_ = false;
 }
 inline Node& Node::operator=(Node&& other) noexcept {

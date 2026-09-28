@@ -55,7 +55,10 @@ struct __coro_Box_with_label {
     };
 
     __coro_Box_with_label(const Box<T>& __self, ::tpy::param_val_or_ref_t<U> label_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), label(label_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          label(label_) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<U>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

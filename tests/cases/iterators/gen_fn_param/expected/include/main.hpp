@@ -80,7 +80,9 @@ struct __gen_filterfalse : public ::tpy::next_iter_mixin<__gen_filterfalse<F_pre
     };
 
     __gen_filterfalse(F_pred&& pred_, const std::vector<int32_t>& it)
-        : __state(S_INITIAL), pred(std::forward<F_pred>(pred_)), it(it) {}
+        : __state(S_INITIAL),
+          pred(std::forward<F_pred>(pred_)),
+          it(it) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_filterfalse& __iter__() { return *this; }
@@ -153,7 +155,9 @@ struct __gen_takewhile : public ::tpy::next_iter_mixin<__gen_takewhile<F_pred>, 
     };
 
     __gen_takewhile(F_pred&& pred_, const std::vector<int32_t>& it)
-        : __state(S_INITIAL), pred(std::forward<F_pred>(pred_)), it(it) {}
+        : __state(S_INITIAL),
+          pred(std::forward<F_pred>(pred_)),
+          it(it) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_takewhile& __iter__() { return *this; }
@@ -231,7 +235,9 @@ struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag<F_pred>, int32_t> {
     };
 
     __gen_tag(F_pred&& pred_, const std::vector<int32_t>& it)
-        : __state(S_INITIAL), pred(std::forward<F_pred>(pred_)), it(it) {}
+        : __state(S_INITIAL),
+          pred(std::forward<F_pred>(pred_)),
+          it(it) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_tag& __iter__() { return *this; }
@@ -308,7 +314,9 @@ struct __gen_transform : public ::tpy::next_iter_mixin<__gen_transform<F_fn>, in
     };
 
     __gen_transform(F_fn&& fn_, const std::vector<int32_t>& it)
-        : __state(S_INITIAL), fn(std::forward<F_fn>(fn_)), it(it) {}
+        : __state(S_INITIAL),
+          fn(std::forward<F_fn>(fn_)),
+          it(it) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_transform& __iter__() { return *this; }
@@ -378,7 +386,10 @@ struct __gen_Capped_keep : public ::tpy::next_iter_mixin<__gen_Capped_keep<F_pre
     };
 
     __gen_Capped_keep(const Capped& __self, F_pred&& pred_, const std::vector<int32_t>& it)
-        : __state(S_INITIAL), __self(__self), pred(std::forward<F_pred>(pred_)), it(it) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          pred(std::forward<F_pred>(pred_)),
+          it(it) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Capped_keep& __iter__() { return *this; }

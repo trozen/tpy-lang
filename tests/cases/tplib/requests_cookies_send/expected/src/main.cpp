@@ -66,12 +66,12 @@ void _cookie_line(::tpy::BytesView sent) {
 //     # An explicit Cookie header wins over cookies=.
 //     _cookie_line(_send({"Cookie": "manual=1"}, {"sid": "abc"}))
 void main() {
-    ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"sid", "abc"}, {"k", "v"}});
-    ::tpyapp::main::_cookie_line(::tpyapp::main::_send(nullptr, &(__tmp_2)));
+    ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"sid", "abc"}, {"k", "v"}});
+    ::tpyapp::main::_cookie_line(::tpyapp::main::_send(nullptr, &(__tmp_1)));
     ::tpyapp::main::_cookie_line(::tpyapp::main::_send(nullptr, nullptr));
-    ::tpy::ordered_map<std::string, std::string> __tmp_3 = ::tpy::ordered_map<std::string, std::string>({{"Cookie", "manual=1"}});
-    ::tpy::ordered_map<std::string, std::string> __tmp_4 = ::tpy::ordered_map<std::string, std::string>({{"sid", "abc"}});
-    ::tpyapp::main::_cookie_line(::tpyapp::main::_send(&(__tmp_3), &(__tmp_4)));
+    ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"Cookie", "manual=1"}});
+    ::tpy::ordered_map<std::string, std::string> __tmp_3 = ::tpy::ordered_map<std::string, std::string>({{"sid", "abc"}});
+    ::tpyapp::main::_cookie_line(::tpyapp::main::_send(&(__tmp_2), &(__tmp_3)));
 }
 
 // # A `cookies=` dict is serialized into a Cookie: request header (name=value

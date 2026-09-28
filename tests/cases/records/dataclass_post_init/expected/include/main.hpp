@@ -46,7 +46,10 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 }
 
 
-inline Rect::Rect(int32_t w, int32_t h, int32_t area) : w(w), h(h), area(area) {
+inline Rect::Rect(int32_t w, int32_t h, int32_t area)
+    : w(w),
+      h(h),
+      area(area) {
     this->__post_init__();
 }
 

@@ -53,11 +53,15 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 //     self.name = name
 //     self.next = None
 //     print("init", name)
-inline Node::Node(std::string_view name) : name(name), next(std::nullopt) {
+inline Node::Node(std::string_view name)
+    : name(name),
+      next(std::nullopt) {
     std::cout << "init" << " " << name << "\n";
 }
 
-inline Node::Node(Node&& other) noexcept : name(std::move(other.name)), next(std::move(other.next)) {
+inline Node::Node(Node&& other) noexcept
+    : name(std::move(other.name)),
+      next(std::move(other.next)) {
     other.__tpy_owned_ = false;
 }
 inline Node& Node::operator=(Node&& other) noexcept {

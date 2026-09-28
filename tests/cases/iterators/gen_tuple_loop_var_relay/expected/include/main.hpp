@@ -70,8 +70,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<int32_t, 
         S_DONE = 3,
     };
 
-    __gen_gen()
-        : __state(S_INITIAL) {}
+    __gen_gen() : __state(S_INITIAL) {}
 
     std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -96,8 +95,7 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay, std::tuple<int32
         S_DONE = 3,
     };
 
-    __gen_relay()
-        : __state(S_INITIAL) {}
+    __gen_relay() : __state(S_INITIAL) {}
 
     std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __next__();
     __gen_relay& __iter__() { return *this; }
@@ -123,8 +121,7 @@ struct __gen_relay_twice : public ::tpy::next_iter_mixin<__gen_relay_twice, std:
         S_DONE = 4,
     };
 
-    __gen_relay_twice()
-        : __state(S_INITIAL) {}
+    __gen_relay_twice() : __state(S_INITIAL) {}
 
     std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __next__();
     __gen_relay_twice& __iter__() { return *this; }
@@ -152,7 +149,8 @@ struct __gen_Hub_relay : public ::tpy::next_iter_mixin<__gen_Hub_relay, std::tup
     };
 
     __gen_Hub_relay(const Hub& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __next__();
     __gen_Hub_relay& __iter__() { return *this; }

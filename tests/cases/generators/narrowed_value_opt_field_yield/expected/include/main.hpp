@@ -63,7 +63,8 @@ struct __gen_Box_gen_field : public ::tpy::next_iter_mixin<__gen_Box_gen_field, 
     };
 
     __gen_Box_gen_field(const Box& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Box_gen_field& __iter__() { return *this; }
@@ -91,7 +92,8 @@ struct __gen_Box_gen_reassign : public ::tpy::next_iter_mixin<__gen_Box_gen_reas
     };
 
     __gen_Box_gen_reassign(const Box& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Box_gen_reassign& __iter__() { return *this; }
@@ -121,7 +123,8 @@ struct __gen_Box_gen_reguard : public ::tpy::next_iter_mixin<__gen_Box_gen_regua
     };
 
     __gen_Box_gen_reguard(const Box& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Box_gen_reguard& __iter__() { return *this; }
@@ -151,7 +154,8 @@ struct __gen_Box_gen_local_bind : public ::tpy::next_iter_mixin<__gen_Box_gen_lo
     };
 
     __gen_Box_gen_local_bind(const Box& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Box_gen_local_bind& __iter__() { return *this; }
@@ -182,7 +186,8 @@ struct __gen_Box_gen_try_body : public ::tpy::next_iter_mixin<__gen_Box_gen_try_
     };
 
     __gen_Box_gen_try_body(const Box& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Box_gen_try_body& __iter__() { return *this; }
@@ -215,7 +220,8 @@ struct __gen_Box_gen_local_bind_loop : public ::tpy::next_iter_mixin<__gen_Box_g
     };
 
     __gen_Box_gen_local_bind_loop(const Box& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Box_gen_local_bind_loop& __iter__() { return *this; }

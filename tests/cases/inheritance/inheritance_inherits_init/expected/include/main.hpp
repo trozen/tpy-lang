@@ -285,7 +285,9 @@ inline Opt::Opt(int32_t level) : level(level) {}
 //     # a native grandparent's `__init__` through an `__init__`-less class
 //     super().__init__(f"sub {code}")  # tpyc: ok
 //     self.code = code
-inline SubError::SubError(int32_t code) : AppError(std::format("sub {}", code)), code(code) {}
+inline SubError::SubError(int32_t code)
+    : AppError(std::format("sub {}", code)),
+      code(code) {}
 
 // def __init__(self, n: int32) -> None:
 //     # resolves to `Box.__init__` through `__init__`-less LabeledBox

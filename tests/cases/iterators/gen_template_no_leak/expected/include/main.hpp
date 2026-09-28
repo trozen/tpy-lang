@@ -69,7 +69,8 @@ struct __gen_skip_first : public ::tpy::next_iter_mixin<__gen_skip_first<T, T_it
     };
 
     __gen_skip_first(T_it&& it_)
-        : __state(S_INITIAL), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_skip_first& __iter__() { return *this; }
@@ -148,7 +149,9 @@ struct __gen_gtakewhile : public ::tpy::next_iter_mixin<__gen_gtakewhile<T, T_it
     };
 
     __gen_gtakewhile(F_pred&& pred_, T_it&& it_)
-        : __state(S_INITIAL), pred(std::forward<F_pred>(pred_)), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          pred(std::forward<F_pred>(pred_)),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_gtakewhile& __iter__() { return *this; }
@@ -225,7 +228,8 @@ struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag, int32_t> {
     };
 
     __gen_tag(const std::vector<int32_t>& it)
-        : __state(S_INITIAL), it(it) {}
+        : __state(S_INITIAL),
+          it(it) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_tag& __iter__() { return *this; }
@@ -256,7 +260,9 @@ struct __gen_first_n : public ::tpy::next_iter_mixin<__gen_first_n<T, T_it>, ::t
     };
 
     __gen_first_n(T_it&& it_, int32_t n_)
-        : __state(S_INITIAL), it(std::forward<T_it>(it_)), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          it(std::forward<T_it>(it_)),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_first_n& __iter__() { return *this; }
@@ -338,7 +344,9 @@ struct __gen_Doubler_each_twice : public ::tpy::next_iter_mixin<__gen_Doubler_ea
     };
 
     __gen_Doubler_each_twice(const Doubler& __self, const std::vector<int32_t>& it)
-        : __state(S_INITIAL), __self(__self), it(it) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          it(it) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Doubler_each_twice& __iter__() { return *this; }

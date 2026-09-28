@@ -30,7 +30,8 @@ struct __gen_byte_vals : public ::tpy::next_iter_mixin<__gen_byte_vals, ::tpy::B
     };
 
     __gen_byte_vals(::tpy::BytesView data_)
-        : __state(S_INITIAL), data(::tpy::Bytes(data_)) {}
+        : __state(S_INITIAL),
+          data(::tpy::Bytes(data_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_byte_vals& __iter__() { return *this; }

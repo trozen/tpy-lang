@@ -72,7 +72,9 @@ struct __coro_Counter___anext__ {
     };
 
     __coro_Counter___anext__(Counter& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -106,7 +108,9 @@ struct __coro_total {
     };
 
     __coro_total(const Counts& c)
-        : __state(S_INITIAL), __cancel_pending(false), c(c) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(c) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -131,7 +135,8 @@ struct __coro_main {
     };
 
     __coro_main()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

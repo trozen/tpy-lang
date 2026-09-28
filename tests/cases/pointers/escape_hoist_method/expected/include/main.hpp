@@ -53,7 +53,9 @@ inline std::ostream& operator<<(std::ostream& os, const Finder& obj) {
 // def __init__(self, x: int32, y: int32):
 //     self.x = x
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // def __init__(self) -> None:
 //     self.result = Point(0, 0)

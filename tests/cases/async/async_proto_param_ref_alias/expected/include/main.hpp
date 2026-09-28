@@ -61,7 +61,9 @@ struct __coro_bump {
     };
 
     __coro_bump(T_items&& items_)
-        : __state(S_INITIAL), __cancel_pending(false), items(std::forward<T_items>(items_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          items(std::forward<T_items>(items_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -136,7 +138,8 @@ struct __coro_amain {
     };
 
     __coro_amain()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

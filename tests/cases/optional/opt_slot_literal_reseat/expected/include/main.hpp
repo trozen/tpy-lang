@@ -92,7 +92,9 @@ struct __coro_coro_literal {
     };
 
     __coro_coro_literal(bool c_)
-        : __state(S_INITIAL), __cancel_pending(false), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(std::move(c_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -117,7 +119,8 @@ struct __gen_gen_literal : public ::tpy::next_iter_mixin<__gen_gen_literal, int3
     };
 
     __gen_gen_literal(bool c_)
-        : __state(S_INITIAL), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_literal& __iter__() { return *this; }
@@ -142,7 +145,8 @@ struct __gen_gen_call_then_literal : public ::tpy::next_iter_mixin<__gen_gen_cal
     };
 
     __gen_gen_call_then_literal(F& f)
-        : __state(S_INITIAL), f(f) {}
+        : __state(S_INITIAL),
+          f(f) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_call_then_literal& __iter__() { return *this; }

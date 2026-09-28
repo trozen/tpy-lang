@@ -213,7 +213,9 @@ inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // @readonly
 // def value(self) -> int32:
@@ -255,7 +257,9 @@ inline void Grid::bump_own() {
 // def __init__(self) -> None:
 //     self.rows = [[Point(1, 2)], [Point(3, 4)]]
 //     self.flat = [Point(5, 6)]
-inline Shelf::Shelf() : rows(std::vector<std::vector<Point>>{{Point(1, 2)}, {Point(3, 4)}}), flat(std::vector<Point>{Point(5, 6)}) {}
+inline Shelf::Shelf()
+    : rows(std::vector<std::vector<Point>>{{Point(1, 2)}, {Point(3, 4)}}),
+      flat(std::vector<Point>{Point(5, 6)}) {}
 
 // def bump_row(self, i: int32) -> None:
 //     """METHOD position: one field hop off `self`, then a subscript."""

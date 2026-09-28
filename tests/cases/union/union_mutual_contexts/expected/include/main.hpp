@@ -93,7 +93,9 @@ inline Lit::Lit(const ::tpy::BigInt& value) : value(value) {}
 // def __init__(self, left: Own[Box[Expr]], right: Own[Box[Expr]]) -> None:
 //     self.left = left
 //     self.right = right
-inline BinOp::BinOp(::tpystd::tplib::box::Box<Expr>&& left, ::tpystd::tplib::box::Box<Expr>&& right) : left(std::move(left)), right(std::move(right)) {}
+inline BinOp::BinOp(::tpystd::tplib::box::Box<Expr>&& left, ::tpystd::tplib::box::Box<Expr>&& right)
+    : left(std::move(left)),
+      right(std::move(right)) {}
 
 // def __init__(self, inner: Own[Box[Value]]) -> None:
 //     self.inner = inner

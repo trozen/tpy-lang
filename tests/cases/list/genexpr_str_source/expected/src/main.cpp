@@ -24,7 +24,8 @@ struct __genexpr_from_global_1_frame : public ::tpy::next_iter_mixin<__genexpr_f
     };
 
     __genexpr_from_global_1_frame(std::string_view __src_)
-        : __state(S_INITIAL), __src(std::string(__src_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(std::string(__src_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<std::tuple<std::string, double>, ::tpy::StopIteration> __next__();
     __genexpr_from_global_1_frame& __iter__() { return *this; }
@@ -81,7 +82,9 @@ struct __genexpr_from_local_2_frame : public ::tpy::next_iter_mixin<__genexpr_fr
     };
 
     __genexpr_from_local_2_frame(std::string_view __src_, F_scale&& scale_)
-        : __state(S_INITIAL), __src(std::move(__src_)), scale(std::forward<F_scale>(scale_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(std::move(__src_)),
+          scale(std::forward<F_scale>(scale_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<std::tuple<std::string, double>, ::tpy::StopIteration> __next__();
     __genexpr_from_local_2_frame& __iter__() { return *this; }

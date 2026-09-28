@@ -183,7 +183,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view m = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "generator" << " " << m << "\n";
+            std::cout << "generator" << " " << m << "\n";
         }
     }
     {
@@ -194,7 +194,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view m = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "generator" << " " << m << "\n";
+            std::cout << "generator" << " " << m << "\n";
         }
     }
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::run_async()));

@@ -65,12 +65,12 @@ void free(const std::vector<Rec>& rs) {
     const Rec& a = ::tpy::__getitem__(rs, 0);
     const Rec& b = ::tpy::__getitem__(rs, 1);
     const Rec& c = ::tpy::__getitem__(rs, 2);
-    std::vector<Rec> __tmp_3 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Key { return Key(r); });
-    std::cout << "free sorted_lam" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_3)) << "\n";
-    std::vector<Rec> __tmp_4 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); });
-    std::cout << "free sorted_cls" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_4)) << "\n";
-    std::vector<Rec> __tmp_5 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Key { return ::tpyapp::main::make_key(r); });
-    std::cout << "free sorted_own" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_5)) << "\n";
+    std::vector<Rec> __tmp_1 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Key { return Key(r); });
+    std::cout << "free sorted_lam" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_1)) << "\n";
+    std::vector<Rec> __tmp_2 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); });
+    std::cout << "free sorted_cls" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_2)) << "\n";
+    std::vector<Rec> __tmp_3 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Key { return ::tpyapp::main::make_key(r); });
+    std::cout << "free sorted_own" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_3)) << "\n";
     std::cout << "free min_lam" << " " << ::tpy::min_key(a, b, [](const Rec& r) -> Key { return Key(r); }).n << "\n";
     std::cout << "free min_cls" << " " << ::tpy::min_key(a, b, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); }).n << "\n";
     std::cout << "free max_lam" << " " << ::tpy::max_key(a, b, [](const Rec& r) -> Key { return Key(r); }).n << "\n";
@@ -79,8 +79,8 @@ void free(const std::vector<Rec>& rs) {
     std::cout << "free min3_cls" << " " << ::tpy::min3_key(a, b, c, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); }).n << "\n";
     std::cout << "free max3_own" << " " << ::tpy::max3_key(a, b, c, [](const Rec& r) -> Key { return ::tpyapp::main::make_key(r); }).n << "\n";
     std::cout << "free max3_cls" << " " << ::tpy::max3_key(a, b, c, [](const Rec& __tpy_fa0) -> Key { return Key(__tpy_fa0); }).n << "\n";
-    std::vector<Rec> __tmp_6 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Rec { return r; });
-    std::cout << "free sorted_id" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_6)) << "\n";
+    std::vector<Rec> __tmp_4 = ::tpy::builtin_sorted_key<Rec>(rs, [](const Rec& r) -> Rec { return r; });
+    std::cout << "free sorted_id" << " " << ::tpy::ListPrinter(::tpyapp::main::ns(__tmp_4)) << "\n";
     std::cout << "free min_id" << " " << ::tpy::min_key(a, b, [](const Rec& r) -> Rec { return r; }).n << "\n";
     std::cout << "free min_method" << " " << ::tpy::min_key(a, b, [](const Rec& r) -> int32_t { return r.score(); }).n << "\n";
     std::cout << "free max_helper" << " " << ::tpy::max_key(a, b, [](const Rec& r) -> int32_t { return ::tpyapp::main::helper(r); }).n << "\n";
@@ -165,13 +165,13 @@ void comp(const std::vector<std::vector<Rec>>& rss) {
 //     print("module lam", ns(g_lam))
 //     print("module cls", ns(g_cls))
 void main() {
-    std::vector<Rec> __tmp_7 = {Rec(1), Rec(3), Rec(2)};
-    ::tpyapp::main::free(__tmp_7);
+    std::vector<Rec> __tmp_1 = {Rec(1), Rec(3), Rec(2)};
+    ::tpyapp::main::free(__tmp_1);
     Holder().show();
-    std::vector<Rec> __tmp_8 = {Rec(1), Rec(3), Rec(2)};
+    std::vector<Rec> __tmp_2 = {Rec(1), Rec(3), Rec(2)};
     std::cout << "gen" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_0 = ::tpyapp::main::gen(__tmp_8);
+        auto __obj_0 = ::tpyapp::main::gen(__tmp_2);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -180,10 +180,10 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    std::vector<Rec> __tmp_9 = {Rec(1), Rec(3), Rec(2)};
-    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::co(__tmp_9))) << "\n";
-    std::vector<std::vector<Rec>> __tmp_10 = {{Rec(1), Rec(3)}, {Rec(5), Rec(4)}};
-    ::tpyapp::main::comp(__tmp_10);
+    std::vector<Rec> __tmp_3 = {Rec(1), Rec(3), Rec(2)};
+    std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::co(__tmp_3))) << "\n";
+    std::vector<std::vector<Rec>> __tmp_4 = {{Rec(1), Rec(3)}, {Rec(5), Rec(4)}};
+    ::tpyapp::main::comp(__tmp_4);
     std::cout << "module lam" << " " << ::tpy::ListPrinter(::tpyapp::main::ns((*g_lam))) << "\n";
     std::cout << "module cls" << " " << ::tpy::ListPrinter(::tpyapp::main::ns((*g_cls))) << "\n";
 }

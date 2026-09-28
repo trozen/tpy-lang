@@ -32,7 +32,8 @@ struct __coro_payload {
     };
 
     __coro_payload()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::tpy::Bytes> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

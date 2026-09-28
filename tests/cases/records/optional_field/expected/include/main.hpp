@@ -70,12 +70,16 @@ inline std::ostream& operator<<(std::ostream& os, const Line& obj) {
 // def __init__(self, x: int32, y: int32):
 //     self.x = x
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // def __init__(self, s: Point):
 //     self.start = copy(s)
 //     self.end = None
-inline Line::Line(const Point& s) : start(s), end(std::nullopt) {}
+inline Line::Line(const Point& s)
+    : start(s),
+      end(std::nullopt) {}
 
 // def set_end(self, e: Point) -> None:
 //     self.end = copy(e)

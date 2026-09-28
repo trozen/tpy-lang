@@ -157,7 +157,10 @@ struct __coro_async_body {
     };
 
     __coro_async_body(std::vector<int32_t>& xs, bool big_)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs), big(std::move(big_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs),
+          big(std::move(big_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -180,7 +183,9 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
     };
 
     __gen_gen_body(std::vector<int32_t>& xs, bool big_)
-        : __state(S_INITIAL), xs(xs), big(std::move(big_)) {}
+        : __state(S_INITIAL),
+          xs(xs),
+          big(std::move(big_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_body& __iter__() { return *this; }
@@ -207,7 +212,9 @@ inline int32_t Cell::bump(int32_t by) {
 //     self.items = [1, 2]
 //     # constructor, source is a param
 //     self.n = len([v for v in xs if big and grow(xs)])  # tpyc: warning(/Passing borrowed container 'xs' to non-readonly parameter/)
-inline Bag::Bag(std::vector<int32_t>& xs, bool big) : items(std::vector<int32_t>{1, 2}), n(::tpy::__len__(({
+inline Bag::Bag(std::vector<int32_t>& xs, bool big)
+    : items(std::vector<int32_t>{1, 2}),
+      n(::tpy::__len__(({
     std::vector<int32_t> __result;
     auto& __obj_0 = xs;
     __result.reserve(static_cast<std::size_t>(__obj_0.size()));

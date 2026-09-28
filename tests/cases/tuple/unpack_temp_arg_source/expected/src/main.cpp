@@ -68,8 +68,8 @@ __gen_gen gen() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        M __tmp_5 = M();
-        auto __tup_1 = ::tpyapp::main::f(__tmp_5);
+        M __tmp_1 = M();
+        auto __tup_1 = ::tpyapp::main::f(__tmp_1);
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -81,8 +81,8 @@ __gen_gen gen() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        ::tpy::Bytes __tmp_6 = ::tpy::bytes_literal_owned("hey", 3);
-        auto __tup_2 = ::tpyapp::main::send(::tpy::Union<std::monostate, const ::tpy::Bytes*, const ::tpy::ordered_map<std::string, std::string>*>{&__tmp_6});
+        ::tpy::Bytes __tmp_2 = ::tpy::bytes_literal_owned("hey", 3);
+        auto __tup_2 = ::tpyapp::main::send(::tpy::Union<std::monostate, const ::tpy::Bytes*, const ::tpy::ordered_map<std::string, std::string>*>{&__tmp_2});
         c = std::get<0>(__tup_2);
         d = std::get<1>(__tup_2);
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -116,12 +116,12 @@ __coro_co co() {
 //     c, d = ef(M())  # tpyc: ok
 //     return a + b + c + d
 std::expected<::tpy::BigInt, E> er_body() {
-    M __tmp_7 = M();
-    auto __tup_1 = ::tpyapp::main::f(__tmp_7);
+    M __tmp_1 = M();
+    auto __tup_1 = ::tpyapp::main::f(__tmp_1);
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
-    M __tmp_8 = M();
-    auto __tup_2 = ({ auto __er_1 = ::tpyapp::main::ef(__tmp_8); if (!__er_1.has_value()) return ::tpy::make_unexpected(std::move(__er_1.error())); ::tpy::unwrap_ref_move(*__er_1); });
+    M __tmp_2 = M();
+    auto __tup_2 = ({ auto __er_1 = ::tpyapp::main::ef(__tmp_2); if (!__er_1.has_value()) return ::tpy::make_unexpected(std::move(__er_1.error())); ::tpy::unwrap_ref_move(*__er_1); });
     const ::tpy::BigInt& c = std::get<0>(__tup_2);
     const ::tpy::BigInt& d = std::get<1>(__tup_2);
     return ((((((a) + (b))) + (c))) + (d));
@@ -193,13 +193,13 @@ std::expected<::tpy::BigInt, E> er_body() {
 //     r1.v = 9
 //     print("alias", r2.v, rn)
 void main() {
-    M __tmp_9 = M();
-    auto __tup_1 = ::tpyapp::main::f(__tmp_9);
+    M __tmp_1 = M();
+    auto __tup_1 = ::tpyapp::main::f(__tmp_1);
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
     std::cout << "free" << " " << a << " " << b << "\n";
-    ::tpy::Bytes __tmp_10 = ::tpy::bytes_literal_owned("hi", 2);
-    auto __tup_2 = ::tpyapp::main::send(::tpy::Union<std::monostate, const ::tpy::Bytes*, const ::tpy::ordered_map<std::string, std::string>*>{&__tmp_10});
+    ::tpy::Bytes __tmp_2 = ::tpy::bytes_literal_owned("hi", 2);
+    auto __tup_2 = ::tpyapp::main::send(::tpy::Union<std::monostate, const ::tpy::Bytes*, const ::tpy::ordered_map<std::string, std::string>*>{&__tmp_2});
     const ::tpy::BigInt& c = std::get<0>(__tup_2);
     const ::tpy::BigInt& d = std::get<1>(__tup_2);
     std::cout << "union_lift" << " " << c << " " << d << "\n";
@@ -211,13 +211,13 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "generator" << " " << x << "\n";
+            std::cout << "generator" << " " << x << "\n";
         }
     }
     std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::co())) << "\n";
     auto inner = []() -> ::tpy::BigInt {
-        M __tmp_11 = M();
-        auto __tup_3 = ::tpyapp::main::f(__tmp_11);
+        M __tmp_3 = M();
+        auto __tup_3 = ::tpyapp::main::f(__tmp_3);
         const ::tpy::BigInt& p = std::get<0>(__tup_3);
         const ::tpy::BigInt& q = std::get<1>(__tup_3);
         return ((p) + (q));
@@ -227,8 +227,8 @@ void main() {
     ::tpy::BigInt g;
     {
         try {
-            M __tmp_12 = M();
-            auto __tup_4 = ::tpyapp::main::f(__tmp_12);
+            M __tmp_4 = M();
+            auto __tup_4 = ::tpyapp::main::f(__tmp_4);
             e = std::get<0>(__tup_4);
             g = std::get<1>(__tup_4);
             std::cout << "try" << " " << e << " " << g << "\n";
@@ -243,8 +243,8 @@ void main() {
     auto __ctx_1 = Cm(M());
     auto w = __ctx_1.__enter__();
     try {
-        M __tmp_13 = M();
-        auto __tup_5 = ::tpyapp::main::f(__tmp_13);
+        M __tmp_5 = M();
+        auto __tup_5 = ::tpyapp::main::f(__tmp_5);
         h = std::get<0>(__tup_5);
         i = std::get<1>(__tup_5);
         std::cout << "with" << " " << w << " " << h << " " << i << "\n";
@@ -262,8 +262,8 @@ void main() {
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
     case 1: {
-        M __tmp_14 = M();
-        auto __tup_6 = ::tpyapp::main::f(__tmp_14);
+        M __tmp_6 = M();
+        auto __tup_6 = ::tpyapp::main::f(__tmp_6);
         const ::tpy::BigInt& j = std::get<0>(__tup_6);
         const ::tpy::BigInt& l = std::get<1>(__tup_6);
         std::cout << "match" << " " << j << " " << l << "\n";
@@ -274,8 +274,8 @@ void main() {
     }
     }
     for (int32_t it = 0; it < 2; ++it) {
-        M __tmp_15 = M();
-        auto __tup_7 = ::tpyapp::main::f(__tmp_15);
+        M __tmp_7 = M();
+        auto __tup_7 = ::tpyapp::main::f(__tmp_7);
         const ::tpy::BigInt& m1 = std::get<0>(__tup_7);
         const ::tpy::BigInt& m2 = std::get<1>(__tup_7);
         std::cout << "loop" << " " << it << " " << m1 << " " << m2 << "\n";
@@ -288,18 +288,18 @@ void main() {
         std::cout << "error_return E" << "\n";
         __after_try_2:;
     }
-    M __tmp_16 = M();
-    auto __tup_8 = ::tpyapp::main::gv<int32_t>(__tmp_16, 7);
+    M __tmp_8 = M();
+    auto __tup_8 = ::tpyapp::main::gv<int32_t>(__tmp_8, 7);
     int32_t g1 = std::get<0>(__tup_8);
     const ::tpy::BigInt& g2 = std::get<1>(__tup_8);
     std::cout << "generic" << " " << g1 << " " << g2 << "\n";
-    M __tmp_17 = M();
-    auto __tup_9 = ::tpyapp::main::sp(__tmp_17);
+    M __tmp_9 = M();
+    auto __tup_9 = ::tpyapp::main::sp(__tmp_9);
     std::string_view s = std::get<0>(__tup_9);
     const ::tpy::BigInt& n = std::get<1>(__tup_9);
     std::cout << "str_elem" << " " << s << " " << n << "\n";
-    M __tmp_18 = M();
-    auto __tup_10 = ::tpyapp::main::pick(__tmp_18);
+    M __tmp_10 = M();
+    auto __tup_10 = ::tpyapp::main::pick(__tmp_10);
     auto&& r1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_10)));
     auto&& r2 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_10)));
     const ::tpy::BigInt& rn = std::get<2>(__tup_10);
@@ -323,8 +323,8 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpyapp::main::main();
-    M __tmp_19 = M();
-    auto __tup_1 = ::tpyapp::main::f(__tmp_19);
+    M __tmp_1 = M();
+    auto __tup_1 = ::tpyapp::main::f(__tmp_1);
     ma = std::get<0>(__tup_1);
     mb = std::get<1>(__tup_1);
     std::cout << "module" << " " << ma << " " << mb << "\n";

@@ -79,7 +79,8 @@ struct __gen_boxes : public ::tpy::next_iter_mixin<__gen_boxes, Node> {
     };
 
     __gen_boxes(::tpy::BigInt n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<Node, ::tpy::StopIteration> __next__();
     __gen_boxes& __iter__() { return *this; }
@@ -107,7 +108,8 @@ struct __gen_fresh_records : public ::tpy::next_iter_mixin<__gen_fresh_records, 
     };
 
     __gen_fresh_records(const std::vector<Node>& src)
-        : __state(S_INITIAL), src(src) {}
+        : __state(S_INITIAL),
+          src(src) {}
 
     std::expected<Node, ::tpy::StopIteration> __next__();
     __gen_fresh_records& __iter__() { return *this; }
@@ -135,7 +137,8 @@ struct __gen_fresh_rows : public ::tpy::next_iter_mixin<__gen_fresh_rows, std::v
     };
 
     __gen_fresh_rows(const std::vector<std::vector<int32_t>>& src)
-        : __state(S_INITIAL), src(src) {}
+        : __state(S_INITIAL),
+          src(src) {}
 
     std::expected<std::vector<int32_t>, ::tpy::StopIteration> __next__();
     __gen_fresh_rows& __iter__() { return *this; }
@@ -163,7 +166,8 @@ struct __gen_Bag_drain : public ::tpy::next_iter_mixin<__gen_Bag_drain, Node> {
     };
 
     __gen_Bag_drain(const Bag& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<Node, ::tpy::StopIteration> __next__();
     __gen_Bag_drain& __iter__() { return *this; }

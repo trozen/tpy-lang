@@ -41,18 +41,14 @@ std::string guarded_call_subject(bool flag) {
     if (__match_subject_1 == "a") {
         if (flag) {
             return "a-flag";
-            goto __match_end_2;
         }
     }
     if (__match_subject_1 == "a") {
         return "a-plain";
-        goto __match_end_2;
     }
     {
         return "other";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -69,11 +65,9 @@ int32_t switch_call_subject(Counter& c) {
     switch (__match_subject_1) {
     case 1: {
         return 10;
-        break;
     }
     default: {
         return 20;
-        break;
     }
     }
     ::std::unreachable();
@@ -106,35 +100,30 @@ int32_t str_switch_call_subject() {
         case 'a': {
             if (__match_subject_1 == "a") {
                 return 1;
-                goto __match_end_2;
             }
             break;
         }
         case 'b': {
             if (__match_subject_1 == "b") {
                 return 2;
-                goto __match_end_2;
             }
             break;
         }
         case 'c': {
             if (__match_subject_1 == "c") {
                 return 3;
-                goto __match_end_2;
             }
             break;
         }
         case 'd': {
             if (__match_subject_1 == "d") {
                 return 4;
-                goto __match_end_2;
             }
             break;
         }
         case 'e': {
             if (__match_subject_1 == "e") {
                 return 5;
-                goto __match_end_2;
             }
             break;
         }
@@ -142,9 +131,7 @@ int32_t str_switch_call_subject() {
     }
     {
         return 0;
-        goto __match_end_2;
     }
-    __match_end_2:;
     return -1;
 }
 
@@ -160,7 +147,6 @@ std::string or_wildcard_switch(int32_t n) {
     switch (__match_subject_1) {
     default: {
         return "any";
-        break;
     }
     }
     return "unreached";
@@ -196,7 +182,6 @@ int32_t as_capture(int32_t n) {
         auto x = __match_subject_1;
         auto y = __match_subject_1;
         return (::tpy::add_check<int32_t>(x, y));
-        break;
     }
     }
     ::std::unreachable();
@@ -224,7 +209,6 @@ int32_t optional_inner_as_capture(std::optional<int32_t> n) {
             auto a = __match_inner_1;
             auto b = __match_inner_1;
             return (::tpy::add_check<int32_t>(a, b));
-            break;
         }
         }
     }
@@ -259,35 +243,30 @@ int32_t str_switch_as_capture(std::string_view s) {
         case 'a': {
             if (__match_subject_1 == "a") {
                 return 1;
-                goto __match_end_2;
             }
             break;
         }
         case 'b': {
             if (__match_subject_1 == "b") {
                 return 2;
-                goto __match_end_2;
             }
             break;
         }
         case 'c': {
             if (__match_subject_1 == "c") {
                 return 3;
-                goto __match_end_2;
             }
             break;
         }
         case 'd': {
             if (__match_subject_1 == "d") {
                 return 4;
-                goto __match_end_2;
             }
             break;
         }
         case 'e': {
             if (__match_subject_1 == "e") {
                 return 5;
-                goto __match_end_2;
             }
             break;
         }
@@ -299,9 +278,7 @@ int32_t str_switch_as_capture(std::string_view s) {
         std::cout << rest << "\n";
         std::cout << also << "\n";
         return (::tpy::add_check<int32_t>(::tpy::__len__(rest), ::tpy::__len__(also)));
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 

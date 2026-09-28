@@ -36,7 +36,9 @@ struct __coro_ident {
     };
 
     __coro_ident(::tpy::param_val_or_ref_t<T> x_)
-        : __state(S_INITIAL), __cancel_pending(false), x(x_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          x(x_) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -86,7 +88,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

@@ -350,7 +350,7 @@ void main() {
             auto __r_4 = __itr_3.__next__();
             if (!__r_4.has_value()) break;
             const ::tpy::BigInt& value = ::tpy::unwrap_ref(*__r_4);
-        std::cout << "generator" << " " << value << "\n";
+            std::cout << "generator" << " " << value << "\n";
         }
     }
     ::tpy::BigInt __tmp_4 = ::tpy::BigInt(-17);

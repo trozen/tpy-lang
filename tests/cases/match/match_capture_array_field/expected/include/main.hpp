@@ -40,6 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 //     self.arr = Array[int32, 2]()
 //     self.xs = [1]
 //     self.d = {"a": 1}
-inline H::H() : arr(std::array<int32_t, 2>()), xs(std::vector<int32_t>{1}), d(::tpy::ordered_map<std::string, int32_t>({{"a", 1}})) {}
+inline H::H()
+    : arr(std::array<int32_t, 2>()),
+      xs(std::vector<int32_t>{1}),
+      d(::tpy::ordered_map<std::string, int32_t>({{"a", 1}})) {}
 void __tpy_init();
 } // namespace tpyapp::main

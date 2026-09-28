@@ -122,7 +122,9 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
 }
 
 
-inline Base::Base(int32_t x, int32_t y) : x(x), y(y) {}
+inline Base::Base(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 inline bool Base::__eq__(const Base& other) const {
     return ((this->x == other.x) && (this->y == other.y));
@@ -136,7 +138,9 @@ inline std::string Base::__repr__() const {
 //     self.label = label
 inline Labeled::Labeled(std::string_view label) : label(label) {}
 
-inline Child::Child(int32_t x, int32_t y, int32_t z) : Base(x, y), z(z) {}
+inline Child::Child(int32_t x, int32_t y, int32_t z)
+    : Base(x, y),
+      z(z) {}
 
 inline bool Child::__eq__(const Child& other) const {
     return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
@@ -146,7 +150,10 @@ inline std::string Child::__repr__() const {
     return std::format("Child(x={}, y={}, z={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y), ::tpy::repr_of(this->z));
 }
 
-inline Tagged::Tagged(int32_t z) : Labeled(), Counted(), z(z) {}
+inline Tagged::Tagged(int32_t z)
+    : Labeled(),
+      Counted(),
+      z(z) {}
 
 inline bool Tagged::__eq__(const Tagged& other) const {
     return (this->z == other.z);

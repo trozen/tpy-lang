@@ -106,7 +106,8 @@ struct __gen_widgets : public ::tpy::next_iter_mixin<__gen_widgets, Widget> {
     };
 
     __gen_widgets(::tpy::BigInt n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<Widget, ::tpy::StopIteration> __next__();
     __gen_widgets& __iter__() { return *this; }
@@ -130,7 +131,8 @@ struct __gen_nodes : public ::tpy::next_iter_mixin<__gen_nodes, Node> {
     };
 
     __gen_nodes(::tpy::BigInt n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<Node, ::tpy::StopIteration> __next__();
     __gen_nodes& __iter__() { return *this; }
@@ -144,7 +146,9 @@ struct __gen_nodes : public ::tpy::next_iter_mixin<__gen_nodes, Node> {
 // def __init__(self, i: int) -> None:
 //     self.id = i
 //     self.tag = i * 10
-inline Widget::Widget(const ::tpy::BigInt& i) : id(i), tag(((i) * (::tpy::BigInt(10)))) {}
+inline Widget::Widget(const ::tpy::BigInt& i)
+    : id(i),
+      tag(((i) * (::tpy::BigInt(10)))) {}
 
 // def __init__(self, i: int) -> None:
 //     self.id = i

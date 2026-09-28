@@ -19,37 +19,28 @@ std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a, bool v
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         return "bird";
-        goto __match_end_2;
-        break;
     }
     case 1: {
         {
             if (verbose) {
                 return "verbose pet";
-                goto __match_end_2;
             }
         }
         {
             return "pet";
-            goto __match_end_2;
         }
-        break;
     }
     case 2: {
         {
             if (verbose) {
                 return "verbose pet";
-                goto __match_end_2;
             }
         }
         {
             return "pet";
-            goto __match_end_2;
         }
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
     return "";
 }
@@ -70,8 +61,6 @@ std::string find(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         auto& n = __case_0.name;
         return (::tpy::str_concat("bird: ", n));
-        goto __match_end_2;
-        break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
@@ -79,15 +68,12 @@ std::string find(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
             auto& n = __case_1.name;
             if ((n == "Rex")) {
                 return "found Rex";
-                goto __match_end_2;
             }
         }
         {
             auto& n = __case_1.name;
             return (::tpy::str_concat("other pet: ", n));
-            goto __match_end_2;
         }
-        break;
     }
     case 2: {
         auto& __case_2 = *std::get<2>(__match_subject_1);
@@ -95,18 +81,14 @@ std::string find(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
             auto& n = __case_2.name;
             if ((n == "Rex")) {
                 return "found Rex";
-                goto __match_end_2;
             }
         }
         {
             auto& n = __case_2.name;
             return (::tpy::str_concat("other pet: ", n));
-            goto __match_end_2;
         }
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
     return "";
 }

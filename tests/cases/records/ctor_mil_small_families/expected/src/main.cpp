@@ -52,7 +52,17 @@ void main() {
 //     self.ft = ft  # tpyc: warning(/copies A into field \(tuple element 0\)/)
 //     self.vt = vt
 //     self.tl = (1, 2)
-H::H(::tpy::Union<const A*, const B*> pu, const std::tuple<const A*, int32_t>& ft, const std::tuple<int32_t, int32_t>& vt) : items(std::nullopt), ox(std::nullopt), vu(5), un(std::monostate{}), pu(::tpy::to_value_variant<::tpy::Union<A, B>>(pu)), pr(A(3)), pn(std::monostate{}), ft(::tpy::tuple_to_storage<std::tuple<A, int32_t>>(ft)), vt(vt), tl(std::tuple<int32_t, int32_t>{1, 2}) {}
+H::H(::tpy::Union<const A*, const B*> pu, const std::tuple<const A*, int32_t>& ft, const std::tuple<int32_t, int32_t>& vt)
+    : items(std::nullopt),
+      ox(std::nullopt),
+      vu(5),
+      un(std::monostate{}),
+      pu(::tpy::to_value_variant<::tpy::Union<A, B>>(pu)),
+      pr(A(3)),
+      pn(std::monostate{}),
+      ft(::tpy::tuple_to_storage<std::tuple<A, int32_t>>(ft)),
+      vt(vt),
+      tl(std::tuple<int32_t, int32_t>{1, 2}) {}
 // G: int32 = 9
 //
 // main()

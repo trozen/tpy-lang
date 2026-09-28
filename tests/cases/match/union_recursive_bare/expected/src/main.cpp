@@ -16,11 +16,9 @@ int32_t head(const Tree& t) {
     case 0: {
         auto& __case_0 = std::get<0>(__match_subject_1.value);
         return __case_0.v;
-        break;
     }
     default: {
         return -1;
-        break;
     }
     }
     ::std::unreachable();

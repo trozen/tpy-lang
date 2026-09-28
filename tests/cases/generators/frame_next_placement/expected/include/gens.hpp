@@ -75,7 +75,9 @@ struct __gen_squares : public ::tpy::next_iter_mixin<__gen_squares, int32_t> {
     };
 
     __gen_squares(int32_t n_, const std::vector<int32_t>& skip)
-        : __state(S_INITIAL), n(std::move(n_)), skip(skip) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)),
+          skip(skip) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_squares& __iter__() { return *this; }
@@ -105,7 +107,9 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, int32_t> {
     };
 
     __gen_guarded(const std::vector<int32_t>& xs, std::vector<std::string>& log)
-        : __state(S_INITIAL), xs(xs), log(log) {}
+        : __state(S_INITIAL),
+          xs(xs),
+          log(log) {}
 
     __gen_guarded(__gen_guarded&&) = default;
     ~__gen_guarded() {
@@ -146,7 +150,8 @@ struct __gen_echoed : public ::tpy::next_iter_mixin<__gen_echoed, int32_t> {
     };
 
     __gen_echoed(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_echoed& __iter__() { return *this; }
@@ -174,7 +179,8 @@ struct __gen_Bag_evens : public ::tpy::next_iter_mixin<__gen_Bag_evens, ::tpy::v
     };
 
     __gen_Bag_evens(Bag& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<::tpy::val_or_ref<Cell>, ::tpy::StopIteration> __next__();
     __gen_Bag_evens& __iter__() { return *this; }

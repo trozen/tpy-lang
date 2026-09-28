@@ -185,7 +185,9 @@ struct __coro_Cell_update {
     };
 
     __coro_Cell_update(Cell& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -213,7 +215,8 @@ struct __gen_Cell_steps : public ::tpy::next_iter_mixin<__gen_Cell_steps, int32_
     };
 
     __gen_Cell_steps(Cell& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Cell_steps& __iter__() { return *this; }
@@ -242,7 +245,8 @@ struct __gen_Cell_rebound_steps : public ::tpy::next_iter_mixin<__gen_Cell_rebou
     };
 
     __gen_Cell_rebound_steps(Cell& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Cell_rebound_steps& __iter__() { return *this; }
@@ -271,7 +275,8 @@ struct __gen_Cell_readonly_steps : public ::tpy::next_iter_mixin<__gen_Cell_read
     };
 
     __gen_Cell_readonly_steps(const Cell& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Cell_readonly_steps& __iter__() { return *this; }
@@ -423,6 +428,8 @@ inline void Base::narrowed() {
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
-inline Derived::Derived(int32_t n) : Base(), n(n) {}
+inline Derived::Derived(int32_t n)
+    : Base(),
+      n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

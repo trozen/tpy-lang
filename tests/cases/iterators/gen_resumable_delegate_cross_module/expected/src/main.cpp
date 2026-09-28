@@ -152,7 +152,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "free:" << " " << v << "\n";
+            std::cout << "free:" << " " << v << "\n";
         }
     }
     {
@@ -162,7 +162,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "single:" << " " << v << "\n";
+            std::cout << "single:" << " " << v << "\n";
         }
     }
     {
@@ -172,7 +172,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        std::cout << "modcall:" << " " << v << "\n";
+            std::cout << "modcall:" << " " << v << "\n";
         }
     }
     {
@@ -183,7 +183,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        std::cout << "method:" << " " << v << "\n";
+            std::cout << "method:" << " " << v << "\n";
         }
     }
     {
@@ -193,7 +193,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        std::cout << "generic:" << " " << v << "\n";
+            std::cout << "generic:" << " " << v << "\n";
         }
     }
     {
@@ -204,7 +204,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-        std::cout << "genowner-imported:" << " " << v << "\n";
+            std::cout << "genowner-imported:" << " " << v << "\n";
         }
     }
     {
@@ -215,7 +215,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-        std::cout << "genowner-local:" << " " << v << "\n";
+            std::cout << "genowner-local:" << " " << v << "\n";
         }
     }
     ::tpyapp::gensrc::Bag bag = ::tpyapp::gensrc::Bag();
@@ -226,7 +226,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-        std::cout << "mutate:" << " " << v << "\n";
+            std::cout << "mutate:" << " " << v << "\n";
         }
     }
     std::cout << "mutate: after" << " " << bag.n << "\n";
@@ -237,8 +237,8 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
-        std::cout << "lazy:" << " " << v << "\n";
-        std::cout << "lazy: consumer pulled" << "\n";
+            std::cout << "lazy:" << " " << v << "\n";
+            std::cout << "lazy: consumer pulled" << "\n";
         }
     }
     {
@@ -248,10 +248,10 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_19);
-        std::cout << "abandon:" << " " << v << "\n";
-        if ((v == 1)) {
-            break;
-        }
+            std::cout << "abandon:" << " " << v << "\n";
+            if ((v == 1)) {
+                break;
+            }
         }
     }
     std::cout << "abandon: after break" << "\n";

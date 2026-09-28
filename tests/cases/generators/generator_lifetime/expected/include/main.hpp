@@ -339,7 +339,9 @@ struct __coro_work {
     };
 
     __coro_work(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs) {}
 
     __coro_work(__coro_work&&) = default;
     ~__coro_work() {
@@ -385,7 +387,9 @@ struct __coro_async_loop {
     };
 
     __coro_async_loop(const std::vector<std::vector<int32_t>>& rows)
-        : __state(S_INITIAL), __cancel_pending(false), rows(rows) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          rows(rows) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -414,7 +418,8 @@ struct __gen_items : public ::tpy::next_iter_mixin<__gen_items, int32_t> {
     };
 
     __gen_items(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     __gen_items(__gen_items&&) = default;
     ~__gen_items() {
@@ -460,7 +465,9 @@ struct __coro_async_gen_refill {
     };
 
     __coro_async_gen_refill(const std::vector<std::vector<int32_t>>& rows)
-        : __state(S_INITIAL), __cancel_pending(false), rows(rows) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          rows(rows) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -485,7 +492,8 @@ struct __gen_mutating : public ::tpy::next_iter_mixin<__gen_mutating, int32_t> {
     };
 
     __gen_mutating(std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     __gen_mutating(__gen_mutating&&) = default;
     ~__gen_mutating() {
@@ -528,7 +536,8 @@ struct __gen_plain_items : public ::tpy::next_iter_mixin<__gen_plain_items, int3
     };
 
     __gen_plain_items(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_plain_items& __iter__() { return *this; }
@@ -550,8 +559,7 @@ struct __gen_cells : public ::tpy::next_iter_mixin<__gen_cells, ::tpy::val_or_re
         S_DONE = 3,
     };
 
-    __gen_cells()
-        : __state(S_INITIAL) {}
+    __gen_cells() : __state(S_INITIAL) {}
 
     std::expected<::tpy::val_or_ref<Cell>, ::tpy::StopIteration> __next__();
     __gen_cells& __iter__() { return *this; }
@@ -576,7 +584,8 @@ struct __gen_cell_gen : public ::tpy::next_iter_mixin<__gen_cell_gen, int32_t> {
     };
 
     __gen_cell_gen(const Cell& c)
-        : __state(S_INITIAL), c(c) {}
+        : __state(S_INITIAL),
+          c(c) {}
 
     __gen_cell_gen(__gen_cell_gen&&) = default;
     ~__gen_cell_gen() {
@@ -620,7 +629,8 @@ struct __gen_holding : public ::tpy::next_iter_mixin<__gen_holding, int32_t> {
     };
 
     __gen_holding(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_holding& __iter__() { return *this; }
@@ -650,7 +660,9 @@ struct __gen_watched : public ::tpy::next_iter_mixin<__gen_watched, int32_t> {
     };
 
     __gen_watched(const std::vector<int32_t>& xs, std::vector<int32_t>& done)
-        : __state(S_INITIAL), xs(xs), done(done) {}
+        : __state(S_INITIAL),
+          xs(xs),
+          done(done) {}
 
     __gen_watched(__gen_watched&&) = default;
     ~__gen_watched() {
@@ -695,7 +707,9 @@ struct __gen_cell_items : public ::tpy::next_iter_mixin<__gen_cell_items, int32_
     };
 
     __gen_cell_items(const std::vector<Cell>& xs, std::vector<int32_t>& log)
-        : __state(S_INITIAL), xs(xs), log(log) {}
+        : __state(S_INITIAL),
+          xs(xs),
+          log(log) {}
 
     __gen_cell_items(__gen_cell_items&&) = default;
     ~__gen_cell_items() {
@@ -737,7 +751,8 @@ struct __gen_spans : public ::tpy::next_iter_mixin<__gen_spans, int32_t> {
     };
 
     __gen_spans(std::span<const int32_t> xs_)
-        : __state(S_INITIAL), xs(std::move(xs_)) {}
+        : __state(S_INITIAL),
+          xs(std::move(xs_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_spans& __iter__() { return *this; }
@@ -763,8 +778,7 @@ struct __gen_gen_span_arg : public ::tpy::next_iter_mixin<__gen_gen_span_arg, in
         S_DONE = 3,
     };
 
-    __gen_gen_span_arg()
-        : __state(S_INITIAL) {}
+    __gen_gen_span_arg() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_span_arg& __iter__() { return *this; }
@@ -795,7 +809,9 @@ struct __gen_gen_branch : public ::tpy::next_iter_mixin<__gen_gen_branch, int32_
     };
 
     __gen_gen_branch(bool c_, const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), c(std::move(c_)), xs(xs) {}
+        : __state(S_INITIAL),
+          c(std::move(c_)),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_branch& __iter__() { return *this; }
@@ -820,7 +836,8 @@ struct __gen_gen_finally : public ::tpy::next_iter_mixin<__gen_gen_finally, int3
     };
 
     __gen_gen_finally(std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_finally& __iter__() { return *this; }
@@ -849,7 +866,8 @@ struct __gen_gen_rows : public ::tpy::next_iter_mixin<__gen_gen_rows, int32_t> {
     };
 
     __gen_gen_rows(const std::vector<std::vector<int32_t>>& rows)
-        : __state(S_INITIAL), rows(rows) {}
+        : __state(S_INITIAL),
+          rows(rows) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_rows& __iter__() { return *this; }
@@ -882,7 +900,8 @@ struct __gen_gen_refill_del : public ::tpy::next_iter_mixin<__gen_gen_refill_del
     };
 
     __gen_gen_refill_del(const std::vector<std::vector<int32_t>>& rows)
-        : __state(S_INITIAL), rows(rows) {}
+        : __state(S_INITIAL),
+          rows(rows) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_refill_del& __iter__() { return *this; }
@@ -908,8 +927,7 @@ struct __gen_gen_loop_var_del : public ::tpy::next_iter_mixin<__gen_gen_loop_var
         S_DONE = 3,
     };
 
-    __gen_gen_loop_var_del()
-        : __state(S_INITIAL) {}
+    __gen_gen_loop_var_del() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_loop_var_del& __iter__() { return *this; }
@@ -934,7 +952,8 @@ struct __gen_gen_rebuild : public ::tpy::next_iter_mixin<__gen_gen_rebuild, int3
     };
 
     __gen_gen_rebuild(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_rebuild& __iter__() { return *this; }
@@ -960,8 +979,7 @@ struct __gen_gen_with_scalar_exit : public ::tpy::next_iter_mixin<__gen_gen_with
         S_DONE = 5,
     };
 
-    __gen_gen_with_scalar_exit()
-        : __state(S_INITIAL) {}
+    __gen_gen_with_scalar_exit() : __state(S_INITIAL) {}
 
     __gen_gen_with_scalar_exit(__gen_gen_with_scalar_exit&&) = default;
     ~__gen_gen_with_scalar_exit() {
@@ -1006,7 +1024,9 @@ struct __gen_gen_user_read : public ::tpy::next_iter_mixin<__gen_gen_user_read, 
     };
 
     __gen_gen_user_read(const std::vector<int32_t>& xs, const Lookup& t)
-        : __state(S_INITIAL), xs(xs), t(t) {}
+        : __state(S_INITIAL),
+          xs(xs),
+          t(t) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_user_read& __iter__() { return *this; }
@@ -1030,7 +1050,8 @@ struct __gen_gen_del : public ::tpy::next_iter_mixin<__gen_gen_del, int32_t> {
     };
 
     __gen_gen_del(std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_del& __iter__() { return *this; }
@@ -1062,7 +1083,8 @@ struct __gen_Rows_walk : public ::tpy::next_iter_mixin<__gen_Rows_walk, int32_t>
     };
 
     __gen_Rows_walk(Rows& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Rows_walk& __iter__() { return *this; }
@@ -1093,7 +1115,8 @@ struct __gen_Rows_first_row : public ::tpy::next_iter_mixin<__gen_Rows_first_row
     };
 
     __gen_Rows_first_row(const Rows& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Rows_first_row& __iter__() { return *this; }
@@ -1128,7 +1151,8 @@ struct __gen_Rows_walk_count : public ::tpy::next_iter_mixin<__gen_Rows_walk_cou
     };
 
     __gen_Rows_walk_count(Rows& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Rows_walk_count& __iter__() { return *this; }
@@ -1165,7 +1189,8 @@ struct __gen_Rows_walk_plain : public ::tpy::next_iter_mixin<__gen_Rows_walk_pla
     };
 
     __gen_Rows_walk_plain(const Rows& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Rows_walk_plain& __iter__() { return *this; }
@@ -1217,7 +1242,9 @@ inline void Refill::__exit__(std::monostate et, const ::tpy::BaseException* ev, 
 // def __init__(self) -> None:
 //     self.xs = [3, 4]
 //     self.n = 0
-inline Tally::Tally() : xs(std::vector<int32_t>{3, 4}), n(0) {}
+inline Tally::Tally()
+    : xs(std::vector<int32_t>{3, 4}),
+      n(0) {}
 
 // def __enter__(self) -> "Tally":
 //     return self
@@ -1274,7 +1301,9 @@ inline bool Lookup::__contains__(int32_t i) const {
 // def __init__(self) -> None:
 //     self.rows = [[5, 6], [7, 8]]
 //     self.seen = 0
-inline Rows::Rows() : rows(std::vector<std::vector<int32_t>>{{5, 6}, {7, 8}}), seen(0) {}
+inline Rows::Rows()
+    : rows(std::vector<std::vector<int32_t>>{{5, 6}, {7, 8}}),
+      seen(0) {}
 // def first(g: Iterator[int32]) -> int32:
 //     for v in g:
 //         return v

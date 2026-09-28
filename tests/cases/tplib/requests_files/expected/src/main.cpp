@@ -75,8 +75,8 @@ void send_redirect(::tpy::ordered_map<std::string, ::tpystd::tplib::requests::Fi
     ::tpystd::http::client::HTTPConnection h1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
     h1.sock = std::move(c);
     s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h1)));
-    ::tpy::Union<bool, std::string> __tmp_2 = true;
-    ::tpystd::tplib::requests::Response r = s.post("http://api.test/submit", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, &(files));
+    ::tpy::Union<bool, std::string> __tmp_1 = true;
+    ::tpystd::tplib::requests::Response r = s.post("http://api.test/submit", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, nullptr, nullptr, std::nullopt, true, __tmp_1, nullptr, &(files));
     std::cout << r.status_code << " " << r.url << "\n";
     b.recv(65536);
     std::cout << ::tpy::BytesPrinter(d.recv(65536)) << "\n";
@@ -100,21 +100,21 @@ void send_redirect(::tpy::ordered_map<std::string, ::tpystd::tplib::requests::Fi
 //     # 307 redirect forwards the multipart body to the next hop
 //     send_redirect({"doc": FileField("a.txt", b"hello")})
 void main() {
-    ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_3 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"doc", ::tpystd::tplib::requests::FileField("a.txt", ::tpy::bytes_literal_owned("hello", 5))}});
-    ::tpyapp::main::send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, __tmp_3);
-    ::tpy::ordered_map<std::string, std::string> __tmp_4 = ::tpy::ordered_map<std::string, std::string>({{"caption", "hi"}});
-    ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_5 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"doc", ::tpystd::tplib::requests::FileField("a.txt", ::tpy::bytes_literal_owned("hello", 5))}, {"pic", ::tpystd::tplib::requests::FileField("logo.png", ::tpy::bytes_literal_owned("img", 3), "image/png")}});
+    ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_1 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"doc", ::tpystd::tplib::requests::FileField("a.txt", ::tpy::bytes_literal_owned("hello", 5))}});
+    ::tpyapp::main::send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, __tmp_1);
+    ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"caption", "hi"}});
+    ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_3 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"doc", ::tpystd::tplib::requests::FileField("a.txt", ::tpy::bytes_literal_owned("hello", 5))}, {"pic", ::tpystd::tplib::requests::FileField("logo.png", ::tpy::bytes_literal_owned("img", 3), "image/png")}});
+    ::tpyapp::main::send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_2}, __tmp_3);
+    ::tpy::Bytes __tmp_4 = ::tpy::bytes_literal_owned("ignored-bytes", 13);
+    ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_5 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"doc", ::tpystd::tplib::requests::FileField("a.txt", ::tpy::bytes_literal_owned("hello", 5))}});
     ::tpyapp::main::send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_4}, __tmp_5);
-    ::tpy::Bytes __tmp_6 = ::tpy::bytes_literal_owned("ignored-bytes", 13);
-    ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_7 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"doc", ::tpystd::tplib::requests::FileField("a.txt", ::tpy::bytes_literal_owned("hello", 5))}});
-    ::tpyapp::main::send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_6}, __tmp_7);
     ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> no_files = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>();
-    ::tpy::ordered_map<std::string, std::string> __tmp_8 = ::tpy::ordered_map<std::string, std::string>({{"field", "v"}});
-    ::tpyapp::main::send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_8}, no_files);
-    ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_9 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"na\"me", ::tpystd::tplib::requests::FileField("re\r\nport.txt", ::tpy::bytes_literal_owned("x", 1))}});
-    ::tpyapp::main::send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, __tmp_9);
-    ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_10 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"doc", ::tpystd::tplib::requests::FileField("a.txt", ::tpy::bytes_literal_owned("hello", 5))}});
-    ::tpyapp::main::send_redirect(__tmp_10);
+    ::tpy::ordered_map<std::string, std::string> __tmp_6 = ::tpy::ordered_map<std::string, std::string>({{"field", "v"}});
+    ::tpyapp::main::send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_6}, no_files);
+    ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_7 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"na\"me", ::tpystd::tplib::requests::FileField("re\r\nport.txt", ::tpy::bytes_literal_owned("x", 1))}});
+    ::tpyapp::main::send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, __tmp_7);
+    ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_8 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"doc", ::tpystd::tplib::requests::FileField("a.txt", ::tpy::bytes_literal_owned("hello", 5))}});
+    ::tpyapp::main::send_redirect(__tmp_8);
 }
 
 // # tplib.requests: files= builds a multipart/form-data body from FileField

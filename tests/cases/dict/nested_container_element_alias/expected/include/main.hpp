@@ -93,7 +93,10 @@ struct __coro_deep_async {
     };
 
     __coro_deep_async(std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i_)
-        : __state(S_INITIAL), __cancel_pending(false), cube(cube), i(std::move(i_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          cube(cube),
+          i(std::move(i_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -123,7 +126,9 @@ struct __gen_deep_gen : public ::tpy::next_iter_mixin<__gen_deep_gen, int32_t> {
     };
 
     __gen_deep_gen(std::vector<std::vector<std::vector<int32_t>>>& cube, int32_t i_)
-        : __state(S_INITIAL), cube(cube), i(std::move(i_)) {}
+        : __state(S_INITIAL),
+          cube(cube),
+          i(std::move(i_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_deep_gen& __iter__() { return *this; }

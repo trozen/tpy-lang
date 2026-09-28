@@ -40,7 +40,8 @@ struct __gen_gen_nested_def_return : public ::tpy::next_iter_mixin<__gen_gen_nes
     };
 
     __gen_gen_nested_def_return(std::string_view s_)
-        : __state(S_INITIAL), s(std::string(s_)) {}
+        : __state(S_INITIAL),
+          s(std::string(s_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_nested_def_return& __iter__() { return *this; }

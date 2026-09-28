@@ -21,8 +21,8 @@ void or_truthy_skips_ctor(Box& a, std::vector<::tpy::BigInt>& log) {
 //     c = a and Box(5, log)  # tpyc: type(/Box/)
 //     return c.n
 ::tpy::BigInt and_truthy_returns_ctor(Box& a, std::vector<::tpy::BigInt>& log) {
-    std::optional<Box> __select_slot_2;
-    Box& c = (true ? __select_slot_2.emplace(Box(::tpy::BigInt(5), log)) : a);
+    std::optional<Box> __select_slot_1;
+    Box& c = (true ? __select_slot_1.emplace(Box(::tpy::BigInt(5), log)) : a);
     return c.n;
 }
 
@@ -35,11 +35,11 @@ void or_truthy_skips_ctor(Box& a, std::vector<::tpy::BigInt>& log) {
 void main() {
     std::vector<::tpy::BigInt> seed = std::vector<::tpy::BigInt>{};
     std::vector<::tpy::BigInt> log1 = std::vector<::tpy::BigInt>{};
-    Box __tmp_3 = Box(::tpy::BigInt(3), seed);
-    ::tpyapp::main::or_truthy_skips_ctor(__tmp_3, log1);
+    Box __tmp_1 = Box(::tpy::BigInt(3), seed);
+    ::tpyapp::main::or_truthy_skips_ctor(__tmp_1, log1);
     std::vector<::tpy::BigInt> log2 = std::vector<::tpy::BigInt>{};
-    Box __tmp_4 = Box(::tpy::BigInt(3), seed);
-    std::cout << ::tpyapp::main::and_truthy_returns_ctor(__tmp_4, log2) << " " << ::tpy::__len__(log2) << "\n";
+    Box __tmp_2 = Box(::tpy::BigInt(3), seed);
+    std::cout << ::tpyapp::main::and_truthy_returns_ctor(__tmp_2, log2) << " " << ::tpy::__len__(log2) << "\n";
 }
 
 // main()

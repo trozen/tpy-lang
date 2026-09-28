@@ -36,7 +36,9 @@ struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, ::tpy::yield_sl
     };
 
     __gen_pair(::tpy::param_val_or_ref_t<T> a_, ::tpy::param_val_or_ref_t<T> b_)
-        : __state(S_INITIAL), a(a_), b(b_) {}
+        : __state(S_INITIAL),
+          a(a_),
+          b(b_) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_pair& __iter__() { return *this; }
@@ -92,8 +94,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_gen()
-        : __state(S_INITIAL) {}
+    __gen_gen() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

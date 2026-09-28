@@ -44,7 +44,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_1);
-        p.x = (::tpy::mul_check<int32_t>(p.x, 10));
+            p.x = (::tpy::mul_check<int32_t>(p.x, 10));
         }
     }
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";

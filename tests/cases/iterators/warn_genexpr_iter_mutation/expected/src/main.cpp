@@ -41,7 +41,8 @@ struct __genexpr_free_fn_3_frame : public ::tpy::next_iter_mixin<__genexpr_free_
     };
 
     __genexpr_free_fn_3_frame(const std::vector<int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_free_fn_3_frame& __iter__() { return *this; }
@@ -85,10 +86,10 @@ int32_t free_fn(std::vector<int32_t>& xs, bool big) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        if (big) {
-            xs.push_back(v);
-        }
-        t = ::tpy::add_check<int32_t>(t, v);
+            if (big) {
+                xs.push_back(v);
+            }
+            t = ::tpy::add_check<int32_t>(t, v);
         }
     }
     return t;
@@ -113,7 +114,8 @@ struct __genexpr_through_callee_4_frame : public ::tpy::next_iter_mixin<__genexp
     };
 
     __genexpr_through_callee_4_frame(const std::vector<int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_through_callee_4_frame& __iter__() { return *this; }
@@ -157,10 +159,10 @@ int32_t through_callee(std::vector<int32_t>& xs, bool big) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        if (big) {
-            ::tpyapp::main::grow(xs);
-        }
-        t = ::tpy::add_check<int32_t>(t, v);
+            if (big) {
+                ::tpyapp::main::grow(xs);
+            }
+            t = ::tpy::add_check<int32_t>(t, v);
         }
     }
     return t;
@@ -185,7 +187,8 @@ struct __genexpr_in_zip_5_frame : public ::tpy::next_iter_mixin<__genexpr_in_zip
     };
 
     __genexpr_in_zip_5_frame(const std::vector<int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_in_zip_5_frame& __iter__() { return *this; }
@@ -229,13 +232,13 @@ int32_t in_zip(std::vector<int32_t>& xs, const std::vector<int32_t>& ys, bool bi
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        const auto& __tup_1 = __for_tup_0;
-        int32_t a = std::get<0>(__tup_1);
-        int32_t b = std::get<1>(__tup_1);
-        if (big) {
-            xs.push_back(a);
-        }
-        t = ::tpy::add_check<int32_t>(t, (::tpy::mul_check<int32_t>(a, b)));
+            const auto& __tup_1 = __for_tup_0;
+            int32_t a = std::get<0>(__tup_1);
+            int32_t b = std::get<1>(__tup_1);
+            if (big) {
+                xs.push_back(a);
+            }
+            t = ::tpy::add_check<int32_t>(t, (::tpy::mul_check<int32_t>(a, b)));
         }
     }
     return t;
@@ -262,7 +265,8 @@ struct __genexpr_unpack_6_frame : public ::tpy::next_iter_mixin<__genexpr_unpack
     };
 
     __genexpr_unpack_6_frame(const std::vector<std::tuple<int32_t, int32_t>>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_unpack_6_frame& __iter__() { return *this; }
@@ -309,10 +313,10 @@ int32_t unpack(std::vector<std::tuple<int32_t, int32_t>>& ps, bool big) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t s = ::tpy::unwrap_ref(*__r_1);
-        if (big) {
-            ps.push_back(std::tuple<int32_t, int32_t>{s, s});
-        }
-        t = ::tpy::add_check<int32_t>(t, s);
+            if (big) {
+                ps.push_back(std::tuple<int32_t, int32_t>{s, s});
+            }
+            t = ::tpy::add_check<int32_t>(t, s);
         }
     }
     return t;
@@ -338,11 +342,13 @@ struct __genexpr_dict_view_7_frame : public ::tpy::next_iter_mixin<__genexpr_dic
     };
 
     __genexpr_dict_view_7_frame(T___src&& __src_)
-        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)) {}
+        : __state(S_INITIAL),
+          __src(std::forward<T___src>(__src_)) {}
 
     template <typename F_make>
     __genexpr_dict_view_7_frame(std::in_place_t, F_make&& make_)
-        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()) {}
+        : __state(S_INITIAL),
+          __src(std::forward<F_make>(make_)()) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_dict_view_7_frame& __iter__() { return *this; }
@@ -404,10 +410,10 @@ int32_t dict_view(::tpy::ordered_map<int32_t, int32_t>& d, bool big) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        if (big) {
-            ::tpy::dict_pop(d, v);
-        }
-        t = ::tpy::add_check<int32_t>(t, v);
+            if (big) {
+                ::tpy::dict_pop(d, v);
+            }
+            t = ::tpy::add_check<int32_t>(t, v);
         }
     }
     return t;
@@ -440,10 +446,10 @@ __gen_gen_body gen_body(std::vector<int32_t>& xs, bool big) {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 int32_t v = ::tpy::unwrap_ref(*__r_1);
-            if (big) {
-                xs.push_back(v);
-            }
-            t = ::tpy::add_check<int32_t>(t, v);
+                if (big) {
+                    xs.push_back(v);
+                }
+                t = ::tpy::add_check<int32_t>(t, v);
             }
         }
         __state = S_DONE;
@@ -482,7 +488,9 @@ struct __genexpr_view_yield_10_frame : public ::tpy::next_iter_mixin<__genexpr_v
     };
 
     __genexpr_view_yield_10_frame(const std::vector<int32_t>& __src, F_ys&& ys_)
-        : __state(S_INITIAL), __src(__src), ys(std::forward<F_ys>(ys_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          ys(std::forward<F_ys>(ys_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<std::string_view, ::tpy::StopIteration> __next__();
     __genexpr_view_yield_10_frame& __iter__() { return *this; }
@@ -528,10 +536,10 @@ std::string view_yield(std::vector<std::string>& ys, const std::vector<int32_t>&
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-        if (big) {
-            ys.push_back("zzzzzzzz");
-        }
-        out += s;
+            if (big) {
+                ys.push_back("zzzzzzzz");
+            }
+            out += s;
         }
     }
     return out;
@@ -559,7 +567,9 @@ struct __genexpr_source_is_capture_11_frame : public ::tpy::next_iter_mixin<__ge
     };
 
     __genexpr_source_is_capture_11_frame(const std::vector<int32_t>& __src, F_xs&& xs_)
-        : __state(S_INITIAL), __src(__src), xs(std::forward<F_xs>(xs_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          xs(std::forward<F_xs>(xs_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_source_is_capture_11_frame& __iter__() { return *this; }
@@ -609,10 +619,10 @@ int32_t source_is_capture(std::vector<int32_t>& xs, bool big) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        if (big) {
-            xs.push_back(v);
-        }
-        t = ::tpy::add_check<int32_t>(t, v);
+            if (big) {
+                xs.push_back(v);
+            }
+            t = ::tpy::add_check<int32_t>(t, v);
         }
     }
     return t;
@@ -637,7 +647,8 @@ struct __genexpr_inner_12_frame : public ::tpy::next_iter_mixin<__genexpr_inner_
     };
 
     __genexpr_inner_12_frame(const std::vector<int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_inner_12_frame& __iter__() { return *this; }
@@ -683,10 +694,10 @@ int32_t nested_def(std::vector<int32_t>& xs, bool big) {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 int32_t v = ::tpy::unwrap_ref(*__r_1);
-            if (big) {
-                xs.push_back(v);
-            }
-            t = ::tpy::add_check<int32_t>(t, v);
+                if (big) {
+                    xs.push_back(v);
+                }
+                t = ::tpy::add_check<int32_t>(t, v);
             }
         }
         return t;
@@ -715,7 +726,9 @@ struct __genexpr_capture_moved_13_frame : public ::tpy::next_iter_mixin<__genexp
     };
 
     __genexpr_capture_moved_13_frame(const std::vector<int32_t>& __src, F_ks&& ks_)
-        : __state(S_INITIAL), __src(__src), ks(std::forward<F_ks>(ks_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          ks(std::forward<F_ks>(ks_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_capture_moved_13_frame& __iter__() { return *this; }
@@ -762,9 +775,9 @@ int32_t capture_moved(const std::vector<int32_t>& xs) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::vector<int32_t> __tmp_1 = ks;
-        n = ::tpy::__len__(::tpyapp::main::take(std::move(__tmp_1)));
-        break;
+            std::vector<int32_t> __tmp_1 = ks;
+            n = ::tpy::__len__(::tpyapp::main::take(std::move(__tmp_1)));
+            break;
         }
     }
     return (::tpy::add_check<int32_t>(n, ::tpy::__len__(ks)));
@@ -792,7 +805,10 @@ struct __genexpr_range_capture_14_frame : public ::tpy::next_iter_mixin<__genexp
     };
 
     __genexpr_range_capture_14_frame(int32_t __r0_, int32_t __r1_, F_seen&& seen_)
-        : __state(S_INITIAL), __r0(std::move(__r0_)), __r1(std::move(__r1_)), seen(std::forward<F_seen>(seen_)) {}
+        : __state(S_INITIAL),
+          __r0(std::move(__r0_)),
+          __r1(std::move(__r1_)),
+          seen(std::forward<F_seen>(seen_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_range_capture_14_frame& __iter__() { return *this; }
@@ -845,7 +861,7 @@ int32_t range_capture(int32_t n) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        seen.insert((::tpy::add_check<int32_t>(v, 1)));
+            seen.insert((::tpy::add_check<int32_t>(v, 1)));
         }
     }
     return ::tpy::__len__(seen);
@@ -873,7 +889,9 @@ struct __genexpr_arg_capture_15_frame : public ::tpy::next_iter_mixin<__genexpr_
     };
 
     __genexpr_arg_capture_15_frame(const std::vector<int32_t>& __src, F_seen&& seen_)
-        : __state(S_INITIAL), __src(__src), seen(std::forward<F_seen>(seen_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          seen(std::forward<F_seen>(seen_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_arg_capture_15_frame& __iter__() { return *this; }
@@ -910,8 +928,8 @@ __genexpr_arg_capture_15_frame<F_seen> __genexpr_arg_capture_15(const std::vecto
 //     # mutated through it
 //     return drain(x for x in xs if x not in seen)
 int32_t arg_capture(const std::vector<int32_t>& xs, const ::tpy::ordered_set<int32_t>& seen) {
-    auto __tmp_2 = ::tpyapp::main::__genexpr_arg_capture_15(xs, seen);
-    return ::tpyapp::main::drain(__tmp_2);
+    auto __tmp_1 = ::tpyapp::main::__genexpr_arg_capture_15(xs, seen);
+    return ::tpyapp::main::drain(__tmp_1);
 }
 
 namespace {
@@ -936,7 +954,9 @@ struct __genexpr_capture_grows_16_frame : public ::tpy::next_iter_mixin<__genexp
     };
 
     __genexpr_capture_grows_16_frame(const std::vector<int32_t>& __src, F_seen&& seen_)
-        : __state(S_INITIAL), __src(__src), seen(std::forward<F_seen>(seen_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          seen(std::forward<F_seen>(seen_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_capture_grows_16_frame& __iter__() { return *this; }
@@ -987,8 +1007,8 @@ int32_t capture_grows(const std::vector<int32_t>& xs) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        seen.insert(v);
-        n = ::tpy::add_check<int32_t>(n, 1);
+            seen.insert(v);
+            n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
     return n;
@@ -1016,7 +1036,9 @@ struct __genexpr_str_capture_grows_17_frame : public ::tpy::next_iter_mixin<__ge
     };
 
     __genexpr_str_capture_grows_17_frame(const std::vector<std::string>& __src, F_seen&& seen_)
-        : __state(S_INITIAL), __src(__src), seen(std::forward<F_seen>(seen_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          seen(std::forward<F_seen>(seen_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __genexpr_str_capture_grows_17_frame& __iter__() { return *this; }
@@ -1065,8 +1087,8 @@ int32_t str_capture_grows(const std::vector<std::string>& ws) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view w = ::tpy::unwrap_ref(*__r_1);
-        seen.insert(std::string(w));
-        n = ::tpy::add_check<int32_t>(n, 1);
+            seen.insert(std::string(w));
+            n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
     return n;
@@ -1093,7 +1115,9 @@ struct __genexpr_owned_str_yield_18_frame : public ::tpy::next_iter_mixin<__gene
     };
 
     __genexpr_owned_str_yield_18_frame(const std::vector<int32_t>& __src, F_ys&& ys_)
-        : __state(S_INITIAL), __src(__src), ys(std::forward<F_ys>(ys_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          ys(std::forward<F_ys>(ys_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __genexpr_owned_str_yield_18_frame& __iter__() { return *this; }
@@ -1138,8 +1162,8 @@ std::string owned_str_yield(std::vector<std::string>& ys, const std::vector<int3
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-        ys.push_back("!");
-        out += s;
+            ys.push_back("!");
+            out += s;
         }
     }
     return (::tpy::str_concat(out, ::tpy::fixed_to_str<int32_t>(::tpy::__len__(ys))));
@@ -1167,7 +1191,9 @@ struct __genexpr_record_from_source_19_frame : public ::tpy::next_iter_mixin<__g
     };
 
     __genexpr_record_from_source_19_frame(std::vector<Rec>& __src, F_seen&& seen_)
-        : __state(S_INITIAL), __src(__src), seen(std::forward<F_seen>(seen_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          seen(std::forward<F_seen>(seen_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<::tpy::val_or_ref<Rec>, ::tpy::StopIteration> __next__();
     __genexpr_record_from_source_19_frame& __iter__() { return *this; }
@@ -1216,8 +1242,8 @@ int32_t record_from_source(std::vector<Rec>& rs) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& r = ::tpy::unwrap_ref(*__r_1);
-        seen.insert(r.k);
-        r.k = ::tpy::add_check<int32_t>(r.k, 100);
+            seen.insert(r.k);
+            r.k = ::tpy::add_check<int32_t>(r.k, 100);
         }
     }
     return (::tpy::add_check<int32_t>(::tpy::__getitem__(rs, 0).k, ::tpy::__getitem__(rs, 1).k));
@@ -1242,7 +1268,8 @@ struct __genexpr_after_loop_20_frame : public ::tpy::next_iter_mixin<__genexpr_a
     };
 
     __genexpr_after_loop_20_frame(const std::vector<int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_after_loop_20_frame& __iter__() { return *this; }
@@ -1284,7 +1311,7 @@ int32_t after_loop(std::vector<int32_t>& xs) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        t = ::tpy::add_check<int32_t>(t, v);
+            t = ::tpy::add_check<int32_t>(t, v);
         }
     }
     xs.push_back(t);
@@ -1310,7 +1337,8 @@ struct __genexpr_consumer_arg_21_frame : public ::tpy::next_iter_mixin<__genexpr
     };
 
     __genexpr_consumer_arg_21_frame(const std::vector<int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_consumer_arg_21_frame& __iter__() { return *this; }
@@ -1366,7 +1394,8 @@ struct __genexpr_range_source_22_frame : public ::tpy::next_iter_mixin<__genexpr
     };
 
     __genexpr_range_source_22_frame(int32_t __r0_)
-        : __state(S_INITIAL), __r0(std::move(__r0_)) {}
+        : __state(S_INITIAL),
+          __r0(std::move(__r0_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_range_source_22_frame& __iter__() { return *this; }
@@ -1413,7 +1442,7 @@ int32_t range_source(std::vector<int32_t>& xs) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        xs.push_back(v);
+            xs.push_back(v);
         }
     }
     return ::tpy::__len__(xs);
@@ -1443,49 +1472,49 @@ int32_t range_source(std::vector<int32_t>& xs) {
 //     print("range_source:", range_source([5, 6]))
 void main() {
     std::cout << "method:" << " " << Bag().run(false) << "\n";
-    std::vector<int32_t> __tmp_3 = {1, 2, 3};
-    std::cout << "free_fn:" << " " << ::tpyapp::main::free_fn(__tmp_3, false) << "\n";
-    std::vector<int32_t> __tmp_4 = {1, 2, 3};
-    std::cout << "through_callee:" << " " << ::tpyapp::main::through_callee(__tmp_4, false) << "\n";
-    std::vector<int32_t> __tmp_5 = {1, 2};
-    std::vector<int32_t> __tmp_6 = {3, 4};
-    std::cout << "in_zip:" << " " << ::tpyapp::main::in_zip(__tmp_5, __tmp_6, false) << "\n";
-    std::vector<std::tuple<int32_t, int32_t>> __tmp_7 = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-    std::cout << "unpack:" << " " << ::tpyapp::main::unpack(__tmp_7, false) << "\n";
-    ::tpy::ordered_map<int32_t, int32_t> __tmp_8 = ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});
-    std::cout << "dict_view:" << " " << ::tpyapp::main::dict_view(__tmp_8, false) << "\n";
-    std::vector<int32_t> __tmp_9 = {1, 2};
-    std::cout << "gen_body:" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::gen_body(__tmp_9, false)) << "\n";
-    std::vector<int32_t> __tmp_10 = {1, 2};
-    std::cout << "async_body:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_body(__tmp_10, false))) << "\n";
-    std::vector<std::string> __tmp_11 = {"abc", "def"};
-    std::vector<int32_t> __tmp_12 = {1, 0};
-    std::cout << "view_yield:" << " " << ::tpyapp::main::view_yield(__tmp_11, __tmp_12, false) << "\n";
+    std::vector<int32_t> __tmp_1 = {1, 2, 3};
+    std::cout << "free_fn:" << " " << ::tpyapp::main::free_fn(__tmp_1, false) << "\n";
+    std::vector<int32_t> __tmp_2 = {1, 2, 3};
+    std::cout << "through_callee:" << " " << ::tpyapp::main::through_callee(__tmp_2, false) << "\n";
+    std::vector<int32_t> __tmp_3 = {1, 2};
+    std::vector<int32_t> __tmp_4 = {3, 4};
+    std::cout << "in_zip:" << " " << ::tpyapp::main::in_zip(__tmp_3, __tmp_4, false) << "\n";
+    std::vector<std::tuple<int32_t, int32_t>> __tmp_5 = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
+    std::cout << "unpack:" << " " << ::tpyapp::main::unpack(__tmp_5, false) << "\n";
+    ::tpy::ordered_map<int32_t, int32_t> __tmp_6 = ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});
+    std::cout << "dict_view:" << " " << ::tpyapp::main::dict_view(__tmp_6, false) << "\n";
+    std::vector<int32_t> __tmp_7 = {1, 2};
+    std::cout << "gen_body:" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::gen_body(__tmp_7, false)) << "\n";
+    std::vector<int32_t> __tmp_8 = {1, 2};
+    std::cout << "async_body:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_body(__tmp_8, false))) << "\n";
+    std::vector<std::string> __tmp_9 = {"abc", "def"};
+    std::vector<int32_t> __tmp_10 = {1, 0};
+    std::cout << "view_yield:" << " " << ::tpyapp::main::view_yield(__tmp_9, __tmp_10, false) << "\n";
+    std::vector<int32_t> __tmp_11 = {1, 2};
+    std::cout << "source_is_capture:" << " " << ::tpyapp::main::source_is_capture(__tmp_11, false) << "\n";
+    std::vector<int32_t> __tmp_12 = {1, 2};
+    std::cout << "nested_def:" << " " << ::tpyapp::main::nested_def(__tmp_12, false) << "\n";
     std::vector<int32_t> __tmp_13 = {1, 2};
-    std::cout << "source_is_capture:" << " " << ::tpyapp::main::source_is_capture(__tmp_13, false) << "\n";
-    std::vector<int32_t> __tmp_14 = {1, 2};
-    std::cout << "nested_def:" << " " << ::tpyapp::main::nested_def(__tmp_14, false) << "\n";
-    std::vector<int32_t> __tmp_15 = {1, 2};
-    std::cout << "capture_moved:" << " " << ::tpyapp::main::capture_moved(__tmp_15) << "\n";
+    std::cout << "capture_moved:" << " " << ::tpyapp::main::capture_moved(__tmp_13) << "\n";
     std::cout << "range_capture:" << " " << ::tpyapp::main::range_capture(5) << "\n";
-    std::vector<int32_t> __tmp_16 = {1, 2, 3};
-    ::tpy::ordered_set<int32_t> __tmp_17 = ::tpy::ordered_set<int32_t>({2});
-    std::cout << "arg_capture:" << " " << ::tpyapp::main::arg_capture(__tmp_16, __tmp_17) << "\n";
-    std::vector<int32_t> __tmp_18 = {1, 2, 1, 3, 2};
-    std::cout << "capture_grows:" << " " << ::tpyapp::main::capture_grows(__tmp_18) << "\n";
-    std::vector<std::string> __tmp_19 = {"a", "b", "a", "c"};
-    std::cout << "str_capture_grows:" << " " << ::tpyapp::main::str_capture_grows(__tmp_19) << "\n";
-    std::vector<std::string> __tmp_20 = {"ab", "cd"};
-    std::vector<int32_t> __tmp_21 = {1, 0};
-    std::cout << "owned_str_yield:" << " " << ::tpyapp::main::owned_str_yield(__tmp_20, __tmp_21) << "\n";
-    std::vector<Rec> __tmp_22 = {Rec(1), Rec(2)};
-    std::cout << "record_from_source:" << " " << ::tpyapp::main::record_from_source(__tmp_22) << "\n";
-    std::vector<int32_t> __tmp_23 = {1, 2};
-    std::cout << "after_loop:" << " " << ::tpyapp::main::after_loop(__tmp_23) << "\n";
-    std::vector<int32_t> __tmp_24 = {1, 2};
-    std::cout << "consumer_arg:" << " " << ::tpyapp::main::consumer_arg(__tmp_24) << "\n";
-    std::vector<int32_t> __tmp_25 = {5, 6};
-    std::cout << "range_source:" << " " << ::tpyapp::main::range_source(__tmp_25) << "\n";
+    std::vector<int32_t> __tmp_14 = {1, 2, 3};
+    ::tpy::ordered_set<int32_t> __tmp_15 = ::tpy::ordered_set<int32_t>({2});
+    std::cout << "arg_capture:" << " " << ::tpyapp::main::arg_capture(__tmp_14, __tmp_15) << "\n";
+    std::vector<int32_t> __tmp_16 = {1, 2, 1, 3, 2};
+    std::cout << "capture_grows:" << " " << ::tpyapp::main::capture_grows(__tmp_16) << "\n";
+    std::vector<std::string> __tmp_17 = {"a", "b", "a", "c"};
+    std::cout << "str_capture_grows:" << " " << ::tpyapp::main::str_capture_grows(__tmp_17) << "\n";
+    std::vector<std::string> __tmp_18 = {"ab", "cd"};
+    std::vector<int32_t> __tmp_19 = {1, 0};
+    std::cout << "owned_str_yield:" << " " << ::tpyapp::main::owned_str_yield(__tmp_18, __tmp_19) << "\n";
+    std::vector<Rec> __tmp_20 = {Rec(1), Rec(2)};
+    std::cout << "record_from_source:" << " " << ::tpyapp::main::record_from_source(__tmp_20) << "\n";
+    std::vector<int32_t> __tmp_21 = {1, 2};
+    std::cout << "after_loop:" << " " << ::tpyapp::main::after_loop(__tmp_21) << "\n";
+    std::vector<int32_t> __tmp_22 = {1, 2};
+    std::cout << "consumer_arg:" << " " << ::tpyapp::main::consumer_arg(__tmp_22) << "\n";
+    std::vector<int32_t> __tmp_23 = {5, 6};
+    std::cout << "range_source:" << " " << ::tpyapp::main::range_source(__tmp_23) << "\n";
 }
 
 
@@ -1525,7 +1554,8 @@ struct __genexpr_module_1_frame : public ::tpy::next_iter_mixin<__genexpr_module
     };
 
     __genexpr_module_1_frame(const std::vector<int32_t>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_module_1_frame& __iter__() { return *this; }
@@ -1582,10 +1612,10 @@ void __tpy_init() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t gv = ::tpy::unwrap_ref(*__r_1);
-        if (big_module) {
-            gl->push_back(gv);
-        }
-        gt = ::tpy::add_check<int32_t>(gt, gv);
+            if (big_module) {
+                gl->push_back(gv);
+            }
+            gt = ::tpy::add_check<int32_t>(gt, gv);
         }
     }
     std::cout << "module:" << " " << gt << "\n";

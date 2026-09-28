@@ -21,22 +21,16 @@ int32_t free_fn(::tpy::Union<Other*, Rec*> v) {
             if ((__case_1.n > 0)) {
                 __case_1.n = (::tpy::add_check<int32_t>(__case_1.n, 100));
                 return __case_1.n;
-                goto __match_end_2;
             }
         }
         {
             return 0;
-            goto __match_end_2;
         }
-        break;
     }
     default: {
         return 0;
-        goto __match_end_2;
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
 }
 
@@ -57,22 +51,16 @@ int32_t field_cond(::tpy::Union<Other*, Rec*> v) {
             if (__case_1.n == 1 && (__case_1.q > 0)) {
                 __case_1.q = (::tpy::add_check<int32_t>(__case_1.q, 100));
                 return __case_1.q;
-                goto __match_end_2;
             }
         }
         {
             return 0;
-            goto __match_end_2;
         }
-        break;
     }
     default: {
         return 0;
-        goto __match_end_2;
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
 }
 
@@ -94,22 +82,16 @@ int32_t as_bind(::tpy::Union<Other*, Rec*> v) {
             if ((__case_1.n > 0)) {
                 r.n = (::tpy::add_check<int32_t>(r.n, 100));
                 return __case_1.n;
-                goto __match_end_2;
             }
         }
         {
             return 0;
-            goto __match_end_2;
         }
-        break;
     }
     default: {
         return 0;
-        goto __match_end_2;
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
 }
 
@@ -132,23 +114,17 @@ int32_t same_index(::tpy::Union<Other*, Rec*, Third*> v) {
             if ((__case_1.n > 5)) {
                 __case_1.n = (::tpy::add_check<int32_t>(__case_1.n, 100));
                 return __case_1.n;
-                goto __match_end_2;
             }
         }
         {
             auto k = __case_1.n;
             return k;
-            goto __match_end_2;
         }
-        break;
     }
     default: {
         return 0;
-        goto __match_end_2;
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
 }
 
@@ -167,8 +143,6 @@ int32_t with_none(::tpy::Union<std::monostate, Other*, Rec*> v) {
     switch (__match_subject_1.index()) {
     case 0: {
         return -1;
-        goto __match_end_2;
-        break;
     }
     case 2: {
         auto& __case_2 = *std::get<2>(__match_subject_1);
@@ -176,22 +150,16 @@ int32_t with_none(::tpy::Union<std::monostate, Other*, Rec*> v) {
             if ((__case_2.n > 0)) {
                 __case_2.n = (::tpy::add_check<int32_t>(__case_2.n, 100));
                 return __case_2.n;
-                goto __match_end_2;
             }
         }
         {
             return 0;
-            goto __match_end_2;
         }
-        break;
     }
     default: {
         return 0;
-        goto __match_end_2;
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
 }
 
@@ -305,22 +273,16 @@ int32_t in_closure(::tpy::Union<Other*, Rec*> v) {
                 if ((__case_1.n > 0)) {
                     __case_1.n = (::tpy::add_check<int32_t>(__case_1.n, 100));
                     return __case_1.n;
-                    goto __match_end_2;
                 }
             }
             {
                 return 0;
-                goto __match_end_2;
             }
-            break;
         }
         default: {
             return 0;
-            goto __match_end_2;
-            break;
         }
         }
-__match_end_2:;
         ::std::unreachable();
     };
     return inner();
@@ -350,28 +312,20 @@ int32_t in_match_arm(::tpy::Union<Other*, Rec*> v, int32_t sel) {
                 if ((__case_1.n > 0)) {
                     __case_1.n = (::tpy::add_check<int32_t>(__case_1.n, 100));
                     return __case_1.n;
-                    goto __match_end_3;
                 }
             }
             {
                 return 0;
-                goto __match_end_3;
             }
-            break;
         }
         default: {
             return 0;
-            goto __match_end_3;
-            break;
         }
         }
-__match_end_3:;
         ::std::unreachable();
-        break;
     }
     default: {
         return 0;
-        break;
     }
     }
     ::std::unreachable();

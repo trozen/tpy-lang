@@ -33,7 +33,9 @@ struct MyIter {
     //     self.items = items
     //     self.pos = 0
     MyIter() = default;
-    explicit MyIter(const std::vector<T>& items) : items(items), pos(0) {}
+    explicit MyIter(const std::vector<T>& items)
+        : items(items),
+          pos(0) {}
 
     auto& __iter__() { return *this; }
 

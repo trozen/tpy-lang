@@ -30,7 +30,10 @@ struct StorageIter {
     //     self._size = size
     //     self._index = 0
     StorageIter() = default;
-    explicit StorageIter(::tpy::UninitArrayStorage<T, N>* storage, int32_t size) : _storage(storage), _size(size), _index(0) {}
+    explicit StorageIter(::tpy::UninitArrayStorage<T, N>* storage, int32_t size)
+        : _storage(storage),
+          _size(size),
+          _index(0) {}
 
     auto& __iter__() { return *this; }
 
@@ -69,11 +72,15 @@ struct SimpleList {
     // def __init__(self) -> None:
     //     self._storage = UninitArrayStorage[T, N]()
     //     self._size = 0
-    SimpleList() : _storage(::tpy::UninitArrayStorage<T, N>()), _size(0) {}
+    SimpleList()
+        : _storage(::tpy::UninitArrayStorage<T, N>()),
+          _size(0) {}
     // non-copyable (field '_storage')
     SimpleList(const SimpleList&) = delete;
     SimpleList& operator=(const SimpleList&) = delete;
-    SimpleList(SimpleList&& other) noexcept : _storage(std::move(other._storage)), _size(std::move(other._size)) {
+    SimpleList(SimpleList&& other) noexcept
+        : _storage(std::move(other._storage)),
+          _size(std::move(other._size)) {
         other.__tpy_owned_ = false;
     }
     SimpleList& operator=(SimpleList&& other) noexcept {

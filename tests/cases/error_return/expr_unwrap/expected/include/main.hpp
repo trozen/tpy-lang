@@ -110,7 +110,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 //     self.code = code
 inline ParseErr::ParseErr(const ::tpy::BigInt& code) : code(code) {}
 
-inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
+inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y)
+    : x(x),
+      y(y) {}
 
 // def updated(self) -> Self:
 //     self.x += 1

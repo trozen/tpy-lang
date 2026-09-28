@@ -60,7 +60,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // def __init__(self, payload: bytes, label: str) -> None:
 //     self.payload = payload
 //     self.label = label
-inline Box::Box(::tpy::BytesView payload, std::string_view label) : payload(::tpy::Bytes(payload)), label(label) {}
+inline Box::Box(::tpy::BytesView payload, std::string_view label)
+    : payload(::tpy::Bytes(payload)),
+      label(label) {}
 
 // def m_text(self) -> str:          # method, owned return
 //     return self.payload.decode()

@@ -93,8 +93,8 @@ inline int32_t Runner::method(const std::vector<int32_t>& values) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t value = *__beg_0;
-        Cell __tmp_2 = Cell(value);
-        this->result = ::tpyapp::main::read(__tmp_2);
+        Cell __tmp_1 = Cell(value);
+        this->result = ::tpyapp::main::read(__tmp_1);
     }
     return this->result;
 }

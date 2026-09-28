@@ -40,7 +40,9 @@ struct __gen_matrix : public ::tpy::next_iter_mixin<__gen_matrix, int32_t> {
     };
 
     __gen_matrix(const std::vector<int32_t>& rows, const std::vector<int32_t>& cols)
-        : __state(S_INITIAL), rows(rows), cols(cols) {}
+        : __state(S_INITIAL),
+          rows(rows),
+          cols(cols) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_matrix& __iter__() { return *this; }

@@ -17,11 +17,9 @@ std::string describe(const Expr& e) {
         auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto& v = __case_0.value;
         return (::tpy::str_concat("lit=", (v).to_string()));
-        break;
     }
     default: {
         return "binop";
-        break;
     }
     }
     ::std::unreachable();

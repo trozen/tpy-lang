@@ -66,7 +66,9 @@ struct __coro_asum {
     };
 
     __coro_asum(std::tuple<const Tag*, const Tag*> pair_)
-        : __state(S_INITIAL), __cancel_pending(false), pair(pair_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          pair(pair_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -99,7 +101,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -122,7 +125,8 @@ struct __gen_gsum : public ::tpy::next_iter_mixin<__gen_gsum, int32_t> {
     };
 
     __gen_gsum(std::tuple<const Tag*, const Tag*> pair_)
-        : __state(S_INITIAL), pair(pair_) {}
+        : __state(S_INITIAL),
+          pair(pair_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gsum& __iter__() { return *this; }

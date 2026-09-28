@@ -319,7 +319,9 @@ inline std::ostream& operator<<(std::ostream& os, const Admin& obj) {
 }
 
 
-inline Base::Base(std::string_view name, int32_t age) : name(name), age(age) {}
+inline Base::Base(std::string_view name, int32_t age)
+    : name(name),
+      age(age) {}
 
 inline bool Base::__eq__(const Base& other) const {
     return ((this->name == other.name) && (this->age == other.age));
@@ -428,7 +430,9 @@ inline std::expected<Base, ::tpystd::tplib::json::parser::JsonError> Base::try_l
     return Base::try_from_json(__data);
 }
 
-inline WithDefaults::WithDefaults(int32_t x, int32_t y) : x(x), y(y) {}
+inline WithDefaults::WithDefaults(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 inline bool WithDefaults::__eq__(const WithDefaults& other) const {
     return ((this->x == other.x) && (this->y == other.y));
@@ -537,7 +541,9 @@ inline std::expected<WithDefaults, ::tpystd::tplib::json::parser::JsonError> Wit
     return WithDefaults::try_from_json(__data);
 }
 
-inline Tagged::Tagged(std::string_view tag, std::optional<std::string_view> note) : tag(tag), note(note ? std::make_optional(std::string(*note)) : std::nullopt) {}
+inline Tagged::Tagged(std::string_view tag, std::optional<std::string_view> note)
+    : tag(tag),
+      note(note ? std::make_optional(std::string(*note)) : std::nullopt) {}
 
 inline bool Tagged::__eq__(const Tagged& other) const {
     return ((this->tag == other.tag) && (this->note == other.note));
@@ -637,7 +643,9 @@ inline std::expected<Tagged, ::tpystd::tplib::json::parser::JsonError> Tagged::t
     return Tagged::try_from_json(__data);
 }
 
-inline User::User(std::string_view name, int32_t age, std::string_view email) : Base(name, age), email(email) {}
+inline User::User(std::string_view name, int32_t age, std::string_view email)
+    : Base(name, age),
+      email(email) {}
 
 inline bool User::__eq__(const User& other) const {
     return (((this->name == other.name) && (this->age == other.age)) && (this->email == other.email));
@@ -737,7 +745,9 @@ inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_l
     return User::try_from_json(__data);
 }
 
-inline Extended::Extended(int32_t x, int32_t y, int32_t z) : WithDefaults(x, y), z(z) {}
+inline Extended::Extended(int32_t x, int32_t y, int32_t z)
+    : WithDefaults(x, y),
+      z(z) {}
 
 inline bool Extended::__eq__(const Extended& other) const {
     return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));
@@ -837,7 +847,9 @@ inline std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> Extende
     return Extended::try_from_json(__data);
 }
 
-inline Scored::Scored(std::string_view tag, std::optional<std::string_view> note, int32_t score) : Tagged(tag, note), score(score) {}
+inline Scored::Scored(std::string_view tag, std::optional<std::string_view> note, int32_t score)
+    : Tagged(tag, note),
+      score(score) {}
 
 inline bool Scored::__eq__(const Scored& other) const {
     return (((this->tag == other.tag) && (this->note == other.note)) && (this->score == other.score));
@@ -937,7 +949,9 @@ inline std::expected<Scored, ::tpystd::tplib::json::parser::JsonError> Scored::t
     return Scored::try_from_json(__data);
 }
 
-inline Admin::Admin(std::string_view name, int32_t age, std::string_view email, std::string_view role) : User(name, age, email), role(role) {}
+inline Admin::Admin(std::string_view name, int32_t age, std::string_view email, std::string_view role)
+    : User(name, age, email),
+      role(role) {}
 
 inline bool Admin::__eq__(const Admin& other) const {
     return ((((this->name == other.name) && (this->age == other.age)) && (this->email == other.email)) && (this->role == other.role));

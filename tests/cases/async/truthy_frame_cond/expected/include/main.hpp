@@ -43,7 +43,9 @@ struct __coro_opt_branch {
     };
 
     __coro_opt_branch(std::optional<int32_t> v_)
-        : __state(S_INITIAL), __cancel_pending(false), v(std::move(v_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          v(std::move(v_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -67,7 +69,9 @@ struct __coro_list_branch {
     };
 
     __coro_list_branch(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -93,7 +97,9 @@ struct __coro_str_while {
     };
 
     __coro_str_while(std::string_view t_)
-        : __state(S_INITIAL), __cancel_pending(false), t(std::string(t_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          t(std::string(t_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -118,7 +124,10 @@ struct __coro_and_branch {
     };
 
     __coro_and_branch(const std::vector<int32_t>& xs, std::optional<int32_t> v_)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs), v(std::move(v_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs),
+          v(std::move(v_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -174,7 +183,8 @@ struct __coro_main_async {
     };
 
     __coro_main_async()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

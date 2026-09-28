@@ -34,11 +34,15 @@ struct JoinHandle {
     // def __init__(self, raw: Own[_RawJoin[R]]) -> None:
     //     self._raw = raw
     //     self._consumed = False
-    explicit JoinHandle(::tpy::JoinHandle<R>&& raw) : _raw(std::move(raw)), _consumed(false) {}
+    explicit JoinHandle(::tpy::JoinHandle<R>&& raw)
+        : _raw(std::move(raw)),
+          _consumed(false) {}
     // non-copyable (@nocopy)
     JoinHandle(const JoinHandle&) = delete;
     JoinHandle& operator=(const JoinHandle&) = delete;
-    JoinHandle(JoinHandle&& other) noexcept : _raw(std::move(other._raw)), _consumed(std::move(other._consumed)) {
+    JoinHandle(JoinHandle&& other) noexcept
+        : _raw(std::move(other._raw)),
+          _consumed(std::move(other._consumed)) {
         other.__tpy_owned_ = false;
     }
     JoinHandle& operator=(JoinHandle&& other) noexcept {

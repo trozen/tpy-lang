@@ -73,7 +73,8 @@ struct __gen_voices : public ::tpy::next_iter_mixin<__gen_voices, std::string> {
     };
 
     __gen_voices(::tpy::Union<Cat*, Dog*> a_)
-        : __state(S_INITIAL), a(a_) {}
+        : __state(S_INITIAL),
+          a(a_) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_voices& __iter__() { return *this; }
@@ -99,7 +100,8 @@ struct __gen_capture : public ::tpy::next_iter_mixin<__gen_capture, std::string>
     };
 
     __gen_capture(::tpy::Union<Cat*, Dog*> a_)
-        : __state(S_INITIAL), a(a_) {}
+        : __state(S_INITIAL),
+          a(a_) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_capture& __iter__() { return *this; }
@@ -125,7 +127,9 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, std::string>
     };
 
     __gen_guarded(::tpy::Union<::tpy::BigInt, std::string> a_, bool allow_)
-        : __state(S_INITIAL), a(std::move(a_)), allow(std::move(allow_)) {}
+        : __state(S_INITIAL),
+          a(std::move(a_)),
+          allow(std::move(allow_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_guarded& __iter__() { return *this; }
@@ -153,7 +157,8 @@ struct __gen_kill : public ::tpy::next_iter_mixin<__gen_kill, std::string> {
     };
 
     __gen_kill(::tpy::Union<::tpy::BigInt, std::string> a_)
-        : __state(S_INITIAL), a(std::move(a_)) {}
+        : __state(S_INITIAL),
+          a(std::move(a_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_kill& __iter__() { return *this; }

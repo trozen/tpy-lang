@@ -40,7 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
 }
 
 
-inline Foo::Foo(std::vector<int32_t>&& items, int32_t x) : items(std::move(items)), x(x) {}
+inline Foo::Foo(std::vector<int32_t>&& items, int32_t x)
+    : items(std::move(items)),
+      x(x) {}
 
 inline bool Foo::__eq__(const Foo& other) const {
     return ((this->items == other.items) && (this->x == other.x));

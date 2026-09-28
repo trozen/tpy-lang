@@ -40,7 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 // def __init__(self) -> None:
 //     self.n = 0
 //     self.last = char("?")
-inline Sink::Sink() : n(0), last(::tpy::char_from_str("?")) {}
+inline Sink::Sink()
+    : n(0),
+      last(::tpy::char_from_str("?")) {}
 
 // def put(self, c: Own[char]) -> None:
 //     self.n += 1

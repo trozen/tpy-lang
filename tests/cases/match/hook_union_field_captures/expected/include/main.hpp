@@ -101,7 +101,9 @@ struct __coro_a_guarded {
     };
 
     __coro_a_guarded(::tpy::Union<const Cat*, const Dog*> a_)
-        : __state(S_INITIAL), __cancel_pending(false), a(a_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(a_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -130,7 +132,8 @@ struct __coro_amain {
     };
 
     __coro_amain()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -156,7 +159,8 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, int32_t> {
     };
 
     __gen_guarded(::tpy::Union<const Cat*, const Dog*> a_)
-        : __state(S_INITIAL), a(a_) {}
+        : __state(S_INITIAL),
+          a(a_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_guarded& __iter__() { return *this; }
@@ -183,7 +187,9 @@ struct __gen_guarded_cond : public ::tpy::next_iter_mixin<__gen_guarded_cond, in
     };
 
     __gen_guarded_cond(::tpy::Union<const Cat*, const Dog*> a_, bool flag_)
-        : __state(S_INITIAL), a(a_), flag(std::move(flag_)) {}
+        : __state(S_INITIAL),
+          a(a_),
+          flag(std::move(flag_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_guarded_cond& __iter__() { return *this; }
@@ -209,7 +215,8 @@ struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested, int32_t> {
     };
 
     __gen_nested(const Holder& h)
-        : __state(S_INITIAL), h(h) {}
+        : __state(S_INITIAL),
+          h(h) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_nested& __iter__() { return *this; }
@@ -237,7 +244,8 @@ struct __gen_nested_shadow : public ::tpy::next_iter_mixin<__gen_nested_shadow, 
     };
 
     __gen_nested_shadow(const Holder& h)
-        : __state(S_INITIAL), h(h) {}
+        : __state(S_INITIAL),
+          h(h) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_nested_shadow& __iter__() { return *this; }

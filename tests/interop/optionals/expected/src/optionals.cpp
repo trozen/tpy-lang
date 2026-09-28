@@ -194,7 +194,13 @@ std::optional<Token> mint(bool flag) {
 }
 
 
-Holder::Holder(int32_t v, std::optional<std::string_view> label, Point* seed) : _inner(Inner(v)), _label(label ? std::make_optional(std::string(*label)) : std::nullopt), _limit(std::nullopt), note(std::nullopt), tint(std::nullopt), anchor(std::nullopt) {
+Holder::Holder(int32_t v, std::optional<std::string_view> label, Point* seed)
+    : _inner(Inner(v)),
+      _label(label ? std::make_optional(std::string(*label)) : std::nullopt),
+      _limit(std::nullopt),
+      note(std::nullopt),
+      tint(std::nullopt),
+      anchor(std::nullopt) {
     if ((seed == nullptr)) {
         this->seed = 0;
     } else {

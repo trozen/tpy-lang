@@ -101,7 +101,8 @@ struct __gen_Pet_describe : public ::tpy::next_iter_mixin<__gen_Pet_describe, st
     };
 
     __gen_Pet_describe(const Pet& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_Pet_describe& __iter__() { return *this; }
@@ -123,6 +124,8 @@ inline Pet::Pet(std::string_view nm) : name(nm) {}
 // def __init__(self, nm: str, breed: str) -> None:
 //     super().__init__(nm)
 //     self.breed = breed
-inline Dog::Dog(std::string_view nm, std::string_view breed) : Pet(nm), breed(breed) {}
+inline Dog::Dog(std::string_view nm, std::string_view breed)
+    : Pet(nm),
+      breed(breed) {}
 void __tpy_init();
 } // namespace tpyapp::main

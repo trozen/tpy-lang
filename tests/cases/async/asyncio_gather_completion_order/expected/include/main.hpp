@@ -41,7 +41,9 @@ struct __coro_slow {
     };
 
     __coro_slow(::tpystd::asyncio::Event& start)
-        : __state(S_INITIAL), __cancel_pending(false), start(start) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          start(start) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -63,7 +65,9 @@ struct __coro_fast {
     };
 
     __coro_fast(::tpystd::asyncio::Event& start)
-        : __state(S_INITIAL), __cancel_pending(false), start(start) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          start(start) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -89,7 +93,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

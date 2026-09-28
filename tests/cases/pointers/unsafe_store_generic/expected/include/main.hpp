@@ -39,7 +39,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 // # val is Own[T] so the store consumes it -- a borrowed T would copy into the
 // # pointee's owned storage (and warn); the forwarder must pass ownership through.
 // def store_at[T](p: Ptr[T], idx: uint32, val: Own[T]) -> None:

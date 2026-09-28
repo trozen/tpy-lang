@@ -34,6 +34,8 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_config_1& 
 
 
 // cfg = cfg_builder.build()
-inline __tpy_builder_config_1::__tpy_builder_config_1(std::string_view host, std::string_view port) : host(host), port(port) {}
+inline __tpy_builder_config_1::__tpy_builder_config_1(std::string_view host, std::string_view port)
+    : host(host),
+      port(port) {}
 void __tpy_init();
 } // namespace tpyapp::main

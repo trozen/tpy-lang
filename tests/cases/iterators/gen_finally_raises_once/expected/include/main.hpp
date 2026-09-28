@@ -92,8 +92,7 @@ struct __gen_normal_exit : public ::tpy::next_iter_mixin<__gen_normal_exit, ::tp
         S_DONE = 4,
     };
 
-    __gen_normal_exit()
-        : __state(S_INITIAL) {}
+    __gen_normal_exit() : __state(S_INITIAL) {}
 
     __gen_normal_exit(__gen_normal_exit&&) = default;
     ~__gen_normal_exit() {
@@ -130,8 +129,7 @@ struct __gen_handler_exit : public ::tpy::next_iter_mixin<__gen_handler_exit, ::
         S_DONE = 4,
     };
 
-    __gen_handler_exit()
-        : __state(S_INITIAL) {}
+    __gen_handler_exit() : __state(S_INITIAL) {}
 
     __gen_handler_exit(__gen_handler_exit&&) = default;
     ~__gen_handler_exit() {
@@ -167,8 +165,7 @@ struct __gen_return_exit : public ::tpy::next_iter_mixin<__gen_return_exit, ::tp
         S_DONE = 3,
     };
 
-    __gen_return_exit()
-        : __state(S_INITIAL) {}
+    __gen_return_exit() : __state(S_INITIAL) {}
 
     __gen_return_exit(__gen_return_exit&&) = default;
     ~__gen_return_exit() {
@@ -206,8 +203,7 @@ struct __gen_with_exit : public ::tpy::next_iter_mixin<__gen_with_exit, ::tpy::B
         S_DONE = 4,
     };
 
-    __gen_with_exit()
-        : __state(S_INITIAL) {}
+    __gen_with_exit() : __state(S_INITIAL) {}
 
     __gen_with_exit(__gen_with_exit&&) = default;
     ~__gen_with_exit() {
@@ -245,8 +241,7 @@ struct __gen_nested_exit : public ::tpy::next_iter_mixin<__gen_nested_exit, ::tp
         S_DONE = 5,
     };
 
-    __gen_nested_exit()
-        : __state(S_INITIAL) {}
+    __gen_nested_exit() : __state(S_INITIAL) {}
 
     __gen_nested_exit(__gen_nested_exit&&) = default;
     ~__gen_nested_exit() {
@@ -290,8 +285,7 @@ struct __gen_break_exit : public ::tpy::next_iter_mixin<__gen_break_exit, ::tpy:
         S_DONE = 6,
     };
 
-    __gen_break_exit()
-        : __state(S_INITIAL) {}
+    __gen_break_exit() : __state(S_INITIAL) {}
 
     __gen_break_exit(__gen_break_exit&&) = default;
     ~__gen_break_exit() {
@@ -331,8 +325,7 @@ struct __gen_continue_exit : public ::tpy::next_iter_mixin<__gen_continue_exit, 
         S_DONE = 4,
     };
 
-    __gen_continue_exit()
-        : __state(S_INITIAL) {}
+    __gen_continue_exit() : __state(S_INITIAL) {}
 
     __gen_continue_exit(__gen_continue_exit&&) = default;
     ~__gen_continue_exit() {
@@ -361,7 +354,9 @@ struct __gen_continue_exit : public ::tpy::next_iter_mixin<__gen_continue_exit, 
 // def __init__(self, code: int) -> None:
 //     super().__init__()
 //     self.code = code
-inline Err::Err(const ::tpy::BigInt& code) : ::tpy::Exception(), code(code) {}
+inline Err::Err(const ::tpy::BigInt& code)
+    : ::tpy::Exception(),
+      code(code) {}
 
 // def __enter__(self) -> int:
 //     return 1

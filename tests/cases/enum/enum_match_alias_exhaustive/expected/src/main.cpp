@@ -17,15 +17,12 @@ std::string label(::tpyapp::palette::Color c) {
     switch (__match_subject_1) {
     case ::tpyapp::palette::Color::RED: {
         return "r";
-        break;
     }
     case ::tpyapp::palette::Color::GREEN: {
         return "g";
-        break;
     }
     case ::tpyapp::palette::Color::BLUE: {
         return "b";
-        break;
     }
     }
     ::std::unreachable();

@@ -170,7 +170,8 @@ struct __coro_async_body {
     };
 
     __coro_async_body()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -196,8 +197,7 @@ struct __gen_generator : public ::tpy::next_iter_mixin<__gen_generator, ::tpy::B
         S_DONE = 4,
     };
 
-    __gen_generator()
-        : __state(S_INITIAL) {}
+    __gen_generator() : __state(S_INITIAL) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_generator& __iter__() { return *this; }

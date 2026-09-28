@@ -75,7 +75,9 @@ inline Node::Node(int32_t v) : v(v) {}
 // def __init__(self) -> None:
 //     self.total = 0
 //     self.slot = None
-inline Graph::Graph() : total(0), slot(std::nullopt) {}
+inline Graph::Graph()
+    : total(0),
+      slot(std::nullopt) {}
 
 // def link(self, n: Node | None) -> None:
 //     if n is not None:

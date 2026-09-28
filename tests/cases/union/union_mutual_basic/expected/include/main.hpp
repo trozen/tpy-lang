@@ -94,7 +94,10 @@ inline Lit::Lit(const ::tpy::BigInt& value) : value(value) {}
 //     self.left = left
 //     self.op = op
 //     self.right = right
-inline BinOp::BinOp(::tpystd::tplib::box::Box<Expr>&& left, std::string_view op, ::tpystd::tplib::box::Box<Expr>&& right) : left(std::move(left)), op(op), right(std::move(right)) {}
+inline BinOp::BinOp(::tpystd::tplib::box::Box<Expr>&& left, std::string_view op, ::tpystd::tplib::box::Box<Expr>&& right)
+    : left(std::move(left)),
+      op(op),
+      right(std::move(right)) {}
 
 // def __init__(self, expr: Own[Box[Expr]]) -> None:
 //     self.expr = expr

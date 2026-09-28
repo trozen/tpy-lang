@@ -255,8 +255,7 @@ struct __gen_gen_host : public ::tpy::next_iter_mixin<__gen_gen_host, int32_t> {
         S_DONE = 2,
     };
 
-    __gen_gen_host()
-        : __state(S_INITIAL) {}
+    __gen_gen_host() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_host& __iter__() { return *this; }
@@ -286,7 +285,10 @@ inline Rec& Mid::rec_m() {
 //     self.m = Rec(tag)
 //     self.mid = Mid(tag)
 //     self.o = Rec(tag)
-inline B::B(int32_t tag) : m(Rec(tag)), mid(Mid(tag)), o(Rec(tag)) {}
+inline B::B(int32_t tag)
+    : m(Rec(tag)),
+      mid(Mid(tag)),
+      o(Rec(tag)) {}
 
 // @property
 // def opt(self) -> Optional[Rec]:

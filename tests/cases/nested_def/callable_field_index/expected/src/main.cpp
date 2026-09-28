@@ -264,7 +264,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "generator" << " " << value << "\n";
+            std::cout << "generator" << " " << value << "\n";
         }
     }
     std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_read(app))) << "\n";

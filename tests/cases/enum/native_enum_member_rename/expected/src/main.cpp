@@ -59,15 +59,12 @@ std::string describe(::cfg::Mode m) {
     switch (__match_subject_1) {
     case ::cfg::Mode::None: {
         return "off";
-        break;
     }
     case ::cfg::Mode::Auto: {
         return "auto";
-        break;
     }
     case ::cfg::Mode::Manual: {
         return "manual";
-        break;
     }
     }
     ::std::unreachable();

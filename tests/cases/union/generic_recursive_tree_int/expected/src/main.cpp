@@ -27,12 +27,10 @@ int32_t sum_leaves(const Tree<::tpy::BigInt>& t) {
             total = ::tpy::add_check<int32_t>(total, ::tpyapp::main::sum_leaves(child));
         }
         return total;
-        break;
     }
     case 0: {
         auto& v = std::get<0>(__match_subject_1.value);
         return (v).to_fixed_check<int32_t>();
-        break;
     }
     }
     ::std::unreachable();

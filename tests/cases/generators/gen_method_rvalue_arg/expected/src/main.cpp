@@ -55,8 +55,8 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        got.push_back(v);
-        ::tpy::__setitem__(data, 0, 50);
+            got.push_back(v);
+            ::tpy::__setitem__(data, 0, 50);
         }
     }
     std::cout << ::tpy::__getitem__(got, 0) << " " << ::tpy::__getitem__(got, 1) << "\n";

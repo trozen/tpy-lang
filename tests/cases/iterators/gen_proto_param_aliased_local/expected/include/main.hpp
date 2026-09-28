@@ -37,7 +37,8 @@ struct __gen_echo : public ::tpy::next_iter_mixin<__gen_echo<T_it>, ::tpy::BigIn
     };
 
     __gen_echo(T_it&& it_)
-        : __state(S_INITIAL), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_echo& __iter__() { return *this; }

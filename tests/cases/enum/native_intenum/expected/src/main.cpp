@@ -53,11 +53,9 @@ std::string desc(::ns::dir_t d) {
     switch (__match_subject_1) {
     case ::ns::dir_t::UP: {
         return "rising";
-        break;
     }
     case ::ns::dir_t::DOWN: {
         return "falling";
-        break;
     }
     }
     ::std::unreachable();

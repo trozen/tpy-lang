@@ -110,7 +110,10 @@ struct __coro_Worker_compute {
     };
 
     __coro_Worker_compute(const Worker& __self, ::tpy::BigInt n_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -137,7 +140,10 @@ struct __coro_2_5_Outer_5_Inner_7_compute {
     };
 
     __coro_2_5_Outer_5_Inner_7_compute(const Outer::Inner& __self, ::tpy::BigInt n_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -163,7 +169,9 @@ struct __coro_Gate___aenter__ {
     };
 
     __coro_Gate___aenter__(const Gate& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -192,7 +200,12 @@ struct __coro_Gate___aexit__ {
     };
 
     __coro_Gate___aexit__(const Gate& __self, std::monostate et_, std::monostate ev_, std::monostate tb_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), et(std::move(et_)), ev(std::move(ev_)), tb(std::move(tb_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          et(std::move(et_)),
+          ev(std::move(ev_)),
+          tb(std::move(tb_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -218,7 +231,9 @@ struct __coro_scalar {
     };
 
     __coro_scalar(::tpy::BigInt n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -240,7 +255,9 @@ struct __coro_wrapped {
     };
 
     __coro_wrapped(std::tuple<::tpy::BigInt> n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<std::tuple<::tpy::BigInt>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -262,7 +279,9 @@ struct __coro_optional {
     };
 
     __coro_optional(std::optional<::tpy::BigInt> n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<std::optional<::tpy::BigInt>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -285,7 +304,9 @@ struct __coro_identity {
     };
 
     __coro_identity(::tpy::param_val_or_ref_t<T> n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(n_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(n_) {}
 
     ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -336,7 +357,9 @@ struct __coro_chained {
     };
 
     __coro_chained(::tpy::BigInt n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -361,7 +384,9 @@ struct __coro_cleanup {
     };
 
     __coro_cleanup(::tpy::BigInt n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     __coro_cleanup(__coro_cleanup&&) = default;
     ~__coro_cleanup() {

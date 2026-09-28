@@ -216,7 +216,10 @@ struct __coro_async_own_sel {
     };
 
     __coro_async_own_sel(const C& a, bool c_)
-        : __state(S_INITIAL), __cancel_pending(false), a(a), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(a),
+          c(std::move(c_)) {}
 
     ::tpystd::tpy::Poll<C> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -242,7 +245,10 @@ struct __coro_async_receiver {
     };
 
     __coro_async_receiver(C& a, bool c_)
-        : __state(S_INITIAL), __cancel_pending(false), a(a), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(a),
+          c(std::move(c_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -267,7 +273,9 @@ struct __gen_gen_receiver : public ::tpy::next_iter_mixin<__gen_gen_receiver, in
     };
 
     __gen_gen_receiver(C& a, bool c_)
-        : __state(S_INITIAL), a(a), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          a(a),
+          c(std::move(c_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_receiver& __iter__() { return *this; }
@@ -349,8 +357,8 @@ inline int32_t Holder::peek(Holder& other, bool c) const {
 //     return self.a.n
 inline int32_t Holder::meth(bool c, std::vector<std::string>& log) {
     C& a = this->a;
-    std::optional<C> __select_slot_2;
-    C& x = ((c) ? (a) : (__select_slot_2.emplace(::tpyapp::main::make(log))));
+    std::optional<C> __select_slot_1;
+    C& x = ((c) ? (a) : (__select_slot_1.emplace(::tpyapp::main::make(log))));
     x.bump();
     return this->a.n;
 }

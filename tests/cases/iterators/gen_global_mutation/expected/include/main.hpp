@@ -31,8 +31,7 @@ struct __gen_counter : public ::tpy::next_iter_mixin<__gen_counter, ::tpy::BigIn
         S_DONE = 3,
     };
 
-    __gen_counter()
-        : __state(S_INITIAL) {}
+    __gen_counter() : __state(S_INITIAL) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_counter& __iter__() { return *this; }

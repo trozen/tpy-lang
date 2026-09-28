@@ -157,7 +157,9 @@ inline int64_t BaseBox::w() const {
     return this->width;
 }
 
-inline Circle::Circle(std::string_view name, double radius) : Shape(name), radius(radius) {}
+inline Circle::Circle(std::string_view name, double radius)
+    : Shape(name),
+      radius(radius) {}
 
 inline double Circle::area() const {
     return ((((this->radius) * (this->radius))) * (3.0));

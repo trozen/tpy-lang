@@ -37,7 +37,9 @@ struct __coro_background {
     };
 
     __coro_background(::tpystd::asyncio::Future<int32_t>& done)
-        : __state(S_INITIAL), __cancel_pending(false), done(done) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          done(done) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -63,7 +65,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

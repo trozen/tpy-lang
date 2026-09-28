@@ -34,7 +34,10 @@ struct __coro_scaled {
     };
 
     __coro_scaled(int32_t a_, int32_t b_ = BUMP)
-        : __state(S_INITIAL), __cancel_pending(false), a(std::move(a_)), b(std::move(b_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(std::move(a_)),
+          b(std::move(b_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

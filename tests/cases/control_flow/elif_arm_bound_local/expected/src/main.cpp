@@ -670,7 +670,7 @@ void main() {
                 auto __r_2 = __itr_1.__next__();
                 if (!__r_2.has_value()) break;
                 std::string_view s = ::tpy::unwrap_ref(*__r_2);
-            std::cout << s << "\n";
+                std::cout << s << "\n";
             }
         }
         ::tpyapp::main::capture(k);

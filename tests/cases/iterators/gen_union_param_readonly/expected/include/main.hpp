@@ -67,7 +67,8 @@ struct __gen_names : public ::tpy::next_iter_mixin<__gen_names, std::string> {
     };
 
     __gen_names(::tpy::Union<const Cat*, const Dog*> a_)
-        : __state(S_INITIAL), a(a_) {}
+        : __state(S_INITIAL),
+          a(a_) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_names& __iter__() { return *this; }

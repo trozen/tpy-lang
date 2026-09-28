@@ -93,7 +93,9 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
-inline Base::Base(double x, double y) : x(x), y(y) {}
+inline Base::Base(double x, double y)
+    : x(x),
+      y(y) {}
 
 inline bool Base::__eq__(const Base& other) const {
     return ((this->x == other.x) && (this->y == other.y));
@@ -113,7 +115,9 @@ inline std::string Other::__repr__() const {
     return std::format("Other(v={})", ::tpy::repr_of(this->v));
 }
 
-inline Child::Child(double x, double y, double z) : Base(x, y), z(z) {}
+inline Child::Child(double x, double y, double z)
+    : Base(x, y),
+      z(z) {}
 
 inline bool Child::__eq__(const Child& other) const {
     return (((this->x == other.x) && (this->y == other.y)) && (this->z == other.z));

@@ -64,8 +64,7 @@ struct __gen_gen_chars : public ::tpy::next_iter_mixin<__gen_gen_chars, std::str
         S_DONE = 3,
     };
 
-    __gen_gen_chars()
-        : __state(S_INITIAL) {}
+    __gen_gen_chars() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen_chars& __iter__() { return *this; }

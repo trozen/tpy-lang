@@ -30,7 +30,9 @@ struct Holder {
     //     self._k = k
     //     self._v = v
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v) : _k(k), _v(v) {}
+    explicit Holder(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v)
+        : _k(k),
+          _v(v) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 

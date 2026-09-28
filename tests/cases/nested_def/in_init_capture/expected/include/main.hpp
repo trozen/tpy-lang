@@ -42,7 +42,9 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 //
 //     expand()
 //     expand()
-inline Grid::Grid(int32_t w) : w(w), cells(0) {
+inline Grid::Grid(int32_t w)
+    : w(w),
+      cells(0) {
     auto expand = [this]() {
         this->cells = ::tpy::add_check<int32_t>(this->cells, this->w);
     };

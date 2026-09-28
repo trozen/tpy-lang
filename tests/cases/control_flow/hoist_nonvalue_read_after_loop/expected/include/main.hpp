@@ -346,7 +346,9 @@ struct __coro_async_sibling {
     };
 
     __coro_async_sibling(std::vector<Pic>& pics)
-        : __state(S_INITIAL), __cancel_pending(false), pics(pics) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          pics(pics) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -383,7 +385,10 @@ struct __coro_async_blk_if {
     };
 
     __coro_async_blk_if(bool flag_, std::vector<Pic>& pics)
-        : __state(S_INITIAL), __cancel_pending(false), flag(std::move(flag_)), pics(pics) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          flag(std::move(flag_)),
+          pics(pics) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -416,7 +421,8 @@ struct __coro_async_all {
     };
 
     __coro_async_all()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -445,8 +451,7 @@ struct __gen_gen_section : public ::tpy::next_iter_mixin<__gen_gen_section, int3
         S_DONE = 5,
     };
 
-    __gen_gen_section()
-        : __state(S_INITIAL) {}
+    __gen_gen_section() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_section& __iter__() { return *this; }
@@ -473,8 +478,7 @@ struct __gen_gen_while_section : public ::tpy::next_iter_mixin<__gen_gen_while_s
         S_DONE = 5,
     };
 
-    __gen_gen_while_section()
-        : __state(S_INITIAL) {}
+    __gen_gen_while_section() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_while_section& __iter__() { return *this; }
@@ -501,8 +505,7 @@ struct __gen_gen_for_single : public ::tpy::next_iter_mixin<__gen_gen_for_single
         S_DONE = 4,
     };
 
-    __gen_gen_for_single()
-        : __state(S_INITIAL) {}
+    __gen_gen_for_single() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_for_single& __iter__() { return *this; }
@@ -527,7 +530,8 @@ struct __gen_gen_slice_view : public ::tpy::next_iter_mixin<__gen_gen_slice_view
     };
 
     __gen_gen_slice_view(std::string_view line_)
-        : __state(S_INITIAL), line(std::string(line_)) {}
+        : __state(S_INITIAL),
+          line(std::string(line_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_slice_view& __iter__() { return *this; }
@@ -553,8 +557,7 @@ struct __gen_gen_while_single : public ::tpy::next_iter_mixin<__gen_gen_while_si
         S_DONE = 4,
     };
 
-    __gen_gen_while_single()
-        : __state(S_INITIAL) {}
+    __gen_gen_while_single() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen_while_single& __iter__() { return *this; }
@@ -587,7 +590,8 @@ struct __gen_gen_sibling : public ::tpy::next_iter_mixin<__gen_gen_sibling, int3
     };
 
     __gen_gen_sibling(std::vector<Pic>& pics)
-        : __state(S_INITIAL), pics(pics) {}
+        : __state(S_INITIAL),
+          pics(pics) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_sibling& __iter__() { return *this; }
@@ -622,7 +626,9 @@ struct __gen_gen_blk_if : public ::tpy::next_iter_mixin<__gen_gen_blk_if, int32_
     };
 
     __gen_gen_blk_if(bool flag_, std::vector<Pic>& pics)
-        : __state(S_INITIAL), flag(std::move(flag_)), pics(pics) {}
+        : __state(S_INITIAL),
+          flag(std::move(flag_)),
+          pics(pics) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_blk_if& __iter__() { return *this; }

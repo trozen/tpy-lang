@@ -22,36 +22,28 @@ std::string classify(::tpy::Union<const Cat*, const Dog*> a, bool strict) {
             auto& n = __case_1.name;
             if ((n == "Rex")) {
                 return "Rex!";
-                goto __match_end_2;
             }
         }
         {
             if (strict) {
                 return "strict other";
-                goto __match_end_2;
             }
         }
         {
             return "other";
-            goto __match_end_2;
         }
-        break;
     }
     default: {
         {
             if (strict) {
                 return "strict other";
-                goto __match_end_2;
             }
         }
         {
             return "other";
-            goto __match_end_2;
         }
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
     return "";
 }
@@ -72,8 +64,6 @@ std::string as_guard(::tpy::Union<const Cat*, const Dog*> a) {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         auto& n = __case_0.name;
         return (::tpy::str_concat("cat: ", n));
-        goto __match_end_2;
-        break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
@@ -82,18 +72,14 @@ std::string as_guard(::tpy::Union<const Cat*, const Dog*> a) {
             auto& d = __case_1;
             if ((n == "Buddy")) {
                 return (::tpy::str_concat(d.name, " the dog"));
-                goto __match_end_2;
             }
         }
         {
             auto& n = __case_1.name;
             return (::tpy::str_concat("dog: ", n));
-            goto __match_end_2;
         }
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
     return "";
 }

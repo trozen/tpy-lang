@@ -153,7 +153,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+inline Vec2::Vec2(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 inline Point::Point(int32_t x) : x(x) {}
 

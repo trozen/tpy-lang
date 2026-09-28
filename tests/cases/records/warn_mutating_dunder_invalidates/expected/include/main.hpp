@@ -247,8 +247,7 @@ struct __gen_generator : public ::tpy::next_iter_mixin<__gen_generator, int32_t>
         S_DONE = 4,
     };
 
-    __gen_generator()
-        : __state(S_INITIAL) {}
+    __gen_generator() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_generator& __iter__() { return *this; }
@@ -333,7 +332,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> Grid::__next__() const {
 // def __init__(self) -> None:
 //     self.ps = [Pt(1)]
 //     self.opened = 0
-inline Closer::Closer() : ps(std::vector<Pt>{Pt(1)}), opened(0) {}
+inline Closer::Closer()
+    : ps(std::vector<Pt>{Pt(1)}),
+      opened(0) {}
 
 // @auto_readonly
 // def at(self, i: int32) -> Pt:
@@ -407,7 +408,9 @@ inline void Cells::__setitem__(int32_t i, int32_t v) {
 // def __init__(self) -> None:
 //     self.ps = [Pt(1)]
 //     self.n = 0
-inline Bag::Bag() : ps(std::vector<Pt>{Pt(1)}), n(0) {}
+inline Bag::Bag()
+    : ps(std::vector<Pt>{Pt(1)}),
+      n(0) {}
 
 // @auto_readonly
 // def at(self, i: int32) -> Pt:

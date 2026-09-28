@@ -124,7 +124,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // def __init__(self, n: int32, q: int32) -> None:
 //     self.n = n
 //     self.q = q
-inline Rec::Rec(int32_t n, int32_t q) : n(n), q(q) {}
+inline Rec::Rec(int32_t n, int32_t q)
+    : n(n),
+      q(q) {}
 
 // def __init__(self, m: int32) -> None:
 //     self.m = m
@@ -198,22 +200,16 @@ inline int32_t Holder::bump(::tpy::Union<Other*, Rec*> v) const {
             if ((__case_1.n > 0)) {
                 __case_1.n = (::tpy::add_check<int32_t>(__case_1.n, 100));
                 return __case_1.n;
-                goto __match_end_2;
             }
         }
         {
             return 0;
-            goto __match_end_2;
         }
-        break;
     }
     default: {
         return 0;
-        goto __match_end_2;
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
 }
 void __tpy_init();

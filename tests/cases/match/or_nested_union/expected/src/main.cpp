@@ -19,7 +19,6 @@ std::string known(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
     case 0:
     {
         return "known";
-        break;
     }
     }
     ::std::unreachable();
@@ -43,21 +42,18 @@ int32_t tag(::tpy::Union<Bird*, Cat*, Dog*> a, std::string_view t) {
         auto& ts = __case_0_0.tags;
         ts.push_back(std::string(t));
         return 1;
-        break;
     }
     case 1: {
         auto& __case_0_1 = *std::get<1>(__match_subject_1);
         auto& ts = __case_0_1.tags;
         ts.push_back(std::string(t));
         return 1;
-        break;
     }
     case 0: {
         auto& __case_0_2 = *std::get<0>(__match_subject_1);
         auto& ts = __case_0_2.tags;
         ts.push_back(std::string(t));
         return 1;
-        break;
     }
     }
     ::std::unreachable();
@@ -76,19 +72,16 @@ std::string read(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
         auto& __case_0_0 = *std::get<2>(__match_subject_1);
         auto& ts = __case_0_0.tags;
         return ::tpy::str_join(",", ts);
-        break;
     }
     case 1: {
         auto& __case_0_1 = *std::get<1>(__match_subject_1);
         auto& ts = __case_0_1.tags;
         return ::tpy::str_join(",", ts);
-        break;
     }
     case 0: {
         auto& __case_0_2 = *std::get<0>(__match_subject_1);
         auto& ts = __case_0_2.tags;
         return ::tpy::str_join(",", ts);
-        break;
     }
     }
     ::std::unreachable();

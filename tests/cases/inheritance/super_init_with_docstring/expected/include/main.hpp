@@ -178,7 +178,9 @@ inline Other::Other(int32_t m) {
 //     """Initialize Child with value and extra."""
 //     super().__init__(value)  # tpyc: ok
 //     self.extra = extra
-inline Child::Child(int32_t value, int32_t extra) : Parent(value), extra(extra) {
+inline Child::Child(int32_t value, int32_t extra)
+    : Parent(value),
+      extra(extra) {
 }
 
 // def __init__(self, value: int32, extra: int32) -> None:
@@ -200,7 +202,9 @@ inline Nested::Nested(int32_t value, int32_t extra) : Parent(value) {
 //     super().__init__(1)  # tpyc: ok
 //     self.y = 3
 //     print("pass-super: after", self.value, self.y)
-inline PassSuper::PassSuper() : Parent(1), y(3) {
+inline PassSuper::PassSuper()
+    : Parent(1),
+      y(3) {
     std::cout << "pass-super: after" << " " << this->value << " " << this->y << "\n";
 }
 
@@ -226,7 +230,9 @@ inline DocPass::DocPass() : Parent(5) {
 //     Parent.__init__(self, 3)
 //     Other.__init__(self, 4)  # tpyc: ok
 //     print("pass-multi: after", self.value, self.m)
-inline PassMulti::PassMulti() : Parent(3), Other(4) {
+inline PassMulti::PassMulti()
+    : Parent(3),
+      Other(4) {
     std::cout << "pass-multi: after" << " " << this->value << " " << this->m << "\n";
 }
 void __tpy_init();

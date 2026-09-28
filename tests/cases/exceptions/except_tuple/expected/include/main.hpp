@@ -86,11 +86,15 @@ inline std::ostream& operator<<(std::ostream& os, const CErr& obj) {
 // def __init__(self, code: int) -> None:
 //     super().__init__()
 //     self.code = code
-inline AErr::AErr(const ::tpy::BigInt& code) : ::tpy::Exception(), code(code) {}
+inline AErr::AErr(const ::tpy::BigInt& code)
+    : ::tpy::Exception(),
+      code(code) {}
 
 // def __init__(self, code: int) -> None:
 //     super().__init__()
 //     self.code = code
-inline BErr::BErr(const ::tpy::BigInt& code) : ::tpy::Exception(), code(code) {}
+inline BErr::BErr(const ::tpy::BigInt& code)
+    : ::tpy::Exception(),
+      code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

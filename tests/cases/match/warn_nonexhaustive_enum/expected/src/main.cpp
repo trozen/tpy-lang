@@ -58,11 +58,9 @@ std::string describe(Color c) {
     switch (__match_subject_1) {
     case Color::Red: {
         return "red";
-        break;
     }
     case Color::Green: {
         return "green";
-        break;
     }
     default: break;
     }

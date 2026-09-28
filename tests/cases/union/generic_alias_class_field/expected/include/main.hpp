@@ -35,6 +35,8 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // def __init__(self) -> None:
 //     self.pair = (int32(3), int32(7))
 //     self.label = "h"
-inline Holder::Holder() : pair(std::tuple<int32_t, int32_t>{3, 7}), label("h") {}
+inline Holder::Holder()
+    : pair(std::tuple<int32_t, int32_t>{3, 7}),
+      label("h") {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -65,7 +65,10 @@ struct _RcCell : _RcCellBase {
     //     # the unset field (CPython doesn't reach this stub -- it uses
     //     # lib/cpy/tplib/rc.py which has a different internal model).
     //     self.storage = UninitStorage[U]()
-    _RcCell() : strong(1), weak(1), storage(::tpy::UninitStorage<U>()) {}
+    _RcCell()
+        : strong(1),
+          weak(1),
+          storage(::tpy::UninitStorage<U>()) {}
     // non-copyable (@nocopy)
     _RcCell(const _RcCell&) = delete;
     _RcCell& operator=(const _RcCell&) = delete;
@@ -157,11 +160,15 @@ struct Rc {
     // def __init__(self, cell: Ptr[_RcCellBase], payload: Ptr[T]) -> None:
     //     self._cell = cell
     //     self._payload = payload
-    explicit Rc(_RcCellBase* cell, T* payload) : _cell(cell), _payload(payload) {}
+    explicit Rc(_RcCellBase* cell, T* payload)
+        : _cell(cell),
+          _payload(payload) {}
     // non-copyable (@nocopy)
     Rc(const Rc&) = delete;
     Rc& operator=(const Rc&) = delete;
-    Rc(Rc&& other) noexcept : _cell(std::move(other._cell)), _payload(std::move(other._payload)) {
+    Rc(Rc&& other) noexcept
+        : _cell(std::move(other._cell)),
+          _payload(std::move(other._payload)) {
         other.__tpy_owned_ = false;
     }
     Rc& operator=(Rc&& other) noexcept {
@@ -184,7 +191,9 @@ struct Rc {
 
     template<typename __CovU_T>
         requires (std::is_base_of_v<T, __CovU_T>)
-    Rc(Rc<__CovU_T>&& __other) noexcept : _cell(std::move(__other._cell)), _payload(std::move(__other._payload)) {
+    Rc(Rc<__CovU_T>&& __other) noexcept
+        : _cell(std::move(__other._cell)),
+          _payload(std::move(__other._payload)) {
         __other.__tpy_owned_ = false;
     }
     template<typename> friend struct Rc;
@@ -392,11 +401,15 @@ struct Weak {
     // def __init__(self, cell: Ptr[_RcCellBase], payload: Ptr[T]) -> None:
     //     self._cell = cell
     //     self._payload = payload
-    explicit Weak(_RcCellBase* cell, T* payload) : _cell(cell), _payload(payload) {}
+    explicit Weak(_RcCellBase* cell, T* payload)
+        : _cell(cell),
+          _payload(payload) {}
     // non-copyable (@nocopy)
     Weak(const Weak&) = delete;
     Weak& operator=(const Weak&) = delete;
-    Weak(Weak&& other) noexcept : _cell(std::move(other._cell)), _payload(std::move(other._payload)) {
+    Weak(Weak&& other) noexcept
+        : _cell(std::move(other._cell)),
+          _payload(std::move(other._payload)) {
         other.__tpy_owned_ = false;
     }
     Weak& operator=(Weak&& other) noexcept {

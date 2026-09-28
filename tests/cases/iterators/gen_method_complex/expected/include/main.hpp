@@ -57,7 +57,8 @@ struct __gen_Range___iter__ : public ::tpy::next_iter_mixin<__gen_Range___iter__
     };
 
     __gen_Range___iter__(const Range& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Range___iter__& __iter__() { return *this; }
@@ -86,7 +87,8 @@ struct __gen_Range_pairs : public ::tpy::next_iter_mixin<__gen_Range_pairs, int3
     };
 
     __gen_Range_pairs(const Range& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Range_pairs& __iter__() { return *this; }
@@ -104,7 +106,9 @@ inline __gen_Range_pairs Range::pairs() const {
 // def __init__(self, start: int32, stop: int32) -> None:
 //     self.start = start
 //     self.stop = stop
-inline Range::Range(int32_t start, int32_t stop) : start(start), stop(stop) {}
+inline Range::Range(int32_t start, int32_t stop)
+    : start(start),
+      stop(stop) {}
 
 // def total(self) -> int32:
 //     return self.stop - self.start

@@ -146,11 +146,9 @@ bool match_arm(int32_t tag) {
     switch (__match_subject_1) {
     case 1: {
         return ::tpyapp::main::anyslot<int32_t>("match", 1);
-        break;
     }
     default: {
         return false;
-        break;
     }
     }
     ::std::unreachable();
@@ -253,7 +251,7 @@ void generator_body() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        out = ::tpy::add_check<int32_t>(out, v);
+            out = ::tpy::add_check<int32_t>(out, v);
         }
     }
     std::cout << "generator_body" << " " << out << "\n";
@@ -275,7 +273,7 @@ void generator_factory() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        out = ::tpy::add_check<int32_t>(out, v);
+            out = ::tpy::add_check<int32_t>(out, v);
         }
     }
     std::cout << "generator" << " " << out << "\n";

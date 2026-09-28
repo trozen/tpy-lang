@@ -52,7 +52,9 @@ namespace tpyapp::main {
 // def __init__(self, x: int, y: int) -> None:
 //     self.x = x
 //     self.y = y
-inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
+inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y)
+    : x(x),
+      y(y) {}
 
 // def __hash__(self) -> uint64:
 //     return hash(self.x) ^ hash(self.y)

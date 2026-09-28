@@ -100,7 +100,9 @@ inline Rec::Rec(int32_t x) : x(x) {}
 // def __init__(self) -> None:
 //     self.tag = 0
 //     self.items = []
-inline K::K() : tag(0), items(std::vector<int32_t>{}) {}
+inline K::K()
+    : tag(0),
+      items(std::vector<int32_t>{}) {}
 
 // def fill(self, xs: list[int32]) -> int32:
 //     xs.append(9)

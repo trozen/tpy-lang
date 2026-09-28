@@ -87,7 +87,11 @@ inline std::ostream& operator<<(std::ostream& os, const User& obj) {
 }
 
 
-inline User::User(std::string_view name, int32_t age, bool active, std::optional<std::string_view> email) : name(name), age(age), active(active), email(email ? std::make_optional(std::string(*email)) : std::nullopt) {}
+inline User::User(std::string_view name, int32_t age, bool active, std::optional<std::string_view> email)
+    : name(name),
+      age(age),
+      active(active),
+      email(email ? std::make_optional(std::string(*email)) : std::nullopt) {}
 
 inline bool User::__eq__(const User& other) const {
     return ((((this->name == other.name) && (this->age == other.age)) && (this->active == other.active)) && (this->email == other.email));

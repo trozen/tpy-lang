@@ -60,7 +60,9 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 // def __init__(self, name: str, count: int32) -> None:
 //     self.name = name
 //     self.count = count
-inline Widget::Widget(std::string_view name, int32_t count) : Named(), Counted() {
+inline Widget::Widget(std::string_view name, int32_t count)
+    : Named(),
+      Counted() {
     this->name = name;
     this->count = count;
 }

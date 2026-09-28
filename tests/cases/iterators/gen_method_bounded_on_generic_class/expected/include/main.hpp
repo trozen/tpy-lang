@@ -103,7 +103,8 @@ struct __gen_Summer_each_doubled : public ::tpy::next_iter_mixin<__gen_Summer_ea
     };
 
     __gen_Summer_each_doubled(const Summer<T>& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Summer_each_doubled& __iter__() { return *this; }
@@ -156,7 +157,9 @@ inline __gen_Summer_each_doubled<T> Summer<T>::each_doubled() const {
 // def __init__(self, start: int32, limit: int32) -> None:
 //     self.current = start
 //     self.limit = limit
-inline RangeIter::RangeIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
+inline RangeIter::RangeIter(int32_t start, int32_t limit)
+    : current(start),
+      limit(limit) {}
 
 // def __next__(self) -> int32:
 //     if self.current < self.limit:
@@ -176,7 +179,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> RangeIter::__next__() {
 // def __init__(self, start: int32, limit: int32) -> None:
 //     self.start = start
 //     self.limit = limit
-inline MyRange::MyRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
+inline MyRange::MyRange(int32_t start, int32_t limit)
+    : start(start),
+      limit(limit) {}
 
 // def __iter__(self) -> Own[RangeIter]:
 //     return RangeIter(self.start, self.limit)

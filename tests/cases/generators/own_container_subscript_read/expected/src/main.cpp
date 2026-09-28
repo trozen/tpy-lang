@@ -28,7 +28,7 @@ void read_dicts() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& d = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::__getitem__(d, "k") << "\n";
+            std::cout << ::tpy::__getitem__(d, "k") << "\n";
         }
     }
 }
@@ -45,8 +45,8 @@ void read_list_normalized() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& xs = ::tpy::unwrap_ref(*__r_1);
-        std::cout << ::tpy::__getitem__(xs, -1) << "\n";
-        std::cout << ::tpy::__getitem__(xs, 0) << "\n";
+            std::cout << ::tpy::__getitem__(xs, -1) << "\n";
+            std::cout << ::tpy::__getitem__(xs, 0) << "\n";
         }
     }
 }
@@ -74,14 +74,14 @@ void list_oob_raises() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& xs = ::tpy::unwrap_ref(*__r_1);
-        {
-            try {
-                std::cout << ::tpy::__getitem__(xs, 99) << "\n";
-                std::cout << "FAIL: no IndexError" << "\n";
-            } catch (const ::tpy::IndexError&) {
-                std::cout << "got IndexError" << "\n";
+            {
+                try {
+                    std::cout << ::tpy::__getitem__(xs, 99) << "\n";
+                    std::cout << "FAIL: no IndexError" << "\n";
+                } catch (const ::tpy::IndexError&) {
+                    std::cout << "got IndexError" << "\n";
+                }
             }
-        }
         }
     }
 }
@@ -103,15 +103,15 @@ void dict_missing_raises() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& d = ::tpy::unwrap_ref(*__r_1);
-        {
-            try {
-                std::cout << ::tpy::__getitem__(d, "absent") << "\n";
-                std::cout << "FAIL: no KeyError" << "\n";
-            } catch (const ::tpy::KeyError&) {
-                std::cout << "got KeyError" << "\n";
+            {
+                try {
+                    std::cout << ::tpy::__getitem__(d, "absent") << "\n";
+                    std::cout << "FAIL: no KeyError" << "\n";
+                } catch (const ::tpy::KeyError&) {
+                    std::cout << "got KeyError" << "\n";
+                }
             }
-        }
-        break;
+            break;
         }
     }
 }

@@ -88,7 +88,8 @@ struct __gen_yield_copy : public ::tpy::next_iter_mixin<__gen_yield_copy, std::t
     };
 
     __gen_yield_copy(const C& c)
-        : __state(S_INITIAL), c(c) {}
+        : __state(S_INITIAL),
+          c(c) {}
 
     std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __next__();
     __gen_yield_copy& __iter__() { return *this; }
@@ -108,8 +109,7 @@ struct __gen_yield_fresh : public ::tpy::next_iter_mixin<__gen_yield_fresh, std:
         S_DONE = 2,
     };
 
-    __gen_yield_fresh()
-        : __state(S_INITIAL) {}
+    __gen_yield_fresh() : __state(S_INITIAL) {}
 
     std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __next__();
     __gen_yield_fresh& __iter__() { return *this; }
@@ -134,8 +134,7 @@ struct __gen_yield_last_use : public ::tpy::next_iter_mixin<__gen_yield_last_use
         S_DONE = 3,
     };
 
-    __gen_yield_last_use()
-        : __state(S_INITIAL) {}
+    __gen_yield_last_use() : __state(S_INITIAL) {}
 
     std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __next__();
     __gen_yield_last_use& __iter__() { return *this; }
@@ -157,7 +156,8 @@ struct __gen_yield_mixed_borrow : public ::tpy::next_iter_mixin<__gen_yield_mixe
     };
 
     __gen_yield_mixed_borrow(C& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     std::expected<std::tuple<C, C*>, ::tpy::StopIteration> __next__();
     __gen_yield_mixed_borrow& __iter__() { return *this; }
@@ -177,8 +177,7 @@ struct __gen_yield_values : public ::tpy::next_iter_mixin<__gen_yield_values, st
         S_DONE = 2,
     };
 
-    __gen_yield_values()
-        : __state(S_INITIAL) {}
+    __gen_yield_values() : __state(S_INITIAL) {}
 
     std::expected<std::tuple<int32_t, std::tuple<int32_t, std::string>>, ::tpy::StopIteration> __next__();
     __gen_yield_values& __iter__() { return *this; }

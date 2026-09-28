@@ -242,7 +242,10 @@ struct __coro_in_async {
     };
 
     __coro_in_async(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs), ys(ys) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs),
+          ys(ys) {}
 
     ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -268,7 +271,10 @@ struct __coro_amain {
     };
 
     __coro_amain(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs), ys(ys) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs),
+          ys(ys) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -291,7 +297,9 @@ struct __gen_gen_eq : public ::tpy::next_iter_mixin<__gen_gen_eq, bool> {
     };
 
     __gen_gen_eq(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys)
-        : __state(S_INITIAL), xs(xs), ys(ys) {}
+        : __state(S_INITIAL),
+          xs(xs),
+          ys(ys) {}
 
     std::expected<bool, ::tpy::StopIteration> __next__();
     __gen_gen_eq& __iter__() { return *this; }

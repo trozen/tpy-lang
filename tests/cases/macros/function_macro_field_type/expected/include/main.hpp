@@ -60,7 +60,9 @@ inline GateBase::GateBase() : tag(7) {}
 // def __init__(self, flag: bool) -> None:
 //     super().__init__()
 //     self.flag = flag
-inline Gate::Gate(bool flag) : GateBase(), flag(flag) {}
+inline Gate::Gate(bool flag)
+    : GateBase(),
+      flag(flag) {}
 
 // def describe(self) -> str:
 //     return "on" if self.flag else "off"

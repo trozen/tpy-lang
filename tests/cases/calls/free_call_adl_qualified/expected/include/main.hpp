@@ -87,7 +87,9 @@ struct __coro_async_double {
     };
 
     __coro_async_double(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -113,7 +115,10 @@ struct __coro_run_factory {
     };
 
     __coro_run_factory(std::function<std::unique_ptr<::tpystd::coro::Cancellable<int32_t>>(int32_t)> factory_, int32_t v_)
-        : __state(S_INITIAL), __cancel_pending(false), factory(std::move(factory_)), v(std::move(v_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          factory(std::move(factory_)),
+          v(std::move(v_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -136,7 +141,8 @@ struct __coro_async_main {
     };
 
     __coro_async_main()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -162,7 +168,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     };
 
     __gen_gen(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

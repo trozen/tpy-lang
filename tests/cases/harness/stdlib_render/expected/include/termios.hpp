@@ -142,7 +142,14 @@ inline std::ostream& operator<<(std::ostream& os, const TermAttributes& obj) {
 //     self._ispeed = ispeed
 //     self._ospeed = ospeed
 //     self._cc = cc
-inline TermAttributes::TermAttributes(int64_t iflag, int64_t oflag, int64_t cflag, int64_t lflag, int64_t ispeed, int64_t ospeed, ::tpy::ByteArray&& cc) : _iflag(iflag), _oflag(oflag), _cflag(cflag), _lflag(lflag), _ispeed(ispeed), _ospeed(ospeed), _cc(std::move(cc)) {}
+inline TermAttributes::TermAttributes(int64_t iflag, int64_t oflag, int64_t cflag, int64_t lflag, int64_t ispeed, int64_t ospeed, ::tpy::ByteArray&& cc)
+    : _iflag(iflag),
+      _oflag(oflag),
+      _cflag(cflag),
+      _lflag(lflag),
+      _ispeed(ispeed),
+      _ospeed(ospeed),
+      _cc(std::move(cc)) {}
 
 // def __eq__(self, other: "TermAttributes") -> bool:
 //     return (self._iflag == other._iflag and self._oflag == other._oflag

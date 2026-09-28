@@ -277,7 +277,9 @@ struct Pair {
     //     self.first = first
     //     self.second = second
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second) : first(first), second(second) {}
+    explicit Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second)
+        : first(first),
+          second(second) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -947,7 +949,9 @@ struct __coro_settle {
     };
 
     __coro_settle(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<Coord> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -972,7 +976,9 @@ struct __coro_flip_later {
     };
 
     __coro_flip_later(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<Coord> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -997,7 +1003,9 @@ struct __coro_tagged_async {
     };
 
     __coro_tagged_async(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -1022,7 +1030,9 @@ struct __coro_calm_async {
     };
 
     __coro_calm_async(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -1054,7 +1064,9 @@ struct __coro_calm_finally {
     };
 
     __coro_calm_finally(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<Calm> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -1079,7 +1091,9 @@ struct __coro_store_async {
     };
 
     __coro_store_async(Holder& h)
-        : __state(S_INITIAL), __cancel_pending(false), h(h) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          h(h) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -1110,7 +1124,8 @@ struct __coro_deferred_resumables {
     };
 
     __coro_deferred_resumables()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -1137,7 +1152,8 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, Coord> {
     };
 
     __gen_walk(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<Coord, ::tpy::StopIteration> __next__();
     __gen_walk& __iter__() { return *this; }
@@ -1167,7 +1183,8 @@ struct __coro_resumables {
     };
 
     __coro_resumables()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -1191,7 +1208,8 @@ struct __gen_pair_seconds : public ::tpy::next_iter_mixin<__gen_pair_seconds, in
     };
 
     __gen_pair_seconds(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_pair_seconds& __iter__() { return *this; }
@@ -1218,7 +1236,9 @@ struct __gen_days : public ::tpy::next_iter_mixin<__gen_days, int32_t> {
     };
 
     __gen_days(::tpystd::datetime::date d_, int32_t n_)
-        : __state(S_INITIAL), d(std::move(d_)), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          d(std::move(d_)),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_days& __iter__() { return *this; }
@@ -1245,7 +1265,8 @@ struct __gen_columns : public ::tpy::next_iter_mixin<__gen_columns, int32_t> {
     };
 
     __gen_columns(const std::vector<Coord>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_columns& __iter__() { return *this; }
@@ -1268,7 +1289,8 @@ struct __gen_flips : public ::tpy::next_iter_mixin<__gen_flips, Coord> {
     };
 
     __gen_flips(Coord c_)
-        : __state(S_INITIAL), c(std::move(c_)) {}
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
 
     std::expected<Coord, ::tpy::StopIteration> __next__();
     __gen_flips& __iter__() { return *this; }
@@ -1293,7 +1315,8 @@ struct __gen_maybe_columns : public ::tpy::next_iter_mixin<__gen_maybe_columns, 
     };
 
     __gen_maybe_columns(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_maybe_columns& __iter__() { return *this; }
@@ -1324,7 +1347,8 @@ struct __gen_tagged_gen : public ::tpy::next_iter_mixin<__gen_tagged_gen, int32_
     };
 
     __gen_tagged_gen(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_tagged_gen& __iter__() { return *this; }
@@ -1348,7 +1372,8 @@ struct __gen_tagged_pairs : public ::tpy::next_iter_mixin<__gen_tagged_pairs, in
     };
 
     __gen_tagged_pairs(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_tagged_pairs& __iter__() { return *this; }
@@ -1372,7 +1397,8 @@ struct __gen_calm_gen : public ::tpy::next_iter_mixin<__gen_calm_gen, int32_t> {
     };
 
     __gen_calm_gen(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_calm_gen& __iter__() { return *this; }
@@ -1399,7 +1425,8 @@ struct __gen_tuple_gen : public ::tpy::next_iter_mixin<__gen_tuple_gen, int32_t>
     };
 
     __gen_tuple_gen(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_tuple_gen& __iter__() { return *this; }
@@ -1423,7 +1450,8 @@ struct __gen_gauge_gen : public ::tpy::next_iter_mixin<__gen_gauge_gen, int32_t>
     };
 
     __gen_gauge_gen(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gauge_gen& __iter__() { return *this; }
@@ -1449,7 +1477,8 @@ struct __gen_text_rebinds : public ::tpy::next_iter_mixin<__gen_text_rebinds, st
     };
 
     __gen_text_rebinds(bool f_)
-        : __state(S_INITIAL), f(std::move(f_)) {}
+        : __state(S_INITIAL),
+          f(std::move(f_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_text_rebinds& __iter__() { return *this; }
@@ -1472,8 +1501,7 @@ struct __gen_union_rebinds : public ::tpy::next_iter_mixin<__gen_union_rebinds, 
         S_DONE = 4,
     };
 
-    __gen_union_rebinds()
-        : __state(S_INITIAL) {}
+    __gen_union_rebinds() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_union_rebinds& __iter__() { return *this; }
@@ -1497,7 +1525,8 @@ struct __gen_store_gen : public ::tpy::next_iter_mixin<__gen_store_gen, int32_t>
     };
 
     __gen_store_gen(Holder& h)
-        : __state(S_INITIAL), h(h) {}
+        : __state(S_INITIAL),
+          h(h) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_store_gen& __iter__() { return *this; }
@@ -1511,7 +1540,9 @@ struct __gen_store_gen : public ::tpy::next_iter_mixin<__gen_store_gen, int32_t>
 // def __init__(self, column: int32, row: int32) -> None:
 //     self.column = column
 //     self.row = row
-inline Coord::Coord(int32_t column, int32_t row) : column(column), row(row) {}
+inline Coord::Coord(int32_t column, int32_t row)
+    : column(column),
+      row(row) {}
 
 // def swapped(self) -> "Coord":
 //     return Coord(self.row, self.column)
@@ -1522,12 +1553,16 @@ inline Coord Coord::swapped() const {
 // def __init__(self, a: Coord, b: Coord) -> None:
 //     self.a = a
 //     self.b = b
-inline Segment::Segment(Coord a, Coord b) : a(a), b(b) {}
+inline Segment::Segment(Coord a, Coord b)
+    : a(a),
+      b(b) {}
 
 // def __init__(self, value: int32 | str, n: int32) -> None:
 //     self.value = value
 //     self.n = n
-inline Tagged::Tagged(const ::tpy::Union<int32_t, std::string>& value, int32_t n) : value(value), n(n) {}
+inline Tagged::Tagged(const ::tpy::Union<int32_t, std::string>& value, int32_t n)
+    : value(value),
+      n(n) {}
 
 // def __init__(self, n: int32 = K) -> None:
 //     print("noisy init", n)
@@ -1560,7 +1595,9 @@ inline bool Calm::__eq__(Calm other) const {
     return (this->n == other.n);
 }
 
-inline Outer::Outer(Calm z, int32_t k) : z(std::move(z)), k(k) {}
+inline Outer::Outer(Calm z, int32_t k)
+    : z(std::move(z)),
+      k(k) {}
 
 inline bool Outer::__eq__(Outer other) const {
     return (((this->z) == (other.z)) && (this->k == other.k));
@@ -1573,7 +1610,9 @@ inline std::string Outer::__repr__() const {
 // def __init__(self) -> None:
 //     self.n = 7
 //     self.s = "hi"
-inline NoArgs::NoArgs() : n(7), s("hi") {}
+inline NoArgs::NoArgs()
+    : n(7),
+      s("hi") {}
 
 // def __init__(self, a: int32 = 1, *, b: int32) -> None:
 //     print("kw init", a, b)
@@ -1592,7 +1631,9 @@ inline Grid::Grid() : cells(std::array<Noisy, 2>()) {}
 
 inline Measured::Measured() : Measured(static_cast<std::nullptr_t*>(nullptr)) {}
 
-inline Settings::Settings(int32_t a, int32_t b) : a(a), b(b) {
+inline Settings::Settings(int32_t a, int32_t b)
+    : a(a),
+      b(b) {
     this->__post_init__();
 }
 
@@ -1627,14 +1668,18 @@ inline Text::Text(std::string_view s) : s(s) {}
 // def __init__(self, z: Calm, k: int32) -> None:
 //     self.z = z
 //     self.k = k
-inline Wrapped::Wrapped(Calm z, int32_t k) : z(z), k(k) {}
+inline Wrapped::Wrapped(Calm z, int32_t k)
+    : z(z),
+      k(k) {}
 
 // def __init__(self, c: Coord) -> None:
 //     self.c = c
 //     # BUGS.md#valuetype-optional-ctor-member-init keeps the value out
 //     # of the member-init list.
 //     self.maybe = None
-inline Holder::Holder(Coord c) : c(c), maybe(std::nullopt) {}
+inline Holder::Holder(Coord c)
+    : c(c),
+      maybe(std::nullopt) {}
 
 // # method: return of the whole optional field
 // def get_maybe(self) -> Coord | None:
@@ -1650,7 +1695,9 @@ inline Frame::Frame(Coord visual) : visual(visual) {}
 // def __init__(self) -> None:
 //     self.pos = Coord(1, 1)
 //     self.frames = [Frame(Coord(3, 4)), Frame(Coord(5, 6))]
-inline Walker::Walker() : pos(Coord(1, 1)), frames(std::vector<Frame>{Frame(Coord(3, 4)), Frame(Coord(5, 6))}) {}
+inline Walker::Walker()
+    : pos(Coord(1, 1)),
+      frames(std::vector<Frame>{Frame(Coord(3, 4)), Frame(Coord(5, 6))}) {}
 
 // # method: return of a rebound local
 // def stepped(self, d: int32) -> Coord:
@@ -1699,17 +1746,23 @@ inline NoisyChild::NoisyChild() : Noisy() {}
 // def __init__(self, n: int32 = 8) -> None:
 //     super().__init__(n)
 //     self.m = 5
-inline DVH::DVH(int32_t n) : Noisy(n), m(5) {}
+inline DVH::DVH(int32_t n)
+    : Noisy(n),
+      m(5) {}
 
 // def __init__(self, n: int32) -> None:
 //     super().__init__(n)
 //     self.m = 5
-inline RVH::RVH(int32_t n) : Calm(n), m(5) {}
+inline RVH::RVH(int32_t n)
+    : Calm(n),
+      m(5) {}
 
 // # skips super(): reads only its own field
 // def __init__(self, k: int32) -> None:  # tpyc: ok
 //     self.k = k
-inline TagChild::TagChild(int32_t k) : TagBase(), k(k) {}
+inline TagChild::TagChild(int32_t k)
+    : TagBase(),
+      k(k) {}
 struct CalmTree {
     using variant_type = ::tpy::Union<Calm, std::vector<CalmTree>>;
     variant_type value;

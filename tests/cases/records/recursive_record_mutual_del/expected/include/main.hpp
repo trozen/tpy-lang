@@ -69,9 +69,13 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 // def __init__(self, val: int32) -> None:
 //     self.val = val
 //     self.bs = []
-inline A::A(int32_t val) : val(val), bs(std::vector<B>{}) {}
+inline A::A(int32_t val)
+    : val(val),
+      bs(std::vector<B>{}) {}
 
-inline A::A(A&& other) noexcept : val(std::move(other.val)), bs(std::move(other.bs)) {
+inline A::A(A&& other) noexcept
+    : val(std::move(other.val)),
+      bs(std::move(other.bs)) {
     other.__tpy_owned_ = false;
 }
 inline A& A::operator=(A&& other) noexcept {
@@ -92,9 +96,13 @@ inline A::~A() {
 // def __init__(self, val: int32) -> None:
 //     self.val = val
 //     self.as_ = []
-inline B::B(int32_t val) : val(val), as_(std::vector<A>{}) {}
+inline B::B(int32_t val)
+    : val(val),
+      as_(std::vector<A>{}) {}
 
-inline B::B(B&& other) noexcept : val(std::move(other.val)), as_(std::move(other.as_)) {
+inline B::B(B&& other) noexcept
+    : val(std::move(other.val)),
+      as_(std::move(other.as_)) {
     other.__tpy_owned_ = false;
 }
 inline B& B::operator=(B&& other) noexcept {

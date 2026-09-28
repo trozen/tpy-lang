@@ -69,7 +69,7 @@ void sec_generator(const Cell& c) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-        out.push_back(n);
+            out.push_back(n);
         }
     }
     std::cout << "generator:" << " " << ::tpy::__getitem__(out, 1) << " " << ::tpy::__getitem__(out, 0) << "\n";

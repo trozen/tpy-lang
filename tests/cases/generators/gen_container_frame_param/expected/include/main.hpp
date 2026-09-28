@@ -35,7 +35,8 @@ struct __gen_twice_buf : public ::tpy::next_iter_mixin<__gen_twice_buf, ::tpy::v
     };
 
     __gen_twice_buf(::tpy::ByteArray& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     std::expected<::tpy::val_or_ref<::tpy::ByteArray>, ::tpy::StopIteration> __next__();
     __gen_twice_buf& __iter__() { return *this; }
@@ -58,7 +59,8 @@ struct __gen_twice_arr : public ::tpy::next_iter_mixin<__gen_twice_arr, ::tpy::v
     };
 
     __gen_twice_arr(std::array<int32_t, 2>& a)
-        : __state(S_INITIAL), a(a) {}
+        : __state(S_INITIAL),
+          a(a) {}
 
     std::expected<::tpy::val_or_ref<std::array<int32_t, 2>>, ::tpy::StopIteration> __next__();
     __gen_twice_arr& __iter__() { return *this; }
@@ -81,7 +83,8 @@ struct __gen_twice_list : public ::tpy::next_iter_mixin<__gen_twice_list, ::tpy:
     };
 
     __gen_twice_list(std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     __gen_twice_list& __iter__() { return *this; }

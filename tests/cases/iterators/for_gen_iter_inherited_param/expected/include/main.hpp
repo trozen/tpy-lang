@@ -66,7 +66,8 @@ struct __gen_BaseSource___iter__ : public ::tpy::next_iter_mixin<__gen_BaseSourc
     };
 
     __gen_BaseSource___iter__(BaseSource& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_BaseSource___iter__& __iter__() { return *this; }
@@ -88,6 +89,8 @@ inline BaseSource::BaseSource(int32_t n) : _n(n) {}
 // def __init__(self, n: int32, tag: int32):
 //     super().__init__(n)
 //     self._tag = tag
-inline Source::Source(int32_t n, int32_t tag) : BaseSource(n), _tag(tag) {}
+inline Source::Source(int32_t n, int32_t tag)
+    : BaseSource(n),
+      _tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

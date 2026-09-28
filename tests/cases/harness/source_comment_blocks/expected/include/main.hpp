@@ -89,7 +89,9 @@ struct __coro_doubled {
     };
 
     __coro_doubled(int32_t n_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -115,7 +117,8 @@ struct __gen_upto : public ::tpy::next_iter_mixin<__gen_upto, int32_t> {
     };
 
     __gen_upto(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_upto& __iter__() { return *this; }
@@ -139,7 +142,8 @@ struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair, int32_t> {
     };
 
     __gen_pair(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_pair& __iter__() { return *this; }

@@ -41,7 +41,9 @@ inline std::ostream& operator<<(std::ostream& os, const TaggedItem& obj) {
 }
 
 
-inline TaggedItem::TaggedItem(std::string_view name, ::tpy::ordered_set<std::string>&& tags) : name(name), tags(std::move(tags)) {}
+inline TaggedItem::TaggedItem(std::string_view name, ::tpy::ordered_set<std::string>&& tags)
+    : name(name),
+      tags(std::move(tags)) {}
 
 inline bool TaggedItem::__eq__(const TaggedItem& other) const {
     return ((this->name == other.name) && (this->tags == other.tags));

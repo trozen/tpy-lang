@@ -674,7 +674,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen-hosted nested def:" << " " << v << "\n";
+            std::cout << "gen-hosted nested def:" << " " << v << "\n";
         }
     }
     ::tpyapp::main::copy_section();

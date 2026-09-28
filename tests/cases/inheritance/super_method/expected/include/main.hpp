@@ -77,7 +77,9 @@ inline std::string Animal::describe() const {
 // def __init__(self, name: str, breed: str) -> None:
 //     super().__init__(name)
 //     self.breed = breed
-inline Dog::Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
+inline Dog::Dog(std::string_view name, std::string_view breed)
+    : Animal(name),
+      breed(breed) {}
 
 // def speak(self) -> str:
 //     return "Woof!"

@@ -87,7 +87,9 @@ inline std::ostream& operator<<(std::ostream& os, const CbreakMode& obj) {
 //     self.fd = fd
 //     # The previous mode lives in a field until restore() runs.
 //     self.saved = tty.setraw(fd)  # tpyc: ok
-inline RawSession::RawSession(int64_t fd) : fd(fd), saved(::tpystd::tty::setraw(fd)) {}
+inline RawSession::RawSession(int64_t fd)
+    : fd(fd),
+      saved(::tpystd::tty::setraw(fd)) {}
 
 // def restore(self) -> None:
 //     termios.tcsetattr(self.fd, termios.TCSAFLUSH, self.saved)
@@ -98,7 +100,9 @@ inline void RawSession::restore() const {
 // def __init__(self, fd: int64) -> None:
 //     self.fd = fd
 //     self.saved = termios.tcgetattr(fd)
-inline CbreakMode::CbreakMode(int64_t fd) : fd(fd), saved(::tpystd::termios::tcgetattr(fd)) {}
+inline CbreakMode::CbreakMode(int64_t fd)
+    : fd(fd),
+      saved(::tpystd::termios::tcgetattr(fd)) {}
 
 // def __enter__(self) -> "CbreakMode":
 //     tty.setcbreak(self.fd)

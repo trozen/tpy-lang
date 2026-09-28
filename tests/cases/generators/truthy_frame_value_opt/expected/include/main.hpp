@@ -65,7 +65,8 @@ struct __gen_branch_suspends : public ::tpy::next_iter_mixin<__gen_branch_suspen
     };
 
     __gen_branch_suspends(std::optional<int32_t> v_)
-        : __state(S_INITIAL), v(std::move(v_)) {}
+        : __state(S_INITIAL),
+          v(std::move(v_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_branch_suspends& __iter__() { return *this; }
@@ -88,7 +89,8 @@ struct __gen_branch_no_suspend : public ::tpy::next_iter_mixin<__gen_branch_no_s
     };
 
     __gen_branch_no_suspend(std::optional<int32_t> v_)
-        : __state(S_INITIAL), v(std::move(v_)) {}
+        : __state(S_INITIAL),
+          v(std::move(v_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_branch_no_suspend& __iter__() { return *this; }
@@ -112,7 +114,8 @@ struct __gen_not_form : public ::tpy::next_iter_mixin<__gen_not_form, int32_t> {
     };
 
     __gen_not_form(std::optional<int32_t> v_)
-        : __state(S_INITIAL), v(std::move(v_)) {}
+        : __state(S_INITIAL),
+          v(std::move(v_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_not_form& __iter__() { return *this; }
@@ -136,7 +139,8 @@ struct __gen_while_suspends : public ::tpy::next_iter_mixin<__gen_while_suspends
     };
 
     __gen_while_suspends(std::optional<int32_t> v_)
-        : __state(S_INITIAL), v(std::move(v_)) {}
+        : __state(S_INITIAL),
+          v(std::move(v_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_while_suspends& __iter__() { return *this; }
@@ -159,7 +163,8 @@ struct __gen_peephole_while : public ::tpy::next_iter_mixin<__gen_peephole_while
     };
 
     __gen_peephole_while(std::optional<int32_t> v_)
-        : __state(S_INITIAL), v(std::move(v_)) {}
+        : __state(S_INITIAL),
+          v(std::move(v_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_peephole_while& __iter__() { return *this; }
@@ -184,7 +189,8 @@ struct __gen_frame_local : public ::tpy::next_iter_mixin<__gen_frame_local, int3
     };
 
     __gen_frame_local(const Box& b)
-        : __state(S_INITIAL), b(b) {}
+        : __state(S_INITIAL),
+          b(b) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_frame_local& __iter__() { return *this; }

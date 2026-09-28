@@ -339,7 +339,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_13);
-        std::cout << "generator" << " " << n << "\n";
+            std::cout << "generator" << " " << n << "\n";
         }
     }
     {
@@ -350,7 +350,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_15);
-        std::cout << "generator_protocol" << " " << n << "\n";
+            std::cout << "generator_protocol" << " " << n << "\n";
         }
     }
     std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_body(b))) << "\n";

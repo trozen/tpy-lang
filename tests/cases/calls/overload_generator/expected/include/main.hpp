@@ -36,7 +36,9 @@ struct __gen_rep : public ::tpy::next_iter_mixin<__gen_rep<T>, ::tpy::yield_slot
     };
 
     __gen_rep(::tpy::param_val_or_ref_t<T> obj_, int32_t n_ = -1)
-        : __state(S_INITIAL), obj(obj_), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          obj(obj_),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_rep& __iter__() { return *this; }

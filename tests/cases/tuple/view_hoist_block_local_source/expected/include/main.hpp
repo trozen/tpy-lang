@@ -309,7 +309,8 @@ struct __gen_uppers : public ::tpy::next_iter_mixin<__gen_uppers, std::string> {
     };
 
     __gen_uppers(const std::vector<std::string>& ws)
-        : __state(S_INITIAL), ws(ws) {}
+        : __state(S_INITIAL),
+          ws(ws) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_uppers& __iter__() { return *this; }
@@ -336,7 +337,8 @@ struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__, st
     };
 
     __gen_Bag___iter__(const Bag& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_Bag___iter__& __iter__() { return *this; }
@@ -435,7 +437,9 @@ inline Bag::Bag() : xs(std::vector<std::string>{"bag-element-alpha-long-enough-t
 // def __init__(self) -> None:
 //     self.xs = ["counter-alpha", "counter-omega"]
 //     self.i = 0
-inline Counter::Counter() : xs(std::vector<std::string>{"counter-alpha", "counter-omega"}), i(::tpy::BigInt(0)) {}
+inline Counter::Counter()
+    : xs(std::vector<std::string>{"counter-alpha", "counter-omega"}),
+      i(::tpy::BigInt(0)) {}
 
 // def __iter__(self) -> "Counter":
 //     return self

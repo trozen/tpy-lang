@@ -296,16 +296,19 @@ copy shows the stale value, and a read-only body cannot tell them apart.
 **Rule.** Generated C++ is read by the developer and by reviewers. Every `#include` of a
 generated file sits in one block at its top -- none appended at the end or scattered between
 definitions. A call whose arguments do not fit one line, or a comprehension body, renders one
-item per line; a single emitted line should fit an editor width (about 100 columns). A
-member-init list with more than one initializer renders one initializer per line -- the target,
-not yet the emit (TODO.md, "Render a constructor's member-init list one initializer per line").
+item per line; a single emitted line should fit an editor width (about 100 columns) -- the
+target for long calls and braced lists, not yet the emit (TODO.md, "Break a long
+container-literal initializer across lines"). A member-init list with more than one
+initializer renders one initializer per line, under a `:` indented one level past the
+signature (`emit_prims.member_init_list`).
 
-**Example.** `inline Grid::Grid(int32_t n) : cells(...), tags(...), data(...), mirror(...) {}`
-on one line.
+**Example.** `tests/cases/dict/nested_container_element_printers` declares one nested
+`::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>` literal on a
+single line of more than 200 columns.
 
 **Check.** Read the changed snapshot for an `#include` outside the top block, lines far past 100
-columns, and one-line multi-item lists the change introduces (a one-line member-init list is the
-tracked TODO, not a finding against the change).
+columns, and one-line multi-item lists the change introduces (a long call or braced list on one
+line is the tracked TODO, not a finding against the change).
 
 ## Diagnostics
 

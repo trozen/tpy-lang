@@ -36,7 +36,8 @@ struct __gen_gen_if : public ::tpy::next_iter_mixin<__gen_gen_if, ::tpy::BigInt>
     };
 
     __gen_gen_if(::tpy::BigInt n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_if& __iter__() { return *this; }
@@ -60,7 +61,8 @@ struct __gen_gen_elif : public ::tpy::next_iter_mixin<__gen_gen_elif, ::tpy::Big
     };
 
     __gen_gen_elif(::tpy::BigInt n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_elif& __iter__() { return *this; }
@@ -84,7 +86,8 @@ struct __gen_gen_match : public ::tpy::next_iter_mixin<__gen_gen_match, ::tpy::B
     };
 
     __gen_gen_match(::tpy::BigInt n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_match& __iter__() { return *this; }

@@ -83,7 +83,9 @@ inline std::ostream& operator<<(std::ostream& os, const Car& obj) {
 // def __init__(self, brand: str, year: int32) -> None:
 //     self.brand = brand
 //     self.year = year
-inline Vehicle::Vehicle(std::string_view brand, int32_t year) : brand(brand), year(year) {}
+inline Vehicle::Vehicle(std::string_view brand, int32_t year)
+    : brand(brand),
+      year(year) {}
 
 // def get_brand(self) -> str:
 //     return self.brand
@@ -95,7 +97,10 @@ inline std::string Vehicle::get_brand() const {
 //     super().__init__(brand, year)
 //     self.model = model
 //     self.car_weight = car_weight
-inline Car::Car(std::string_view brand, int32_t year, std::string_view model, int32_t car_weight) : Vehicle(brand, year), model(model), car_weight(car_weight) {}
+inline Car::Car(std::string_view brand, int32_t year, std::string_view model, int32_t car_weight)
+    : Vehicle(brand, year),
+      model(model),
+      car_weight(car_weight) {}
 
 // def __str__(self) -> str:
 //     return self.model

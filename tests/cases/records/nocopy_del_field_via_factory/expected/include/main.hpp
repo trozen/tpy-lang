@@ -103,6 +103,8 @@ inline Resource Resource::make(int32_t seed) {
 // def __init__(self, seed: int32, tag: int32) -> None:
 //     self._r = Resource.make(seed)
 //     self.tag = tag
-inline Holder::Holder(int32_t seed, int32_t tag) : _r(Resource::make(seed)), tag(tag) {}
+inline Holder::Holder(int32_t seed, int32_t tag)
+    : _r(Resource::make(seed)),
+      tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

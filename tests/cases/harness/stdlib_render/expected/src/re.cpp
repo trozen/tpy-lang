@@ -495,12 +495,12 @@ std::vector<std::string> Pattern::split(std::string_view subject, int32_t maxspl
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& m = ::tpy::unwrap_ref(*__r_1);
-        if (((maxsplit > 0) && (splits >= maxsplit))) {
-            break;
-        }
-        out.push_back(std::string(::tpy::str_slice(subject, ::tpy::BasicSlice{last, m.start()})));
-        last = m.end();
-        splits = ::tpy::add_check<int32_t>(splits, 1);
+            if (((maxsplit > 0) && (splits >= maxsplit))) {
+                break;
+            }
+            out.push_back(std::string(::tpy::str_slice(subject, ::tpy::BasicSlice{last, m.start()})));
+            last = m.end();
+            splits = ::tpy::add_check<int32_t>(splits, 1);
         }
     }
     out.push_back(std::string(::tpy::str_slice(subject, ::tpy::BasicSlice{last, std::nullopt})));

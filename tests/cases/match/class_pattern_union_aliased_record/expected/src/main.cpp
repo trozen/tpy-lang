@@ -18,13 +18,11 @@ namespace tpyapp::main {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& v = __case_0.y;
         return v;
-        break;
     }
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto& w = __case_1.z;
         return w;
-        break;
     }
     }
     ::std::unreachable();

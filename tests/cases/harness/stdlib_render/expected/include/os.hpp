@@ -287,7 +287,11 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<std::st
     };
 
     __gen_walk(std::string_view top_, bool topdown_ = true, std::optional<std::function<void(const ::tpy::OSError&)>> onerror_ = std::nullopt, bool followlinks_ = false)
-        : __state(S_INITIAL), top(std::string(top_)), topdown(std::move(topdown_)), onerror(std::move(onerror_)), followlinks(std::move(followlinks_)) {}
+        : __state(S_INITIAL),
+          top(std::string(top_)),
+          topdown(std::move(topdown_)),
+          onerror(std::move(onerror_)),
+          followlinks(std::move(followlinks_)) {}
 
     std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>, ::tpy::StopIteration> __next__();
     __gen_walk& __iter__() { return *this; }
@@ -302,7 +306,10 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<std::st
 //     self.name = name
 //     self.path = path
 //     self._kind = kind
-inline DirEntry::DirEntry(std::string_view name, std::string_view path, int64_t kind) : name(name), path(path), _kind(kind) {}
+inline DirEntry::DirEntry(std::string_view name, std::string_view path, int64_t kind)
+    : name(name),
+      path(path),
+      _kind(kind) {}
 
 // def is_dir(self) -> bool:
 //     if self._kind == 1:
@@ -367,11 +374,16 @@ inline _WalkExpand::_WalkExpand(std::string_view path) : path(path) {}
 //     self.path = path
 //     self.dirnames = dirnames
 //     self.filenames = filenames
-inline _WalkEmit::_WalkEmit(std::string_view path, std::vector<std::string>&& dirnames, std::vector<std::string>&& filenames) : path(path), dirnames(std::move(dirnames)), filenames(std::move(filenames)) {}
+inline _WalkEmit::_WalkEmit(std::string_view path, std::vector<std::string>&& dirnames, std::vector<std::string>&& filenames)
+    : path(path),
+      dirnames(std::move(dirnames)),
+      filenames(std::move(filenames)) {}
 
 // def __init__(self, columns: int64, lines: int64) -> None:
 //     self.columns = columns
 //     self.lines = lines
-inline terminal_size::terminal_size(int64_t columns, int64_t lines) : columns(columns), lines(lines) {}
+inline terminal_size::terminal_size(int64_t columns, int64_t lines)
+    : columns(columns),
+      lines(lines) {}
 void __tpy_init();
 } // namespace tpystd::os

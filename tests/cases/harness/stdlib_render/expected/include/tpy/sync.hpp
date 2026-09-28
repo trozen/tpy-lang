@@ -40,11 +40,15 @@ struct _MutexCell {
     // def __init__(self) -> None:
     //     self._mu = _RawMutex()
     //     self.storage = UninitStorage[T]()
-    _MutexCell() : _mu(::tpy::MovableMutex()), storage(::tpy::UninitStorage<T>()) {}
+    _MutexCell()
+        : _mu(::tpy::MovableMutex()),
+          storage(::tpy::UninitStorage<T>()) {}
     // non-copyable (@nocopy)
     _MutexCell(const _MutexCell&) = delete;
     _MutexCell& operator=(const _MutexCell&) = delete;
-    _MutexCell(_MutexCell&& other) noexcept : _mu(std::move(other._mu)), storage(std::move(other.storage)) {
+    _MutexCell(_MutexCell&& other) noexcept
+        : _mu(std::move(other._mu)),
+          storage(std::move(other.storage)) {
         other.__tpy_owned_ = false;
     }
     _MutexCell& operator=(_MutexCell&& other) noexcept {
@@ -95,11 +99,15 @@ struct _RwLockCell {
     // def __init__(self) -> None:
     //     self._mu = _RawSharedMutex()
     //     self.storage = UninitStorage[T]()
-    _RwLockCell() : _mu(::tpy::MovableSharedMutex()), storage(::tpy::UninitStorage<T>()) {}
+    _RwLockCell()
+        : _mu(::tpy::MovableSharedMutex()),
+          storage(::tpy::UninitStorage<T>()) {}
     // non-copyable (@nocopy)
     _RwLockCell(const _RwLockCell&) = delete;
     _RwLockCell& operator=(const _RwLockCell&) = delete;
-    _RwLockCell(_RwLockCell&& other) noexcept : _mu(std::move(other._mu)), storage(std::move(other.storage)) {
+    _RwLockCell(_RwLockCell&& other) noexcept
+        : _mu(std::move(other._mu)),
+          storage(std::move(other.storage)) {
         other.__tpy_owned_ = false;
     }
     _RwLockCell& operator=(_RwLockCell&& other) noexcept {
@@ -175,7 +183,9 @@ struct Mutex {
     // non-copyable (@nocopy)
     Mutex(const Mutex&) = delete;
     Mutex& operator=(const Mutex&) = delete;
-    Mutex(Mutex&& other) noexcept : _cell(std::move(other._cell)), _payload(std::move(other._payload)) {
+    Mutex(Mutex&& other) noexcept
+        : _cell(std::move(other._cell)),
+          _payload(std::move(other._payload)) {
         other.__tpy_owned_ = false;
     }
     Mutex& operator=(Mutex&& other) noexcept {
@@ -234,7 +244,11 @@ struct MutexGuard {
     //     self._locked = False
     //     self._raw_mu = take_ptr(cell._mu)
     MutexGuard() = default;
-    explicit MutexGuard(_MutexCell<T>* cell, T* payload) : _cell(cell), _payload(payload), _locked(false), _raw_mu(&::tpy::deref_check(cell)._mu) {}
+    explicit MutexGuard(_MutexCell<T>* cell, T* payload)
+        : _cell(cell),
+          _payload(payload),
+          _locked(false),
+          _raw_mu(&::tpy::deref_check(cell)._mu) {}
     // non-copyable (@nocopy)
     MutexGuard(const MutexGuard&) = delete;
     MutexGuard& operator=(const MutexGuard&) = delete;
@@ -354,7 +368,9 @@ struct RwLock {
     // non-copyable (@nocopy)
     RwLock(const RwLock&) = delete;
     RwLock& operator=(const RwLock&) = delete;
-    RwLock(RwLock&& other) noexcept : _cell(std::move(other._cell)), _payload(std::move(other._payload)) {
+    RwLock(RwLock&& other) noexcept
+        : _cell(std::move(other._cell)),
+          _payload(std::move(other._payload)) {
         other.__tpy_owned_ = false;
     }
     RwLock& operator=(RwLock&& other) noexcept {
@@ -417,7 +433,10 @@ struct ReadGuard {
     //     self._payload = payload
     //     self._locked = False
     ReadGuard() = default;
-    explicit ReadGuard(_RwLockCell<T>* cell, const T* payload) : _cell(cell), _payload(payload), _locked(false) {}
+    explicit ReadGuard(_RwLockCell<T>* cell, const T* payload)
+        : _cell(cell),
+          _payload(payload),
+          _locked(false) {}
     // non-copyable (@nocopy)
     ReadGuard(const ReadGuard&) = delete;
     ReadGuard& operator=(const ReadGuard&) = delete;
@@ -487,7 +506,10 @@ struct WriteGuard {
     //     self._payload = payload
     //     self._locked = False
     WriteGuard() = default;
-    explicit WriteGuard(_RwLockCell<T>* cell, T* payload) : _cell(cell), _payload(payload), _locked(false) {}
+    explicit WriteGuard(_RwLockCell<T>* cell, T* payload)
+        : _cell(cell),
+          _payload(payload),
+          _locked(false) {}
     // non-copyable (@nocopy)
     WriteGuard(const WriteGuard&) = delete;
     WriteGuard& operator=(const WriteGuard&) = delete;

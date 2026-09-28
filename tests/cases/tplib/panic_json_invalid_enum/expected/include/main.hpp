@@ -92,7 +92,9 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 }
 
 
-inline Item::Item(std::string_view name, Color color) : name(name), color(color) {}
+inline Item::Item(std::string_view name, Color color)
+    : name(name),
+      color(color) {}
 
 inline bool Item::__eq__(const Item& other) const {
     return ((this->name == other.name) && (this->color == other.color));

@@ -180,11 +180,9 @@ int32_t match_arm(::tpy::Union<A*, B*> v) {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         ::tpyapp::main::bump(::tpy::Union<A*, B*>{&(__case_0)});
         return __case_0.n;
-        break;
     }
     default: {
         return -1;
-        break;
     }
     }
     ::std::unreachable();
@@ -206,11 +204,9 @@ int32_t match_capture(::tpy::Union<A*, B*> v) {
         auto& got = __case_0;
         ::tpyapp::main::bump(::tpy::Union<A*, B*>{&(got)});
         return got.n;
-        break;
     }
     default: {
         return -1;
-        break;
     }
     }
     ::std::unreachable();
@@ -296,13 +292,11 @@ __coro_async_body async_body(::tpy::Union<A*, B*> v) {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
-            break;
         }
         default: {
             __state = S_DONE;
             int32_t __tpy_async_ret = -1;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
-            break;
         }
         }
         ::std::unreachable();
@@ -625,11 +619,9 @@ int32_t forward_union(::tpy::Union<const A*, const B*> u) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         return &(__case_0);
-        break;
     }
     default: {
         return v;
-        break;
     }
     }
     ::std::unreachable();
@@ -668,11 +660,9 @@ int32_t value_union_match(const ::tpy::Union<double, int32_t>& v) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
         return ::tpyapp::main::vu_total(__case_0);
-        break;
     }
     default: {
         return -1;
-        break;
     }
     }
     ::std::unreachable();
@@ -1037,7 +1027,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t y = ::tpy::unwrap_ref(*__r_1);
-        gt = (::tpy::add_check<int32_t>(gt, y));
+            gt = (::tpy::add_check<int32_t>(gt, y));
         }
     }
     std::cout << "generator" << " " << gt << " " << gv.n << "\n";
@@ -1050,7 +1040,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t y = ::tpy::unwrap_ref(*__r_3);
-        gt2 = (::tpy::add_check<int32_t>(gt2, y));
+            gt2 = (::tpy::add_check<int32_t>(gt2, y));
         }
     }
     std::cout << "gen-match" << " " << gt2 << " " << gw.n << "\n";
@@ -1081,7 +1071,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t y = ::tpy::unwrap_ref(*__r_5);
-        gt3 = (::tpy::add_check<int32_t>(gt3, y));
+            gt3 = (::tpy::add_check<int32_t>(gt3, y));
         }
     }
     std::cout << "gen-const" << " " << gt3 << "\n";

@@ -128,8 +128,7 @@ struct __gen_val_scalar : public ::tpy::next_iter_mixin<__gen_val_scalar, int32_
         S_DONE = 4,
     };
 
-    __gen_val_scalar()
-        : __state(S_INITIAL) {}
+    __gen_val_scalar() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_val_scalar& __iter__() { return *this; }
@@ -155,7 +154,8 @@ struct __gen_val_str : public ::tpy::next_iter_mixin<__gen_val_str, ::tpy::BigIn
     };
 
     __gen_val_str(const std::vector<std::string>& words)
-        : __state(S_INITIAL), words(words) {}
+        : __state(S_INITIAL),
+          words(words) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_val_str& __iter__() { return *this; }
@@ -179,8 +179,7 @@ struct __gen_val_tuple : public ::tpy::next_iter_mixin<__gen_val_tuple, int32_t>
         S_DONE = 4,
     };
 
-    __gen_val_tuple()
-        : __state(S_INITIAL) {}
+    __gen_val_tuple() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_val_tuple& __iter__() { return *this; }
@@ -204,8 +203,7 @@ struct __gen_owning : public ::tpy::next_iter_mixin<__gen_owning, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_owning()
-        : __state(S_INITIAL) {}
+    __gen_owning() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_owning& __iter__() { return *this; }
@@ -231,7 +229,8 @@ struct __gen_borrow_alias : public ::tpy::next_iter_mixin<__gen_borrow_alias, in
     };
 
     __gen_borrow_alias(std::vector<std::vector<int32_t>>& rows)
-        : __state(S_INITIAL), rows(rows) {}
+        : __state(S_INITIAL),
+          rows(rows) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_borrow_alias& __iter__() { return *this; }
@@ -257,7 +256,8 @@ struct __gen_opt_ptr : public ::tpy::next_iter_mixin<__gen_opt_ptr, int32_t> {
     };
 
     __gen_opt_ptr(std::vector<Node>& nodes)
-        : __state(S_INITIAL), nodes(nodes) {}
+        : __state(S_INITIAL),
+          nodes(nodes) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_opt_ptr& __iter__() { return *this; }
@@ -283,7 +283,8 @@ struct __gen_borrow_tuple : public ::tpy::next_iter_mixin<__gen_borrow_tuple, in
     };
 
     __gen_borrow_tuple(std::vector<Node>& nodes)
-        : __state(S_INITIAL), nodes(nodes) {}
+        : __state(S_INITIAL),
+          nodes(nodes) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_borrow_tuple& __iter__() { return *this; }
@@ -307,8 +308,7 @@ struct __gen_own_tuple : public ::tpy::next_iter_mixin<__gen_own_tuple, int32_t>
         S_DONE = 4,
     };
 
-    __gen_own_tuple()
-        : __state(S_INITIAL) {}
+    __gen_own_tuple() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_own_tuple& __iter__() { return *this; }
@@ -335,8 +335,7 @@ struct __gen_exc_binding : public ::tpy::next_iter_mixin<__gen_exc_binding, int3
         S_DONE = 7,
     };
 
-    __gen_exc_binding()
-        : __state(S_INITIAL) {}
+    __gen_exc_binding() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_exc_binding& __iter__() { return *this; }
@@ -365,8 +364,7 @@ struct __gen_exc_binding_for : public ::tpy::next_iter_mixin<__gen_exc_binding_f
         S_DONE = 7,
     };
 
-    __gen_exc_binding_for()
-        : __state(S_INITIAL) {}
+    __gen_exc_binding_for() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_exc_binding_for& __iter__() { return *this; }
@@ -392,7 +390,8 @@ struct __gen_Src_gen : public ::tpy::next_iter_mixin<__gen_Src_gen, int32_t> {
     };
 
     __gen_Src_gen(const Src& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Src_gen& __iter__() { return *this; }
@@ -414,7 +413,9 @@ inline Node::Node(int32_t v) : v(v) {}
 // def __init__(self, msg: str) -> None:
 //     super().__init__()
 //     self.msg = msg
-inline Boom::Boom(std::string_view msg) : ::tpy::Exception(), msg(msg) {}
+inline Boom::Boom(std::string_view msg)
+    : ::tpy::Exception(),
+      msg(msg) {}
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n

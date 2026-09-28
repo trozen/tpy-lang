@@ -30,15 +30,15 @@ void reference_element() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        auto& __tup_1 = __for_tup_0;
-        int32_t i = std::get<0>(__tup_1);
-        auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        if (((::tpy::mod_floor<int32_t>(seen, 2)) == 0)) {
-            p.x = ::tpy::add_check<int32_t>(p.x, 100);
-        } else {
-            std::cout << "reference:" << " " << i << " " << p.x << "\n";
-        }
-        seen = ::tpy::add_check<int32_t>(seen, 1);
+            auto& __tup_1 = __for_tup_0;
+            int32_t i = std::get<0>(__tup_1);
+            auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            if (((::tpy::mod_floor<int32_t>(seen, 2)) == 0)) {
+                p.x = ::tpy::add_check<int32_t>(p.x, 100);
+            } else {
+                std::cout << "reference:" << " " << i << " " << p.x << "\n";
+            }
+            seen = ::tpy::add_check<int32_t>(seen, 1);
         }
     }
 }
@@ -56,10 +56,10 @@ void value_element() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
-        const auto& __tup_1 = __for_tup_1;
-        int32_t i = std::get<0>(__tup_1);
-        int32_t n = std::get<1>(__tup_1);
-        std::cout << "value:" << " " << i << " " << n << "\n";
+            const auto& __tup_1 = __for_tup_1;
+            int32_t i = std::get<0>(__tup_1);
+            int32_t n = std::get<1>(__tup_1);
+            std::cout << "value:" << " " << i << " " << n << "\n";
         }
     }
 }
@@ -85,10 +85,10 @@ void reused_source() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_1);
-        const auto& __tup_1 = __for_tup_2;
-        int32_t i = std::get<0>(__tup_1);
-        int32_t n = std::get<1>(__tup_1);
-        std::cout << "reuse:" << " " << i << " " << n << "\n";
+            const auto& __tup_1 = __for_tup_2;
+            int32_t i = std::get<0>(__tup_1);
+            int32_t n = std::get<1>(__tup_1);
+            std::cout << "reuse:" << " " << i << " " << n << "\n";
         }
     }
     nums.push_back(50);

@@ -26,7 +26,9 @@ struct Base {
     //     self.first = first
     //     self.second = second
     Base() = default;
-    explicit Base(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<U> second) : first(first), second(second) {}
+    explicit Base(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<U> second)
+        : first(first),
+          second(second) {}
 
     // def set_first(self, v: T) -> None:
     //     self.first = v
@@ -81,7 +83,9 @@ struct Leaf : Middle<T> {
     //     super().__init__(first, second)
     //     self.extra = extra
     Leaf() = default;
-    explicit Leaf(::tpy::param_val_or_ref_t<T> first, int32_t second, std::string_view extra) : Middle<T>(first, second), extra(extra) {}
+    explicit Leaf(::tpy::param_val_or_ref_t<T> first, int32_t second, std::string_view extra)
+        : Middle<T>(first, second),
+          extra(extra) {}
 
     // def get_extra(self) -> str:
     //     return self.extra

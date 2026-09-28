@@ -100,7 +100,9 @@ inline void NeverComplete::cancel() {
 // def __init__(self, n: uint32) -> None:
 //     self.remaining = n
 //     self.__cancel_pending = False
-inline CountdownThenReady::CountdownThenReady(uint32_t n) : remaining(n), __cancel_pending(false) {}
+inline CountdownThenReady::CountdownThenReady(uint32_t n)
+    : remaining(n),
+      __cancel_pending(false) {}
 
 // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
 //     if self.remaining == uint32(0):

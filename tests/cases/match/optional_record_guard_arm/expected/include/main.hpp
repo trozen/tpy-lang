@@ -103,14 +103,11 @@ inline std::string Holder::describe(bool flag) const {
     if (__match_subject_1.val == 1) {
         if (flag) {
             return "one-flag";
-            goto __match_end_2;
         }
     }
     {
         return "box";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
 }
 void __tpy_init();

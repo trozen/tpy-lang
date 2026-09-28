@@ -33,7 +33,9 @@ struct __gen_echo_n : public ::tpy::next_iter_mixin<__gen_echo_n, std::string> {
     };
 
     __gen_echo_n(std::string_view s_, ::tpy::BigInt n_)
-        : __state(S_INITIAL), s(std::string(s_)), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          s(std::string(s_)),
+          n(std::move(n_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_echo_n& __iter__() { return *this; }

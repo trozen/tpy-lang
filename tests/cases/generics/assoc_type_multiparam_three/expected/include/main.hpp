@@ -65,7 +65,10 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 //     self.x = x
 //     self.y = y
 //     self.z = z
-inline Rec::Rec(const ::tpy::BigInt& x, std::string_view y, bool z) : x(x), y(y), z(z) {}
+inline Rec::Rec(const ::tpy::BigInt& x, std::string_view y, bool z)
+    : x(x),
+      y(y),
+      z(z) {}
 
 // def a(self) -> int:
 //     return self.x

@@ -23,7 +23,8 @@ struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_f
     };
 
     __genexpr_main_1_frame(std::array<Node, 3>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __next__();
     __genexpr_main_1_frame& __iter__() { return *this; }
@@ -64,7 +65,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& b = ::tpy::unwrap_ref(*__r_1);
-        b.val = ((b.val) + (::tpy::BigInt(100)));
+            b.val = ((b.val) + (::tpy::BigInt(100)));
         }
     }
     auto& __obj_2 = data;

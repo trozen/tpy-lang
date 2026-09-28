@@ -48,7 +48,20 @@ void main() {
 //     self.copied = copied  # tpyc: warning(/copies list\[int32\] into field/)
 //     self.ones = [1]  # tpyc: ok -- one BigInt element: must not become a size
 //     self.one_arr = [1]  # tpyc: ok -- the Array sibling of the same shape
-Holder::Holder(std::string_view prefix, const Point& p, Point&& q, const std::vector<int32_t>& copied) : items(std::vector<int32_t>{1, 2}), names(std::vector<std::string>{std::string(prefix), "lit"}), counts(::tpy::ordered_map<std::string, int32_t>({{"k", 1}, {"j", 2}})), tags(::tpy::ordered_set<int32_t>({10, 20})), arr(std::array<int32_t, 3>{3, 4, 5}), pts(std::vector<Point>{Point(1), p}), grid(std::vector<std::vector<int32_t>>{{1}, {2, 3}}), empty_l(std::vector<int32_t>{}), empty_d(::tpy::ordered_map<int32_t, int32_t>()), moved(::tpy::make_vector<Point>(std::move(q))), copied(copied), ones(std::vector<::tpy::BigInt>{1}), one_arr(std::array<::tpy::BigInt, 1>{::tpy::BigInt(1)}) {}
+Holder::Holder(std::string_view prefix, const Point& p, Point&& q, const std::vector<int32_t>& copied)
+    : items(std::vector<int32_t>{1, 2}),
+      names(std::vector<std::string>{std::string(prefix), "lit"}),
+      counts(::tpy::ordered_map<std::string, int32_t>({{"k", 1}, {"j", 2}})),
+      tags(::tpy::ordered_set<int32_t>({10, 20})),
+      arr(std::array<int32_t, 3>{3, 4, 5}),
+      pts(std::vector<Point>{Point(1), p}),
+      grid(std::vector<std::vector<int32_t>>{{1}, {2, 3}}),
+      empty_l(std::vector<int32_t>{}),
+      empty_d(::tpy::ordered_map<int32_t, int32_t>()),
+      moved(::tpy::make_vector<Point>(std::move(q))),
+      copied(copied),
+      ones(std::vector<::tpy::BigInt>{1}),
+      one_arr(std::array<::tpy::BigInt, 1>{::tpy::BigInt(1)}) {}
 // main()
 void __tpy_init() {
     static bool initialized = false;

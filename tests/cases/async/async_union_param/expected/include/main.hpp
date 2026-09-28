@@ -63,7 +63,9 @@ struct __coro_describe {
     };
 
     __coro_describe(::tpy::Union<const Cat*, const Dog*> a_)
-        : __state(S_INITIAL), __cancel_pending(false), a(a_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(a_) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -92,7 +94,8 @@ struct __coro_main {
     };
 
     __coro_main()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

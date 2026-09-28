@@ -112,8 +112,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        seen = ::tpy::add_check<int32_t>(seen, v);
-        s._items.push_back(99);
+            seen = ::tpy::add_check<int32_t>(seen, v);
+            s._items.push_back(99);
         }
     }
     std::cout << "frame:" << " " << seen << " " << ::tpy::__len__(s._items) << "\n";
@@ -127,8 +127,8 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& snap = ::tpy::unwrap_ref(*__r_3);
-        snap.push_back(42);
-        std::cout << "self_yield_own:" << " " << ::tpy::__len__(snap) << "\n";
+            snap.push_back(42);
+            std::cout << "self_yield_own:" << " " << ::tpy::__len__(snap) << "\n";
         }
     }
     std::cout << "self_yield_own owner:" << " " << ::tpy::__len__(own_src._items) << "\n";
@@ -140,7 +140,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& pt = ::tpy::unwrap_ref(*__r_5);
-        pt.x = ::tpy::add_check<int32_t>(pt.x, 100);
+            pt.x = ::tpy::add_check<int32_t>(pt.x, 100);
         }
     }
     {
@@ -150,7 +150,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             auto&& ys = ::tpy::unwrap_ref(*__r_7);
-        ys.push_back(3);
+            ys.push_back(3);
         }
     }
     std::cout << "self_yield:" << " " << h.p.x << " " << ::tpy::__len__(h.xs) << " " << ::tpy::__getitem__(h.xs, 2) << "\n";

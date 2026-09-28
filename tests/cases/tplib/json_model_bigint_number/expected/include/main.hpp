@@ -69,7 +69,9 @@ inline std::ostream& operator<<(std::ostream& os, const Repo& obj) {
 }
 
 
-inline Repo::Repo(std::string_view name, const ::tpy::BigInt& stars) : name(name), stars(stars) {}
+inline Repo::Repo(std::string_view name, const ::tpy::BigInt& stars)
+    : name(name),
+      stars(stars) {}
 
 inline bool Repo::__eq__(const Repo& other) const {
     return ((this->name == other.name) && (this->stars == other.stars));

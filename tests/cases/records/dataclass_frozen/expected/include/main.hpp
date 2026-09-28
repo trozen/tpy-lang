@@ -92,7 +92,9 @@ namespace tpyapp::main {
 
 
 
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 inline bool Point::__eq__(const Point& other) const {
     return ((this->x == other.x) && (this->y == other.y));
@@ -108,7 +110,9 @@ inline uint64_t Point::__hash__() const {
     return h;
 }
 
-inline Config::Config(std::string_view name, int32_t value) : name(name), value(value) {}
+inline Config::Config(std::string_view name, int32_t value)
+    : name(name),
+      value(value) {}
 
 inline bool Config::__eq__(const Config& other) const {
     return ((this->name == other.name) && (this->value == other.value));

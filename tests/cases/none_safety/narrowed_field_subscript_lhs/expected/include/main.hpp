@@ -50,6 +50,8 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 // ) -> None:
 //     self.items = items
 //     self.by_key = by_key
-inline Buffer::Buffer(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, ::tpy::BigInt>* by_key) : items(::tpy::ptr_to_optional(items)), by_key(::tpy::ptr_to_optional(by_key)) {}
+inline Buffer::Buffer(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, ::tpy::BigInt>* by_key)
+    : items(::tpy::ptr_to_optional(items)),
+      by_key(::tpy::ptr_to_optional(by_key)) {}
 void __tpy_init();
 } // namespace tpyapp::main

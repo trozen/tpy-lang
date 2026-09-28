@@ -89,8 +89,8 @@ inline int32_t Cell::inspect(int32_t value) const {
 //     saved = observe(Cell(value))
 //     self.value = saved.value
 inline Caller::Caller(int32_t value) : value(0) {
-    Cell __tmp_2 = Cell(value);
-    const Cell& saved = ::tpyapp::main::observe(__tmp_2);
+    Cell __tmp_1 = Cell(value);
+    const Cell& saved = ::tpyapp::main::observe(__tmp_1);
     this->value = saved.value;
 }
 void __tpy_init();

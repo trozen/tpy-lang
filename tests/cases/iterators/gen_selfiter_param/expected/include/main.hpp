@@ -52,7 +52,9 @@ struct __gen_repeat_n : public ::tpy::next_iter_mixin<__gen_repeat_n<T>, ::tpy::
     };
 
     __gen_repeat_n(::tpy::param_val_or_ref_t<T> obj_, int32_t times_)
-        : __state(S_INITIAL), obj(obj_), times(std::move(times_)) {}
+        : __state(S_INITIAL),
+          obj(obj_),
+          times(std::move(times_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_repeat_n& __iter__() { return *this; }
@@ -118,7 +120,9 @@ struct __gen_take : public ::tpy::next_iter_mixin<__gen_take<T, T_it>, ::tpy::yi
     };
 
     __gen_take(T_it&& it_, int32_t n_)
-        : __state(S_INITIAL), it(std::forward<T_it>(it_)), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          it(std::forward<T_it>(it_)),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
     __gen_take& __iter__() { return *this; }
@@ -200,7 +204,8 @@ struct __gen_wrap : public ::tpy::next_iter_mixin<__gen_wrap, int32_t> {
     };
 
     __gen_wrap(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_wrap& __iter__() { return *this; }
@@ -230,7 +235,9 @@ struct __gen_take_iter : public ::tpy::next_iter_mixin<__gen_take_iter<T, T_it>,
     };
 
     __gen_take_iter(T_it&& it_, int32_t n_)
-        : __state(S_INITIAL), it(std::forward<T_it>(it_)), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          it(std::forward<T_it>(it_)),
+          n(std::move(n_)) {}
 
     std::expected<T, ::tpy::StopIteration> __next__();
     __gen_take_iter& __iter__() { return *this; }
@@ -309,7 +316,8 @@ struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled, int32_t> {
     };
 
     __gen_doubled(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_doubled& __iter__() { return *this; }

@@ -53,7 +53,8 @@ struct __gen_process : public ::tpy::next_iter_mixin<__gen_process, int32_t> {
     };
 
     __gen_process(std::vector<std::tuple<int32_t, Item>>& rows)
-        : __state(S_INITIAL), rows(rows) {}
+        : __state(S_INITIAL),
+          rows(rows) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_process& __iter__() { return *this; }

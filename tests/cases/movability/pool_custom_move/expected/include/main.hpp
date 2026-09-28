@@ -46,11 +46,15 @@ struct Pool {
     // def __init__(self) -> None:
     //     self._storage = UninitArrayStorage[T, N]()
     //     self._size = uint32(0)
-    Pool() : _storage(::tpy::UninitArrayStorage<T, N>()), _size(0) {}
+    Pool()
+        : _storage(::tpy::UninitArrayStorage<T, N>()),
+          _size(0) {}
     // non-copyable (field '_storage')
     Pool(const Pool&) = delete;
     Pool& operator=(const Pool&) = delete;
-    Pool(Pool&& other) noexcept : _storage(), _size() {
+    Pool(Pool&& other) noexcept
+        : _storage(),
+          _size() {
         uint32_t __stop_0 = other._size;
         for (uint32_t ui = 0; ui < __stop_0; ++ui) {
             this->_storage.init(ui, other._storage.take(ui));

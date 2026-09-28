@@ -196,7 +196,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view sv = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen_view" << " " << sv << "\n";
+            std::cout << "gen_view" << " " << sv << "\n";
         }
     }
     std::cout << "method" << " " << Picker(10).sum(false, std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}) << "\n";
@@ -207,7 +207,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "gen" << " " << v << "\n";
+            std::cout << "gen" << " " << v << "\n";
         }
     }
     std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro(false, std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}))) << "\n";

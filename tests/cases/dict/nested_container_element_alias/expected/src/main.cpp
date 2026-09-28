@@ -159,11 +159,9 @@ int32_t deep_control(std::vector<std::vector<std::vector<int32_t>>>& cube, int32
     switch (__match_subject_1) {
     case 0: {
         return ::tpy::__len__(::tpy::__getitem__(::tpy::__getitem__(cube, i), i));
-        break;
     }
     default: {
         return 0;
-        break;
     }
     }
     ::std::unreachable();
@@ -338,7 +336,7 @@ void main() {
             auto __r_2 = __itr_1.__next__();
             if (!__r_2.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_2);
-        std::cout << "deep gen" << " " << v << "\n";
+            std::cout << "deep gen" << " " << v << "\n";
         }
     }
     std::cout << "deep gen after" << " " << ::tpy::ListPrinter(::tpy::__getitem__(::tpy::__getitem__(gc, 0), 0)) << "\n";

@@ -35,7 +35,8 @@ struct __gen_counted : public ::tpy::next_iter_mixin<__gen_counted, ::tpy::BigIn
     };
 
     __gen_counted(const std::vector<::tpy::BigInt>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     __gen_counted(__gen_counted&&) = default;
     ~__gen_counted() {

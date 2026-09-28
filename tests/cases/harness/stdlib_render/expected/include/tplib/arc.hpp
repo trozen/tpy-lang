@@ -63,7 +63,10 @@ struct _ArcCell : _ArcCellBase {
     //     self.strong = Atomic[uint32](1)
     //     self.weak = Atomic[uint32](1)
     //     self.storage = UninitStorage[U]()
-    _ArcCell() : strong(::tpystd::tpy::atomic::Atomic<uint32_t>(1)), weak(::tpystd::tpy::atomic::Atomic<uint32_t>(1)), storage(::tpy::UninitStorage<U>()) {}
+    _ArcCell()
+        : strong(::tpystd::tpy::atomic::Atomic<uint32_t>(1)),
+          weak(::tpystd::tpy::atomic::Atomic<uint32_t>(1)),
+          storage(::tpy::UninitStorage<U>()) {}
     // non-copyable (@nocopy)
     _ArcCell(const _ArcCell&) = delete;
     _ArcCell& operator=(const _ArcCell&) = delete;
@@ -177,11 +180,15 @@ struct Arc {
     // def __init__(self, cell: Ptr[_ArcCellBase], payload: Ptr[T]) -> None:
     //     self._cell = cell
     //     self._payload = payload
-    explicit Arc(_ArcCellBase* cell, T* payload) : _cell(cell), _payload(payload) {}
+    explicit Arc(_ArcCellBase* cell, T* payload)
+        : _cell(cell),
+          _payload(payload) {}
     // non-copyable (@nocopy)
     Arc(const Arc&) = delete;
     Arc& operator=(const Arc&) = delete;
-    Arc(Arc&& other) noexcept : _cell(std::move(other._cell)), _payload(std::move(other._payload)) {
+    Arc(Arc&& other) noexcept
+        : _cell(std::move(other._cell)),
+          _payload(std::move(other._payload)) {
         other.__tpy_owned_ = false;
     }
     Arc& operator=(Arc&& other) noexcept {
@@ -204,7 +211,9 @@ struct Arc {
 
     template<typename __CovU_T>
         requires (std::is_base_of_v<T, __CovU_T>)
-    Arc(Arc<__CovU_T>&& __other) noexcept : _cell(std::move(__other._cell)), _payload(std::move(__other._payload)) {
+    Arc(Arc<__CovU_T>&& __other) noexcept
+        : _cell(std::move(__other._cell)),
+          _payload(std::move(__other._payload)) {
         __other.__tpy_owned_ = false;
     }
     template<typename> friend struct Arc;
@@ -397,11 +406,15 @@ struct Weak {
     // def __init__(self, cell: Ptr[_ArcCellBase], payload: Ptr[T]) -> None:
     //     self._cell = cell
     //     self._payload = payload
-    explicit Weak(_ArcCellBase* cell, T* payload) : _cell(cell), _payload(payload) {}
+    explicit Weak(_ArcCellBase* cell, T* payload)
+        : _cell(cell),
+          _payload(payload) {}
     // non-copyable (@nocopy)
     Weak(const Weak&) = delete;
     Weak& operator=(const Weak&) = delete;
-    Weak(Weak&& other) noexcept : _cell(std::move(other._cell)), _payload(std::move(other._payload)) {
+    Weak(Weak&& other) noexcept
+        : _cell(std::move(other._cell)),
+          _payload(std::move(other._payload)) {
         other.__tpy_owned_ = false;
     }
     Weak& operator=(Weak&& other) noexcept {

@@ -131,7 +131,8 @@ struct __coro_co {
     };
 
     __coro_co()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -156,8 +157,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
         S_DONE = 3,
     };
 
-    __gen_gen()
-        : __state(S_INITIAL) {}
+    __gen_gen() : __state(S_INITIAL) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -204,8 +204,8 @@ inline K::K() {
 //     a, b = f(M())  # tpyc: ok
 //     return a + b + self.s
 inline ::tpy::BigInt K::run() const {
-    M __tmp_2 = M();
-    auto __tup_1 = ::tpyapp::main::f(__tmp_2);
+    M __tmp_1 = M();
+    auto __tup_1 = ::tpyapp::main::f(__tmp_1);
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
     return ((((a) + (b))) + (this->s));

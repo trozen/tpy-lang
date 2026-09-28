@@ -100,7 +100,9 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::vector<std::string>&& files) : files(std::move(files)) {}
 
 // a2 = p2.parse_args(["--coord", "10", "20", "--tag", "x", "y", "--tag", "z"])
-inline __tpy_builder_argparse_args_2::__tpy_builder_argparse_args_2(std::optional<std::vector<::tpy::BigInt>>&& coord, std::optional<std::vector<std::string>>&& tag) : coord(std::move(coord)), tag(std::move(tag)) {}
+inline __tpy_builder_argparse_args_2::__tpy_builder_argparse_args_2(std::optional<std::vector<::tpy::BigInt>>&& coord, std::optional<std::vector<std::string>>&& tag)
+    : coord(std::move(coord)),
+      tag(std::move(tag)) {}
 
 // a3 = p3.parse_args(["--mode"])
 inline __tpy_builder_argparse_args_3::__tpy_builder_argparse_args_3(std::string_view mode) : mode(mode) {}

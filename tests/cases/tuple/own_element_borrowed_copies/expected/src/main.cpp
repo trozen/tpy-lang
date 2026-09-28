@@ -245,11 +245,9 @@ std::tuple<P, int32_t> ret_match(const P& p, int32_t k) {
     switch (__match_subject_1) {
     case 1: {
         return std::tuple<P, int32_t>{p, 1};
-        break;
     }
     default: {
         return std::tuple<P, int32_t>{P(0), 0};
-        break;
     }
     }
     ::std::unreachable();
@@ -720,7 +718,7 @@ void main() {
             auto __r_2 = __itr_1.__next__();
             if (!__r_2.has_value()) break;
             int32_t g = ::tpy::unwrap_ref(*__r_2);
-        std::cout << "arg_generator" << " " << g << " " << ::tpy::__len__(a.xs) << "\n";
+            std::cout << "arg_generator" << " " << g << " " << ::tpy::__len__(a.xs) << "\n";
         }
     }
     std::cout << "give" << " " << Holder(a, b).give() << "\n";

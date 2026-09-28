@@ -69,7 +69,9 @@ struct __gen_my_map : public ::tpy::next_iter_mixin<__gen_my_map<T, U, T_it, F_f
     };
 
     __gen_my_map(F_fn&& fn_, T_it&& it_)
-        : __state(S_INITIAL), fn(std::forward<F_fn>(fn_)), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          fn(std::forward<F_fn>(fn_)),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<U, ::tpy::StopIteration> __next__();
     __gen_my_map& __iter__() { return *this; }
@@ -132,7 +134,8 @@ struct __gen_my_enumerate : public ::tpy::next_iter_mixin<__gen_my_enumerate<T, 
     };
 
     __gen_my_enumerate(T_it&& it_)
-        : __state(S_INITIAL), it(std::forward<T_it>(it_)) {}
+        : __state(S_INITIAL),
+          it(std::forward<T_it>(it_)) {}
 
     std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __next__();
     __gen_my_enumerate& __iter__() { return *this; }
@@ -187,7 +190,9 @@ __gen_my_enumerate<T, T_it> my_enumerate(T_it&& it) {
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
-inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+inline Point::Point(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // def __str__(self) -> str:
 //     return f"({self.x}, {self.y})"

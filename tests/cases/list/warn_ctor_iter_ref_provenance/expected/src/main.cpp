@@ -118,7 +118,8 @@ struct __genexpr_warned_1_frame : public ::tpy::next_iter_mixin<__genexpr_warned
     };
 
     __genexpr_warned_1_frame(std::vector<C>& __src)
-        : __state(S_INITIAL), __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<::tpy::val_or_ref<C>, ::tpy::StopIteration> __next__();
     __genexpr_warned_1_frame& __iter__() { return *this; }
@@ -321,7 +322,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "generator_body" << " " << v << "\n";
+            std::cout << "generator_body" << " " << v << "\n";
         }
     }
     ::tpyapp::main::named_adapter();

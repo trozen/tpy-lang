@@ -41,7 +41,9 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 // def __init__(self) -> None:
 //     self.total = 0
 //     self.count = 0
-inline Acc::Acc() : total(0), count(0) {}
+inline Acc::Acc()
+    : total(0),
+      count(0) {}
 
 // def collect(self, k: int32) -> None:
 //     bonus = 1

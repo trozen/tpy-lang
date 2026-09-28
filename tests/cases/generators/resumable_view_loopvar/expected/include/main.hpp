@@ -38,7 +38,8 @@ struct __gen_words_gen : public ::tpy::next_iter_mixin<__gen_words_gen, int32_t>
     };
 
     __gen_words_gen(const std::vector<std::string>& words)
-        : __state(S_INITIAL), words(words) {}
+        : __state(S_INITIAL),
+          words(words) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_words_gen& __iter__() { return *this; }
@@ -64,7 +65,8 @@ struct __gen_blobs_gen : public ::tpy::next_iter_mixin<__gen_blobs_gen, int32_t>
     };
 
     __gen_blobs_gen(const std::vector<::tpy::Bytes>& blobs)
-        : __state(S_INITIAL), blobs(blobs) {}
+        : __state(S_INITIAL),
+          blobs(blobs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_blobs_gen& __iter__() { return *this; }
@@ -92,7 +94,8 @@ struct __gen_pairs_gen : public ::tpy::next_iter_mixin<__gen_pairs_gen, int32_t>
     };
 
     __gen_pairs_gen(const std::vector<std::tuple<std::string, int32_t>>& pairs)
-        : __state(S_INITIAL), pairs(pairs) {}
+        : __state(S_INITIAL),
+          pairs(pairs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_pairs_gen& __iter__() { return *this; }

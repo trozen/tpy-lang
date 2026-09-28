@@ -76,8 +76,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
         S_DONE = 5,
     };
 
-    __gen_gen()
-        : __state(S_INITIAL) {}
+    __gen_gen() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -95,7 +94,9 @@ inline Item::Item(int32_t v) : v(v) {}
 // def __init__(self, v: int32):
 //     self.item = Item(v)
 //     self.tag = v
-inline Pair::Pair(int32_t v) : item(Item(v)), tag(v) {}
+inline Pair::Pair(int32_t v)
+    : item(Item(v)),
+      tag(v) {}
 
 // def __enter__(self) -> tuple[Item, int32]:
 //     return (self.item, self.tag)

@@ -40,6 +40,8 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // def __init__(self, label: str, pair: tuple[int, int]) -> None:
 //     self.label = label
 //     self.pair = pair
-inline Box::Box(std::string_view label, const std::tuple<::tpy::BigInt, ::tpy::BigInt>& pair) : label(label), pair(pair) {}
+inline Box::Box(std::string_view label, const std::tuple<::tpy::BigInt, ::tpy::BigInt>& pair)
+    : label(label),
+      pair(pair) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -278,13 +278,11 @@ __gen_generate generate(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
-            break;
         }
         default: {
             __state = S_DONE;
             int32_t __tpy_async_ret = -1;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
-            break;
         }
         }
         ::std::unreachable();
@@ -440,11 +438,9 @@ std::expected<int32_t, Err> error_read(::tpy::Union<const ::tpy::ByteArray*, con
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         return static_cast<int32_t>(::tpy::bytes_getitem(__case_0, 1));
-        break;
     }
     default: {
         return ::tpy::make_unexpected(Err{});
-        break;
     }
     }
     ::std::unreachable();
@@ -634,7 +630,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "generator" << " " << value << "\n";
+            std::cout << "generator" << " " << value << "\n";
         }
     }
     std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_read(buffer.as_const()))) << "\n";

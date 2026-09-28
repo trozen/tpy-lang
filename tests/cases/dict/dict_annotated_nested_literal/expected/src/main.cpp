@@ -202,7 +202,7 @@ void main() {
             auto __r_2 = __itr_1.__next__();
             if (!__r_2.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_2);
-        std::cout << "generator" << " " << n << "\n";
+            std::cout << "generator" << " " << n << "\n";
         }
     }
     std::optional<::tpy::ordered_map<std::string, std::vector<int32_t>>> in_try;

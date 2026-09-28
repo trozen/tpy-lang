@@ -37,7 +37,8 @@ struct __gen_triple_gen : public ::tpy::next_iter_mixin<__gen_triple_gen, int32_
     };
 
     __gen_triple_gen(std::span<int32_t> items_)
-        : __state(S_INITIAL), items(std::move(items_)) {}
+        : __state(S_INITIAL),
+          items(std::move(items_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_triple_gen& __iter__() { return *this; }

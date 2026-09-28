@@ -69,7 +69,9 @@ struct __gen_Holder_pairs : public ::tpy::next_iter_mixin<__gen_Holder_pairs, st
     };
 
     __gen_Holder_pairs(const Holder& __self, std::vector<P>& items)
-        : __state(S_INITIAL), __self(__self), items(items) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          items(items) {}
 
     std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
     __gen_Holder_pairs& __iter__() { return *this; }

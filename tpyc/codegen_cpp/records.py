@@ -32,6 +32,7 @@ from ..namespace import Namespace
 from ..sema.registration import build_record_self_type, receiver_self_type
 
 from .. import qnames
+from . import emit_prims
 from .context import (
     INDENT, DUNDER_TO_BINARY_OP, DUNDER_TO_REVERSE_BINARY_OP, CodeGenError,
     escape_cpp_name, enum_member_cpp)
@@ -935,14 +936,15 @@ class RecordGenerator:
             ModuleCounter, TempSink,
             emit_thir_constructor_tail,
         )
-        emit_thir_constructor_tail(
-            out, thir_ctor,
-            temps=TempSink(self.ctx),
-            with_counter=ModuleCounter(self.ctx, "with_counter"),
-            try_counter=ModuleCounter(self.ctx, "try_except_counter"),
-            finally_guard_counter=ModuleCounter(
-                self.ctx, "finally_guard_counter"),
-            body_indent_level=body_indent_level)
+        with self.ctx.temps.function_scope():
+            emit_thir_constructor_tail(
+                out, thir_ctor,
+                temps=TempSink(self.ctx),
+                with_counter=ModuleCounter(self.ctx, "with_counter"),
+                try_counter=ModuleCounter(self.ctx, "try_except_counter"),
+                finally_guard_counter=ModuleCounter(
+                    self.ctx, "finally_guard_counter"),
+                body_indent_level=body_indent_level)
 
     def _gen_ctor_def(self, out: TextIO, record: TpyRecord,
                       *, mode: MethodEmitMode) -> None:
@@ -1287,7 +1289,7 @@ class RecordGenerator:
                         vinit_parts.append(f"{record_base_cpp(record_info, p)}()")
                 for fld in record.fields:
                     vinit_parts.append(f"{escape_cpp_name(fld.name)}()")
-                vinit_list = (" : " + ", ".join(vinit_parts)) if vinit_parts else ""
+                vinit_list = emit_prims.member_init_list(vinit_parts, ind)
                 if is_def_mode:
                     out.write(f"\n{inline_prefix}{q}::{cpp_name}({cpp_name}&& {cpp_src}) noexcept{vinit_list} {{\n")
                 else:
@@ -1317,9 +1319,7 @@ class RecordGenerator:
                 cpp_fld = escape_cpp_name(fld.name)
                 init_parts.append(f"{cpp_fld}(std::move(other.{cpp_fld}))")
 
-            init_list = ""
-            if init_parts:
-                init_list = " : " + ", ".join(init_parts)
+            init_list = emit_prims.member_init_list(init_parts, ind)
 
             if is_def_mode:
                 out.write(f"\n{inline_prefix}{q}::{cpp_name}({cpp_name}&& other) noexcept{init_list} {{\n")
@@ -1434,9 +1434,7 @@ class RecordGenerator:
         for fld in record.fields:
             cpp_fld = escape_cpp_name(fld.name)
             init_parts.append(f"{cpp_fld}(std::move(__other.{cpp_fld}))")
-        init_list = ""
-        if init_parts:
-            init_list = " : " + ", ".join(init_parts)
+        init_list = emit_prims.member_init_list(init_parts, INDENT)
 
         out.write(f"\n{INDENT}template<{template_str}>\n")
         out.write(f"{INDENT}{INDENT}requires ({requires_str})\n")

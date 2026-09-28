@@ -23,37 +23,31 @@ std::string kind(const V& v) {
     switch (__match_subject_1.value.index()) {
     case 0: {
         return "null";
-        break;
     }
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1.value);
         auto b = __case_1;
         return "bool";
-        break;
     }
     case 3: {
         auto& __case_2 = std::get<3>(__match_subject_1.value);
         auto& n = __case_2;
         return "int";
-        break;
     }
     case 5: {
         auto& __case_3 = std::get<5>(__match_subject_1.value);
         auto& s = __case_3;
         return "str";
-        break;
     }
     case 4: {
         auto& __case_4 = std::get<4>(__match_subject_1.value);
         auto& items = __case_4;
         return (::tpy::str_concat("list/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(items))));
-        break;
     }
     case 2: {
         auto& __case_5 = std::get<2>(__match_subject_1.value);
         auto& d = __case_5;
         return (::tpy::str_concat("dict/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(d))));
-        break;
     }
     }
     ::std::unreachable();
@@ -105,31 +99,26 @@ std::string kind_after_null_guard(const V& v) {
         auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto b = __case_0;
         return "bool";
-        break;
     }
     case 3: {
         auto& __case_1 = std::get<3>(__match_subject_1.value);
         auto& n = __case_1;
         return "int";
-        break;
     }
     case 5: {
         auto& __case_2 = std::get<5>(__match_subject_1.value);
         auto& s = __case_2;
         return "str";
-        break;
     }
     case 4: {
         auto& __case_3 = std::get<4>(__match_subject_1.value);
         auto& items = __case_3;
         return (::tpy::str_concat("list/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(items))));
-        break;
     }
     case 2: {
         auto& __case_4 = std::get<2>(__match_subject_1.value);
         auto& d = __case_4;
         return (::tpy::str_concat("dict/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(d))));
-        break;
     }
     }
     ::std::unreachable();
@@ -148,19 +137,16 @@ std::string flat_kind(const W& v) {
     switch (__match_subject_1.index()) {
     case 0: {
         return "null";
-        break;
     }
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1);
         auto& n = __case_1;
         return (::tpy::str_concat("i:", (n).to_string()));
-        break;
     }
     case 2: {
         auto& __case_2 = std::get<2>(__match_subject_1);
         auto& s = __case_2;
         return (::tpy::str_concat("s:", s));
-        break;
     }
     }
     ::std::unreachable();
@@ -200,21 +186,16 @@ std::string kind_guarded(const V& v) {
             auto b = __case_1;
             if (b) {
                 return "bool-true";
-                goto __match_end_2;
             }
         }
         {
             return "bool-false";
-            goto __match_end_2;
         }
-        break;
     }
     case 2: {
         auto& __case_2 = std::get<2>(__match_subject_1.value);
         auto& d = __case_2;
         return (::tpy::str_concat("dict/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(d))));
-        goto __match_end_2;
-        break;
     }
     case 3: {
         auto& __case_3 = std::get<3>(__match_subject_1.value);
@@ -222,31 +203,23 @@ std::string kind_guarded(const V& v) {
             auto& n = __case_3;
             if ((n > 0)) {
                 return "int-pos";
-                goto __match_end_2;
             }
         }
         {
             return "int-nonpos";
-            goto __match_end_2;
         }
-        break;
     }
     case 4: {
         auto& __case_4 = std::get<4>(__match_subject_1.value);
         auto& items = __case_4;
         return (::tpy::str_concat("list/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(items))));
-        goto __match_end_2;
-        break;
     }
     case 5: {
         auto& __case_5 = std::get<5>(__match_subject_1.value);
         auto& s = __case_5;
         return (::tpy::str_concat("str/", s));
-        goto __match_end_2;
-        break;
     }
     }
-__match_end_2:;
     ::std::unreachable();
 }
 

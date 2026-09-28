@@ -99,7 +99,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             bool r = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "generator:" << " " << ::tpy::print_bool(r) << "\n";
+            std::cout << "generator:" << " " << ::tpy::print_bool(r) << "\n";
         }
     }
     std::cout << "closure:" << " " << ::tpy::print_bool(::tpyapp::main::via_closure(c)) << "\n";

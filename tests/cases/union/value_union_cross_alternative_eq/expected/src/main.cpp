@@ -122,11 +122,9 @@ bool in_match(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double,
     switch (__match_subject_1) {
     case 1: {
         return (a == b);
-        break;
     }
     default: {
         return false;
-        break;
     }
     }
     ::std::unreachable();
@@ -652,7 +650,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             bool v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "generator" << " " << ::tpy::print_bool(v) << "\n";
+            std::cout << "generator" << " " << ::tpy::print_bool(v) << "\n";
         }
     }
     std::cout << "with" << " " << ::tpy::print_bool(::tpyapp::main::in_with(x, y)) << "\n";

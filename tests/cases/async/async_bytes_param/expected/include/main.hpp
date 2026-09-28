@@ -37,7 +37,9 @@ struct __coro_consume {
     };
 
     __coro_consume(::tpy::BytesView data_)
-        : __state(S_INITIAL), __cancel_pending(false), data(::tpy::Bytes(data_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          data(::tpy::Bytes(data_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -61,7 +63,9 @@ struct __coro_head {
     };
 
     __coro_head(::tpy::BytesView data_)
-        : __state(S_INITIAL), __cancel_pending(false), data(::tpy::Bytes(data_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          data(::tpy::Bytes(data_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -88,7 +92,8 @@ struct __coro_main {
     };
 
     __coro_main()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

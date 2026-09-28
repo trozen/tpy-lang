@@ -43,7 +43,9 @@ struct __coro_acoro {
     };
 
     __coro_acoro(std::string_view s_)
-        : __state(S_INITIAL), __cancel_pending(false), s(std::string(s_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          s(std::string(s_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -73,7 +75,8 @@ struct __coro_amain {
     };
 
     __coro_amain()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -104,7 +107,9 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     };
 
     __gen_gen(std::string_view s_, bool flag_)
-        : __state(S_INITIAL), s(std::string(s_)), flag(std::move(flag_)) {}
+        : __state(S_INITIAL),
+          s(std::string(s_)),
+          flag(std::move(flag_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

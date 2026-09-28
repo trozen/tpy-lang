@@ -2,3 +2,30 @@ Rex the dog!
 some dog
 Whiskers the cat!
 other
+chain_raise: caught
+chain_raise: next arm
+chain_raise: fell
+chain_if_else: else
+chain_if_else: next arm
+chain_if_else: fell
+chain_try_finally: finally
+chain_try_finally: ret
+chain_break: saw 1
+chain_break: break at 2
+union_nested_match: rex-blue
+union_nested_match: next arm
+union_nested_match: fell
+union_while_true: 3
+union_assert_false: caught
+union_assert_false: next arm
+union_assert_false: fell
+union_break: dog
+union_break: next arm
+union_break: break at Luna
+switch_while_true: 2
+switch_while_true: cat
+switch_while_true: 0
+switch_try_finally: finally
+switch_try_finally: ret
+switch_try_finally: cat
+switch_try_finally: after

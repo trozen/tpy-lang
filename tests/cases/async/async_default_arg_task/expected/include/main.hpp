@@ -193,7 +193,11 @@ struct __coro_Adder_add {
     };
 
     __coro_Adder_add(const Adder& __self, int32_t a_, int32_t b_ = 10)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), a(std::move(a_)), b(std::move(b_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          a(std::move(a_)),
+          b(std::move(b_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -222,7 +226,10 @@ struct __coro_CM___aenter__ {
     };
 
     __coro_CM___aenter__(CM& __self, int32_t bump_ = 5)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), bump(std::move(bump_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          bump(std::move(bump_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -254,7 +261,12 @@ struct __coro_CM___aexit__ {
     };
 
     __coro_CM___aexit__(const CM& __self, std::monostate exc_type_, std::monostate exc_, std::monostate tb_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), exc_type(std::move(exc_type_)), exc(std::move(exc_)), tb(std::move(tb_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          exc_type(std::move(exc_type_)),
+          exc(std::move(exc_)),
+          tb(std::move(tb_)) {}
 
     ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -282,7 +294,9 @@ struct __coro_CM2___aenter__ {
     };
 
     __coro_CM2___aenter__(const CM2& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -315,7 +329,13 @@ struct __coro_CM2___aexit__ {
     };
 
     __coro_CM2___aexit__(CM2& __self, std::monostate exc_type_, std::monostate exc_, std::monostate tb_, int32_t extra_ = 9)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), exc_type(std::move(exc_type_)), exc(std::move(exc_)), tb(std::move(tb_)), extra(std::move(extra_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          exc_type(std::move(exc_type_)),
+          exc(std::move(exc_)),
+          tb(std::move(tb_)),
+          extra(std::move(extra_)) {}
 
     ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -344,7 +364,10 @@ struct __coro_Counter___anext__ {
     };
 
     __coro_Counter___anext__(Counter& __self, int32_t step_ = 1)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), step(std::move(step_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          step(std::move(step_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -373,7 +396,10 @@ struct __coro_add {
     };
 
     __coro_add(int32_t a_, int32_t b_ = 10)
-        : __state(S_INITIAL), __cancel_pending(false), a(std::move(a_)), b(std::move(b_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(std::move(a_)),
+          b(std::move(b_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -401,7 +427,10 @@ struct __coro_counted {
     };
 
     __coro_counted(T_it&& it_, int32_t skip_ = 7)
-        : __state(S_INITIAL), __cancel_pending(false), it(std::forward<T_it>(it_)), skip(std::move(skip_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          it(std::forward<T_it>(it_)),
+          skip(std::move(skip_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -470,7 +499,8 @@ struct __coro_with_default {
     };
 
     __coro_with_default()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -494,7 +524,8 @@ struct __coro_with_override {
     };
 
     __coro_with_override()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -517,7 +548,8 @@ struct __coro_inline_default {
     };
 
     __coro_inline_default()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -540,7 +572,8 @@ struct __coro_inline_override {
     };
 
     __coro_inline_override()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -564,7 +597,8 @@ struct __coro_generic_default {
     };
 
     __coro_generic_default()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -588,7 +622,8 @@ struct __coro_generic_override {
     };
 
     __coro_generic_override()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -612,7 +647,8 @@ struct __coro_method_inline_default {
     };
 
     __coro_method_inline_default()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -636,7 +672,8 @@ struct __coro_method_inline_override {
     };
 
     __coro_method_inline_override()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -661,7 +698,8 @@ struct __coro_method_task_default {
     };
 
     __coro_method_task_default()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -686,7 +724,8 @@ struct __coro_method_task_override {
     };
 
     __coro_method_task_override()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -719,7 +758,8 @@ struct __coro_aenter_default {
     };
 
     __coro_aenter_default()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -750,7 +790,8 @@ struct __coro_aexit_default {
     };
 
     __coro_aexit_default()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -780,7 +821,8 @@ struct __coro_anext_default {
     };
 
     __coro_anext_default()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -803,7 +845,8 @@ struct __coro_cross_module_default {
     };
 
     __coro_cross_module_default()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -826,7 +869,8 @@ struct __coro_cross_module_override {
     };
 
     __coro_cross_module_override()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -848,7 +892,9 @@ inline CM::CM() : n(0) {}
 // def __init__(self) -> None:
 //     self.hits = 0
 //     self.seen = 0
-inline CM2::CM2() : hits(0), seen(0) {}
+inline CM2::CM2()
+    : hits(0),
+      seen(0) {}
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n

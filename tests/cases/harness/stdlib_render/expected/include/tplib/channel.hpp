@@ -73,11 +73,23 @@ struct _Buf {
     //     self._count = 0
     //     self._closed = False
     //     self._senders = 1
-    explicit _Buf(uint32_t capacity) : _buf(::tpy::UninitHeapStorage<T>(capacity)), _cap(capacity), _head(0), _count(0), _closed(false), _senders(1) {}
+    explicit _Buf(uint32_t capacity)
+        : _buf(::tpy::UninitHeapStorage<T>(capacity)),
+          _cap(capacity),
+          _head(0),
+          _count(0),
+          _closed(false),
+          _senders(1) {}
     // non-copyable (@nocopy)
     _Buf(const _Buf&) = delete;
     _Buf& operator=(const _Buf&) = delete;
-    _Buf(_Buf&& other) noexcept : _buf(std::move(other._buf)), _cap(std::move(other._cap)), _head(std::move(other._head)), _count(std::move(other._count)), _closed(std::move(other._closed)), _senders(std::move(other._senders)) {
+    _Buf(_Buf&& other) noexcept
+        : _buf(std::move(other._buf)),
+          _cap(std::move(other._cap)),
+          _head(std::move(other._head)),
+          _count(std::move(other._count)),
+          _closed(std::move(other._closed)),
+          _senders(std::move(other._senders)) {
         other.__tpy_owned_ = false;
     }
     _Buf& operator=(_Buf&& other) noexcept {
@@ -160,7 +172,10 @@ struct _Chan {
     //     self._not_full = Condvar()
     //     self._not_empty = Condvar()
     _Chan() = default;
-    explicit _Chan(uint32_t capacity) : _buf(::tpystd::tpy::sync::Mutex<_Buf<T>>::new_(_Buf<T>(capacity))), _not_full(::tpystd::tpy::sync::Condvar()), _not_empty(::tpystd::tpy::sync::Condvar()) {}
+    explicit _Chan(uint32_t capacity)
+        : _buf(::tpystd::tpy::sync::Mutex<_Buf<T>>::new_(_Buf<T>(capacity))),
+          _not_full(::tpystd::tpy::sync::Condvar()),
+          _not_empty(::tpystd::tpy::sync::Condvar()) {}
     // non-copyable (@nocopy)
     _Chan(const _Chan&) = delete;
     _Chan& operator=(const _Chan&) = delete;
@@ -460,7 +475,8 @@ struct __gen_Receiver___iter__ : public ::tpy::next_iter_mixin<__gen_Receiver___
     };
 
     __gen_Receiver___iter__(Receiver<T>& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<T, ::tpy::StopIteration> __next__();
     __gen_Receiver___iter__& __iter__() { return *this; }

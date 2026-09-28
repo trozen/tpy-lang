@@ -214,12 +214,10 @@ int32_t shadowed_match(int32_t n) {
     switch (__match_subject_1) {
     case 0: {
         return 0;
-        break;
     }
     default: {
         auto uint32 = __match_subject_1;
         return uint32;
-        break;
     }
     }
     ::std::unreachable();

@@ -342,7 +342,10 @@ struct __coro_async_body {
     };
 
     __coro_async_body(std::vector<int32_t>& xs, bool big_)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs), big(std::move(big_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs),
+          big(std::move(big_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -365,7 +368,10 @@ struct __coro_src_async_body {
     };
 
     __coro_src_async_body(std::vector<int32_t>& xs, bool big_)
-        : __state(S_INITIAL), __cancel_pending(false), xs(xs), big(std::move(big_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          xs(xs),
+          big(std::move(big_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -393,7 +399,9 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
     };
 
     __gen_gen_body(std::vector<int32_t>& xs, bool big_)
-        : __state(S_INITIAL), xs(xs), big(std::move(big_)) {}
+        : __state(S_INITIAL),
+          xs(xs),
+          big(std::move(big_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_body& __iter__() { return *this; }
@@ -416,7 +424,9 @@ struct __gen_src_gen_body : public ::tpy::next_iter_mixin<__gen_src_gen_body, in
     };
 
     __gen_src_gen_body(std::vector<int32_t>& xs, bool big_)
-        : __state(S_INITIAL), xs(xs), big(std::move(big_)) {}
+        : __state(S_INITIAL),
+          xs(xs),
+          big(std::move(big_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_src_gen_body& __iter__() { return *this; }
@@ -446,7 +456,10 @@ struct __genexpr_run_3_frame : public ::tpy::next_iter_mixin<__genexpr_run_3_fra
     };
 
     __genexpr_run_3_frame(int32_t __r0_, F_big&& big_, F_xs&& xs_)
-        : __state(S_INITIAL), __r0(std::move(__r0_)), big(std::forward<F_big>(big_)), xs(std::forward<F_xs>(xs_)) {}
+        : __state(S_INITIAL),
+          __r0(std::move(__r0_)),
+          big(std::forward<F_big>(big_)),
+          xs(std::forward<F_xs>(xs_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_run_3_frame& __iter__() { return *this; }
@@ -501,7 +514,10 @@ struct __genexpr___init___4_frame : public ::tpy::next_iter_mixin<__genexpr___in
     };
 
     __genexpr___init___4_frame(int32_t __r0_, F_big&& big_, F_xs&& xs_)
-        : __state(S_INITIAL), __r0(std::move(__r0_)), big(std::forward<F_big>(big_)), xs(std::forward<F_xs>(xs_)) {}
+        : __state(S_INITIAL),
+          __r0(std::move(__r0_)),
+          big(std::forward<F_big>(big_)),
+          xs(std::forward<F_xs>(xs_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr___init___4_frame& __iter__() { return *this; }
@@ -555,7 +571,9 @@ struct __genexpr_drain_5_frame : public ::tpy::next_iter_mixin<__genexpr_drain_5
     };
 
     __genexpr_drain_5_frame(const std::vector<int32_t>& __src, F_self&& self_)
-        : __state(S_INITIAL), __src(__src), self(std::forward<F_self>(self_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          self(std::forward<F_self>(self_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_drain_5_frame& __iter__() { return *this; }
@@ -602,7 +620,9 @@ struct __genexpr_via_callee_6_frame : public ::tpy::next_iter_mixin<__genexpr_vi
     };
 
     __genexpr_via_callee_6_frame(const std::vector<int32_t>& __src, F_self&& self_)
-        : __state(S_INITIAL), __src(__src), self(std::forward<F_self>(self_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          self(std::forward<F_self>(self_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_via_callee_6_frame& __iter__() { return *this; }
@@ -651,7 +671,9 @@ struct __genexpr_via_method_7_frame : public ::tpy::next_iter_mixin<__genexpr_vi
     };
 
     __genexpr_via_method_7_frame(const std::vector<int32_t>& __src, F_self&& self_)
-        : __state(S_INITIAL), __src(__src), self(std::forward<F_self>(self_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          self(std::forward<F_self>(self_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_via_method_7_frame& __iter__() { return *this; }
@@ -700,7 +722,10 @@ struct __genexpr_src_field_8_frame : public ::tpy::next_iter_mixin<__genexpr_src
     };
 
     __genexpr_src_field_8_frame(const std::vector<int32_t>& __src, F_big&& big_, F_self&& self_)
-        : __state(S_INITIAL), __src(__src), big(std::forward<F_big>(big_)), self(std::forward<F_self>(self_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          big(std::forward<F_big>(big_)),
+          self(std::forward<F_self>(self_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_src_field_8_frame& __iter__() { return *this; }
@@ -746,7 +771,9 @@ struct __genexpr___init___9_frame : public ::tpy::next_iter_mixin<__genexpr___in
     };
 
     __genexpr___init___9_frame(int32_t __r0_, F_self&& self_)
-        : __state(S_INITIAL), __r0(std::move(__r0_)), self(std::forward<F_self>(self_)) {}
+        : __state(S_INITIAL),
+          __r0(std::move(__r0_)),
+          self(std::forward<F_self>(self_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr___init___9_frame& __iter__() { return *this; }
@@ -801,7 +828,9 @@ struct __genexpr_view_via_method_10_frame : public ::tpy::next_iter_mixin<__gene
     };
 
     __genexpr_view_via_method_10_frame(const std::vector<int32_t>& __src, F_self&& self_)
-        : __state(S_INITIAL), __src(__src), self(std::forward<F_self>(self_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          self(std::forward<F_self>(self_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_view_via_method_10_frame& __iter__() { return *this; }
@@ -848,7 +877,10 @@ struct __genexpr_iter_self_11_frame : public ::tpy::next_iter_mixin<__genexpr_it
     };
 
     __genexpr_iter_self_11_frame(int32_t __r0_, F_big&& big_, F_self&& self_)
-        : __state(S_INITIAL), __r0(std::move(__r0_)), big(std::forward<F_big>(big_)), self(std::forward<F_self>(self_)) {}
+        : __state(S_INITIAL),
+          __r0(std::move(__r0_)),
+          big(std::forward<F_big>(big_)),
+          self(std::forward<F_self>(self_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_iter_self_11_frame& __iter__() { return *this; }
@@ -903,7 +935,10 @@ struct __genexpr_iter_two_hop_12_frame : public ::tpy::next_iter_mixin<__genexpr
     };
 
     __genexpr_iter_two_hop_12_frame(int32_t __r0_, F_big&& big_, F_self&& self_)
-        : __state(S_INITIAL), __r0(std::move(__r0_)), big(std::forward<F_big>(big_)), self(std::forward<F_self>(self_)) {}
+        : __state(S_INITIAL),
+          __r0(std::move(__r0_)),
+          big(std::forward<F_big>(big_)),
+          self(std::forward<F_self>(self_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_iter_two_hop_12_frame& __iter__() { return *this; }
@@ -958,7 +993,10 @@ struct __genexpr_view_other_13_frame : public ::tpy::next_iter_mixin<__genexpr_v
     };
 
     __genexpr_view_other_13_frame(int32_t __r0_, F_r&& r_, F_self&& self_)
-        : __state(S_INITIAL), __r0(std::move(__r0_)), r(std::forward<F_r>(r_)), self(std::forward<F_self>(self_)) {}
+        : __state(S_INITIAL),
+          __r0(std::move(__r0_)),
+          r(std::forward<F_r>(r_)),
+          self(std::forward<F_self>(self_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_view_other_13_frame& __iter__() { return *this; }
@@ -1015,11 +1053,17 @@ struct __genexpr_rec_14_frame : public ::tpy::next_iter_mixin<__genexpr_rec_14_f
     };
 
     __genexpr_rec_14_frame(T___src&& __src_, F_k&& k_, F_self&& self_)
-        : __state(S_INITIAL), __src(std::forward<T___src>(__src_)), k(std::forward<F_k>(k_)), self(std::forward<F_self>(self_)) {}
+        : __state(S_INITIAL),
+          __src(std::forward<T___src>(__src_)),
+          k(std::forward<F_k>(k_)),
+          self(std::forward<F_self>(self_)) {}
 
     template <typename F_make>
     __genexpr_rec_14_frame(std::in_place_t, F_make&& make_, F_k&& k_, F_self&& self_)
-        : __state(S_INITIAL), __src(std::forward<F_make>(make_)()), k(std::forward<F_k>(k_)), self(std::forward<F_self>(self_)) {}
+        : __state(S_INITIAL),
+          __src(std::forward<F_make>(make_)()),
+          k(std::forward<F_k>(k_)),
+          self(std::forward<F_self>(self_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_rec_14_frame& __iter__() { return *this; }
@@ -1084,7 +1128,10 @@ struct __genexpr_gen_body_19_frame : public ::tpy::next_iter_mixin<__genexpr_gen
     };
 
     __genexpr_gen_body_19_frame(int32_t __r0_, F_big&& big_, F_xs&& xs_)
-        : __state(S_INITIAL), __r0(std::move(__r0_)), big(std::forward<F_big>(big_)), xs(std::forward<F_xs>(xs_)) {}
+        : __state(S_INITIAL),
+          __r0(std::move(__r0_)),
+          big(std::forward<F_big>(big_)),
+          xs(std::forward<F_xs>(xs_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_gen_body_19_frame& __iter__() { return *this; }
@@ -1139,7 +1186,10 @@ struct __genexpr_async_body_20_frame : public ::tpy::next_iter_mixin<__genexpr_a
     };
 
     __genexpr_async_body_20_frame(int32_t __r0_, F_big&& big_, F_xs&& xs_)
-        : __state(S_INITIAL), __r0(std::move(__r0_)), big(std::forward<F_big>(big_)), xs(std::forward<F_xs>(xs_)) {}
+        : __state(S_INITIAL),
+          __r0(std::move(__r0_)),
+          big(std::forward<F_big>(big_)),
+          xs(std::forward<F_xs>(xs_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_async_body_20_frame& __iter__() { return *this; }
@@ -1195,7 +1245,10 @@ struct __genexpr_src_gen_body_36_frame : public ::tpy::next_iter_mixin<__genexpr
     };
 
     __genexpr_src_gen_body_36_frame(const std::vector<int32_t>& __src, F_big&& big_, F_xs&& xs_)
-        : __state(S_INITIAL), __src(__src), big(std::forward<F_big>(big_)), xs(std::forward<F_xs>(xs_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          big(std::forward<F_big>(big_)),
+          xs(std::forward<F_xs>(xs_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_src_gen_body_36_frame& __iter__() { return *this; }
@@ -1245,7 +1298,10 @@ struct __genexpr_src_async_body_37_frame : public ::tpy::next_iter_mixin<__genex
     };
 
     __genexpr_src_async_body_37_frame(const std::vector<int32_t>& __src, F_big&& big_, F_xs&& xs_)
-        : __state(S_INITIAL), __src(__src), big(std::forward<F_big>(big_)), xs(std::forward<F_xs>(xs_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+        : __state(S_INITIAL),
+          __src(__src),
+          big(std::forward<F_big>(big_)),
+          xs(std::forward<F_xs>(xs_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_src_async_body_37_frame& __iter__() { return *this; }
@@ -1291,7 +1347,8 @@ struct __gen_Tagged___iter__ : public ::tpy::next_iter_mixin<__gen_Tagged___iter
     };
 
     __gen_Tagged___iter__(const Tagged& __self)
-        : __state(S_INITIAL), __self(__self) {}
+        : __state(S_INITIAL),
+          __self(__self) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Tagged___iter__& __iter__() { return *this; }
@@ -1309,7 +1366,9 @@ inline __gen_Tagged___iter__ Tagged::__iter__() const {
 // def __init__(self, name: str, k: int32) -> None:
 //     self.name = name
 //     self.k = k
-inline Rec::Rec(std::string_view name, int32_t k) : name(name), k(k) {}
+inline Rec::Rec(std::string_view name, int32_t k)
+    : name(name),
+      k(k) {}
 
 // def set_name(self) -> bool:
 //     self.name = "a replacement long enough to leave the small-string buffer"
@@ -1359,7 +1418,9 @@ inline Counted::Counted(std::vector<int32_t>& xs, bool big) : n(0) {
 // def __init__(self) -> None:
 //     self.items = [1, 2, 3]
 //     self.other = [10, 20]
-inline Bag::Bag() : items(std::vector<int32_t>{1, 2, 3}), other(std::vector<int32_t>{10, 20}) {}
+inline Bag::Bag()
+    : items(std::vector<int32_t>{1, 2, 3}),
+      other(std::vector<int32_t>{10, 20}) {}
 
 // def push(self) -> bool:
 //     self.items.append(9)
@@ -1403,7 +1464,10 @@ inline int32_t Bag::src_field(bool big) {
 //     self.n = 0
 //     # constructor: the body grows a field through a method on self
 //     self.n = sum(1 for _ in range(2) if self.push())  # tpyc: ok
-inline Tagged::Tagged() : tag("the original tag, long enough to live on the heap"), items(std::vector<int32_t>{1, 2}), n(0) {
+inline Tagged::Tagged()
+    : tag("the original tag, long enough to live on the heap"),
+      items(std::vector<int32_t>{1, 2}),
+      n(0) {
     this->n = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr___init___9(2, (*this)));
 }
 

@@ -74,7 +74,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 // def __init__(self, a: int32, b: int32) -> None:
 //     self.a = a
 //     self.b = b
-inline Point::Point(int32_t a, int32_t b) : a(a), b(b) {}
+inline Point::Point(int32_t a, int32_t b)
+    : a(a),
+      b(b) {}
 
 // def __init__(self, val: int32) -> None:
 //     # 'val' param shadows global 'val' below - should NOT deref

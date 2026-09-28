@@ -229,8 +229,8 @@ int32_t lambda_param_vs_opt_param(Holder* p) {
     std::function<int32_t(Holder&)> k = [](Holder& p) -> int32_t { return p.v; };
     std::function<int32_t(int32_t)> t = [](int32_t p) -> int32_t { return ((p) ? (1) : (0)); };
     if ((p == nullptr)) {
-        Holder __tmp_2 = Holder(4);
-        return (::tpy::add_check<int32_t>(k(__tmp_2), t(0)));
+        Holder __tmp_1 = Holder(4);
+        return (::tpy::add_check<int32_t>(k(__tmp_1), t(0)));
     }
     return (::tpy::add_check<int32_t>(k((*p)), t(3)));
 }
@@ -578,26 +578,26 @@ void main() {
     ::tpyapp::main::param_vs_imported_global();
     std::cout << "native_local:" << " " << ::tpyapp::main::native_global_branch_local(true) << " " << ::tpyapp::main::native_global_branch_local(false) << "\n";
     ::tpyapp::main::lambda_param_vs_slot_global();
-    Holder __tmp_3 = Holder(10);
-    std::cout << "lambda_opt_param:" << " " << ::tpyapp::main::lambda_param_vs_opt_param(&(__tmp_3)) << " " << ::tpyapp::main::lambda_param_vs_opt_param(nullptr) << "\n";
+    Holder __tmp_1 = Holder(10);
+    std::cout << "lambda_opt_param:" << " " << ::tpyapp::main::lambda_param_vs_opt_param(&(__tmp_1)) << " " << ::tpyapp::main::lambda_param_vs_opt_param(nullptr) << "\n";
     ::tpyapp::main::block_binders();
     ::tpyapp::main::walrus_local();
     K().m();
     std::cout << "enum_method:" << " " << __enum_Tone{Tone::LOW}.bump() << " " << __enum_Tone{Tone::HIGH}.bump() << "\n";
     {
-        std::vector<Holder> __tmp_4 = {Holder(1), Holder(3)};
-        auto __src_0 = ::tpyapp::main::gen(__tmp_4);
+        std::vector<Holder> __tmp_2 = {Holder(1), Holder(3)};
+        auto __src_0 = ::tpyapp::main::gen(__tmp_2);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen:" << " " << v << "\n";
+            std::cout << "gen:" << " " << v << "\n";
         }
     }
     ::tpyapp::main::reads_only();
-    Holder __tmp_5 = Holder(8);
-    ::tpyapp::main::narrowed(&(__tmp_5));
+    Holder __tmp_3 = Holder(8);
+    ::tpyapp::main::narrowed(&(__tmp_3));
     ::tpyapp::main::narrowed(nullptr);
     Holder h1 = Holder(1);
     Holder h2 = Holder(2);
@@ -609,7 +609,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "frame_field:" << " " << v << "\n";
+            std::cout << "frame_field:" << " " << v << "\n";
         }
     }
     ::tpyapp::main::loop_var_vs_enclosing_local();

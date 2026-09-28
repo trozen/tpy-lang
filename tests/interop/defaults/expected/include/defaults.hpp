@@ -109,7 +109,9 @@ inline std::ostream& operator<<(std::ostream& os, const Derived& obj) {
 }
 
 
-inline Counter::Counter(int64_t n, int64_t step) : n(n), step(step) {}
+inline Counter::Counter(int64_t n, int64_t step)
+    : n(n),
+      step(step) {}
 
 inline int64_t Counter::bump(int64_t by, bool twice) {
     this->n = (::tpy::add_check<int64_t>(this->n, (::tpy::mul_check<int64_t>(by, this->step))));
@@ -119,13 +121,18 @@ inline int64_t Counter::bump(int64_t by, bool twice) {
     return this->n;
 }
 
-inline Base::Base(int64_t lo, int64_t hi, int64_t scale) : lo(lo), hi(hi), scale(scale) {}
+inline Base::Base(int64_t lo, int64_t hi, int64_t scale)
+    : lo(lo),
+      hi(hi),
+      scale(scale) {}
 
 inline int64_t Base::span() const {
     return (::tpy::mul_check<int64_t>((::tpy::sub_check<int64_t>(this->hi, this->lo)), this->scale));
 }
 
-inline Pair::Pair(int64_t a, int64_t b) : a(a), b(b) {}
+inline Pair::Pair(int64_t a, int64_t b)
+    : a(a),
+      b(b) {}
 
 inline int64_t Pair::weigh(int64_t factor) const {
     return (::tpy::mul_check<int64_t>((::tpy::add_check<int64_t>(this->a, this->b)), factor));

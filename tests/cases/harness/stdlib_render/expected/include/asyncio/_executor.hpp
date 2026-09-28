@@ -130,11 +130,23 @@ struct TaskState {
     //     self.awaiter = Waker()
     //     self.done = False
     //     self.executor_owned = False
-    explicit TaskState(::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>&& frame) : frame(std::move(frame)), result(::tpy::UninitStorage<T>()), exc(std::nullopt), awaiter(::tpystd::coro::Waker()), done(false), executor_owned(false) {}
+    explicit TaskState(::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>&& frame)
+        : frame(std::move(frame)),
+          result(::tpy::UninitStorage<T>()),
+          exc(std::nullopt),
+          awaiter(::tpystd::coro::Waker()),
+          done(false),
+          executor_owned(false) {}
     // non-copyable (@nocopy)
     TaskState(const TaskState&) = delete;
     TaskState& operator=(const TaskState&) = delete;
-    TaskState(TaskState&& other) noexcept : frame(std::move(other.frame)), result(std::move(other.result)), exc(std::move(other.exc)), awaiter(std::move(other.awaiter)), done(std::move(other.done)), executor_owned(std::move(other.executor_owned)) {
+    TaskState(TaskState&& other) noexcept
+        : frame(std::move(other.frame)),
+          result(std::move(other.result)),
+          exc(std::move(other.exc)),
+          awaiter(std::move(other.awaiter)),
+          done(std::move(other.done)),
+          executor_owned(std::move(other.executor_owned)) {
         other.__tpy_owned_ = false;
     }
     TaskState& operator=(TaskState&& other) noexcept {
@@ -343,7 +355,9 @@ struct Task {
     //     self._state = state
     //     self._waker = Waker()
     Task() = default;
-    explicit Task(::tpystd::tplib::rc::Rc<TaskState<T>>&& state) : _state(std::move(state)), _waker(::tpystd::coro::Waker()) {}
+    explicit Task(::tpystd::tplib::rc::Rc<TaskState<T>>&& state)
+        : _state(std::move(state)),
+          _waker(::tpystd::coro::Waker()) {}
     // non-copyable (@nocopy)
     Task(const Task&) = delete;
     Task& operator=(const Task&) = delete;
@@ -636,7 +650,9 @@ namespace tpystd::asyncio::_executor {
 // def __init__(self, deadline: float, waker: Waker) -> None:
 //     self.deadline = deadline
 //     self.waker = waker
-inline TimerEntry::TimerEntry(double deadline, ::tpystd::coro::Waker waker) : deadline(deadline), waker(waker) {}
+inline TimerEntry::TimerEntry(double deadline, ::tpystd::coro::Waker waker)
+    : deadline(deadline),
+      waker(waker) {}
 
 // def __lt__(self, other: 'TimerEntry') -> bool:
 //     return self.deadline < other.deadline
@@ -648,7 +664,10 @@ inline bool TimerEntry::__lt__(const TimerEntry& other) const {
 //     self.box = None
 //     self.generation = 0
 //     self.runnable = False
-inline Slot::Slot() : box(std::nullopt), generation(0), runnable(false) {}
+inline Slot::Slot()
+    : box(std::nullopt),
+      generation(0),
+      runnable(false) {}
 
 // @readonly
 // def is_done(self) -> bool:
@@ -676,7 +695,11 @@ inline EpollReactor::EpollReactor() {
     this->_out_events = std::array<uint32_t, 64>();
 }
 
-inline EpollReactor::EpollReactor(EpollReactor&& other) noexcept : _epfd(std::move(other._epfd)), _waiters(std::move(other._waiters)), _out_fds(std::move(other._out_fds)), _out_events(std::move(other._out_events)) {
+inline EpollReactor::EpollReactor(EpollReactor&& other) noexcept
+    : _epfd(std::move(other._epfd)),
+      _waiters(std::move(other._waiters)),
+      _out_fds(std::move(other._out_fds)),
+      _out_events(std::move(other._out_events)) {
     other.__tpy_owned_ = false;
 }
 inline EpollReactor& EpollReactor::operator=(EpollReactor&& other) noexcept {

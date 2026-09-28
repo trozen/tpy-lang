@@ -37,7 +37,8 @@ struct __coro_serve {
     };
 
     __coro_serve()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     __coro_serve(__coro_serve&&) = default;
     ~__coro_serve() {

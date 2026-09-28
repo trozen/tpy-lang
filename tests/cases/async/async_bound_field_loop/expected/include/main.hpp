@@ -53,7 +53,9 @@ struct __coro_total {
     };
 
     __coro_total(const Summer<std::vector<int32_t>>& s)
-        : __state(S_INITIAL), __cancel_pending(false), s(s) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          s(s) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

@@ -72,8 +72,8 @@ void test_ternary_right_promotes() {
 //     x = a or b or c  # tpyc: type(StrView)
 //     print(x)
 void test_or_chain(std::string_view a, std::string_view b, std::string_view c) {
-    auto&& __tmp_2 = ((!a.empty()) ? a : b);
-    std::string_view x = ((!__tmp_2.empty()) ? __tmp_2 : c);
+    auto&& __tmp_1 = ((!a.empty()) ? a : b);
+    std::string_view x = ((!__tmp_1.empty()) ? __tmp_1 : c);
     std::cout << x << "\n";
 }
 
@@ -81,9 +81,9 @@ void test_or_chain(std::string_view a, std::string_view b, std::string_view c) {
 //     x = "foo" or "bar" or "baz"  # tpyc: type(StrView)
 //     print(x)
 void test_literal_or_chain() {
-    std::string_view __tmp_3 = "foo";
-    auto&& __tmp_4 = ((!__tmp_3.empty()) ? __tmp_3 : std::string_view("bar"));
-    std::string_view x = ((!__tmp_4.empty()) ? __tmp_4 : std::string_view("baz"));
+    std::string_view __tmp_1 = "foo";
+    auto&& __tmp_2 = ((!__tmp_1.empty()) ? __tmp_1 : std::string_view("bar"));
+    std::string_view x = ((!__tmp_2.empty()) ? __tmp_2 : std::string_view("baz"));
     std::cout << x << "\n";
 }
 
@@ -99,8 +99,8 @@ void test_or_chain_third_promotes() {
     std::string_view a = "hello";
     std::string_view b = "world";
     std::string c = "!";
-    auto&& __tmp_5 = ((!a.empty()) ? a : b);
-    std::string x = std::string(((!__tmp_5.empty()) ? __tmp_5 : std::string_view(c)));
+    auto&& __tmp_1 = ((!a.empty()) ? a : b);
+    std::string x = std::string(((!__tmp_1.empty()) ? __tmp_1 : std::string_view(c)));
     c += "?";
     std::cout << x << "\n";
 }

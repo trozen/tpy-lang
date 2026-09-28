@@ -56,7 +56,9 @@ struct __coro_client_role {
     };
 
     __coro_client_role(int32_t port_)
-        : __state(S_INITIAL), __cancel_pending(false), port(std::move(port_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          port(std::move(port_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -93,7 +95,8 @@ struct __coro_main_coro {
     };
 
     __coro_main_coro()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

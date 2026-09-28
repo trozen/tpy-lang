@@ -65,7 +65,9 @@ struct Pair {
     //     self.a = a
     //     self.b = b
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<U> b) : a(a), b(b) {}
+    explicit Pair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<U> b)
+        : a(a),
+          b(b) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 

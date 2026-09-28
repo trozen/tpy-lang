@@ -72,7 +72,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& got = ::tpy::unwrap_ref(*__r_1);
-        got.push_back(::tpy::__len__(got));
+            got.push_back(::tpy::__len__(got));
         }
     }
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 1) << " " << ::tpy::__getitem__(xs, 2) << "\n";
@@ -84,7 +84,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& gd = ::tpy::unwrap_ref(*__r_3);
-        ::tpy::__setitem__(gd, "b", 2);
+            ::tpy::__setitem__(gd, "b", 2);
         }
     }
     std::cout << ::tpy::__len__(d) << " " << ::tpy::__getitem__(d, "b") << "\n";
@@ -96,7 +96,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& gs = ::tpy::unwrap_ref(*__r_5);
-        gs.insert(9);
+            gs.insert(9);
         }
     }
     std::cout << ::tpy::__len__(s) << "\n";
@@ -108,7 +108,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             auto&& gb = ::tpy::unwrap_ref(*__r_7);
-        gb.push_back(66);
+            gb.push_back(66);
         }
     }
     std::cout << ::tpy::__len__(b) << " " << static_cast<int>(::tpy::bytes_getitem(b, 1)) << "\n";
@@ -120,7 +120,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             auto&& ga = ::tpy::unwrap_ref(*__r_9);
-        ::tpy::__setitem__(ga, 0, 7);
+            ::tpy::__setitem__(ga, 0, 7);
         }
     }
     std::cout << ::tpy::__getitem__(a, 0) << "\n";

@@ -96,7 +96,8 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<int32_t, 
     };
 
     __gen_gen(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -123,7 +124,8 @@ struct __gen_gen_twice : public ::tpy::next_iter_mixin<__gen_gen_twice, std::tup
     };
 
     __gen_gen_twice(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __next__();
     __gen_gen_twice& __iter__() { return *this; }
@@ -150,7 +152,8 @@ struct __gen_gen_call_init : public ::tpy::next_iter_mixin<__gen_gen_call_init, 
     };
 
     __gen_gen_call_init(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __next__();
     __gen_gen_call_init& __iter__() { return *this; }
@@ -175,7 +178,8 @@ struct __gen_gen_call_init_once : public ::tpy::next_iter_mixin<__gen_gen_call_i
     };
 
     __gen_gen_call_init_once(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __next__();
     __gen_gen_call_init_once& __iter__() { return *this; }
@@ -203,7 +207,8 @@ struct __gen_gen_call_init_borrowed : public ::tpy::next_iter_mixin<__gen_gen_ca
     };
 
     __gen_gen_call_init_borrowed(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __next__();
     __gen_gen_call_init_borrowed& __iter__() { return *this; }
@@ -231,7 +236,8 @@ struct __gen_gen_call_init_borrow_dead : public ::tpy::next_iter_mixin<__gen_gen
     };
 
     __gen_gen_call_init_borrow_dead(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __next__();
     __gen_gen_call_init_borrow_dead& __iter__() { return *this; }
@@ -258,7 +264,8 @@ struct __gen_gen_preloop : public ::tpy::next_iter_mixin<__gen_gen_preloop, std:
     };
 
     __gen_gen_preloop(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __next__();
     __gen_gen_preloop& __iter__() { return *this; }
@@ -285,7 +292,8 @@ struct __gen_gen_live : public ::tpy::next_iter_mixin<__gen_gen_live, std::tuple
     };
 
     __gen_gen_live(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __next__();
     __gen_gen_live& __iter__() { return *this; }
@@ -313,7 +321,9 @@ struct __gen_Src_pairs : public ::tpy::next_iter_mixin<__gen_Src_pairs, std::tup
     };
 
     __gen_Src_pairs(const Src& __self, int32_t n_)
-        : __state(S_INITIAL), __self(__self), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          __self(__self),
+          n(std::move(n_)) {}
 
     std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __next__();
     __gen_Src_pairs& __iter__() { return *this; }
@@ -331,7 +341,9 @@ inline __gen_Src_pairs Src::pairs(int32_t n) const {
 // def __init__(self, v: int32) -> None:
 //     self.val = v
 //     self.items = [v]
-inline Box::Box(int32_t v) : val(v), items(std::vector<int32_t>{v}) {}
+inline Box::Box(int32_t v)
+    : val(v),
+      items(std::vector<int32_t>{v}) {}
 
 // def __init__(self, base: int32) -> None:
 //     self.base = base

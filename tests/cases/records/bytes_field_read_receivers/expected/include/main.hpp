@@ -217,7 +217,8 @@ struct __gen_sec_gen : public ::tpy::next_iter_mixin<__gen_sec_gen, int32_t> {
     };
 
     __gen_sec_gen(const Outer& o)
-        : __state(S_INITIAL), o(o) {}
+        : __state(S_INITIAL),
+          o(o) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_sec_gen& __iter__() { return *this; }
@@ -231,7 +232,9 @@ struct __gen_sec_gen : public ::tpy::next_iter_mixin<__gen_sec_gen, int32_t> {
 // def __init__(self, tag: Own[bytes], name: Own[str]) -> None:
 //     self.tag = tag
 //     self.name = name
-inline Inner::Inner(::tpy::Bytes tag, std::string name) : tag(std::move(tag)), name(std::move(name)) {}
+inline Inner::Inner(::tpy::Bytes tag, std::string name)
+    : tag(std::move(tag)),
+      name(std::move(name)) {}
 
 // def rename(self) -> None:
 //     self.name = "n6"
@@ -246,7 +249,9 @@ inline Mid::Mid(Inner&& inner) : inner(std::move(inner)) {}
 // def __init__(self, inner: Own[Inner], mid: Own[Mid]) -> None:
 //     self.inner = inner
 //     self.mid = mid
-inline Outer::Outer(Inner&& inner, Mid&& mid) : inner(std::move(inner)), mid(std::move(mid)) {}
+inline Outer::Outer(Inner&& inner, Mid&& mid)
+    : inner(std::move(inner)),
+      mid(std::move(mid)) {}
 
 // def __init__(self, inner: Own[Inner]) -> None:
 //     self._inner = inner

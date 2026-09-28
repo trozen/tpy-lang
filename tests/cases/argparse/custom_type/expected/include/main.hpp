@@ -70,7 +70,9 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 //     if idx >= 0:
 //         self.namespace = raw[:idx]
 //         self.name = raw[idx + 1:]
-inline Tag::Tag(std::string_view raw) : namespace_(""), name(raw) {
+inline Tag::Tag(std::string_view raw)
+    : namespace_(""),
+      name(raw) {
     int32_t idx = ::tpy::str_find(raw, ":");
     if ((idx >= 0)) {
         this->namespace_ = std::string(::tpy::str_slice(raw, ::tpy::BasicSlice{std::nullopt, idx}));
@@ -97,6 +99,9 @@ inline std::string Tag::__str__() const {
 }
 
 // args = parser.parse_args(["core:strict", "--out", "release"])
-inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(Tag&& input, std::optional<Tag>&& out, Tag&& label) : input(std::move(input)), out(std::move(out)), label(std::move(label)) {}
+inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(Tag&& input, std::optional<Tag>&& out, Tag&& label)
+    : input(std::move(input)),
+      out(std::move(out)),
+      label(std::move(label)) {}
 void __tpy_init();
 } // namespace tpyapp::main

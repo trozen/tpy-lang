@@ -48,6 +48,10 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 //     self.name = name
 //     self.flag = flag
 //     self.ratio = ratio
-inline Config::Config(std::optional<int32_t> port, std::optional<std::string_view> name, std::optional<bool> flag, std::optional<double> ratio) : port(port), name(name ? std::make_optional(std::string(*name)) : std::nullopt), flag(flag), ratio(ratio) {}
+inline Config::Config(std::optional<int32_t> port, std::optional<std::string_view> name, std::optional<bool> flag, std::optional<double> ratio)
+    : port(port),
+      name(name ? std::make_optional(std::string(*name)) : std::nullopt),
+      flag(flag),
+      ratio(ratio) {}
 void __tpy_init();
 } // namespace tpyapp::main

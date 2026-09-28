@@ -50,8 +50,12 @@ inline std::ostream& operator<<(std::ostream& os, const DerivedErr& obj) {
 }
 
 
-inline BaseErr::BaseErr(std::string_view message, int32_t code) : ::tpy::Exception(message), code(code) {}
+inline BaseErr::BaseErr(std::string_view message, int32_t code)
+    : ::tpy::Exception(message),
+      code(code) {}
 
-inline DerivedErr::DerivedErr(std::string_view message, int32_t code, std::string_view detail) : BaseErr(message, code), detail(detail) {}
+inline DerivedErr::DerivedErr(std::string_view message, int32_t code, std::string_view detail)
+    : BaseErr(message, code),
+      detail(detail) {}
 void __tpy_init();
 } // namespace tpyapp::excinherit

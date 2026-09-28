@@ -78,7 +78,9 @@ inline double Circle::scaled(int32_t k) const {
 // def __init__(self, w: float64, h: float64) -> None:
 //     self.w = w
 //     self.h = h
-inline Rect::Rect(double w, double h) : w(w), h(h) {}
+inline Rect::Rect(double w, double h)
+    : w(w),
+      h(h) {}
 
 // def area(self) -> float64:
 //     return self.w * self.h

@@ -76,7 +76,9 @@ inline std::string Named::describe() const {
 // def __init__(self, name: str, count: int32) -> None:
 //     super().__init__(name)
 //     self.count = count
-inline Widget::Widget(std::string_view name, int32_t count) : Named(name), Counted() {
+inline Widget::Widget(std::string_view name, int32_t count)
+    : Named(name),
+      Counted() {
     this->count = count;
 }
 void __tpy_init();

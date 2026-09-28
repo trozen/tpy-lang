@@ -40,7 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const Headers& obj) {
 // def __init__(self) -> None:
 //     self._last_name = ""
 //     self._last_value = ""
-inline Headers::Headers() : _last_name(""), _last_value("") {}
+inline Headers::Headers()
+    : _last_name(""),
+      _last_value("") {}
 
 // def __setattr__(self, name: str, value: str) -> None:
 //     self._last_name = name

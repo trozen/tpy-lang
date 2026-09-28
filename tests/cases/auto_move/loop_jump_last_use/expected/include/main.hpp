@@ -234,7 +234,8 @@ struct __coro_async_break {
     };
 
     __coro_async_break()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -261,8 +262,7 @@ struct __gen_gen_break : public ::tpy::next_iter_mixin<__gen_gen_break, int32_t>
         S_DONE = 5,
     };
 
-    __gen_gen_break()
-        : __state(S_INITIAL) {}
+    __gen_gen_break() : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_break& __iter__() { return *this; }
@@ -280,7 +280,9 @@ inline P::P(int32_t x) : xs(std::vector<int32_t>{x}) {}
 // def __init__(self) -> None:
 //     self.ps = []
 //     self.ls = []
-inline Sink::Sink() : ps(std::vector<P>{}), ls(std::vector<std::vector<P>>{}) {}
+inline Sink::Sink()
+    : ps(std::vector<P>{}),
+      ls(std::vector<std::vector<P>>{}) {}
 
 // def __init__(self) -> None:
 //     self.n = 0
@@ -360,8 +362,8 @@ inline void Runner::run() const {
     P p = P(1);
     for (int32_t i = 0; i < 3; ++i) {
         if ((i == 1)) {
-            P __tmp_2 = p;
-            ::tpyapp::main::take(std::move(__tmp_2));
+            P __tmp_1 = p;
+            ::tpyapp::main::take(std::move(__tmp_1));
             break;
         }
     }

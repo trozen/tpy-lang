@@ -30,7 +30,8 @@ struct __gen_maybe_count : public ::tpy::next_iter_mixin<__gen_maybe_count, int3
     };
 
     __gen_maybe_count(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_maybe_count& __iter__() { return *this; }

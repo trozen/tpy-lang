@@ -55,7 +55,8 @@ struct __gen_gen_while : public ::tpy::next_iter_mixin<__gen_gen_while, ::tpy::B
     };
 
     __gen_gen_while(::tpy::BigInt n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_while& __iter__() { return *this; }
@@ -80,7 +81,8 @@ struct __gen_gen_branch : public ::tpy::next_iter_mixin<__gen_gen_branch, ::tpy:
     };
 
     __gen_gen_branch(::tpy::BigInt n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_branch& __iter__() { return *this; }

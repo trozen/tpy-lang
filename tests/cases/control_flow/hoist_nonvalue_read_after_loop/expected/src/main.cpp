@@ -2087,7 +2087,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        std::cout << "gen" << " " << v << "\n";
+            std::cout << "gen" << " " << v << "\n";
         }
     }
     {
@@ -2097,7 +2097,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "gen_while" << " " << v << "\n";
+            std::cout << "gen_while" << " " << v << "\n";
         }
     }
     {
@@ -2107,7 +2107,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        std::cout << "gen_for_single" << " " << v << "\n";
+            std::cout << "gen_for_single" << " " << v << "\n";
         }
     }
     {
@@ -2117,7 +2117,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             std::string_view t = ::tpy::unwrap_ref(*__r_7);
-        std::cout << "gen_while_single" << " " << t << "\n";
+            std::cout << "gen_while_single" << " " << t << "\n";
         }
     }
     int32_t slice_total = 0;
@@ -2128,7 +2128,7 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        slice_total = ::tpy::add_check<int32_t>(slice_total, v);
+            slice_total = ::tpy::add_check<int32_t>(slice_total, v);
         }
     }
     std::cout << "gen_slice_view" << " " << slice_total << "\n";
@@ -2191,7 +2191,7 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-        std::cout << "gen_sibling" << " " << v << "\n";
+            std::cout << "gen_sibling" << " " << v << "\n";
         }
     }
     std::cout << "gen_sibling" << " " << ::tpy::__getitem__(gen_pics, 1).n << "\n";
@@ -2203,7 +2203,7 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-        std::cout << "gen_blk_if" << " " << v << "\n";
+            std::cout << "gen_blk_if" << " " << v << "\n";
         }
     }
     std::cout << "gen_blk_if" << " " << ::tpy::__getitem__(if_pics, 1).n << "\n";
@@ -2215,7 +2215,7 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-        std::cout << "gen_blk_if" << " " << v << "\n";
+            std::cout << "gen_blk_if" << " " << v << "\n";
         }
     }
     std::cout << "gen_blk_if" << " " << ::tpy::__getitem__(if_pics2, 1).n << "\n";

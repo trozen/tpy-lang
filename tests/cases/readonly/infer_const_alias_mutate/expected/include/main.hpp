@@ -148,7 +148,9 @@ inline void Impl::do_mutate() {
 // def __init__(self) -> None:
 //     self.inner = Inner()
 //     self.frame = make_box()
-inline S::S() : inner(Inner()), frame(::tpyapp::main::make_box()) {}
+inline S::S()
+    : inner(Inner()),
+      frame(::tpyapp::main::make_box()) {}
 
 // # Direct call on a local alias of a self field -- must NOT be const.
 // def mutate_via_alias(self) -> None:

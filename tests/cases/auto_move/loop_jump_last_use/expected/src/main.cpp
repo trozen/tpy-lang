@@ -52,8 +52,8 @@ void for_break() {
     P p = P(1);
     for (int32_t i = 0; i < 3; ++i) {
         if ((i == 1)) {
-            P __tmp_3 = p;
-            ::tpyapp::main::take(std::move(__tmp_3));
+            P __tmp_1 = p;
+            ::tpyapp::main::take(std::move(__tmp_1));
             break;
         }
     }
@@ -75,8 +75,8 @@ void while_break() {
     while ((i < 3)) {
         i = ::tpy::add_check<int32_t>(i, 1);
         if ((i == 2)) {
-            P __tmp_4 = p;
-            ::tpyapp::main::take(std::move(__tmp_4));
+            P __tmp_1 = p;
+            ::tpyapp::main::take(std::move(__tmp_1));
             break;
         }
     }
@@ -98,8 +98,8 @@ void while_true_break() {
     while (true) {
         i = ::tpy::add_check<int32_t>(i, 1);
         if ((i == 2)) {
-            P __tmp_5 = p;
-            ::tpyapp::main::take(std::move(__tmp_5));
+            P __tmp_1 = p;
+            ::tpyapp::main::take(std::move(__tmp_1));
             break;
         }
     }
@@ -122,10 +122,9 @@ void match_break() {
         auto& __match_subject_1 = i;
         switch (__match_subject_1) {
         case 1: {
-            P __tmp_6 = p;
-            ::tpyapp::main::take(std::move(__tmp_6));
+            P __tmp_1 = p;
+            ::tpyapp::main::take(std::move(__tmp_1));
             goto __loop_break_1;
-            break;
         }
         default: {
             break;
@@ -150,8 +149,8 @@ void continue_rebind() {
     for (int32_t i = 0; i < 3; ++i) {
         std::cout << "continue_rebind" << " " << i << " " << ::tpy::__len__(p->xs) << "\n";
         if ((i == 0)) {
-            P __tmp_7 = (*p);
-            ::tpyapp::main::take(std::move(__tmp_7));
+            P __tmp_1 = (*p);
+            ::tpyapp::main::take(std::move(__tmp_1));
             continue;
         }
         (*p) = P(5);
@@ -177,8 +176,8 @@ void finally_break() {
             bool __fin_ran_1 = false;
             try {
                 if ((i == 1)) {
-                    P __tmp_8 = p;
-                    ::tpyapp::main::take(std::move(__tmp_8));
+                    P __tmp_1 = p;
+                    ::tpyapp::main::take(std::move(__tmp_1));
                     __fin_ran_1 = true;
                     n = ::tpy::add_check<int32_t>(n, 1);
                     break;
@@ -213,8 +212,8 @@ void with_break() {
         bool __fin_ran_2 = false;
         try {
             if ((i == 1)) {
-                P __tmp_9 = p;
-                ::tpyapp::main::take(std::move(__tmp_9));
+                P __tmp_1 = p;
+                ::tpyapp::main::take(std::move(__tmp_1));
                 __fin_ran_2 = true;
                 __ctx_1.__exit__({}, nullptr, {});
                 break;
@@ -263,8 +262,8 @@ void try_else_break() {
             break;
             __after_else_1:;
         }
-        P __tmp_10 = p;
-        ::tpyapp::main::take(std::move(__tmp_10));
+        P __tmp_1 = p;
+        ::tpyapp::main::take(std::move(__tmp_1));
     }
 }
 
@@ -284,8 +283,8 @@ void except_break() {
             try {
                 ::tpyapp::main::fail_at(i, 1);
             } catch (const ::tpy::ValueError&) {
-                P __tmp_11 = p;
-                ::tpyapp::main::take(std::move(__tmp_11));
+                P __tmp_1 = p;
+                ::tpyapp::main::take(std::move(__tmp_1));
                 break;
             }
         }
@@ -313,8 +312,8 @@ void handler_break_finally() {
                 try {
                     ::tpyapp::main::fail_at(i, 1);
                 } catch (const ::tpy::ValueError&) {
-                    P __tmp_12 = p;
-                    ::tpyapp::main::take(std::move(__tmp_12));
+                    P __tmp_1 = p;
+                    ::tpyapp::main::take(std::move(__tmp_1));
                     __fin_ran_3 = true;
                     std::cout << "handler_break_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n";
                     break;
@@ -349,8 +348,8 @@ void handler_continue_finally() {
                 try {
                     ::tpyapp::main::fail_at(i, 1);
                 } catch (const ::tpy::ValueError&) {
-                    P __tmp_13 = p;
-                    ::tpyapp::main::take(std::move(__tmp_13));
+                    P __tmp_1 = p;
+                    ::tpyapp::main::take(std::move(__tmp_1));
                     __fin_ran_4 = true;
                     std::cout << "handler_continue_finally" << " " << i << " " << ::tpy::__len__(p.xs) << "\n";
                     continue;
@@ -437,8 +436,8 @@ int32_t return_finally() {
             try {
                 ::tpyapp::main::fail_at(0, 0);
             } catch (const ::tpy::ValueError&) {
-                P __tmp_14 = p;
-                ::tpyapp::main::take(std::move(__tmp_14));
+                P __tmp_1 = p;
+                ::tpyapp::main::take(std::move(__tmp_1));
                 int32_t __tpy_ret_0 = 1;
                 __fin_ran_7 = true;
                 std::cout << "return_finally" << " " << ::tpy::__len__(p.xs) << "\n";
@@ -471,8 +470,8 @@ void raise_finally() {
             try {
                 ::tpyapp::main::fail_at(0, 0);
             } catch (const ::tpy::ValueError&) {
-                P __tmp_15 = p;
-                ::tpyapp::main::take(std::move(__tmp_15));
+                P __tmp_1 = p;
+                ::tpyapp::main::take(std::move(__tmp_1));
                 throw;
             }
         } catch (...) {
@@ -502,8 +501,8 @@ void assert_finally(bool c) {
                 ::tpyapp::main::fail_at(0, 0);
             } catch (const ::tpy::ValueError&) {
                 if (c) {
-                    P __tmp_16 = p;
-                    ::tpyapp::main::take(std::move(__tmp_16));
+                    P __tmp_1 = p;
+                    ::tpyapp::main::take(std::move(__tmp_1));
                     ::tpy::raise_assertion_error("boom");
                 }
             }
@@ -540,8 +539,8 @@ int32_t nested_return_finally() {
                     try {
                         ::tpyapp::main::fail_at(0, 0);
                     } catch (const ::tpy::ValueError&) {
-                        P __tmp_17 = p;
-                        ::tpyapp::main::take(std::move(__tmp_17));
+                        P __tmp_1 = p;
+                        ::tpyapp::main::take(std::move(__tmp_1));
                         int32_t __tpy_ret_0 = 1;
                         __fin_ran_11 = true;
                         std::cout << "nested_return_finally inner" << "\n";
@@ -661,8 +660,8 @@ void finally_continue() {
             bool __fin_ran_15 = false;
             try {
                 if ((i == 0)) {
-                    P __tmp_18 = (*p);
-                    ::tpyapp::main::take(std::move(__tmp_18));
+                    P __tmp_1 = (*p);
+                    ::tpyapp::main::take(std::move(__tmp_1));
                     __fin_ran_15 = true;
                     n = ::tpy::add_check<int32_t>(n, 1);
                     continue;
@@ -695,8 +694,8 @@ void inner_else_break() {
         for (int32_t i = 0; i < 0; ++i) {
         }
         {
-            P __tmp_19 = p;
-            ::tpyapp::main::take(std::move(__tmp_19));
+            P __tmp_1 = p;
+            ::tpyapp::main::take(std::move(__tmp_1));
             break;
         }
         __after_else_1:;
@@ -724,8 +723,8 @@ void suppressed_while_true() {
     try {
         while (true) {
             (*p) = P(2);
-            P __tmp_20 = (*p);
-            ::tpyapp::main::take(std::move(__tmp_20));
+            P __tmp_1 = (*p);
+            ::tpyapp::main::take(std::move(__tmp_1));
             ::tpyapp::main::fail_at(i, 1);
             i = ::tpy::add_check<int32_t>(i, 1);
         }
@@ -785,8 +784,8 @@ void nested_break() {
         std::cout << "nested_break" << " " << j << " " << ::tpy::__len__(p.xs) << "\n";
         for (int32_t i = 0; i < 2; ++i) {
             if ((j == 0)) {
-                P __tmp_21 = p;
-                ::tpyapp::main::take(std::move(__tmp_21));
+                P __tmp_1 = p;
+                ::tpyapp::main::take(std::move(__tmp_1));
                 break;
             }
         }
@@ -802,8 +801,8 @@ void nested_break() {
 void zero_trip_for(const std::vector<int32_t>& xs) {
     P __slot_1 = P(1);
     P* y = &__slot_1;
-    P __tmp_22 = (*y);
-    ::tpyapp::main::take(std::move(__tmp_22));
+    P __tmp_1 = (*y);
+    ::tpyapp::main::take(std::move(__tmp_1));
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -825,8 +824,8 @@ void zero_trip_for(const std::vector<int32_t>& xs) {
 void zero_trip_while(int32_t n) {
     P __slot_1 = P(1);
     P* y = &__slot_1;
-    P __tmp_23 = (*y);
-    ::tpyapp::main::take(std::move(__tmp_23));
+    P __tmp_1 = (*y);
+    ::tpyapp::main::take(std::move(__tmp_1));
     int32_t i = 0;
     while ((i < n)) {
         (*y) = P(2);
@@ -874,8 +873,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_break::__next__() {
     }
     case S_RESUME_0: {  // after: yield i
         if ((i == 1)) {
-            P __tmp_24 = (*p);
-            ::tpyapp::main::take(std::move(__tmp_24));
+            P __tmp_1 = (*p);
+            ::tpyapp::main::take(std::move(__tmp_1));
             __state = S_JOIN_1;
             continue;
         } else {
@@ -935,8 +934,8 @@ __gen_gen_break gen_break() {
         (void)std::move(__r0).value();
         __sub_0.reset();
         if ((i == 1)) {
-            P __tmp_25 = (*p);
-            ::tpyapp::main::take(std::move(__tmp_25));
+            P __tmp_1 = (*p);
+            ::tpyapp::main::take(std::move(__tmp_1));
             __state = S_JOIN_1;
             continue;
         } else {
@@ -984,8 +983,8 @@ void iterable_consumed() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& x = *__beg_0;
-        std::vector<P> __tmp_26 = xs;
-        int32_t n = ::tpyapp::main::take_list(std::move(__tmp_26));
+        std::vector<P> __tmp_1 = xs;
+        int32_t n = ::tpyapp::main::take_list(std::move(__tmp_1));
         std::cout << "iterable_consumed" << " " << n << " " << ::tpy::__len__(x.xs) << "\n";
         break;
     }
@@ -1004,8 +1003,8 @@ int32_t iterable_consumed_return() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& x = *__beg_0;
-        std::vector<P> __tmp_27 = xs;
-        return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_list(std::move(__tmp_27)), 10)), ::tpy::__len__(x.xs)));
+        std::vector<P> __tmp_1 = xs;
+        return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpyapp::main::take_list(std::move(__tmp_1)), 10)), ::tpy::__len__(x.xs)));
     }
     return 0;
 }
@@ -1026,8 +1025,8 @@ void alias_iterable_consumed() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& x = *__beg_0;
-        std::vector<P> __tmp_28 = xs;
-        int32_t n = ::tpyapp::main::take_list(std::move(__tmp_28));
+        std::vector<P> __tmp_1 = xs;
+        int32_t n = ::tpyapp::main::take_list(std::move(__tmp_1));
         std::cout << "alias_iterable_consumed" << " " << n << " " << ::tpy::__len__(x.xs) << "\n";
         break;
     }
@@ -1044,8 +1043,8 @@ void alias_call_borrow() {
     std::vector<P> xs = {P(1), P(2)};
     std::vector<P>& ys = xs;
     P& v = ::tpyapp::main::first(ys);
-    std::vector<P> __tmp_29 = xs;
-    int32_t n = ::tpyapp::main::take_list(std::move(__tmp_29));
+    std::vector<P> __tmp_1 = xs;
+    int32_t n = ::tpyapp::main::take_list(std::move(__tmp_1));
     std::cout << "alias_call_borrow" << " " << n << " " << ::tpy::__len__(v.xs) << "\n";
 }
 
@@ -1186,8 +1185,8 @@ void main() {
     ::tpyapp::main::with_target_break();
     ::tpyapp::main::with_break();
     ::tpyapp::main::nested_break();
-    std::vector<int32_t> __tmp_30 = std::vector<int32_t>{};
-    ::tpyapp::main::zero_trip_for(__tmp_30);
+    std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
+    ::tpyapp::main::zero_trip_for(__tmp_1);
     ::tpyapp::main::zero_trip_while(0);
     ::tpyapp::main::while_true_rebind();
     std::cout << "gen_break" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_break())) << "\n";

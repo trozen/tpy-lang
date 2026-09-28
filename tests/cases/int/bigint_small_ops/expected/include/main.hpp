@@ -125,7 +125,10 @@ struct __coro_async_ops {
     };
 
     __coro_async_ops(::tpy::BigInt a_, ::tpy::BigInt b_)
-        : __state(S_INITIAL), __cancel_pending(false), a(std::move(a_)), b(std::move(b_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(std::move(a_)),
+          b(std::move(b_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -150,7 +153,9 @@ struct __gen_generated : public ::tpy::next_iter_mixin<__gen_generated, ::tpy::B
     };
 
     __gen_generated(::tpy::BigInt a_, ::tpy::BigInt b_)
-        : __state(S_INITIAL), a(std::move(a_)), b(std::move(b_)) {}
+        : __state(S_INITIAL),
+          a(std::move(a_)),
+          b(std::move(b_)) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_generated& __iter__() { return *this; }

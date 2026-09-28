@@ -414,7 +414,10 @@ struct __coro_in_async {
     };
 
     __coro_in_async(::tpy::Union<const Cat*, const Dog*> a_, ::tpy::Union<const Cat*, const Dog*> b_)
-        : __state(S_INITIAL), __cancel_pending(false), a(a_), b(b_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(a_),
+          b(b_) {}
 
     ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -440,7 +443,10 @@ struct __coro_amain {
     };
 
     __coro_amain(::tpy::Union<const Cat*, const Dog*> a_, ::tpy::Union<const Cat*, const Dog*> b_)
-        : __state(S_INITIAL), __cancel_pending(false), a(a_), b(b_) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          a(a_),
+          b(b_) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -463,7 +469,9 @@ struct __gen_gen_eq : public ::tpy::next_iter_mixin<__gen_gen_eq, bool> {
     };
 
     __gen_gen_eq(::tpy::Union<const Cat*, const Dog*> a_, ::tpy::Union<const Cat*, const Dog*> b_)
-        : __state(S_INITIAL), a(a_), b(b_) {}
+        : __state(S_INITIAL),
+          a(a_),
+          b(b_) {}
 
     std::expected<bool, ::tpy::StopIteration> __next__();
     __gen_gen_eq& __iter__() { return *this; }
@@ -663,7 +671,9 @@ inline bool Sealed::__eq__(const Sealed& other) const {
 // def __init__(self, tag: int32, a: Pet, b: Pet) -> None:  # constructor
 //     self.tag = tag
 //     self.flag = a == b  # tpyc: ok
-inline Shelter::Shelter(int32_t tag, ::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b) : tag(tag), flag((a == b)) {}
+inline Shelter::Shelter(int32_t tag, ::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b)
+    : tag(tag),
+      flag((a == b)) {}
 
 // def same(self, a: Pet, b: Pet) -> bool:  # method param
 //     return a == b  # tpyc: ok

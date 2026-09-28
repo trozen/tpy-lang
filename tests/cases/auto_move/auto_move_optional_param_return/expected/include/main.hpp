@@ -44,6 +44,8 @@ inline std::ostream& operator<<(std::ostream& os, const Payload& obj) {
 // def __init__(self, data: String, count: int):
 //     self.data = data
 //     self.count = count
-inline Payload::Payload(const ::tpy::String& data, const ::tpy::BigInt& count) : data(data), count(count) {}
+inline Payload::Payload(const ::tpy::String& data, const ::tpy::BigInt& count)
+    : data(data),
+      count(count) {}
 void __tpy_init();
 } // namespace tpyapp::main

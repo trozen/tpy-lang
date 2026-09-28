@@ -61,7 +61,8 @@ struct __gen_decl_inside_while : public ::tpy::next_iter_mixin<__gen_decl_inside
     };
 
     __gen_decl_inside_while(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_decl_inside_while& __iter__() { return *this; }
@@ -89,7 +90,8 @@ struct __gen_decl_inside_for : public ::tpy::next_iter_mixin<__gen_decl_inside_f
     };
 
     __gen_decl_inside_for(const std::vector<int32_t>& xs)
-        : __state(S_INITIAL), xs(xs) {}
+        : __state(S_INITIAL),
+          xs(xs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_decl_inside_for& __iter__() { return *this; }
@@ -114,7 +116,8 @@ struct __gen_before_while : public ::tpy::next_iter_mixin<__gen_before_while, in
     };
 
     __gen_before_while(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_before_while& __iter__() { return *this; }
@@ -139,7 +142,8 @@ struct __gen_before_while_after_drain : public ::tpy::next_iter_mixin<__gen_befo
     };
 
     __gen_before_while_after_drain(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_before_while_after_drain& __iter__() { return *this; }

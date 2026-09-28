@@ -175,7 +175,9 @@ namespace tpyapp::class_inheritance_slots {
 
 
 
-inline Gate::Gate(std::string_view code) : code(code), _items(::tpy::ordered_map<std::string, int64_t>()) {}
+inline Gate::Gate(std::string_view code)
+    : code(code),
+      _items(::tpy::ordered_map<std::string, int64_t>()) {}
 
 inline bool Gate::__eq__(const Gate& other) const {
     return (this->code == other.code);

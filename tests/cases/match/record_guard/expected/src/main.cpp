@@ -17,20 +17,16 @@ std::string guarded(const Point& p) {
     auto& __match_subject_1 = p;
     if (__match_subject_1.x == 0 && __match_subject_1.y == 0) {
         return "origin";
-        goto __match_end_2;
     }
     {
         auto x = __match_subject_1.x;
         if ((x > 0)) {
             return "positive x";
-            goto __match_end_2;
         }
     }
     {
         return "other";
-        goto __match_end_2;
     }
-    __match_end_2:;
     ::std::unreachable();
     return "";
 }

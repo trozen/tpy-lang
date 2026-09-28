@@ -403,11 +403,9 @@ int32_t match_arm(int32_t k) {
             v = (::tpy::add_check<int32_t>(i, 30));
         }
         return v;
-        break;
     }
     default: {
         return -1;
-        break;
     }
     }
     ::std::unreachable();
@@ -768,11 +766,9 @@ int32_t else_match_arm(int32_t k) {
         }
         __after_else_0:;
         return v;
-        break;
     }
     default: {
         return -1;
-        break;
     }
     }
     ::std::unreachable();
@@ -1135,7 +1131,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t y = ::tpy::unwrap_ref(*__r_3);
-        std::cout << "else_gen" << " " << y << "\n";
+            std::cout << "else_gen" << " " << y << "\n";
         }
     }
     {
@@ -1145,7 +1141,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t y = ::tpy::unwrap_ref(*__r_5);
-        std::cout << "else_gen_broke" << " " << y << "\n";
+            std::cout << "else_gen_broke" << " " << y << "\n";
         }
     }
     std::cout << "else_async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::else_async(false))) << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::else_async(true))) << "\n";

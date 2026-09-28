@@ -32,8 +32,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
         S_DONE = 6,
     };
 
-    __gen_gen()
-        : __state(S_INITIAL) {}
+    __gen_gen() : __state(S_INITIAL) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

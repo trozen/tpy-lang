@@ -333,7 +333,11 @@ std::string dumps(const JsonValue& obj, int32_t indent, bool sort_keys) {
 //         i += 1
 //     self.lineno = line
 //     self.colno = col
-JSONDecodeError::JSONDecodeError(std::string_view msg, std::string_view doc, int32_t pos) : ::tpy::ValueError(msg), msg(msg), doc(doc), pos(pos) {
+JSONDecodeError::JSONDecodeError(std::string_view msg, std::string_view doc, int32_t pos)
+    : ::tpy::ValueError(msg),
+      msg(msg),
+      doc(doc),
+      pos(pos) {
     int32_t line = 1;
     int32_t col = 1;
     int32_t i = 0;

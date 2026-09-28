@@ -31,8 +31,8 @@ bool and_rhs_hatch(bool flag) {
 // def or_rhs(flag: bool) -> bool:
 //     return flag or take(Pinned(8)) > 0  # tpyc: warning(/builds Pinned even when the branch is not taken/)
 bool or_rhs(bool flag) {
-    Pinned __tmp_2 = Pinned(8);
-    return (flag || (::tpyapp::main::take(&(__tmp_2)) > 0));
+    Pinned __tmp_1 = Pinned(8);
+    return (flag || (::tpyapp::main::take(&(__tmp_1)) > 0));
 }
 
 // def or_rhs_hatch(flag: bool) -> bool:
@@ -46,8 +46,8 @@ bool or_rhs_hatch(bool flag) {
 // def ternary_arm(flag: bool) -> int32:
 //     return take(Pinned(9)) if flag else -1  # tpyc: warning(/builds Pinned even when the branch is not taken/)
 int32_t ternary_arm(bool flag) {
-    Pinned __tmp_3 = Pinned(9);
-    return ((flag) ? (::tpyapp::main::take(&(__tmp_3))) : (-1));
+    Pinned __tmp_1 = Pinned(9);
+    return ((flag) ? (::tpyapp::main::take(&(__tmp_1))) : (-1));
 }
 
 // def ternary_arm_hatch(flag: bool) -> int32:
@@ -62,8 +62,8 @@ int32_t ternary_arm_hatch(bool flag) {
 //     # Later comparator of a chained compare: also a conditional operand.
 //     return a < b < take(Pinned(10))  # tpyc: warning(/builds Pinned even when the branch is not taken/)
 bool chained(int32_t a, int32_t b) {
-    Pinned __tmp_4 = Pinned(10);
-    return ((a < b) && (b < ::tpyapp::main::take(&(__tmp_4))));
+    Pinned __tmp_1 = Pinned(10);
+    return ((a < b) && (b < ::tpyapp::main::take(&(__tmp_1))));
 }
 
 // def chained_hatch(a: int32, b: int32) -> bool:
@@ -84,8 +84,8 @@ int32_t take_ref(const Pinned& p) {
 // def ref_param(flag: bool) -> bool:
 //     return flag or take_ref(Pinned(12)) > 0  # tpyc: warning(/builds Pinned even when the branch is not taken/)
 bool ref_param(bool flag) {
-    Pinned __tmp_5 = Pinned(12);
-    return (flag || (::tpyapp::main::take_ref(__tmp_5) > 0));
+    Pinned __tmp_1 = Pinned(12);
+    return (flag || (::tpyapp::main::take_ref(__tmp_1) > 0));
 }
 
 // def ref_param_hatch(flag: bool) -> bool:
@@ -132,8 +132,8 @@ bool comp_rhs(bool flag) {
         const int32_t __stop_0 = 3;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
-            Noisy __tmp_6 = Noisy(i);
-            __result.push_back(::tpyapp::main::use(__tmp_6));
+            Noisy __tmp_1 = Noisy(i);
+            __result.push_back(::tpyapp::main::use(__tmp_1));
         }
         std::move(__result);
     })) > 0));
@@ -144,8 +144,8 @@ bool comp_rhs(bool flag) {
 //     # what the source says and must not warn.
 //     return take(Pinned(11)) > 0 and flag  # tpyc: ok
 bool left_operand(bool flag) {
-    Pinned __tmp_7 = Pinned(11);
-    return ((::tpyapp::main::take(&(__tmp_7)) > 0) && flag);
+    Pinned __tmp_1 = Pinned(11);
+    return ((::tpyapp::main::take(&(__tmp_1)) > 0) && flag);
 }
 
 // def main() -> None:

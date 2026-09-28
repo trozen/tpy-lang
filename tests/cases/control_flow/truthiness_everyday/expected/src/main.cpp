@@ -191,7 +191,6 @@ int32_t guard_shapes(Holder& h, const std::vector<int32_t>& xs, const std::vecto
         } else {
             return 0;
         }
-        break;
     }
     }
     ::std::unreachable();

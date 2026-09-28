@@ -240,7 +240,9 @@ struct __coro_resumed_value {
     };
 
     __coro_resumed_value(int32_t value_)
-        : __state(S_INITIAL), __cancel_pending(false), value(std::move(value_)) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          value(std::move(value_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -274,7 +276,8 @@ struct __coro_async_aliases {
     };
 
     __coro_async_aliases()
-        : __state(S_INITIAL), __cancel_pending(false) {}
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -307,7 +310,8 @@ struct __gen_frame_aliases : public ::tpy::next_iter_mixin<__gen_frame_aliases, 
     };
 
     __gen_frame_aliases(int32_t n_)
-        : __state(S_INITIAL), n(std::move(n_)) {}
+        : __state(S_INITIAL),
+          n(std::move(n_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_frame_aliases& __iter__() { return *this; }

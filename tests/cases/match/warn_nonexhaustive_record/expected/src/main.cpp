@@ -15,10 +15,8 @@ std::string describe_guarded(const Point& p) {
         auto& x = __match_subject_1.x;
         if ((x > 0)) {
             return "positive x";
-            goto __match_end_2;
         }
     }
-    __match_end_2:;
     return "other";
 }
 

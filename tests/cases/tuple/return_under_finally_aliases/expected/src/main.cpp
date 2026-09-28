@@ -299,14 +299,12 @@ std::tuple<Box, int32_t> match_arm(int32_t tag) {
                 __fin_ran_13 = true;
                 b.n = ::tpy::add_check<int32_t>(b.n, 1);
                 return std::tuple<Box, int32_t>{std::move(*__tpy_retp_0), 7};
-                break;
             }
             default: {
                 std::tuple<Box, int32_t> __tpy_ret_1 = std::tuple<Box, int32_t>{Box(0), 0};
                 __fin_ran_13 = true;
                 b.n = ::tpy::add_check<int32_t>(b.n, 1);
                 return __tpy_ret_1;
-                break;
             }
             }
             ::std::unreachable();

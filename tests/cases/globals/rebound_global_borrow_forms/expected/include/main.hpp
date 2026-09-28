@@ -100,8 +100,7 @@ struct __gen_banners : public ::tpy::next_iter_mixin<__gen_banners, std::string_
         S_DONE = 3,
     };
 
-    __gen_banners()
-        : __state(S_INITIAL) {}
+    __gen_banners() : __state(S_INITIAL) {}
 
     std::expected<std::string_view, ::tpy::StopIteration> __next__();
     __gen_banners& __iter__() { return *this; }

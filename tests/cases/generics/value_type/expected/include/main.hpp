@@ -73,7 +73,9 @@ namespace tpyapp::main {
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
-inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+inline Vec2::Vec2(int32_t x, int32_t y)
+    : x(x),
+      y(y) {}
 
 // def total(self) -> int32:
 //     return self.x + self.y
@@ -84,7 +86,9 @@ inline int32_t Vec2::total() const {
 // def __init__(self, pos: Vec2, size: Vec2) -> None:
 //     self.pos = pos
 //     self.size = size
-inline Rect::Rect(Vec2 pos, Vec2 size) : pos(pos), size(size) {}
+inline Rect::Rect(Vec2 pos, Vec2 size)
+    : pos(pos),
+      size(size) {}
 
 // def origin_sum(self) -> int32:
 //     return self.pos.total()
