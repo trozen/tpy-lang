@@ -131,13 +131,10 @@ struct __coro_opt_ternary {
 struct __coro_main_coro {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::string __coro_arg_0;
     std::string __await_lift_0;
-    std::string __coro_arg_1;
     std::string __await_lift_1;
-    std::string __coro_arg_2;
     std::string __await_lift_2;
-    std::string __coro_arg_3;
+    std::string __coro_arg_0;
     std::string __await_lift_3;
     std::string __await_lift_4;
     std::optional<__coro_direct> __sub_0;

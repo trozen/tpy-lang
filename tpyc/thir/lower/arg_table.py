@@ -32,6 +32,7 @@ tally are family-agnostic, so only they live in this module.
 
 from __future__ import annotations
 
+from collections.abc import Set as AbstractSet
 from typing import TYPE_CHECKING, Callable, NamedTuple
 
 from ..faces import witness
@@ -107,6 +108,19 @@ class _ArgReq(NamedTuple):
     movable_locals: 'frozenset[str] | set[str]' = frozenset()
     pointers: 'frozenset[str] | set[str]' = frozenset()
     func_name: 'str | None' = None
+    # The callee's deep-const-borrow verdict for THIS position, which picks
+    # the const-pointee spelling of a union lift. Per-call like `index`.
+    readonly_target: bool = False
+    # More lowering-context name sets the free-call rows read, discrete for
+    # the reason given above: the enclosing body's mixed own/borrow tuple
+    # locals, its `Own[...]` params and its resumable frame fields.
+    own_borrow_tuple_locals: 'frozenset[str] | set[str]' = frozenset()
+    own_param_names: 'frozenset[str] | set[str]' = frozenset()
+    frame_local_names: 'frozenset[str] | set[str] | dict' = frozenset()
+    # The tuple names whose binding is borrow form. A THUNK rather than a
+    # set: deriving it walks every local of the body, and only the one row
+    # that reads it should pay for that, not every argument of every call.
+    bare_tuple_names: 'Callable[[], AbstractSet[str]] | None' = None
 
 
 class _ArgRow(NamedTuple):
@@ -225,14 +239,22 @@ def arg_ok(sink: _ArgSink, a: 'TpyExpr', ptype: 'TpyType | None',
            inline_narrowed: 'frozenset[str] | set[str] | dict' = frozenset(),
            movable_locals: 'frozenset[str] | set[str]' = frozenset(),
            pointers: 'frozenset[str] | set[str]' = frozenset(),
-           func_name: 'str | None' = None
+           func_name: 'str | None' = None,
+           readonly_target: bool = False,
+           own_borrow_tuple_locals: 'frozenset[str] | set[str]' = frozenset(),
+           own_param_names: 'frozenset[str] | set[str]' = frozenset(),
+           frame_local_names: 'frozenset[str] | set[str] | dict'
+           = frozenset(),
+           bare_tuple_names: 'Callable[[], AbstractSet[str]] | None' = None
            ) -> bool:
     """Walk `sink`'s rows in order; `note_detail(sink.note)` on no match."""
     req = _ArgReq(a, ptype, locals_, analyzer, param_names, narrowed,
                   sink.mutated_slots and is_mutated, temps_ok,
                   storage_tuple_locals, self_capturable, open_ptype, index,
                   overload, frame_capturing, mutation_unknown,
-                  inline_narrowed, movable_locals, pointers, func_name)
+                  inline_narrowed, movable_locals, pointers, func_name,
+                  readonly_target, own_borrow_tuple_locals, own_param_names,
+                  frame_local_names, bare_tuple_names)
     return _walk(sink, req)
 
 

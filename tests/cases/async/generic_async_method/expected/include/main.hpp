@@ -146,7 +146,6 @@ struct __coro_main_coro {
     bool __cancel_pending;
     ::tpy::frame_slot<Container> c;
     int32_t a;
-    std::string __coro_arg_0;
     std::string b;
     std::tuple<std::string, int32_t> p;
     std::optional<__coro_Container_echo<int32_t>> __sub_0;

@@ -238,8 +238,7 @@ __coro_acoro acoro(std::string_view s) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = "a";
-        __sub_0.emplace(__coro_arg_0);
+        __sub_0.emplace("a");
         __state = S_RESUME_0;
         continue;
     }
@@ -249,8 +248,7 @@ __coro_acoro acoro(std::string_view s) {
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
         std::cout << __await_lift_0 << "\n";
-        __coro_arg_1 = "ccc";
-        __sub_1.emplace(__coro_arg_1);
+        __sub_1.emplace("ccc");
         __state = S_RESUME_1;
         continue;
     }
@@ -260,8 +258,7 @@ __coro_acoro acoro(std::string_view s) {
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
         std::cout << __await_lift_1 << "\n";
-        __coro_arg_2 = "zz";
-        __sub_2.emplace(__coro_arg_2);
+        __sub_2.emplace("zz");
         __state = S_RESUME_2;
         continue;
     }
@@ -295,8 +292,7 @@ __coro_amain amain() {
 //     asyncio.run(amain())
 void main() {
     {
-        std::string __tmp_1 = "z";
-        auto __src_0 = ::tpyapp::main::gen(__tmp_1, true);
+        auto __src_0 = ::tpyapp::main::gen("z", true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -306,8 +302,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_2 = "z";
-        auto __src_2 = ::tpyapp::main::gen(__tmp_2, false);
+        auto __src_2 = ::tpyapp::main::gen("z", false);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -317,8 +312,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_3 = "c";
-        auto __src_4 = ::tpyapp::main::gen(__tmp_3, false);
+        auto __src_4 = ::tpyapp::main::gen("c", false);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();

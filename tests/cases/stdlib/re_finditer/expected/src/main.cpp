@@ -23,8 +23,7 @@ namespace tpyapp::main {
 void main() {
     ::tpystd::re::Pattern p = ::tpystd::re::compile("\\d+");
     {
-        std::string __tmp_1 = "a12b345c6";
-        auto __src_0 = p.finditer(__tmp_1);
+        auto __src_0 = p.finditer("a12b345c6");
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -35,8 +34,7 @@ void main() {
     }
     int32_t total = 0;
     {
-        std::string __tmp_2 = "xx 7 yy 88 zz 900";
-        auto __src_2 = p.finditer(__tmp_2);
+        auto __src_2 = p.finditer("xx 7 yy 88 zz 900");
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -48,8 +46,7 @@ void main() {
     std::cout << total << "\n";
     int32_t n = 0;
     {
-        std::string __tmp_3 = "no digits here";
-        auto __src_4 = p.finditer(__tmp_3);
+        auto __src_4 = p.finditer("no digits here");
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();

@@ -63,8 +63,7 @@ __coro_handle handle(::tpystd::asyncio::StreamReader reader, ::tpystd::asyncio::
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = "127.0.0.1";
-        __sub_0.emplace(__coro_arg_0, port);
+        __sub_0.emplace("127.0.0.1", port);
         __state = S_RESUME_0;
         continue;
     }
@@ -138,8 +137,7 @@ __coro_client client(int32_t port, std::string_view msg) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = "127.0.0.1";
-        __sub_0.emplace([](::tpystd::asyncio::StreamReader&& __a0, ::tpystd::asyncio::StreamWriter&& __a1) -> std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::handle(std::move(__a0), std::move(__a1))); }, __coro_arg_0, 0);
+        __sub_0.emplace([](::tpystd::asyncio::StreamReader&& __a0, ::tpystd::asyncio::StreamWriter&& __a1) -> std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::handle(std::move(__a0), std::move(__a1))); }, "127.0.0.1", 0);
         __state = S_RESUME_0;
         continue;
     }
@@ -222,8 +220,7 @@ __coro_client client(int32_t port, std::string_view msg) {
     case S_JOIN_3: {
         try {
             port = std::get<1>(srv->sockets[0].getsockname());
-            __coro_arg_1 = "ping";
-            __sub_2.emplace(port, __coro_arg_1);
+            __sub_2.emplace(port, "ping");
             __state = S_RESUME_2;
             continue;
         } catch (...) {

@@ -15,13 +15,20 @@ namespace tpyapp::main {
 //     # Documented quirk: char-level, so this is "/usr/l", not "/usr".
 //     print("[" + os.path.commonprefix(["/usr/lib", "/usr/libexec"]) + "]")
 void main() {
-    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix({"/usr/lib", "/usr/local"}))), "]")) << "\n";
-    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix({"abc", "abd", "abe"}))), "]")) << "\n";
-    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix({"abc", "abc"}))), "]")) << "\n";
-    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix({"x"}))), "]")) << "\n";
-    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix(std::vector<std::string>{}))), "]")) << "\n";
-    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix({"", "abc"}))), "]")) << "\n";
-    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix({"/usr/lib", "/usr/libexec"}))), "]")) << "\n";
+    std::vector<std::string> __tmp_1 = {"/usr/lib", "/usr/local"};
+    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix(__tmp_1))), "]")) << "\n";
+    std::vector<std::string> __tmp_2 = {"abc", "abd", "abe"};
+    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix(__tmp_2))), "]")) << "\n";
+    std::vector<std::string> __tmp_3 = {"abc", "abc"};
+    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix(__tmp_3))), "]")) << "\n";
+    std::vector<std::string> __tmp_4 = {"x"};
+    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix(__tmp_4))), "]")) << "\n";
+    std::vector<std::string> __tmp_5 = std::vector<std::string>{};
+    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix(__tmp_5))), "]")) << "\n";
+    std::vector<std::string> __tmp_6 = {"", "abc"};
+    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix(__tmp_6))), "]")) << "\n";
+    std::vector<std::string> __tmp_7 = {"/usr/lib", "/usr/libexec"};
+    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix(__tmp_7))), "]")) << "\n";
 }
 
 // # os.path.commonprefix -- character-level (not path-aware) common prefix.

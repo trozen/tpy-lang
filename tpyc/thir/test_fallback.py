@@ -563,10 +563,13 @@ def test_for_each_container_route_literal_arg_still_rejects():
     # The begin/end container route's iterable renders into the loop header
     # -- NO flush point -- so a temp-hoisting arg there must keep rejecting
     # (widening it would be the stale-snapshot miscompile the validator
-    # guards). Only the iter_proto route admits temps.
+    # guards). Only the iter_proto route admits temps. A container literal
+    # arg always needs the hoisted temp, whether the callee mutates it or
+    # not.
     compiler, entry, f = _fn_body(
         "from tpy import int32, Own\n"
         "def make(xs: list[int32]) -> Own[list[int32]]:\n"
+        "    xs.append(0)\n"
         "    return [x * 2 for x in xs]\n"
         "def rejected() -> int32:\n"
         "    t = 0\n"
@@ -1140,15 +1143,26 @@ def test_if_bool_literal_routes_at_sync_boundary():
 
 
 def test_assign_lowering_reject_falls_back_at_sync_boundary():
-    # A non-empty literal at a readonly container parameter of a free
-    # function is a kept reject (BUGS.md#readonly-container-literal-arg-rejected);
-    # it stands in for whatever body shape the fixture needs to refuse.
+    # A container field two hops off a local at a call argument is a kept
+    # reject (BUGS.md#deep-chain-container-field-in-and-bind-rejects); it
+    # stands in for whatever body shape the fixture needs to refuse.
     compiler, modules = _compile(
-        "from tpy import int32, readonly\n"
+        "from typing import Iterator\n"
+        "from tpy import int32\n"
         "def rejected(n: int32) -> None:\n"
-        "    total([1, 2, 3])\n"
-        "def total(xs: readonly[list[int32]]) -> int32:\n"
-        "    return len(xs)\n"
+        "    h = H()\n"
+        "    it = walk(h.a.xs)\n"
+        "def walk(xs: list[int32]) -> Iterator[int32]:\n"
+        "    for x in xs:\n"
+        "        yield x\n"
+        "class A:\n"
+        "    xs: list[int32]\n"
+        "    def __init__(self) -> None:\n"
+        "        self.xs = [1]\n"
+        "class H:\n"
+        "    a: A\n"
+        "    def __init__(self) -> None:\n"
+        "        self.a = A()\n"
     )
     entry = _entry(modules)
     with activate_compiler(compiler):

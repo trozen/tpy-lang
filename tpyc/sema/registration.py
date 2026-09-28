@@ -26,6 +26,7 @@ def _adopt_skeleton(skeleton, full):
     return skeleton
 
 from ..typesys import (
+    mark_overload_group,
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type, AnyType, PtrType, RefType,
     ReadonlyType, InteriorMutableType,
@@ -1927,6 +1928,8 @@ class TypeRegistrar:
                 provisional_parent = base
                 break
 
+        for method_infos in methods.values():
+            mark_overload_group(method_infos)
         info = RecordInfo(
             name=record.name,
             fields=record.fields,

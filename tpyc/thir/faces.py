@@ -828,23 +828,12 @@ THIR_FACES: frozenset[str] = frozenset({
     "field_write.opt_container_comp",
     # Str-family FIELD write from a name/literal: the bare
     # `recv.field = s;` (operator=(string_view), no view->owned wrap).
-    "field_write.str_slice",        # `self.s = x[1:3]` -- a str SLICE value
-                                    # (classifier row; shared bare STR emit)
-    "field_write.str_ctor",         # `self.s = str()` -- the zero-arg str
-                                    # ctor call (classifier row)
-    "field_write.str_call",         # str field <- a str-typed call rvalue
-                                    # (classifier row; shared bare STR emit)
-    "field_write.fresh_value_coerce",  # str field <- a builds_fresh_value
-                                    # coerce (`self.s = CHARS[i]`), whose own
-                                    # wrap is the construction (classifier row)
+    "field_write.str_slice",        # StrView field <- a str SLICE (a view
+                                    # into its base; shared bare STR emit)
+    "field_write.str_view_call",    # StrView field <- a call returning a
+                                    # view (classifier row; bare STR emit)
     "field_write.bytes_narrowed_opt",  # bytes field <- a NAME declared
                                     # `bytes | None`, narrowed here
-    "field_write.bytes_slice",      # `self.b = x[1:3]` -- a bytes SLICE value
-                                    # (classifier row; shared `Bytes(x)` emit)
-    "field_write.bytes_binop",      # `self.b = self.b + c` -- the owned
-                                    # concat rvalue (classifier row)
-    "field_write.bytes_call",       # `self.b = bytes(...)` -- a bytes-typed
-                                    # call rvalue (classifier row)
     "field_write.opt_lift_tparam",  # pointer-repr `Optional[T]` field (T a
                                     # type param) <- borrow `T*` local
     "field_write.str",
@@ -1819,13 +1808,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # coincide, so no lift)
     "arg.record_borrow_ret_marker", # T&-returning record call bound bare at
                                     # a marker callee's record ref slot
-    "arg.btuple_literal_marker",    # tuple literal at a marker callee's
-                                    # pointer-repr tuple slot (borrow builder)
     "mil.native_ctor",              # ctor MIL field init from a plain @native
                                     # record ctor (`_logger(::ns::H(name))`)
-    "mil.fresh_value_coerce",       # ctor MIL str field init from a
-                                    # builds_fresh_value coerce (`self.t =
-                                    # s[0]`), whose wrap is the construction
     "arg.own_tparam_call_rvalue",   # T-returning call rvalue bare at the
                                     # same open Own[T] slot
     "call.dyn_getattr_builtin",     # 2-arg getattr(obj, name) delegated to
@@ -1900,8 +1884,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # static_cast wrap over the member call
     "call.super_generic",           # generic super()/unbound-self call --
                                     # this->Base<T>::template m<U>(args)
-    "arg.same_tparam_name",         # name bound to the slot's own bare T
-                                    # passes bare at a marker call
     "method.typed_dict_get",        # TypedDict kwargs.get -> the value_or /
                                     # make_optional / bare-field composition
     "binop.typed_dict_in",          # TypedDict membership -> the
@@ -3075,13 +3057,14 @@ THIR_FACES: frozenset[str] = frozenset({
     "try.chain_terminated",         # terminating finally suppressed the exit
     "match.loop_break_goto",        # break escaping a switch: goto __loop_break_N
     "loop.break_else_goto",         # break out of an else-loop: goto __after_else_N
-    # The five flushable statement positions, counted only when the
+    # The six flushable statement positions, counted only when the
     # position's value actually hoists an arg temp.
     "flush.vardecl",
     "flush.assign",
     "flush.field_write",
     "flush.return",
     "flush.expr_stmt",
+    "flush.unpack_source",
     # Resumable (async) leaf routing -- the gen_async seam. One face per
     # leaf-render kind the skeleton delegates, plus the routed-body tally.
     "res.body",                     # one routed resumable body

@@ -46,20 +46,14 @@ struct __coro_val {
 struct __coro_main {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::string __coro_arg_0;
     ::tpy::BigInt __sc_1;
-    std::string __coro_arg_1;
     ::tpy::BigInt __sc_2;
     bool __sc_0;
-    std::string __coro_arg_2;
     ::tpy::BigInt __sc_3;
     bool r;
-    std::string __coro_arg_3;
     ::tpy::BigInt __sc_5;
-    std::string __coro_arg_4;
     ::tpy::BigInt __sc_6;
     bool __sc_4;
-    std::string __coro_arg_5;
     ::tpy::BigInt __sc_7;
     bool r2;
     std::optional<__coro_val> __sub_0;

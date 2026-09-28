@@ -765,9 +765,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_2 = "abc";
-        ::tpy::Bytes __tmp_3 = ::tpy::bytes_literal_owned("de", 2);
-        auto __src_10 = ::tpyapp::main::view_lens(__tmp_2, __tmp_3);
+        auto __src_10 = ::tpyapp::main::view_lens("abc", ::tpy::bytes_literal("de", 2));
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();
@@ -783,8 +781,8 @@ void main() {
     std::cout << "async-method:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(Adder(5).add(::tpy::as_mut_span(ab)))) << "\n";
     std::cout << "async-method: after" << " " << ::tpy::__getitem__(ab, 0) << " " << ::tpy::__getitem__(ab, 1) << "\n";
     {
-        std::array<int32_t, 2> __tmp_4 = std::array<int32_t, 2>{1, 2};
-        auto __src_12 = ::tpyapp::main::bump_scalars(::tpy::as_mut_span(__tmp_4));
+        std::array<int32_t, 2> __tmp_2 = std::array<int32_t, 2>{1, 2};
+        auto __src_12 = ::tpyapp::main::bump_scalars(::tpy::as_mut_span(__tmp_2));
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
         for (;;) {
             auto __r_13 = __itr_12.__next__();
@@ -794,8 +792,8 @@ void main() {
         }
     }
     {
-        std::array<P, 1> __tmp_5 = std::array<P, 1>{P(1)};
-        auto __src_14 = ::tpyapp::main::bump_records(::tpy::as_mut_span(__tmp_5));
+        std::array<P, 1> __tmp_3 = std::array<P, 1>{P(1)};
+        auto __src_14 = ::tpyapp::main::bump_records(::tpy::as_mut_span(__tmp_3));
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
         for (;;) {
             auto __r_15 = __itr_14.__next__();
@@ -805,9 +803,9 @@ void main() {
         }
     }
     {
-        Scaler __tmp_6 = Scaler(2);
-        std::array<int32_t, 2> __tmp_7 = std::array<int32_t, 2>{3, 4};
-        auto __src_16 = __tmp_6.scale(::tpy::as_mut_span(__tmp_7));
+        Scaler __tmp_4 = Scaler(2);
+        std::array<int32_t, 2> __tmp_5 = std::array<int32_t, 2>{3, 4};
+        auto __src_16 = __tmp_4.scale(::tpy::as_mut_span(__tmp_5));
         auto&& __itr_16 = ::tpy::__iter__(__src_16);
         for (;;) {
             auto __r_17 = __itr_16.__next__();
@@ -817,8 +815,8 @@ void main() {
         }
     }
     {
-        std::array<int32_t, 2> __tmp_8 = std::array<int32_t, 2>{5, 6};
-        auto __src_18 = ::tpyapp::main::read_pair(::tpy::as_span(__tmp_8));
+        std::array<int32_t, 2> __tmp_6 = std::array<int32_t, 2>{5, 6};
+        auto __src_18 = ::tpyapp::main::read_pair(::tpy::as_span(__tmp_6));
         auto&& __itr_18 = ::tpy::__iter__(__src_18);
         for (;;) {
             auto __r_19 = __itr_18.__next__();
@@ -827,15 +825,13 @@ void main() {
         std::cout << "lit-ro:" << " " << v << "\n";
         }
     }
-    std::array<int32_t, 2> __tmp_9 = std::array<int32_t, 2>{7, 8};
-    std::cout << "lit-async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::bump_async(::tpy::as_mut_span(__tmp_9)))) << "\n";
-    std::array<int32_t, 2> __tmp_10 = std::array<int32_t, 2>{7, 8};
-    std::cout << "lit-async-method:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(Adder(5).add(::tpy::as_mut_span(__tmp_10)))) << "\n";
+    std::array<int32_t, 2> __tmp_7 = std::array<int32_t, 2>{7, 8};
+    std::cout << "lit-async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::bump_async(::tpy::as_mut_span(__tmp_7)))) << "\n";
+    std::array<int32_t, 2> __tmp_8 = std::array<int32_t, 2>{7, 8};
+    std::cout << "lit-async-method:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(Adder(5).add(::tpy::as_mut_span(__tmp_8)))) << "\n";
     std::cout << "lit-await:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::run_bump())) << "\n";
     {
-        std::string __tmp_11 = "abcd";
-        ::tpy::Bytes __tmp_12 = ::tpy::bytes_literal_owned("def", 3);
-        auto __src_20 = ::tpyapp::main::view_lens(__tmp_11, __tmp_12);
+        auto __src_20 = ::tpyapp::main::view_lens("abcd", ::tpy::bytes_literal("def", 3));
         auto&& __itr_20 = ::tpy::__iter__(__src_20);
         for (;;) {
             auto __r_21 = __itr_20.__next__();
@@ -845,8 +841,8 @@ void main() {
         }
     }
     {
-        std::string __tmp_13 = ::tpyapp::main::make_str(2);
-        auto __src_22 = ::tpyapp::main::head_tail(__tmp_13);
+        std::string __tmp_9 = ::tpyapp::main::make_str(2);
+        auto __src_22 = ::tpyapp::main::head_tail(__tmp_9);
         auto&& __itr_22 = ::tpy::__iter__(__src_22);
         for (;;) {
             auto __r_23 = __itr_22.__next__();
@@ -856,8 +852,8 @@ void main() {
         }
     }
     {
-        std::string __tmp_14 = (::tpy::str_repeat("ab", 3));
-        auto __src_24 = ::tpyapp::main::head_tail(__tmp_14);
+        std::string __tmp_10 = (::tpy::str_repeat("ab", 3));
+        auto __src_24 = ::tpyapp::main::head_tail(__tmp_10);
         auto&& __itr_24 = ::tpy::__iter__(__src_24);
         for (;;) {
             auto __r_25 = __itr_24.__next__();
@@ -868,8 +864,8 @@ void main() {
     }
     std::string_view src = "abcdefghij";
     {
-        std::string __tmp_15 = ::tpy::str_upper(src);
-        auto __src_26 = ::tpyapp::main::head_tail(__tmp_15);
+        std::string __tmp_11 = ::tpy::str_upper(src);
+        auto __src_26 = ::tpyapp::main::head_tail(__tmp_11);
         auto&& __itr_26 = ::tpy::__iter__(__src_26);
         for (;;) {
             auto __r_27 = __itr_26.__next__();
@@ -880,8 +876,8 @@ void main() {
     }
     int32_t n = 7;
     {
-        std::string __tmp_16 = std::format("val-{}-tail-pad", n);
-        auto __src_28 = ::tpyapp::main::head_tail(__tmp_16);
+        std::string __tmp_12 = std::format("val-{}-tail-pad", n);
+        auto __src_28 = ::tpyapp::main::head_tail(__tmp_12);
         auto&& __itr_28 = ::tpy::__iter__(__src_28);
         for (;;) {
             auto __r_29 = __itr_28.__next__();
@@ -891,8 +887,8 @@ void main() {
         }
     }
     {
-        ::tpy::Bytes __tmp_17 = ::tpyapp::main::make_bytes(2);
-        auto __src_30 = ::tpyapp::main::byte_ends(__tmp_17);
+        ::tpy::Bytes __tmp_13 = ::tpyapp::main::make_bytes(2);
+        auto __src_30 = ::tpyapp::main::byte_ends(__tmp_13);
         auto&& __itr_30 = ::tpy::__iter__(__src_30);
         for (;;) {
             auto __r_31 = __itr_30.__next__();
@@ -902,8 +898,7 @@ void main() {
         }
     }
     {
-        ::tpy::Bytes __tmp_18 = ::tpy::bytes_literal_owned("0123456789abcdef", 16);
-        auto __src_32 = ::tpyapp::main::byte_ends(__tmp_18);
+        auto __src_32 = ::tpyapp::main::byte_ends(::tpy::bytes_literal("0123456789abcdef", 16));
         auto&& __itr_32 = ::tpy::__iter__(__src_32);
         for (;;) {
             auto __r_33 = __itr_32.__next__();
@@ -913,9 +908,9 @@ void main() {
         }
     }
     {
-        Tagger __tmp_19 = Tagger("t");
-        std::string __tmp_20 = ::tpyapp::main::make_str(2);
-        auto __src_34 = __tmp_19.tag(__tmp_20);
+        Tagger __tmp_14 = Tagger("t");
+        std::string __tmp_15 = ::tpyapp::main::make_str(2);
+        auto __src_34 = __tmp_14.tag(__tmp_15);
         auto&& __itr_34 = ::tpy::__iter__(__src_34);
         for (;;) {
             auto __r_35 = __itr_34.__next__();
@@ -935,19 +930,19 @@ void main() {
         std::cout << "name-str:" << " " << v << "\n";
         }
     }
-    std::string __tmp_21 = ::tpyapp::main::make_str(2);
-    std::cout << "rv-async:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::async_head(__tmp_21))) << "\n";
+    std::string __tmp_16 = ::tpyapp::main::make_str(2);
+    std::cout << "rv-async:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::async_head(__tmp_16))) << "\n";
     std::cout << "rv-await:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::run_head())) << "\n";
-    std::string __tmp_22 = ::tpyapp::main::make_str(2);
-    auto __tmp_23 = ::tpyapp::main::head_tail(__tmp_22);
-    std::cout << "rv-nested:" << " " << ::tpyapp::main::count_view(__tmp_23) << "\n";
-    std::array<int32_t, 2> __tmp_24 = std::array<int32_t, 2>{5, 6};
-    auto __tmp_25 = ::tpyapp::main::read_pair(::tpy::as_span(__tmp_24));
-    std::cout << "lit-nested:" << " " << ::tpyapp::main::total(__tmp_25) << "\n";
-    std::array<int32_t, 2> __tmp_26 = std::array<int32_t, 2>{5, 6};
+    std::string __tmp_17 = ::tpyapp::main::make_str(2);
+    auto __tmp_18 = ::tpyapp::main::head_tail(__tmp_17);
+    std::cout << "rv-nested:" << " " << ::tpyapp::main::count_view(__tmp_18) << "\n";
+    std::array<int32_t, 2> __tmp_19 = std::array<int32_t, 2>{5, 6};
+    auto __tmp_20 = ::tpyapp::main::read_pair(::tpy::as_span(__tmp_19));
+    std::cout << "lit-nested:" << " " << ::tpyapp::main::total(__tmp_20) << "\n";
+    std::array<int32_t, 2> __tmp_21 = std::array<int32_t, 2>{5, 6};
     std::vector<int32_t> comp = ({
         std::vector<int32_t> __result;
-        auto __obj_38 = ::tpyapp::main::read_pair(::tpy::as_span(__tmp_26));
+        auto __obj_38 = ::tpyapp::main::read_pair(::tpy::as_span(__tmp_21));
         auto __beg_38 = __obj_38.begin();
         auto __end_38 = __obj_38.end();
         for (; __beg_38 != __end_38; ++__beg_38) {
@@ -959,15 +954,15 @@ void main() {
     std::cout << "lit-comp:" << " " << ::tpy::__getitem__(comp, 0) << " " << ::tpy::__getitem__(comp, 1) << "\n";
     int32_t spins = 0;
     while (true) {
-        std::array<int32_t, 2> __tmp_27 = std::array<int32_t, 2>{5, 6};
-        auto __tmp_28 = ::tpyapp::main::read_pair(::tpy::as_span(__tmp_27));
-        if (!((::tpyapp::main::total(__tmp_28) > spins))) break;
+        std::array<int32_t, 2> __tmp_22 = std::array<int32_t, 2>{5, 6};
+        auto __tmp_23 = ::tpyapp::main::read_pair(::tpy::as_span(__tmp_22));
+        if (!((::tpyapp::main::total(__tmp_23) > spins))) break;
         spins = ::tpy::add_check<int32_t>(spins, 1);
     }
     std::cout << "lit-while:" << " " << spins << "\n";
     std::vector<int32_t> nums = {1, 2, 3};
     {
-        std::vector<int32_t> __tmp_29 = ({
+        std::vector<int32_t> __tmp_24 = ({
         std::vector<int32_t> __result;
         auto& __obj_39 = nums;
         __result.reserve(static_cast<std::size_t>(__obj_39.size()));
@@ -979,7 +974,7 @@ void main() {
         }
         std::move(__result);
     });
-        auto __src_40 = ::tpyapp::main::ends(__tmp_29);
+        auto __src_40 = ::tpyapp::main::ends(__tmp_24);
         auto&& __itr_40 = ::tpy::__iter__(__src_40);
         for (;;) {
             auto __r_41 = __itr_40.__next__();
@@ -989,8 +984,8 @@ void main() {
         }
     }
     {
-        Summer __tmp_30 = Summer(10);
-        std::vector<int32_t> __tmp_31 = ({
+        Summer __tmp_25 = Summer(10);
+        std::vector<int32_t> __tmp_26 = ({
         std::vector<int32_t> __result;
         auto& __obj_42 = nums;
         __result.reserve(static_cast<std::size_t>(__obj_42.size()));
@@ -1002,7 +997,7 @@ void main() {
         }
         std::move(__result);
     });
-        auto __src_43 = __tmp_30.pair(__tmp_31);
+        auto __src_43 = __tmp_25.pair(__tmp_26);
         auto&& __itr_43 = ::tpy::__iter__(__src_43);
         for (;;) {
             auto __r_44 = __itr_43.__next__();
@@ -1062,8 +1057,8 @@ void main() {
         }
     }
     {
-        Outer __tmp_32 = Outer("o");
-        auto __src_55 = __tmp_32.run();
+        Outer __tmp_27 = Outer("o");
+        auto __src_55 = __tmp_27.run();
         auto&& __itr_55 = ::tpy::__iter__(__src_55);
         for (;;) {
             auto __r_56 = __itr_55.__next__();
@@ -1086,8 +1081,8 @@ void main() {
     }
     std::cout << "res-loop-bind:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(::tpyapp::main::outer_loop_bind(3))) << "\n";
     {
-        Outer __tmp_33 = Outer("o");
-        auto __src_59 = __tmp_33.run_recv(nums);
+        Outer __tmp_28 = Outer("o");
+        auto __src_59 = __tmp_28.run_recv(nums);
         auto&& __itr_59 = ::tpy::__iter__(__src_59);
         for (;;) {
             auto __r_60 = __itr_59.__next__();

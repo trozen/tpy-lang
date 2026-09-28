@@ -153,8 +153,7 @@ __gen_reprs reprs(::tpy::BytesView b, int32_t n) {
 //         print("generator:", s)
 void section_generator() {
     {
-        ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("g\x01", 2);
-        auto __src_0 = ::tpyapp::main::reprs(__tmp_1, 3);
+        auto __src_0 = ::tpyapp::main::reprs(::tpy::bytes_literal("g\x01", 2), 3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

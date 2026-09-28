@@ -22,7 +22,7 @@ std::vector<std::string>* _ca_probe_paths{};
 //             return p
 //     return ""
 std::string _resolve_system_ca_file() {
-    std::optional<std::string> env = ::tpystd::os::getenv("SSL_CERT_FILE");
+    std::optional<std::string> env = ::tpystd::os::getenv(std::string_view("SSL_CERT_FILE"));
     if (((env.has_value()) && (::tpy::__len__((*env)) > 0))) {
         return (*env);
     }

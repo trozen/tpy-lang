@@ -38,12 +38,9 @@ __coro_note note(std::string_view tag) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = "dropped";
-        c.emplace(::tpyapp::main::note(__coro_arg_0));
-        __coro_arg_1 = "first";
-        d.emplace(::tpyapp::main::note(__coro_arg_1));
-        __coro_arg_2 = "second";
-        d.emplace(::tpyapp::main::note(__coro_arg_2));
+        c.emplace(::tpyapp::main::note("dropped"));
+        d.emplace(::tpyapp::main::note("first"));
+        d.emplace(::tpyapp::main::note("second"));
         __state = S_RESUME_0;
         continue;
     }

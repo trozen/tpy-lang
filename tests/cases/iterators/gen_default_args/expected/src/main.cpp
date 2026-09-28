@@ -296,8 +296,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_1 = "z";
-        auto __src_30 = b.shapes(__tmp_1);
+        auto __src_30 = b.shapes("z");
         auto&& __itr_30 = ::tpy::__iter__(__src_30);
         for (;;) {
             auto __r_31 = __itr_30.__next__();
@@ -307,8 +306,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_2 = "t";
-        auto __src_32 = b.shapes(__tmp_2, false);
+        auto __src_32 = b.shapes("t", false);
         auto&& __itr_32 = ::tpy::__iter__(__src_32);
         for (;;) {
             auto __r_33 = __itr_32.__next__();
@@ -318,8 +316,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_3 = "t";
-        auto __src_34 = b.shapes(__tmp_3, true, 1.5);
+        auto __src_34 = b.shapes("t", true, 1.5);
         auto&& __itr_34 = ::tpy::__iter__(__src_34);
         for (;;) {
             auto __r_35 = __itr_34.__next__();
@@ -329,8 +326,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_4 = "t";
-        auto __src_36 = b.shapes(__tmp_4, true, 0.5, Mode::A);
+        auto __src_36 = b.shapes("t", true, 0.5, Mode::A);
         auto&& __itr_36 = ::tpy::__iter__(__src_36);
         for (;;) {
             auto __r_37 = __itr_36.__next__();
@@ -341,8 +337,7 @@ void main() {
     }
     Rec rec = Rec(9);
     {
-        std::string __tmp_5 = "t";
-        auto __src_38 = b.shapes(__tmp_5, true, 0.5, Mode::B, &(rec));
+        auto __src_38 = b.shapes("t", true, 0.5, Mode::B, &(rec));
         auto&& __itr_38 = ::tpy::__iter__(__src_38);
         for (;;) {
             auto __r_39 = __itr_38.__next__();
@@ -352,8 +347,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_6 = "t";
-        auto __src_40 = b.shapes(__tmp_6, true, 0.5, Mode::B, nullptr, 8);
+        auto __src_40 = b.shapes("t", true, 0.5, Mode::B, nullptr, 8);
         auto&& __itr_40 = ::tpy::__iter__(__src_40);
         for (;;) {
             auto __r_41 = __itr_40.__next__();
@@ -363,8 +357,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_7 = "t";
-        auto __src_42 = b.shapes(__tmp_7, true, 0.5, Mode::B, nullptr, 3, -5);
+        auto __src_42 = b.shapes("t", true, 0.5, Mode::B, nullptr, 3, -5);
         auto&& __itr_42 = ::tpy::__iter__(__src_42);
         for (;;) {
             auto __r_43 = __itr_42.__next__();
@@ -374,8 +367,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_8 = "t";
-        auto __src_44 = b.shapes(__tmp_8, true, 0.5, Mode::B, nullptr, 3, -1, 99);
+        auto __src_44 = b.shapes("t", true, 0.5, Mode::B, nullptr, 3, -1, 99);
         auto&& __itr_44 = ::tpy::__iter__(__src_44);
         for (;;) {
             auto __r_45 = __itr_44.__next__();

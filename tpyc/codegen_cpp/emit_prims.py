@@ -1461,6 +1461,7 @@ CTOR_DEMOTE_PRIOR_STATEMENT = (
 CTOR_DEMOTE_NESTED_DEF = "the assigned value is a function defined in the body"
 CTOR_DEMOTE_BODY_LOCAL = (
     "the assigned expression references a local defined earlier in the body")
+CTOR_DEMOTE_BINDS_LOCAL = "the assigned expression binds a local (`:=`)"
 CTOR_DEMOTE_READS_INHERITED = (
     "the initializer reads a `self.<field>` written by an earlier "
     "inherited-field assignment in the body")
@@ -1506,6 +1507,7 @@ def reject_nondef_ctor_field_in_body(field_name: str, record_name: str,
 
 __all__ = [
     "CMP_HELPER",
+    "CTOR_DEMOTE_BINDS_LOCAL",
     "CTOR_DEMOTE_BODY_LOCAL",
     "CTOR_DEMOTE_NEEDS_TEMP",
     "CTOR_DEMOTE_NESTED_DEF",

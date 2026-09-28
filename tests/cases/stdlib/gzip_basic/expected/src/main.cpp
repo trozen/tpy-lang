@@ -340,10 +340,9 @@ void files() {
     Loader loader = Loader("gzip_basic.gz");
     std::cout << "method head" << " " << ::tpy::BytesPrinter(loader.head()) << " " << ::tpy::BytesPrinter(loader.line()) << " " << loader.f.name << "\n";
     loader.f.close();
-    std::string __tmp_1 = "gzip_basic.gz";
     std::cout << "generator" << " " << ::tpy::__len__(({
         std::vector<::tpy::Bytes> __result;
-        auto __obj_0 = ::tpyapp::main::lines_of(__tmp_1);
+        auto __obj_0 = ::tpyapp::main::lines_of("gzip_basic.gz");
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {

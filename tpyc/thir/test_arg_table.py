@@ -31,15 +31,23 @@ from .lower.context import (SinkForm, SinkPos, _POS_FORMS, _ExprUse,
                             _decl_slot_forms)
 from .lower.expressions import (_CTOR_ARG_SINK, _CTOR_NESTED_ARG_SINK,
                                 _pre_ctor_nested_slot_family)
-from .lower.checks import (_GENERIC_PLAIN_ARG_SINK,
-                           _MARKER_NATIVE_ARG_SINK, _MARKER_OWN_ROWS,
-                           _MARKER_OWN_SLOT_KINDS,
-                           _MARKER_QUALIFIED_ARG_SINK, _MARKER_ROWS,
-                           _MARKER_TEMPLATE_ARG_SINK, _NATIVE_ARG_SINK,
+from .lower.checks import (_GENERIC_PLAIN_ARG_SINK, _NATIVE_ARG_SINK,
                            _PLAIN_ARG_SINK, _PROTOCOL_ARG_SINK,
                            _METHOD_ARG_SINK,
                            _pre_container_slot_family,
                            _pre_generic_slot_family)
+
+
+# The Own-slot cells: the rows whose slot is an `Own[...]` (a move, a
+# copy-construct, an owned rvalue or convert). A test-side grouping, so the
+# families' Own capability is pinned as row membership.
+_OWN_SLOT_ROWS = frozenset({
+    "own_record_rvalue", "own_tparam_call_rvalue", "copy_own",
+    "str_owned_slot", "own_move", "own_lvalue", "own_union_ctor",
+    "dyn_own_coro_factory", "dyn_own_handle", "dyn_own_forward_call",
+    "own_container_literal", "own_container_comp",
+    "own_opt_ptr_name_move", "opt_own_ptr_opt_name_move",
+})
 
 
 def _fake_compiler():
@@ -108,7 +116,7 @@ class TestProtocolSinkShape:
         # renders in place -- the one Own-slot shape that is temp-free, and
         # so the one this family can hold. The rest of the Own cascade
         # hoists and stays out.
-        assert ({r.row for r in _PROTOCOL_ARG_SINK.rows} & _MARKER_OWN_ROWS
+        assert ({r.row for r in _PROTOCOL_ARG_SINK.rows} & _OWN_SLOT_ROWS
                 == {"str_owned_slot"})
         assert _PROTOCOL_ARG_SINK.mutated_slots is False
 
@@ -145,6 +153,12 @@ class TestNativeSinkShape:
             "borrow_tuple_storage_name",
             "borrow_tuple_field",
             "open_value_tuple_name",
+            "own_move_source_slice",
+            "copy_own",
+            "own_tuple_move",
+            "own_tuple_borrow_lift",
+            "own_tuple_decay_copy",
+            "walrus_frame_field",
         ]
 
     def test_note_tail_is_the_slot_drilldown(self):
@@ -406,7 +420,7 @@ class TestMethodArgSinkShape:
         assert rows.count("container_comp") == 1
 
     def test_family_carries_own_rows_and_no_mutated_policy(self):
-        assert ({r.row for r in _METHOD_ARG_SINK.rows} & _MARKER_OWN_ROWS)
+        assert ({r.row for r in _METHOD_ARG_SINK.rows} & _OWN_SLOT_ROWS)
         # Absence-preserving: the record half has `overload.mutated_params`
         # in hand and never consults it, so the flag stays off. Turning it on
         # moves which bodies route, so it is its own change.
@@ -550,11 +564,11 @@ class TestMethodArgSinkShape:
         # much of the widest family is written for someone else too.
         others = set()
         for sink in (_PROTOCOL_ARG_SINK, _NATIVE_ARG_SINK,
-                     _MARKER_QUALIFIED_ARG_SINK,
+
                      _PLAIN_ARG_SINK, _GENERIC_PLAIN_ARG_SINK):
             others |= {r.row for r in sink.rows}
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len([r for r in rows if r in others]) == 50
+        assert len([r for r in rows if r in others]) == 52
         assert [r for r in rows if r not in others] == [
             "scalar_at_template_slot",
             "protocol_bare_name",
@@ -608,8 +622,6 @@ class TestMethodArgSinkShape:
             "tparam_slot_temp",
             "struct_proto_union",
             "method_value_union",
-            "union_ctor_temp",
-            "union_bytes_literal_temp",
             "union_pass_deep_const",
             "value_opt_scalar_value",
             "str_literal_value_opt",
@@ -644,7 +656,7 @@ class TestMethodArgSinkShape:
         # edit here rather than a silent widening.
         plain = {r.row for r in _PLAIN_ARG_SINK.rows}
         mine = {r.row for r in _METHOD_ARG_SINK.rows}
-        assert len(plain - mine) == 38
+        assert len(plain - mine) == 60
         assert {"borrow_tuple_field", "borrow_tuple_subscript",
                 "callable_field", "container_module_var",
                 "covariant_temp", "deref_coerce", "dyn_own_coro_factory",
@@ -679,177 +691,6 @@ class TestMethodArgSinkShape:
                 "own_record_rvalue", "container_pass_through",
                 "record_pass_through", "float_literal_pass_through",
                 "int_literal_bigint"} <= mine
-
-
-class TestMarkerSinkSplit:
-    """The marker call is THREE families, not one -- the step that turns
-    `own_ok` from a re-typed row prefix into a family capability."""
-
-    def test_qualified_row_order_is_pinned(self):
-        assert [r.row for r in _MARKER_QUALIFIED_ARG_SINK.rows] == [
-            "shared_pass_through",
-            "func_ref",
-            "lambda",
-            "value_opt_callable_pass",
-            "value_opt_pass_through",
-            "value_opt_tuple_pass",
-            "none_unit",
-            "value_union_temp",
-            "value_union_narrowed_pass",
-            "own_record_rvalue",
-            "own_tparam_call_rvalue",
-            "copy_own",
-            "str_owned_slot",
-            "own_move",
-            "own_lvalue",
-            "optional_ptr",
-            "opt_own_record_name",
-            "own_opt_ptr_name_move",
-            "opt_own_ptr_opt_name_move",
-            "readonly_record_ctor",
-            "union_pass_through",
-            "union_member_lift",
-            "union_coerced_literal",
-            "value_opt_member",
-            "value_opt_field_pass",
-            "none_value_opt",
-            "ru_container_literal",
-            "ru_wrapper_name",
-            "ru_wrapper_field",
-            "own_union_ctor",
-            "dyn_own_coro_factory",
-            "dyn_own_handle",
-            "dyn_own_forward_call",
-            "container_literal_method",
-            "container_literal",
-            "container_field_pass",
-            "record_field_marker",
-            "record_elem_subscript",
-            "value_tuple_field_pass",
-            "borrow_ret_record_marker",
-            "btuple_literal_marker",
-            "same_tparam_name",
-            "own_container_literal",
-            "own_container_comp",
-            "native_record_call",
-            "protocol_slot",
-            "wide_opt_deref_name",
-            "container_comp",
-        ]
-
-    def test_template_family_carries_one_row(self):
-        # The template callee expands over the builtins arg loop, whose
-        # only mirrored render is the shared pass-through set -- the
-        # ladder's early `return` before its own chain.
-        assert [r.row for r in _MARKER_TEMPLATE_ARG_SINK.rows] == [
-            "shared_pass_through"]
-
-    def test_native_family_is_the_qualified_tuple_minus_the_own_cells(self):
-        # The split is a FILTER of one listing, never a re-typing: every
-        # surviving row keeps its position, so the two families interleave
-        # exactly as the single ladder did (the face census is
-        # order-sensitive).
-        assert [r.row for r in _MARKER_NATIVE_ARG_SINK.rows] == [
-            r.row for r in _MARKER_QUALIFIED_ARG_SINK.rows
-            if r.row not in _MARKER_OWN_ROWS]
-
-    def test_the_three_families_cover_exactly_the_old_row_set(self):
-        # Absence-preserving: splitting one ladder into three sinks must not
-        # change which rows a call can see. `_MARKER_ROWS` IS the pre-fold
-        # ladder's row set, and the template family's single row is a
-        # member of it.
-        union = set()
-        for sink in (_MARKER_TEMPLATE_ARG_SINK, _MARKER_NATIVE_ARG_SINK,
-                     _MARKER_QUALIFIED_ARG_SINK):
-            union |= {r.row for r in sink.rows}
-        assert union == {r.row for r in _MARKER_ROWS}
-
-    def test_own_cells_are_the_ones_the_ladder_prefixed(self):
-        assert _MARKER_OWN_ROWS == frozenset({
-            "own_record_rvalue", "own_tparam_call_rvalue", "copy_own",
-            "own_move", "own_lvalue", "own_union_ctor", "str_owned_slot",
-            "dyn_own_coro_factory", "dyn_own_handle", "dyn_own_forward_call",
-            "own_container_literal", "own_container_comp",
-            "own_opt_ptr_name_move", "opt_own_ptr_opt_name_move"})
-
-    def test_own_capability_is_row_membership_not_a_flag(self):
-        # The Own capability IS which cells the family holds -- there is no
-        # second declaration of it that could drift from the tuple.
-        assert not ({r.row for r in _MARKER_TEMPLATE_ARG_SINK.rows}
-                    & _MARKER_OWN_ROWS)
-        assert not ({r.row for r in _MARKER_NATIVE_ARG_SINK.rows}
-                    & _MARKER_OWN_ROWS)
-        assert ({r.row for r in _MARKER_QUALIFIED_ARG_SINK.rows}
-                & _MARKER_OWN_ROWS) == _MARKER_OWN_ROWS
-        # ... and no family declines a temp source at a mutated `T&` slot:
-        # only the ctor ladder holds that rule, and extending it moves which
-        # bodies route, so the fold transcribes the absence.
-        for sink in (_MARKER_TEMPLATE_ARG_SINK, _MARKER_NATIVE_ARG_SINK,
-                     _MARKER_QUALIFIED_ARG_SINK):
-            assert sink.mutated_slots is False
-
-    def test_note_tails_are_verbatim(self):
-        # probe_sites.py / probe_corpus.py histogram on these strings.
-        req = _ArgReq(None, OptionalType(INT32), {}, None, frozenset(),
-                      frozenset(), False, False)
-        assert (_MARKER_TEMPLATE_ARG_SINK.note(req)
-                == "call.native_arg.optptr")
-        assert (_MARKER_NATIVE_ARG_SINK.note(req)
-                == "method.qualcall.arg.optional")
-        assert (_MARKER_QUALIFIED_ARG_SINK.note(req)
-                == "method.qualcall.arg.optional")
-
-    def test_witnessing_cell_is_pinned(self):
-        assert [(r.row, r.face) for r in _MARKER_QUALIFIED_ARG_SINK.rows
-                if r.face is not None] == [
-            ("same_tparam_name", "arg.same_tparam_name")]
-
-    def test_flush_gated_cells_are_pinned(self):
-        # The `temps_ok and` prefixes the ladder spelled, as PRE-guards.
-        # `own_lvalue` carries one HERE where the container family does not
-        # -- an asymmetry the pre-fold ladders already had, transcribed on
-        # both sides rather than reconciled (adding the missing guard is a
-        # no-op, so tidying it would only move a recorded tag).
-        assert [r.row for r in _MARKER_QUALIFIED_ARG_SINK.rows
-                if r.extra is not None] == [
-            "value_union_temp", "own_lvalue", "ru_container_literal",
-            "container_literal_method", "container_literal", "container_comp"]
-
-    def test_no_cell_carries_an_own_slots_pre_guard(self):
-        # The point of the split: `own_ok` selects which sink a call reaches,
-        # never a guard re-typed on nine cells. If this fails, the fold
-        # transcribed the prefix instead of removing it.
-        for sink in (_MARKER_NATIVE_ARG_SINK, _MARKER_QUALIFIED_ARG_SINK):
-            for row in sink.rows:
-                if row.extra is None:
-                    continue
-                assert "own_slots" not in inspect.getsource(row.extra)
-
-    def test_the_kind_selects_the_sink(self, monkeypatch):
-        # The dispatcher itself. Row-shape pins prove WHAT each sink admits
-        # and never that a callee reaches its own -- a swapped branch would
-        # hand a whole family the wrong ladder and only show up if the
-        # corpus happened to carry all three kinds.
-        seen = []
-
-        def _spy(sink, *args, **kwargs):
-            seen.append(sink)
-            return True
-
-        monkeypatch.setattr(checks, "arg_ok", _spy)
-        # The final kind is unlisted: the else-leg is a catch-all, so a new
-        # marker kind lands on the native sink until it is named.
-        kinds = ("template", *_MARKER_OWN_SLOT_KINDS, "native", "unlisted")
-        for kind in kinds:
-            checks._marker_call_arg_ok(None, None, (kind, "f"), {}, None,
-                                       temps_ok=False, narrowed=frozenset())
-        assert seen == [_MARKER_TEMPLATE_ARG_SINK,
-                        *(_MARKER_QUALIFIED_ARG_SINK
-                          for _ in _MARKER_OWN_SLOT_KINDS),
-                        _MARKER_NATIVE_ARG_SINK, _MARKER_NATIVE_ARG_SINK]
-        assert _MARKER_OWN_SLOT_KINDS == (
-            "qualified", "generic_qualified", "generic_static",
-            "generic_module_static", "super_generic")
 
 
 class TestPlainSinkShape:
@@ -933,6 +774,34 @@ class TestPlainSinkShape:
             "record_field_ref",
             "deref_coerce",
             "readonly_container_rvalue",
+            "btuple_name",
+            "borrow_tuple_storage_name",
+            "union_elem_tuple_name",
+            "list_repeat_ref_slot",
+            "readonly_container_literal",
+            "value_opt_member",
+            "value_opt_call_ret",
+            "own_union_storage_name",
+            "union_ctor_temp",
+            "union_bytes_literal_temp",
+            "union_dict_literal_temp",
+            "generic_open_slot_name",
+            "generic_open_slot_elem",
+            "mixed_own_tuple_name",
+            "btuple_pass",
+            "own_movable_tuple_pass",
+            "value_opt_field_pass",
+            "value_tuple_field_pass",
+            "borrow_ret_record_marker",
+            "own_record_rvalue",
+            "own_tparam_call_rvalue",
+            "native_record_call",
+            "own_move_source_slice",
+            "copy_own",
+            "own_tuple_move",
+            "own_tuple_borrow_lift",
+            "own_tuple_decay_copy",
+            "walrus_frame_field",
         ]
 
     def test_note_tail_is_the_slot_drilldown(self):
@@ -951,12 +820,27 @@ class TestPlainSinkShape:
             ("tuple_literal_value_opt", "arg.tuple_literal_value_opt"),
             ("opt_own_record_rvalue", "arg.opt_own_record_rvalue"),
             ("opt_string_literal", "arg.opt_string_literal"),
+            ("value_opt_member", "call.optval_member"),
+            ("value_opt_call_ret", "call.optval_ret_pass"),
+            ("generic_open_slot_name", "call.generic_open_slot_name"),
+            ("generic_open_slot_elem", "call.generic_open_slot_elem"),
         ]
 
     def test_flush_gated_cells_are_pinned(self):
-        # The `temps_ok and` prefixes the ladder spelled, as PRE-guards.
+        # The `temps_ok and` prefixes the ladder spelled, as PRE-guards --
+        # plus the cell guarded on the callee's verdict instead: the bare
+        # record rvalue binds only a slot the callee reads as a const borrow
+        # (or by value) and never lends back. No container literal binds in
+        # place here: it hoists, keeping CPython's argument order.
+        assert "container_literal_method" not in [
+            r.row for r in _PLAIN_ARG_SINK.rows]
+        assert [(r.row, r.extra.__name__) for r in _PLAIN_ARG_SINK.rows
+                if r.extra is not None
+                and r.row == "native_record_call"] == [
+            ("native_record_call", "_x_bare_record_rvalue")]
         assert [r.row for r in _PLAIN_ARG_SINK.rows
-                if r.extra is not None] == [
+                if r.extra is not None
+                and r.extra.__name__ == "_x_temps_ok"] == [
             "value_union_temp",
             "record_rvalue_temp",
             "own_lvalue",
@@ -971,6 +855,11 @@ class TestPlainSinkShape:
             # ... the one cell carrying a flush pre-guard AND a face.
             "list_repeat_proto",
             "container_comp",
+            "list_repeat_ref_slot",
+            "readonly_container_literal",
+            "union_ctor_temp",
+            "union_bytes_literal_temp",
+            "union_dict_literal_temp",
         ]
 
     def test_deref_coerce_reads_temps_ok_inside_the_row(self):
@@ -984,15 +873,11 @@ class TestPlainSinkShape:
     def test_family_carries_own_rows_and_no_mutated_policy(self):
         # Absence-preserving: the pre-fold ladder carried the Own cells and
         # never consulted `mutated_params` (only the ctor ladder does, and
-        # extending that is its own post-fold commit). Two of the three it
-        # does NOT carry are a real HOLE: this ladder spells the record
-        # rvalue as the flush-gated `record_rvalue_temp` instead. The third
-        # is structural -- an OPEN `Own[T]` slot needs a generic callee, and
-        # the generic family settles that slot in its prologue.
+        # extending that is its own post-fold commit). It carries every Own
+        # cell: the free call is the argument path of every callee spelling,
+        # the receiver-less ones included.
         rows = {r.row for r in _PLAIN_ARG_SINK.rows}
-        assert (_MARKER_OWN_ROWS - rows
-                == {"own_record_rvalue", "copy_own",
-                    "own_tparam_call_rvalue"})
+        assert _OWN_SLOT_ROWS <= rows
         assert "record_rvalue_temp" in rows
         assert _PLAIN_ARG_SINK.mutated_slots is False
 
@@ -1003,10 +888,10 @@ class TestPlainSinkShape:
         # import otherwise). A drop here means a cell stopped being shared.
         others = set()
         for sink in (_PROTOCOL_ARG_SINK, _NATIVE_ARG_SINK,
-                     _METHOD_ARG_SINK, _MARKER_QUALIFIED_ARG_SINK):
+                     _METHOD_ARG_SINK):
             others |= {r.row for r in sink.rows}
         shared = [r.row for r in _PLAIN_ARG_SINK.rows if r.row in others]
-        assert len(shared) == 50
+        assert len(shared) == 57
         assert "lambda" in shared and "own_lvalue" in shared
 
     def test_the_coerce_peel_keeps_its_own_row_name(self):
@@ -1132,7 +1017,7 @@ class TestGenericPlainSinkShape:
         # quietly fill one and call it a transcription. The count is what
         # closes the gap: naming a subset leaves the unnamed absences free
         # to be filled silently.
-        assert len(set(plain) - set(generic)) == 43
+        assert len(set(plain) - set(generic)) == 71
         assert {"callable_field", "value_union_temp", "own_coerce_cast",
                 "container_literal", "covariant_temp", "union_pass_through",
                 "value_opt_pass_through",
@@ -1148,7 +1033,7 @@ class TestGenericPlainSinkShape:
         # `container_literal` does not peel).
         others = set()
         for sink in (_PROTOCOL_ARG_SINK, _NATIVE_ARG_SINK,
-                     _METHOD_ARG_SINK, _MARKER_QUALIFIED_ARG_SINK,
+                     _METHOD_ARG_SINK,
                      _PLAIN_ARG_SINK):
             others |= {r.row for r in sink.rows}
         rows = [r.row for r in _GENERIC_PLAIN_ARG_SINK.rows]
@@ -1709,8 +1594,7 @@ class TestRecordCtorSinkShape:
         assert _CTOR_ARG_SINK.mutated_slots is True
         assert _CTOR_NESTED_ARG_SINK.mutated_slots is True
         for sink in (_PROTOCOL_ARG_SINK, _NATIVE_ARG_SINK,
-                     _METHOD_ARG_SINK, _MARKER_QUALIFIED_ARG_SINK,
-                     _MARKER_NATIVE_ARG_SINK, _MARKER_TEMPLATE_ARG_SINK,
+                     _METHOD_ARG_SINK,
                      _PLAIN_ARG_SINK, _GENERIC_PLAIN_ARG_SINK):
             assert sink.mutated_slots is False, sink.family
 
@@ -1776,9 +1660,7 @@ class TestRecordCtorSinkShape:
                     for s in (_CTOR_ARG_SINK, _CTOR_NESTED_ARG_SINK,
                               _PROTOCOL_ARG_SINK,
                               _NATIVE_ARG_SINK, _METHOD_ARG_SINK,
-                              _MARKER_QUALIFIED_ARG_SINK,
-                              _MARKER_NATIVE_ARG_SINK,
-                              _MARKER_TEMPLATE_ARG_SINK, _PLAIN_ARG_SINK,
+                              _PLAIN_ARG_SINK,
                               _GENERIC_PLAIN_ARG_SINK)
                     for r in s.rows if r.decisive]
         assert decisive == [("record_ctor_nested", "const_rvalue")]
@@ -1853,7 +1735,7 @@ class TestRecordCtorSharedAndNewRows:
         # `expressions.py` as safe as one built beside the tables.
         others = set()
         for sink in (_PROTOCOL_ARG_SINK, _NATIVE_ARG_SINK,
-                     _METHOD_ARG_SINK, _MARKER_QUALIFIED_ARG_SINK,
+                     _METHOD_ARG_SINK,
                      _PLAIN_ARG_SINK, _GENERIC_PLAIN_ARG_SINK):
             others |= {r.row for r in sink.rows}
         rows = [r.row for r in _CTOR_ARG_SINK.rows]
@@ -1865,10 +1747,8 @@ class TestRecordCtorSharedAndNewRows:
             "bytearray_rvalue_ctor",
             "value_opt_name_pass",
             "tparam_name_pass",
-            "own_move_source_slice",
             "opt_own_container_name",
             "copy_open_elem",
-            "generic_open_slot_elem",
             "async_factory_wrap",
             "field_read_ref_ctor",
             "own_container_instantiation",
@@ -1882,7 +1762,7 @@ class TestRecordCtorSharedAndNewRows:
             "protocol_slot_ctor",
             "record_rvalue_temp_ctor",
         ]
-        assert len([r for r in rows if r in others]) == 39
+        assert len([r for r in rows if r in others]) == 41
 
     def test_the_shadow_rows_hold_a_different_predicate(self):
         # Each of these SHADOWS a shared row name and had to be given its
@@ -1895,8 +1775,7 @@ class TestRecordCtorSharedAndNewRows:
                  for r in s.rows}
         shared = {r.row: r.fn for s in (_PLAIN_ARG_SINK,
                                         _GENERIC_PLAIN_ARG_SINK,
-                                        _METHOD_ARG_SINK,
-                                        _MARKER_QUALIFIED_ARG_SINK)
+                                        _METHOD_ARG_SINK)
                   for r in s.rows}
         for ctor_row, shared_row in (
                 # peels the coerce and unwraps the slot; this one does not
@@ -2144,9 +2023,7 @@ class TestReachTally:
         # not equality: TestRowIdentity registers throwaways in-process.
         families = set(registered_families())
         for sink in (_PROTOCOL_ARG_SINK, _NATIVE_ARG_SINK,
-                     _METHOD_ARG_SINK, _MARKER_TEMPLATE_ARG_SINK,
-                     _MARKER_NATIVE_ARG_SINK, _MARKER_QUALIFIED_ARG_SINK,
-                     _PLAIN_ARG_SINK, _GENERIC_PLAIN_ARG_SINK,
+                     _METHOD_ARG_SINK, _PLAIN_ARG_SINK, _GENERIC_PLAIN_ARG_SINK,
                      _CTOR_ARG_SINK, _CTOR_NESTED_ARG_SINK):
             assert sink.family in families
             cells = registered_cells()

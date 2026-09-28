@@ -47,8 +47,7 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = "or1-left";
-        __sub_0.emplace(__coro_arg_0, ::tpy::BigInt(5));
+        __sub_0.emplace("or1-left", ::tpy::BigInt(5));
         __state = S_RESUME_0;
         continue;
     }
@@ -62,8 +61,7 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
             __state = S_JOIN_0;
             continue;
         } else {
-            __coro_arg_1 = "or1-right-skip";
-            __sub_1.emplace(__coro_arg_1, ::tpy::BigInt(9));
+            __sub_1.emplace("or1-right-skip", ::tpy::BigInt(9));
             __state = S_RESUME_1;
             continue;
         }
@@ -86,8 +84,7 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
             __state = S_JOIN_1;
             continue;
         } else {
-            __coro_arg_3 = "or2-right-run";
-            __sub_3.emplace(__coro_arg_3, ::tpy::BigInt(7));
+            __sub_3.emplace("or2-right-run", ::tpy::BigInt(7));
             __state = S_RESUME_3;
             continue;
         }
@@ -106,8 +103,7 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
         __sc_4 = std::move(__r4).value();
         __sub_4.reset();
         if (__sc_4) {
-            __coro_arg_5 = "and1-right-skip";
-            __sub_5.emplace(__coro_arg_5, ::tpy::BigInt(9));
+            __sub_5.emplace("and1-right-skip", ::tpy::BigInt(9));
             __state = S_RESUME_5;
             continue;
         } else {
@@ -130,8 +126,7 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
         __sc_6 = std::move(__r6).value();
         __sub_6.reset();
         if (__sc_6) {
-            __coro_arg_7 = "and2-right-run";
-            __sub_7.emplace(__coro_arg_7, ::tpy::BigInt(8));
+            __sub_7.emplace("and2-right-run", ::tpy::BigInt(8));
             __state = S_RESUME_7;
             continue;
         } else {
@@ -151,24 +146,21 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
     case S_JOIN_0: {
         r1 = __sc_1;
         std::cout << "r1" << " " << r1 << "\n";
-        __coro_arg_2 = "or2-left";
-        __sub_2.emplace(__coro_arg_2, ::tpy::BigInt(0));
+        __sub_2.emplace("or2-left", ::tpy::BigInt(0));
         __state = S_RESUME_2;
         continue;
     }
     case S_JOIN_1: {
         r2 = __sc_3;
         std::cout << "r2" << " " << r2 << "\n";
-        __coro_arg_4 = "and1-left";
-        __sub_4.emplace(__coro_arg_4, ::tpy::BigInt(0));
+        __sub_4.emplace("and1-left", ::tpy::BigInt(0));
         __state = S_RESUME_4;
         continue;
     }
     case S_JOIN_2: {
         r3 = __sc_5;
         std::cout << "r3" << " " << r3 << "\n";
-        __coro_arg_6 = "and2-left";
-        __sub_6.emplace(__coro_arg_6, ::tpy::BigInt(3));
+        __sub_6.emplace("and2-left", ::tpy::BigInt(3));
         __state = S_RESUME_6;
         continue;
     }

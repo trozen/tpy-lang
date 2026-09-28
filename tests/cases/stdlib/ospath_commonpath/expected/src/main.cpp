@@ -26,14 +26,22 @@ namespace tpyapp::main {
 //     except ValueError:
 //         print("mixed ValueError")
 void main() {
-    std::cout << ::tpystd::os::path::commonpath({"/a/b/c", "/a/b/d", "/a/b/e/f"}) << "\n";
-    std::cout << ::tpystd::os::path::commonpath({"x/y/z", "x/y/w"}) << "\n";
-    std::cout << ::tpystd::os::path::commonpath({"/a", "/a/b"}) << "\n";
-    std::cout << ::tpystd::os::path::commonpath({"/usr/lib", "/usr/local/lib"}) << "\n";
-    std::cout << ::tpystd::os::path::commonpath({"one"}) << "\n";
-    std::cout << ::tpystd::os::path::commonpath({"a/./b", "a/b/c"}) << "\n";
-    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonpath({"/a/b", "/c/d"}))), "]")) << "\n";
-    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonpath({"a/b", "c/d"}))), "]")) << "\n";
+    std::vector<std::string> __tmp_1 = {"/a/b/c", "/a/b/d", "/a/b/e/f"};
+    std::cout << ::tpystd::os::path::commonpath(__tmp_1) << "\n";
+    std::vector<std::string> __tmp_2 = {"x/y/z", "x/y/w"};
+    std::cout << ::tpystd::os::path::commonpath(__tmp_2) << "\n";
+    std::vector<std::string> __tmp_3 = {"/a", "/a/b"};
+    std::cout << ::tpystd::os::path::commonpath(__tmp_3) << "\n";
+    std::vector<std::string> __tmp_4 = {"/usr/lib", "/usr/local/lib"};
+    std::cout << ::tpystd::os::path::commonpath(__tmp_4) << "\n";
+    std::vector<std::string> __tmp_5 = {"one"};
+    std::cout << ::tpystd::os::path::commonpath(__tmp_5) << "\n";
+    std::vector<std::string> __tmp_6 = {"a/./b", "a/b/c"};
+    std::cout << ::tpystd::os::path::commonpath(__tmp_6) << "\n";
+    std::vector<std::string> __tmp_7 = {"/a/b", "/c/d"};
+    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonpath(__tmp_7))), "]")) << "\n";
+    std::vector<std::string> __tmp_8 = {"a/b", "c/d"};
+    std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonpath(__tmp_8))), "]")) << "\n";
     {
         try {
             std::vector<std::string> empty = std::vector<std::string>{};
@@ -44,7 +52,8 @@ void main() {
     }
     {
         try {
-            ::tpystd::os::path::commonpath({"/abs", "rel"});
+            std::vector<std::string> __tmp_9 = {"/abs", "rel"};
+            ::tpystd::os::path::commonpath(__tmp_9);
         } catch (const ::tpy::ValueError&) {
             std::cout << "mixed ValueError" << "\n";
         }

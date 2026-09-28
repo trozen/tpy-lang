@@ -331,8 +331,7 @@ void main() {
     std::cout << "readonly iteration:" << " " << ::tpyapp::main::readonly_iteration(Pair()) << "\n";
     Bag bag = Bag();
     std::cout << "in iter:" << " " << ::tpy::print_bool(::tpyapp::main::in_by_iteration(bag, 2)) << " " << bag.resets << "\n";
-    std::string __tmp_4 = "as";
-    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_read(c, __tmp_4))) << " " << ::tpy::print_bool((c.d.contains("as"))) << "\n";
+    std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_read(c, "as"))) << " " << ::tpy::print_bool((c.d.contains("as"))) << "\n";
     std::cout << "match:" << " " << ::tpyapp::main::match_arm(c, "m1") << " " << ::tpyapp::main::match_arm(c, "m2") << " " << ::tpy::print_bool((c.d.contains("m1"))) << "\n";
     int32_t v = ::tpyapp::main::guarded(c, "t");
     std::cout << "try:" << " " << v << " " << ::tpy::print_bool((c.d.contains("t"))) << "\n";

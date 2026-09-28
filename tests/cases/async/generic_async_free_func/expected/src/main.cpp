@@ -31,8 +31,7 @@ namespace tpyapp::main {
         result = std::move(__r0).value();
         __sub_0.reset();
         std::cout << result << "\n";
-        __coro_arg_0 = "hi";
-        __sub_1.emplace(__coro_arg_0);
+        __sub_1.emplace("hi");
         __state = S_RESUME_1;
         continue;
     }

@@ -98,8 +98,7 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpy::Bytes(::tpyapp::main::return_inferred_bytesview(buf))) << "\n";
     ::tpyapp::main::nested_def_return("  a padded value long enough to show  ");
     {
-        std::string __tmp_1 = "  another padded value, long too  ";
-        auto __src_0 = ::tpyapp::main::gen_nested_def_return(__tmp_1);
+        auto __src_0 = ::tpyapp::main::gen_nested_def_return("  another padded value, long too  ");
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

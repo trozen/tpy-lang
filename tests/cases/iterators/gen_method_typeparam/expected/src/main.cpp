@@ -23,8 +23,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_1 = "hi";
-        auto __src_2 = f.items<std::string>(__tmp_1);
+        auto __src_2 = f.items<std::string>("hi");
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

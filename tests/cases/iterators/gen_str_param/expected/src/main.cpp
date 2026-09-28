@@ -16,8 +16,7 @@ __gen_greetings greetings(std::string_view name) {
 //         print(g)
 void main() {
     {
-        std::string __tmp_1 = "world";
-        auto __src_0 = ::tpyapp::main::greetings(__tmp_1);
+        auto __src_0 = ::tpyapp::main::greetings("world");
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

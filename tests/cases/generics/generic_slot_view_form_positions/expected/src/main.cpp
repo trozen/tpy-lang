@@ -353,8 +353,7 @@ void main() {
     std::vector<std::string> __tmp_1 = {"a", "z"};
     ::tpyapp::main::comprehension(__tmp_1);
     {
-        std::string __tmp_2 = "a";
-        auto __src_0 = ::tpyapp::main::gen_body(__tmp_2);
+        auto __src_0 = ::tpyapp::main::gen_body("a");
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -363,8 +362,7 @@ void main() {
         std::cout << "gen_body" << " " << ::tpy::print_bool(g) << "\n";
         }
     }
-    std::string __tmp_3 = "a";
-    std::cout << "async_body" << " " << ::tpy::print_bool(::tpystd::asyncio::run<bool>(::tpy::make_adapter<::tpystd::coro::Cancellable<bool>>(::tpyapp::main::async_body(__tmp_3)))) << "\n";
+    std::cout << "async_body" << " " << ::tpy::print_bool(::tpystd::asyncio::run<bool>(::tpy::make_adapter<::tpystd::coro::Cancellable<bool>>(::tpyapp::main::async_body("a")))) << "\n";
     ::tpyapp::main::closure("a");
     ::tpyapp::main::match_arm("a");
     ::tpyapp::main::cond_operand("a", false);

@@ -34,7 +34,9 @@ from .parse import (
     TpyBytesLiteral, TpyFString, TpyNamedExpr, TpyTupleLiteral,
     is_property_getter_read,
 )
-from .type_def_registry import is_bool_type, is_borrowing_view_type
+from .type_def_registry import (is_bool_type, is_borrowing_view_type,
+                                is_bytes_type, is_bytes_view_type,
+                                is_str_type, is_str_view_type)
 from . import qnames
 
 
@@ -537,10 +539,14 @@ def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
     (a pointer VALUE the frame copies -- what it points at is the caller's
     problem, and naming the pointer pins nothing the pointee did not already
     outlive) and an `Own[T]` param (the frame takes ownership -- the temporary
-    moves in, which is exactly what an unnamed rvalue is for). Everything else
-    hoists, literals included: the hoisted local is then passed through the same per-param
-    coercion the argument already went through, so an owning sink still moves,
-    a borrowing sink still views, and a value sink still copies.
+    moves in, which is exactly what an unnamed rvalue is for). One SOURCE is
+    excluded too: a `str` / `bytes` LITERAL at a view slot (`str`, `StrView`,
+    `bytes`, `BytesView`) is no temporary at all -- the view is over static
+    storage that outlives any frame, and hoisting it would only buy an owned
+    copy. Everything else hoists: the hoisted local is then passed through the
+    same per-param coercion the argument already went through, so an owning
+    sink still moves, a borrowing sink still views, and a value sink still
+    copies.
 
     Two callers ask: the lowering rows that BUILD the hoist
     (`frame_temp_arg_slot`, which adds the storage type on top), and the sema
@@ -558,9 +564,19 @@ def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
     if is_primitive_type(bare) or isinstance(bare, PtrType):
         return None
     src = peel_coerce(a)
+    if (isinstance(src, (TpyStrLiteral, TpyBytesLiteral))
+            and _view_slot(bare)):
+        return None
     if not materializing_temp_source(src, analyzer):
         return None
     return src
+
+
+def _view_slot(bare: TpyType) -> bool:
+    """A slot a str / bytes argument binds as a VIEW (`std::string_view` /
+    `::tpy::BytesView`), which a literal fills without a copy."""
+    return (is_str_type(bare) or is_str_view_type(bare)
+            or is_bytes_type(bare) or is_bytes_view_type(bare))
 
 
 class FrameTempElem(NamedTuple):

@@ -75,8 +75,7 @@ __coro_head head(::tpy::BytesView data) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = ::tpy::bytes_literal_owned("hello", 5);
-        __sub_0.emplace(__coro_arg_0);
+        __sub_0.emplace(::tpy::bytes_literal("hello", 5));
         __state = S_RESUME_0;
         continue;
     }
@@ -86,8 +85,7 @@ __coro_head head(::tpy::BytesView data) {
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
         std::cout << __await_lift_0 << "\n";
-        __coro_arg_1 = ::tpy::bytes_literal_owned("ABC", 3);
-        __sub_1.emplace(__coro_arg_1);
+        __sub_1.emplace(::tpy::bytes_literal("ABC", 3));
         __state = S_RESUME_1;
         continue;
     }

@@ -60,10 +60,10 @@ THIR_ARG_CELLS = arg_table.registered_cells()
 
 # Self-check floor for the family gate: a registry snapshotted before the sink
 # modules were imported is empty, and an empty expected set is satisfied by
-# reaching nothing. Well below the measured count (10 as of 2026-09-05) and
+# reaching nothing. Below the measured count (7 as of 2026-09-28) and
 # deliberately loose in that direction: the count goes DOWN as two families
 # that decide a shape the same way are united, which is not a regression.
-MIN_ARG_FAMILIES = 8
+MIN_ARG_FAMILIES = 5
 
 
 def lib_module_names() -> list[str]:

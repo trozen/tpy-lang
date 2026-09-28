@@ -37,8 +37,7 @@ __gen_slice_of_ref_param slice_of_ref_param(const ::tpy::ByteArray& ba) {
 //                 buf.append(65)  # tpyc: warning(/Mutation of 'buf' while iterating/)
 void main() {
     {
-        std::string __tmp_1 = "hello";
-        auto __src_0 = ::tpyapp::main::tails(__tmp_1);
+        auto __src_0 = ::tpyapp::main::tails("hello");
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -48,8 +47,7 @@ void main() {
         }
     }
     {
-        std::string __tmp_2 = "  padded value long enough to reallocate  ";
-        auto __src_2 = ::tpyapp::main::owned_local(__tmp_2);
+        auto __src_2 = ::tpyapp::main::owned_local("  padded value long enough to reallocate  ");
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

@@ -17,7 +17,6 @@ from ...parse.nodes import (
     TpyAssign,
     TpyBinOp,
     TpyBoolLiteral,
-    TpyBytesLiteral,
     TpyCall,
     TpyCoerce,
     TpyDictComprehension,
@@ -106,6 +105,7 @@ from ...type_def_registry import (
     view_to_owned_conv,
     is_bytes_type,
     is_bytes_view_type,
+    is_str_view_type,
     is_dict,
     is_list,
     is_set,
@@ -177,7 +177,6 @@ from .predicates import (
     _pointer_slot_global_type,
     _resolved_bytes_value,
     _resolved_str_value,
-    _template_init_call_fi,
     _value_opt_scalar,
     _value_opt_view,
     _opt_view_arg_shim,
@@ -204,6 +203,8 @@ from .checks import (
     _stub_template_param,
     _nondef_ctor_field,
     _ptr_union_source_ok,
+    _owned_viewfam_source_ok,
+    _keeps_str_view,
 )
 from .expressions import (
     _ExprResultUse,
@@ -1143,23 +1144,22 @@ def _is_record_value_source(source: TpyExpr, declared: dict[str, TpyType],
 def _ctor_viewfam_source_ok(value: TpyExpr, fam_t: TpyType,
                             declared: dict[str, TpyType],
                             lc: _LowerCtx) -> bool:
-    """A (str / StrView / bytes field, source) pair the tail emitter can
-    render into the MIL. The contract per field family:
+    """A (str / String / StrView / bytes field, source) pair the tail emitter
+    can render into the MIL. The contract per field family:
 
-      * **str / StrView** (owned `std::string` / `std::string_view`): a str
-        literal (position-neutral const char[N], lands bare); a str-family
-        param name (bare -- std::string's EXPLICIT string_view ctor fires in
-        the MIL direct-init, so even a view source takes no wrap); a str-family
-        coerce over a param name or a str literal (identity passthrough, or
-        the ASSIGN-context `strview_to_str` materialization --
-        `std::string(name)`).
-      * **bytes** (owned `std::vector<uint8_t>`): a bytes literal (the owned
-        `bytes_literal_owned` / empty-vector render); a bytes-family param name
-        (the span lifts to owned: `::tpy::Bytes(name)`); the same name under the sema
-        `bytesview_to_bytes` coerce (its codegen lambda IS that copy); or the
-        zero-arg `bytes()` @cpp_template __init__ (`std::vector<uint8_t>()`,
-        an owned rvalue landing bare). Arg-taking ctor overloads are
-        @native-function emits the call slice does not spell, so they reject.
+      * **owning str / String / bytes**: any non-name source of the slot's
+        family (`_owned_viewfam_source_ok`, the rule the field-write gate
+        shares) -- the direct-init builds the buffer from whatever the source
+        renders (`std::string`'s EXPLICIT string_view ctor fires in the MIL
+        direct-init; a bytes view takes the lowering's STORAGE convert).
+      * **StrView** (`std::string_view`): a str literal, possibly under the
+        identity `str_to_strview` coerce (static storage, lands bare), or a
+        call returning a view. A fresh value (concat, owned-str call,
+        `builds_fresh_value` coerce) rejects: the view would dangle.
+      * **names**, every family: a same-family param name, bare or under an
+        identity / materializing coerce (`std::string(name)`); for bytes the
+        `bytesview_to_bytes` coerce, whose codegen lambda IS the
+        `::tpy::Bytes(name)` copy.
       * **BytesView fields** and `copy()`-wrapped sources reject.
     """
     analyzer = lc.analyzer
@@ -1167,11 +1167,9 @@ def _ctor_viewfam_source_ok(value: TpyExpr, fam_t: TpyType,
         return False
     if _unwrap_copy(value, analyzer) is not value:
         return False
+    if _owned_viewfam_source_ok(value, fam_t, analyzer):
+        return True
     if is_bytes_type(fam_t):
-        if isinstance(value, TpyBytesLiteral):
-            return True
-        if isinstance(value, TpyCall):
-            return _template_init_call_fi(value) is not None and not value.args
         src = value
         if isinstance(src, TpyCoerce):
             if src.coercion.name != "bytesview_to_bytes":
@@ -1180,24 +1178,13 @@ def _ctor_viewfam_source_ok(value: TpyExpr, fam_t: TpyType,
         return (isinstance(src, TpyName)
                 and _resolved_bytes_value(declared.get(src.name),
                                           analyzer) is not None)
-    if isinstance(value, TpyStrLiteral):
+    view_slot = is_str_view_type(fam_t)
+    if view_slot and isinstance(value, TpyStrLiteral):
         return True
     src = value
-    if (isinstance(src, TpyCoerce) and src.coercion.builds_fresh_value
-            and _resolved_str_value(analyzer.get_expr_type(src),
-                                    analyzer) is not None):
-        # A fresh-value coerce (`self.tag = s[0]`) IS the construction: its
-        # wrap renders a prvalue the direct-init takes bare whatever sits
-        # under it, so the source shape is not this row's business -- the
-        # same argument the assign path's fresh-value row makes.
-        return _witness("mil.fresh_value_coerce")
-    if (isinstance(src, (TpyCall, TpyMethodCall))
+    if (view_slot and isinstance(src, (TpyCall, TpyMethodCall))
             and is_rvalue_source(analyzer, src)
-            and _resolved_str_value(analyzer.get_expr_type(src),
-                                    analyzer) is not None):
-        # An owned-str-returning call rvalue (`message(s.speak())`): the
-        # prvalue lands bare in the MIL direct-init; the call
-        # re-validates itself during the source's lowering.
+            and _keeps_str_view(src, analyzer)):
         return True
     if isinstance(src, TpyCoerce):
         if _coerce_disposition(src) not in ("identity", "materialize"):
@@ -1205,7 +1192,7 @@ def _ctor_viewfam_source_ok(value: TpyExpr, fam_t: TpyType,
         src = src.expr
         # A StrView field's literal arrives under the identity str_to_strview
         # coerce, which renders bare.
-        if isinstance(src, TpyStrLiteral):
+        if view_slot and isinstance(src, TpyStrLiteral):
             return True
     return (isinstance(src, TpyName)
             and _resolved_str_value(declared.get(src.name),
@@ -2110,7 +2097,9 @@ def _ast_demotes_init(stmt: TpyAssign, param_names: set[str],
     """Whether this own-field init demotes to the ctor body regardless
     of the chain state -- the source triggers: a nested-def
     name, a bare name that is not a param (not in scope at MIL time; covers
-    module globals and `self`), or any body-local reference in the RHS.
+    module globals and `self`), any body-local reference in the RHS, or a
+    walrus in the RHS (the local it binds is declared in the body, so the
+    list has nothing to assign it to).
     Rejecting the ctor here would be safe but needlessly conservative;
     hoisting one would spell a name not yet in scope. The temps trigger
     (`temps.rollback` -> demote) is NOT handled here: lowering rejects
@@ -2121,8 +2110,9 @@ def _ast_demotes_init(stmt: TpyAssign, param_names: set[str],
     if isinstance(src, TpyName) and (src.name in nested_def_names
                                      or src.name not in param_names):
         return True
-    return bool(body_local_names
-                and (collect_name_refs(stmt.value) & body_local_names))
+    return bool((body_local_names
+                 and (collect_name_refs(stmt.value) & body_local_names))
+                or contains_named_expr(stmt.value))
 
 
 def _ctor_demote_reason(stmt: TpyAssign, chain_broken: bool,
@@ -2148,6 +2138,8 @@ def _ctor_demote_reason(stmt: TpyAssign, chain_broken: bool,
             return emit_prims.CTOR_DEMOTE_BODY_LOCAL
     if body_local_names and (collect_name_refs(stmt.value) & body_local_names):
         return emit_prims.CTOR_DEMOTE_BODY_LOCAL
+    if contains_named_expr(stmt.value):
+        return emit_prims.CTOR_DEMOTE_BINDS_LOCAL
     if reads_default_only:
         return emit_prims.CTOR_DEMOTE_READS_DEFAULT_ONLY
     return emit_prims.CTOR_DEMOTE_READS_INHERITED
@@ -2554,7 +2546,10 @@ def _lower_ctor_mil_init(
                                 value=_lower_expr(source.expr, lc, declared),
                                 form=Form.STORAGE, move=False, loc=loc)
         else:
-            v = _lower_expr(source, lc, declared, use=_MIL_USE)
+            # The direct-init owns the value, so a field-read source (`o.data`)
+            # is the bare member read the sink copies from.
+            v = _lower_expr(source, lc, declared, use=_MIL_USE,
+                            field_owned_str_ok=True)
             # A view (span) source into the owned vector field copies to
             # owned -- vector has no span ctor; owned sources (literal /
             # `bytes()` rvalue) land bare.
@@ -2565,9 +2560,14 @@ def _lower_ctor_mil_init(
     if _resolved_str_value(ftype, analyzer) is not None:
         # str/StrView fields take the BARE render: std::string's EXPLICIT
         # string_view ctor fires in the MIL direct-init (no wrap is added
-        # there); a sema `strview_to_str` coerce materializes itself.
+        # there); a sema `strview_to_str` coerce materializes itself. A
+        # field-read source (`o.name`) is the bare member read, as at the
+        # field-write sink.
         _witness("mil.str_field")
-        return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc, declared, use=_MIL_USE))
+        return THIRMilInit(field_cpp=field_cpp,
+                           value=_lower_expr(source, lc, declared,
+                                             use=_MIL_USE,
+                                             field_owned_str_ok=True))
     pu = _eligible_ptr_union(ftype, analyzer)
     if pu is not None:
         # F4 U2 cells: monostate `None`; a borrow ptr-variant name lifting via

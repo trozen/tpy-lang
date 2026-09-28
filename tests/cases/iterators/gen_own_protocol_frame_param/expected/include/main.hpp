@@ -80,8 +80,8 @@ struct __coro_count_mono {
 };
 // # async body with the same param: the frame-param gate admits it too. NOT
 // # awaited -- every drive shape for such a coroutine still rejects elsewhere
-// # (inline await at res.await_param_type:own_protocol.static, create_task /
-// # asyncio.run at method.qualcall.arg.own).
+// # (inline await at res.await_param_type:own_protocol.static; any call of it,
+// # create_task / asyncio.run included, at call.arg_shape.own_protocol.static).
 // async def count_mono(items: Own[Iterable[int32]]) -> int32:  # tpyc: warning(/never consumed/)
 //     s: int32 = 0
 //     for _item in items:

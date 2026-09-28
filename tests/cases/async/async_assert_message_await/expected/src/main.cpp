@@ -38,8 +38,7 @@ __coro_msg msg(std::string_view tag) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         if ((!((x > 0)))) {
-            __coro_arg_0 = "positive";
-            __sub_0.emplace(__coro_arg_0);
+            __sub_0.emplace("positive");
             __state = S_RESUME_0;
             continue;
         } else {

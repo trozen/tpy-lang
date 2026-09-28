@@ -21,8 +21,7 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __coro_arg_0 = "127.0.0.1";
-        __sub_0.emplace(__coro_arg_0, port);
+        __sub_0.emplace("127.0.0.1", port);
         __state = S_RESUME_0;
         continue;
     }

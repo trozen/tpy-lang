@@ -325,7 +325,8 @@ void main() {
     std::cout << "follow dirs:" << " " << ::tpyapp::main::count_dirs(root, true) << "\n";
     int32_t n = 0;
     {
-        auto __src_0 = ::tpystd::os::walk((::tpy::str_concat(tmp, "/tpy_oswalk_missing")));
+        ::tpy::String __tmp_1 = (::tpy::str_concat(tmp, "/tpy_oswalk_missing"));
+        auto __src_0 = ::tpystd::os::walk(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -342,7 +343,8 @@ void main() {
     std::cout << "prune-all yields:" << " " << ::tpyapp::main::prune_all(root) << "\n";
     int32_t nf = 0;
     {
-        auto __src_2 = ::tpystd::os::walk((::tpy::str_concat(root, "/top.txt")));
+        ::tpy::String __tmp_2 = (::tpy::str_concat(root, "/top.txt"));
+        auto __src_2 = ::tpystd::os::walk(__tmp_2);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

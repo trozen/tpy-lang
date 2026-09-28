@@ -25,8 +25,7 @@ namespace tpyapp::main {
         __await_lift_0 = std::move(__r0).value();
         c.reset();
         std::cout << __await_lift_0 << "\n";
-        __coro_arg_0 = "ok";
-        s.emplace(::tpyapp::main::ident<std::string>(__coro_arg_0));
+        s.emplace(::tpyapp::main::ident<std::string>("ok"));
         __state = S_RESUME_1;
         continue;
     }

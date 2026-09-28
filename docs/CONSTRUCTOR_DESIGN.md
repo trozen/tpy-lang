@@ -162,7 +162,14 @@ def __init__(self, ...):
 - At most one `super().__init__(...)` call (must be first if present)
 - `self.field = expr` assignments, each field at most once
 
-The init section ends at the first statement that does not match the above, OR when the same field is assigned a second time. Every statement in the init section goes to the C++ member initializer list.
+The init section ends at the first statement that does not match the above, OR when the same field is assigned a second time. Every statement in the init section goes to the C++ member initializer list, unless it is **demoted**: an assignment the member initializer list cannot hold becomes a C++ assignment in the constructor body, after the field was default-constructed. The demotion reasons (one message constant each, `CTOR_DEMOTE_*` in `tpyc/codegen_cpp/emit_prims.py`, chosen by `_ctor_demote_reason` in `tpyc/thir/lower/functions.py`):
+- a prior statement in the body would run before this initializer (the leading chain is broken);
+- the value is a function defined in the body, a bare name other than a parameter, or references a local defined earlier in the body;
+- the value **binds** a local -- a walrus (`self._r = Resource((n := seed))`): the member initializer list has no scope to declare `n` in;
+- the value reads a `self.<field>` written by an earlier inherited-field assignment, or one that has only a class-level default (not in place until the member initializer list has run);
+- the value needs a codegen temporary the member initializer list cannot declare (e.g. a varargs call).
+
+A demoted assignment is only valid when the field's type is default-constructible. When it is not (Decision 3 -- e.g. a `@nocopy` / `__del__` record without a zero-argument constructor), the demotion is a located error naming the reason: ``field '_r' of non-default-constructible type 'Resource' must be initialized before any local variable is bound or any other statement runs in this constructor: the assigned expression binds a local (`:=`)``, followed by the `@staticmethod` factory recipe. CPython runs the walrus shape; it is a known rejection (`BUGS.md#nocopy-field-walrus-init-rejects`), pinned by `tests/cases/records/error_nocopy_del_field_walrus`.
 
 **Body section** -- everything from the split point onwards. Field modifications in the body are valid (e.g., accumulating into a field in a loop); they become C++ assignments in the constructor body.
 
