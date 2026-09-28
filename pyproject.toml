@@ -89,7 +89,7 @@ path = "tpyc/_build_hook.py"
 extraPaths = ["lib/cpy"]
 
 [tool.pytest.ini_options]
-addopts = "-n auto"
+addopts = "-n auto --dist worksteal"
 testpaths = ["tests", "tpyc"]
 norecursedirs = ["tests/cases", "__tpyc__"]
 
