@@ -139,6 +139,34 @@ def _run_cxx(cmd: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True, cwd=PROJECT_ROOT, env=env)
 
 
+FAST_LINKERS = ("lld", "mold")
+
+
+@functools.cache
+def fast_linker_flags() -> tuple[str, ...]:
+    """`-fuse-ld=` for the first fast linker that links with this toolchain.
+
+    Each case binary links the whole stdlib .o set, and GNU ld spends most of
+    a warm case's build there. Being installed is not enough: mold rejects
+    the linker script some gcc builds put on every link, so each candidate
+    must pass a trial link with the configured compiler.
+    """
+    with tempfile.TemporaryDirectory(prefix="tpy-ld-probe-") as d:
+        src = Path(d) / "probe.cpp"
+        src.write_text("int main() { return 0; }\n")
+        for ld in FAST_LINKERS:
+            flag = f"-fuse-ld={ld}"
+            try:
+                probe = subprocess.run(
+                    [*CPP_CONFIG.compiler, flag, "-o", str(Path(d) / "probe"), str(src)],
+                    capture_output=True, timeout=60)
+            except (OSError, subprocess.TimeoutExpired):
+                continue
+            if probe.returncode == 0:
+                return (flag,)
+    return ()
+
+
 # ---------------------------------------------------------------------------
 # Pre-compiled stdlib cache
 # ---------------------------------------------------------------------------
@@ -1375,6 +1403,7 @@ def pytest_configure(config):
         # against the pre-mutation toolchain so the new --cxx re-keys cleanly.
         _stdlib_cache_key.cache_clear()
         _pch_cache_key.cache_clear()
+        fast_linker_flags.cache_clear()
 
     if not is_master:
         return
@@ -1821,6 +1850,7 @@ def compute_exec_fingerprint(
         CPP_CONFIG.std,
         CPP_CONFIG.extra_flags,
         CPP_CONFIG.warn_flags,
+        fast_linker_flags(),
     )).encode())
     h.update(b"\0")
     gen_files: list[Path] = []
@@ -2261,7 +2291,7 @@ def build_and_run(build_dir: Path, module_name: str,
         extra_objects=precompiled_objects,
         extra_include_dirs=extra_include_dirs or None,
         force_includes=all_force_includes or None,
-        extra_link_flags=extra_link_flags or None,
+        extra_link_flags=[*fast_linker_flags(), *(extra_link_flags or [])] or None,
         c_sources=c_sources or None,
     )
     for cmd in compile_cmds:
