@@ -65,6 +65,17 @@ unless marked otherwise. Batched by likely shared cause; each batch is one
     `for-head-rebind-of-reference-local-rejected` and
     `str-local-rebound-by-for-head-rejected` first, so the head can bind
     without rejecting today's correct programs
+- **F -- sibling-arm joins** (added 2026-09-28): `match` arms and `except`
+  handlers now join a local's bindings, so programs v0.5.0 compiled only
+  because the wider arm came last are refused (the reverse order was a
+  silent truncation there); the regressions:
+  - `optional-int-widening-refused` (the arm forms)
+  - `tuple-element-int-widening-refused` (narrower arm first)
+  - `carried-arm-name-loop-binding-unassigned` (`match` / `except` faces)
+  - `alias-rebind-over-fresh-list-rejected` (the `except` face)
+  - not regressions, the binding forms the join does not reach yet:
+    `sibling-arm-loop-target-not-joined`, `walrus-rebind-never-widens`,
+    `match-capture-wider-than-arm-binding-truncates`
 - **Decision first:** `c-abi-allowlist-overshoot` -- the C-ABI allow-list
   as "C-spellable" or "ABI-compatible"; until decided it ships as a known
   limitation.

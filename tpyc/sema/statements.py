@@ -114,11 +114,12 @@ from ..value_category import (
     peel_value_wrappers, tuple_literal_elems,
 )
 from .expressions import (_nested_def_free_names, _find_list_member,
-                          _names_rebound_by, generic_constructor_factory)
+                          _names_rebound_by, generic_constructor_factory,
+                          _collect_body_local_defs)
 from .slot_hint import SlotHint
 from .local_deduction import (
     collect_pending_source_types, mark_pending_list_mutated,
-    view_source_is_temporary, walk_view_source_leaves,
+    view_source_is_temporary,
 )
 from .type_ops import signature_may_return_borrow as _signature_may_return_borrow
 from tpyc import modules as builtin_modules
@@ -1588,6 +1589,19 @@ class StatementAnalyzer:
         if self.ctx.func.current_ns:
             self.ctx.func.current_ns.update_variable_type(name, typ)
 
+    def _merge_arm_readonly(self, arms: list[dict[str, TpyType]]) -> None:
+        """Keep a local readonly after sibling arms join when ANY arm left it
+        readonly: the one slot may hold that arm's readonly reference."""
+        bindings = self.ctx.func.current_scope.bindings
+        for name in set().union(*arms):
+            current = bindings.get(name)
+            if current is None or isinstance(current, ReadonlyType):
+                continue
+            if any(isinstance(arm.get(name), ReadonlyType) for arm in arms):
+                merged = ReadonlyType(current)
+                self.ctx.func.current_scope.define(name, merged)
+                self._sync_ns_var_type(name, merged)
+
     def _sync_promoted_var_types(self, names: set[str] | None = None) -> None:
         """Sync scope and namespace with var_types after a control-flow restore.
 
@@ -2023,30 +2037,55 @@ class StatementAnalyzer:
         return (isinstance(owner, TpyIf) and len(owner.else_body) == 1
                 and owner.else_body[0] is stmt)
 
-    def _place_arm_decl(self, owner: TpyIf, body: list[TpyStmt], name: str,
-                        typ: TpyType | None) -> None:
-        """Where a block of the per-arm-declared `owner` declares `name`: at
-        its first binding when that is a statement of the block itself
-        (recorded in `arm_decl_sites` for the retype in `resolve_all`).
-        When the first binding sits in a nested block, its declaration ends
-        at that block's brace, so a statement after it declares in front of
-        it instead; sema never recorded that predecl because the sibling
-        arm's binding was still in scope. A nested block that ends the block
-        gets the same rule inside it."""
+    def _place_arm_decl(self, owner: TpyStmt | None, body: list[TpyStmt],
+                        name: str, typ: TpyType | None) -> None:
+        """Where an arm `body` that declares `name` itself does so: at its
+        first binding when that is a statement of the block itself (for the
+        per-arm-declared `owner`, recorded in `arm_decl_sites` for the
+        retype in `resolve_all`). When the first binding sits in a nested
+        block, its declaration ends at that block's brace, so a statement
+        after it declares in front of it instead; sema never recorded that
+        predecl because the sibling arm's binding was still in scope. A
+        nested block that ends the block gets the same rule inside it."""
         for i, s in enumerate(body):
             if _declares_here(s, name):
-                self.ctx.func.arm_decl_sites.append((owner, name, s))
+                if owner is not None:
+                    self.ctx.func.arm_decl_sites.append((owner, name, s))
                 return
             if name not in scope_bound_names([s]):
                 continue
             if name in self.ctx.if_branch_decls.get(s, {}):
                 return
             if i + 1 < len(body):
+                # A hoist takes its const from the name's function-wide
+                # stmt-borrow bit, not from this arm's bindings: an arm whose
+                # own view is mutable would get a const slot it writes
+                # through, so it stays undeclared (a located lowering reject;
+                # BUGS.md#hoist-const-from-name-wide-borrow-bit).
+                if (typ is not None and not typ.is_value_type()
+                        and not isinstance(typ, ReadonlyType)
+                        and self.ctx.func.stmt_borrow_decls.get(name)):
+                    return
                 self.ctx.record_branch_decls(s, {name: typ})
+                self.deduction.promote_hoisted_views(
+                    {name}, self.ctx.block_locals_of.get(s, frozenset()))
             else:
                 for sub in s.sub_bodies():
                     self._place_arm_decl(owner, sub, name, typ)
             return
+
+    def _declare_carried_in_arms(
+            self, arms: 'list[tuple[list[TpyStmt], set[str], dict[str, TpyType]]]',
+            front: set[str]) -> None:
+        """Place the declaration of every name an arm got carried in from an
+        earlier sibling arm (`_enter_sibling_arm`) and that the statement
+        does not declare in front of itself (`front`): the arm declares it
+        at its own first binding, which the carried binding hid from any
+        nested block's own predecl. Each arm is (body, carried names, the
+        arm's closing bindings)."""
+        for body, carried, bindings in arms:
+            for name in sorted(carried - front):
+                self._place_arm_decl(None, body, name, bindings.get(name))
 
     def _enclosing_block_phrase(self) -> 'str | None':
         """The statement the `def` now being analyzed sits in, named for a
@@ -2128,19 +2167,8 @@ class StatementAnalyzer:
             then_terminated = self.ctx.func.init_terminated
             bindings_after_then = dict(self.ctx.func.current_scope.bindings)
             pending_after_then = set(self.ctx.func.pending_loop_vars)
-            # Restore bindings for else branch. An arm's own binding leaks into
-            # the enclosing scope on purpose (that is the two-arm hoist), but a
-            # name the arm only PROMOTED is not the arm's to leak: left in
-            # scope it hides the promotion path from the other arm, which then
-            # reads a local whose assigned-ness only the promotion spells out.
-            # `_unbind_names` keeps the names that HAVE a pending entry, which
-            # is the live table -- a loop inside the then-arm makes its body
-            # local pending there, so pinning this on "pending before the `if`"
-            # would leak exactly that promotion.
-            self.ctx.func.current_scope.bindings.update(bindings_before)
-            self._unbind_names(set(bindings_after_then) - scope_before)
-            self._restore_ns_var_types(ns_types_before)
-            self.init.restore(before)
+            carried_else = self._enter_sibling_arm(
+                bindings_before, ns_types_before, before)
             # Else-body: the mirror -- what every evaluation that came out
             # false bound.
             self.ctx.func.definitely_assigned |= head.if_false
@@ -2164,21 +2192,7 @@ class StatementAnalyzer:
                 self.ctx.func.current_consumed_own_params = consumed_after_then
             else:
                 self.ctx.func.current_consumed_own_params = consumed_after_then & consumed_after_else
-            # Merge ReadonlyType: if readonly on EITHER branch, keep readonly
-            for name in set(bindings_after_then) | set(bindings_after_else):
-                then_type = bindings_after_then.get(name)
-                else_type = bindings_after_else.get(name)
-                if then_type is not None and else_type is not None:
-                    then_is_ro = isinstance(then_type, ReadonlyType)
-                    else_is_ro = isinstance(else_type, ReadonlyType)
-                    if then_is_ro and not else_is_ro:
-                        merged = ReadonlyType(unwrap_readonly(else_type))
-                        self.ctx.func.current_scope.define(name, merged)
-                        self._sync_ns_var_type(name, merged)
-                    elif else_is_ro and not then_is_ro:
-                        merged = ReadonlyType(unwrap_readonly(then_type))
-                        self.ctx.func.current_scope.define(name, merged)
-                        self._sync_ns_var_type(name, merged)
+            self._merge_arm_readonly([bindings_after_then, bindings_after_else])
             # Sync scope/namespace with var_types for variables whose
             # declaration type was promoted inside a branch.
             self._sync_promoted_var_types(
@@ -2215,6 +2229,8 @@ class StatementAnalyzer:
                     for name, typ in decls.items():
                         self._place_arm_decl(stmt, stmt.then_body, name, typ)
                         self._place_arm_decl(stmt, stmt.else_body, name, typ)
+            self._declare_carried_in_arms(
+                [(stmt.else_body, carried_else, bindings_after_else)], predecl)
         elif isinstance(stmt, TpyWhile):
             head = self._analyze_condition_walrus(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
@@ -3161,9 +3177,7 @@ class StatementAnalyzer:
         # Restore to pre-try state for except branch. An exception can be
         # thrown at ANY point in the try body, so facts the body may have
         # killed must not be assumed in the handler.
-        self.ctx.func.current_scope.bindings = dict(bindings_before)
-        self._restore_ns_var_types(ns_types_before)
-        self.init.restore(before)
+        self._enter_sibling_arm(bindings_before, ns_types_before, before)
         try_kills = collect_fact_kills(stmt.try_body)
         self.init.apply_fact_kills(try_kills)
         self.ctx.func.current_consumed_own_params = consumed_before.copy()
@@ -3209,6 +3223,8 @@ class StatementAnalyzer:
 
         # Analyze finally body (runs on all paths, doesn't affect branch merging)
         self._analyze_finally_body(stmt, try_kills)
+        self._merge_arm_readonly([try_bindings,
+                                  dict(self.ctx.func.current_scope.bindings)])
 
         # Hoist all declarations for goto-based dispatch
         all_bindings = dict(try_bindings)
@@ -3265,6 +3281,7 @@ class StatementAnalyzer:
         # Analyze else body
         for s in stmt.else_body:
             self.analyze_stmt(s)
+        arm_bindings = [dict(self.ctx.func.current_scope.bindings)]
         then_state = self.init.save()
         consumed_after_then = self.ctx.func.current_consumed_own_params.copy()
         then_terminated = self.ctx.func.init_terminated
@@ -3274,10 +3291,10 @@ class StatementAnalyzer:
         # the body may have killed must not be assumed in any handler.
         try_kills = collect_fact_kills(stmt.try_body)
         handler_states: list[tuple] = []
+        handler_carried: list[set[str]] = []
         for i, h in enumerate(stmt.handlers):
-            self.ctx.func.current_scope.bindings = dict(bindings_before)
-            self._restore_ns_var_types(ns_types_before)
-            self.init.restore(before)
+            handler_carried.append(self._enter_sibling_arm(
+                bindings_before, ns_types_before, before))
             self.init.apply_fact_kills(try_kills)
             self.ctx.func.current_consumed_own_params = consumed_before.copy()
 
@@ -3304,6 +3321,7 @@ class StatementAnalyzer:
             if h.binding and h.binding in self.ctx.func.current_scope.bindings:
                 del self.ctx.func.current_scope.bindings[h.binding]
             self._retire_capture_binding(h.binding, prev_ns_binding, ns_bound)
+            arm_bindings.append(dict(self.ctx.func.current_scope.bindings))
 
             handler_states.append((
                 self.init.save(),
@@ -3360,10 +3378,15 @@ class StatementAnalyzer:
         # unlike the definitely-assigned-only da_new below.
         needs_full_hoist = (stmt.finally_body or stmt.else_body
                             or (all_handlers_terminate and not self.ctx.func.init_terminated))
+        # The finally body runs on every path, so its bindings count as an arm.
+        arm_bindings.append(dict(self.ctx.func.current_scope.bindings))
         self.ctx.func.current_scope.bindings = dict(try_bindings)
         self.ctx.func.current_scope.bindings.update(finally_new)
-        all_bindings = dict(try_bindings)
-        all_bindings.update(finally_new)
+        self._merge_arm_readonly(arm_bindings)
+        # The try-body snapshot predates the handlers, whose bindings of the
+        # same names joined into the one slot type.
+        self._sync_promoted_var_types(set(self.ctx.func.current_scope.bindings))
+        all_bindings = dict(self.ctx.func.current_scope.bindings)
         branch_new = set(all_bindings.keys()) - scope_before
         for h in stmt.handlers:
             if h.binding:
@@ -3382,6 +3405,11 @@ class StatementAnalyzer:
             self.ctx.func.hoisted_vars |= predecl
             self.deduction.promote_hoisted_views(predecl, branch_new - predecl)
         self.ctx.block_locals_of[stmt] = branch_new - predecl
+        self._declare_carried_in_arms(
+            [(h.body, carried - {h.binding}, bindings)
+             for h, carried, bindings in zip(
+                 stmt.handlers, handler_carried, arm_bindings[1:])],
+            predecl)
 
     def _merge_consumed_own(self, then_terminated: bool, else_terminated: bool,
                             consumed_then: set[str], consumed_else: set[str]) -> None:
@@ -4125,6 +4153,7 @@ class StatementAnalyzer:
                 e.callee_fi for e in self.ctx.func.current_call_edges
                 if e.receiver_idx == -1
             ]
+            inner_capture_sites = dict(self.ctx.func.capture_sites)
         stmt.nonlocal_names = nonlocal_names
         # After the scope restore: any later call in the enclosing function
         # may invoke this closure, killing facts for its nonlocal targets.
@@ -4142,6 +4171,15 @@ class StatementAnalyzer:
         for cap in captured:
             self.ctx.func.closure_captured_names.setdefault(
                 cap, set()).add(func.name)
+        # A lambda inside the def that reads an enclosing name reads it
+        # through the def, at the type it has here.
+        own_locals = (({p for p, _ in params}
+                       | _collect_body_local_defs(func.body)) - nonlocal_names)
+        reader = (stmt.loc.line if stmt.loc else None,
+                  f"nested function '{func.name}'")
+        for cap in [*captured, *(n for n in inner_capture_sites
+                                 if n in outer_locals and n not in own_locals)]:
+            self.ctx.func.capture_sites.setdefault(cap, reader)
 
         # Replay the closure's mutation facts into the enclosing state:
         # defining the closure conservatively counts as performing its
@@ -4377,6 +4415,45 @@ class StatementAnalyzer:
             del bindings[name]
             if self.ctx.func.current_ns is not None:
                 self.ctx.func.current_ns.unbind(name)
+
+    def _enter_sibling_arm(self, bindings_before: dict[str, TpyType],
+                           ns_types_before: dict[str, TpyType],
+                           before: 'FlowFacts',
+                           arm_only: set[str] | frozenset[str] = frozenset(),
+                           ) -> set[str]:
+        """Reset to a statement's entry state for its next sibling arm, and
+        return the names an earlier arm bound first that stay in scope.
+
+        Flow facts (narrowing, assigned-ness, borrows) go back to the entry
+        state, but the SLOT a local has does not: Python gives a local one
+        slot however many arms bind it, so every binding joins into one
+        type. A name an earlier arm bound first stays in scope, and the
+        later arm's binding goes down the ordinary reassignment join (a
+        read before that binding still errors, since assigned-ness is
+        reset); a name that existed before the statement takes its
+        canonical declaration type, which an earlier arm may have widened,
+        not its entry type. `arm_only` names the arm's pattern captures:
+        a capture keeps per-arm storage, so it is not carried.
+        """
+        bindings = self.ctx.func.current_scope.bindings
+        for name in arm_only:
+            if name not in bindings_before:
+                bindings.pop(name, None)
+        carried = set(bindings) - set(bindings_before)
+        rebound = {n for n, t in bindings_before.items()
+                   if bindings.get(n) != t}
+        bindings.update(bindings_before)
+        # A name the arm only PROMOTED is not the arm's to carry: left in
+        # scope it hides the promotion path from the next arm, which then
+        # reads a local whose assigned-ness only the promotion spells out.
+        # Keyed on the live pending table, not on what was pending before
+        # the statement: a loop inside the arm makes its body local pending
+        # there.
+        self._unbind_names(carried)
+        self._restore_ns_var_types(ns_types_before)
+        self.init.restore(before)
+        self._sync_promoted_var_types(rebound)
+        return carried & set(bindings)
 
     def _analyze_loop_orelse(self, stmt: TpyWhile | TpyForEach) -> None:
         """Analyze a loop's `else` clause as another block of the loop.
@@ -4693,35 +4770,11 @@ class StatementAnalyzer:
                     else init_expr)
             else:
                 is_owned = not self.deduction.is_view_compatible_source(init_expr, init_type)
-            # Track source storage for subscript/field views so that
-            # mutations on a source root fall the view back to the owned type.
-            # A compound source (ternary / and-or) borrows every owned-storage
-            # root reachable through its arms; mutating ANY of them must demote
-            # the view, so collect and register all roots, not just a single
-            # direct subscript/field (else a compound view silently dangles).
-            source_storages: list[str] = []
-            if not is_owned and init_expr is not None:
-                def _leaf_root(leaf: TpyExpr) -> list[str]:
-                    if isinstance(leaf, (TpySubscript, TpyFieldAccess)):
-                        root = _borrow_storage_root(leaf)
-                        if root is not None:
-                            bt = self.ctx.func.borrow_tracker
-                            return [canonical_storage_key(
-                                bt, bt.effective_storage(root))]
-                    return []
-                seen: set[str] = set()
-                for storage in walk_view_source_leaves(init_expr, _leaf_root):
-                    if storage not in seen:
-                        seen.add(storage)
-                        source_storages.append(storage)
             info = ViewVarInfo(var_id=var_id, variable_name=name,
                                decl_line=line, initialized_from_owned=is_owned,
                                frame_unsafe_source=(
                                    not is_owned
                                    and self.deduction.has_nonstatic_view_source(init_expr)))
-            vars_reg[var_id] = info
-            for storage in source_storages:
-                self.deduction.register_view_source_storage(family, var_id, storage)
 
         vars_reg[var_id] = info
         var_map[name] = var_id

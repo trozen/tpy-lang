@@ -202,6 +202,7 @@ Set aside only bullets that need the user -- those CLAUDE.md "Decide what the us
 ### 10. Execute
 
 - Apply each "Handle now" item in order. If an item turns out to need real design analysis or root-cause work (not a mechanical fix), STOP and surface to the user -- recommend invoking `/tpy-fix-bug` or `/tpy-add-feature` for that item rather than improvising.
+- The same stop applies when an item's fix would make a verdict depend on analysis or source order, or add an exception to a rule the user sees (the "Stop rule" in `/tpy-fix-bug` Phase 5): that fix is at the wrong layer. Present the missing fact and its home instead of applying the patch, even when the patch is small -- a review round's fixes are where symptom patches accumulate.
 - File each "File and defer" item into `BUGS.md` or `TODO.md` using the existing structure of each file (one-line summary, short context, `file:line` where relevant). Don't double-file.
 - Run targeted `uv run pytest -k <pattern>` for cases plausibly affected as you make changes. After all items are applied, run `uv run pytest` once to confirm nothing else regressed.
 - Snapshot churn on *existing* tests follows CLAUDE.md's snapshot policy: covered when the approved plan listed it; beyond it, neutral or improving churn is noted in the round's summary, a regression or behavior change stops for the user.

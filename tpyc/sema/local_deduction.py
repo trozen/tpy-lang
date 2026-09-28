@@ -56,6 +56,7 @@ from ..typesys import (
     unwrap_send_sync,
 )
 from .context import (PENDING_CONTAINER_TYPES, MODULE_INIT_CONTEXT,
+                      _borrow_storage_root, canonical_storage_key,
                       call_borrow_operands, call_lend_sources,
                       contains_pending_leaf)
 from ..namespace import BindingKind
@@ -315,7 +316,43 @@ class LocalTypeDeduction:
         """
         resolved = self._resolve_reassignment_target_type_raw(
             name, existing_type, init_type, init_expr, aug_op, site)
+        self.refuse_captured_retype(name, existing_type, resolved,
+                                    init_expr, site)
         return collapse_tuple_own_elements(resolved)
+
+    def refuse_captured_retype(self, name: str, existing_type: TpyType,
+                               resolved: TpyType, init_expr: TpyExpr | None,
+                               site: TpyStmt | None) -> None:
+        """Refuse a binding that changes the type of a local some nested
+        def, lambda or generator expression already reads, or of the
+        enclosing local a `nonlocal` binding writes. That body was analyzed
+        and emitted at the old type, so it would compute in the narrower
+        type over the wider value. A None-typed local becoming Optional is
+        exempt: a body can only have used it as None, which the Optional
+        still answers."""
+        func = self.ctx.func
+        site_info = func.capture_sites.get(name)
+        through_nonlocal = name in func.current_nonlocal_names
+        if site_info is None and not through_nonlocal:
+            return
+        before = unwrap_readonly(existing_type)
+        after = unwrap_readonly(resolved)
+        if before == after or isinstance(
+                before, (NoneType, IntLiteralType, FloatLiteralType)):
+            return
+        was, now = python_type_name(before), python_type_name(after)
+        if through_nonlocal:
+            msg = (f"'{name}' has type {was} in the enclosing function, and "
+                   f"this 'nonlocal' binding would make it {now}; annotate "
+                   f"its first binding there: {name}: {now}")
+        else:
+            line, reader = site_info
+            at = f" at line {line}" if line is not None else ""
+            before_line = f" before line {line}" if line is not None else ""
+            msg = (f"'{name}' is read by {reader}{at} while it has type "
+                   f"{was}, so this binding cannot make it {now}; annotate "
+                   f"its first binding{before_line}: {name}: {now}")
+        raise self.ctx.error(msg, init_expr if init_expr is not None else site)
 
     def _resolve_reassignment_target_type_raw(
         self,
@@ -1588,6 +1625,22 @@ class LocalTypeDeduction:
         if storage.split(".", 1)[0] in self.ctx.func.nested_nonlocal_rebinds:
             info.source_mutated = True
 
+    def register_view_source_storages(self, family: ViewTypeFamily, var_id: int,
+                                      expr: TpyExpr) -> None:
+        """Register every owned-storage root `expr` borrows as a source of
+        view `var_id`. A compound source (ternary / and-or) borrows every
+        root reachable through its arms."""
+        bt = self.ctx.func.borrow_tracker
+
+        def _leaf_root(leaf: TpyExpr) -> list[str]:
+            if isinstance(leaf, (TpySubscript, TpyFieldAccess)):
+                root = _borrow_storage_root(leaf)
+                if root is not None:
+                    return [canonical_storage_key(bt, bt.effective_storage(root))]
+            return []
+        for storage in walk_view_source_leaves(expr, _leaf_root):
+            self.register_view_source_storage(family, var_id, storage)
+
     def tuple_target_view_family(self, name: str) -> ViewTypeFamily | None:
         """The pending str/bytes view family of tuple-unpack target `name`, or
         None if it is not a pending-view local."""
@@ -1697,14 +1750,17 @@ class LocalTypeDeduction:
                           expr: 'TpyExpr | None', *,
                           roots: 'set[str] | None' = None,
                           replace: bool = False) -> None:
-        """Record what one binding of view `var_id` reads, for the hoist rule:
-        the roots of `expr`, or `roots` a caller resolved itself; neither is
-        a source this site cannot name. `replace` sets the entry's first
-        binding for a caller that registered it with no expression."""
+        """Record what one binding of view `var_id` reads: the owned storages
+        `expr` borrows, so a mutation of any of them demotes the view, and,
+        for the hoist rule, the roots of `expr`, or `roots` a caller resolved
+        itself; neither is a source this site cannot name. `replace` sets the
+        entry's first binding for a caller that registered it with no
+        expression."""
         info = self.ctx.view_vars(family).get(var_id)
         if info is None:
             return
         if expr is not None:
+            self.register_view_source_storages(family, var_id, expr)
             roots = self.view_hoist_roots(expr)
         if replace:
             info.hoist_roots = set()

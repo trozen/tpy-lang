@@ -244,6 +244,25 @@ void test_float_seed(bool c) {
     std::cout << "float_seed" << " " << ::tpy::print_float(total) << "\n";
 }
 
+// def test_captured_none_seed() -> None:
+//     # a nested def read the None-seeded local while it was None; the value
+//     # binding still makes it `int32 | None`, which the def reads as before
+//     x = None
+//     def g() -> None:
+//         print("captured_none_seed", x)
+//     g()
+//     x = 5  # tpyc: ok
+//     g()
+void test_captured_none_seed() {
+    std::optional<int32_t> x = std::nullopt;
+    auto g = [&x]() {
+        std::cout << "captured_none_seed" << " " << ::tpy::print_optional_val(x) << "\n";
+    };
+    g();
+    x = 5;
+    g();
+}
+
 // G: float = 1.5
 //
 // test_int_widen()
@@ -264,6 +283,7 @@ void test_float_seed(bool c) {
 // test_hint_generic_call([1.5])
 // test_hint_nested_empty()
 // test_float_seed(False)
+// test_captured_none_seed()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -289,6 +309,7 @@ void __tpy_init() {
     ::tpyapp::main::test_hint_generic_call(__tmp_1);
     ::tpyapp::main::test_hint_nested_empty();
     ::tpyapp::main::test_float_seed(false);
+    ::tpyapp::main::test_captured_none_seed();
 }
 
 } // namespace tpyapp::main

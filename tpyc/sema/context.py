@@ -1993,6 +1993,10 @@ class FunctionTrackingState:
     # last-use walk loses at a `return` (it clears the live set), so an alias
     # bind of the name must not move it while one of them is still live.
     closure_captured_names: dict[str, set[str]] = field(default_factory=dict)
+    # Captured name -> (line, phrase naming the reader) of the first nested
+    # def, lambda or generator expression that reads it. That body was
+    # analyzed at the name's type then, so no later binding may change it.
+    capture_sites: dict[str, tuple[int | None, str]] = field(default_factory=dict)
     nested_def_names: set[str] = field(default_factory=set)
     nested_def_escapes: set[str] = field(default_factory=set)
     nested_def_nodes: dict[str, 'TpyNestedDef'] = field(default_factory=dict)

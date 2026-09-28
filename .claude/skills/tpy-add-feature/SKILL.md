@@ -184,6 +184,21 @@ one real difference at the single site that consumes it. If the shared
 path cannot take it within this unit, that is a finding to present, not
 a reason to fork.
 
+**Stop rule: a fix that adds an ordering dependence or a rule exception is
+at the wrong layer.** Before sketching further, check the change against
+what a user must learn to predict the behaviour. If the fix makes a verdict
+depend on analysis or source ORDER (which binding came first, which arm is
+analyzed last, whether a use sits before or after a loop back edge or a
+closure), or adds an exception or special case to a rule the user sees
+(a refusal that fires only when X was read earlier, an exemption for one
+seed shape), the root cause is a fact decided at the wrong layer -- usually
+something single-pass, flow-ordered analysis cannot know yet. Do not add
+the patch. Name the missing fact and its home (a whole-function pass, the
+Phase-2 fixpoint, a slot verdict, a MIR Place), present that unit as the
+fix, and file the symptoms under it. The language rule a user reads should
+stay one sentence; everything the implementation cannot yet honour goes in
+a "current limitations" list pointing at that unit, never into the rule.
+
 ## Phase 4: Plan tests and docs
 
 **Tests:**

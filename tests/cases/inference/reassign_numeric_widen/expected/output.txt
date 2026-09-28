@@ -16,3 +16,5 @@ hint_lambda 2.0
 hint_generic [2.5] [1.5]
 hint_nested_empty {'b': [2.5]}
 float_seed 1.5
+captured_none_seed None
+captured_none_seed 5

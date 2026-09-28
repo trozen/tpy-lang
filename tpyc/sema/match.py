@@ -258,6 +258,8 @@ class MatchAnalyzer:
         arm_consumed: list[tuple[set[str], bool]] = []  # (consumed_set, terminated)
         rebound_captures: set[str] = set()
         capture_bind_types: dict[str, list[TpyType | None]] = {}
+        prev_arm_captures: set[str] = set()
+        arm_carried: list[set[str]] = []
 
         for case in stmt.cases:
             if had_wildcard or saw_irrefutable_arm:
@@ -285,11 +287,10 @@ class MatchAnalyzer:
                         "unreachable case: every non-None value is already "
                         "matched by an earlier arm", case.pattern
                     )
-            # Restore state to pre-match for each arm
-            self.stmts.init.restore(before)
+            carried = self.stmts._enter_sibling_arm(
+                bindings_before, ns_types_before, before,
+                arm_only=prev_arm_captures)
             self.ctx.func.current_consumed_own_params = consumed_before.copy()
-            self.ctx.func.current_scope.bindings = dict(bindings_before)
-            self.stmts._restore_ns_var_types(ns_types_before)
 
             pattern_bindings: dict[str, TpyType] = {}
             # Guarded cases don't consume types/values for duplicate detection,
@@ -454,6 +455,8 @@ class MatchAnalyzer:
                     and isinstance(stmt.subject, (TpyFieldAccess, TpySubscript))):
                 self._warn_arm_subject_mutation(case, stmt.subject)
 
+            prev_arm_captures = set(pattern_bindings)
+            arm_carried.append(carried - prev_arm_captures)
             arm_states.append(self.stmts.init.save())
             arm_consumed.append((self.ctx.func.current_consumed_own_params.copy(), self.ctx.func.init_terminated))
             arm_bindings.append(dict(self.ctx.func.current_scope.bindings))
@@ -583,6 +586,7 @@ class MatchAnalyzer:
                 if name not in bindings_before:
                     self.ctx.func.current_scope.define(name, ty)
                     self.ctx.func.nonstmt_bound_names.add(name)
+        self.stmts._merge_arm_readonly(arm_bindings)
 
         self.stmts._sync_promoted_var_types(
             set().union(*(set(b) for b in arm_bindings))
@@ -608,12 +612,14 @@ class MatchAnalyzer:
         # hoisted slot; a name bound at different types per arm (`case
         # Cat(lives=v)` int / `case Dog(nick=v)` str) must keep its per-arm
         # block-scoped binding, or both arms would assign into one wrongly
-        # typed decl.
-        hoistable = {
-            n for n in rebound_captures
-            if all(t == capture_bind_types[n][0] for t in capture_bind_types[n])
+        # typed decl -- which holds for the post-match hoist above too.
+        agreeing = {
+            n for n, ts in capture_bind_types.items()
+            if all(t == ts[0] for t in ts)
         }
+        hoistable = rebound_captures & agreeing
         self._reject_nested_capture_retype(stmt, hoistable, capture_bind_types)
+        predecl -= set(capture_bind_types) - agreeing
         predecl |= ((hoistable & set(self.ctx.func.current_scope.bindings))
                     - self.ctx.func.global_declarations)
         if predecl:
@@ -623,6 +629,10 @@ class MatchAnalyzer:
             })
             self.stmts.deduction.promote_hoisted_views(predecl, arm_new - predecl)
         self.ctx.block_locals_of[stmt] = arm_new - predecl
+        self.stmts._declare_carried_in_arms(
+            [(case.body, carried, bindings) for case, carried, bindings
+             in zip(stmt.cases, arm_carried, arm_bindings)],
+            predecl)
 
     def _reject_nested_capture_retype(
         self, stmt: TpyMatch, hoistable: set[str],
@@ -632,8 +642,8 @@ class MatchAnalyzer:
         type. The arms' own disagreement keeps a name block-scoped, but a
         nested match binds the same enclosing local, so the two would share one
         slot: C++ then truncates silently wherever an implicit conversion
-        exists (int32 <- int64) instead of failing. The cross-arm shape is
-        already rejected, so this closes the same hole on the nested route.
+        exists (int32 <- int64) instead of failing. Sibling arms do not share
+        a slot (a flat capture keeps per-arm storage); a nested match does.
         """
         def nested_binds(
             body: list[TpyStmt],

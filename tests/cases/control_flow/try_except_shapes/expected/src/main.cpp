@@ -89,14 +89,14 @@ namespace tpyapp::main {
             r = ::tpyapp::main::boom(n);
         } catch (const ::tpy::ValueError&) {
             std::cout << "ve" << "\n";
-            r = -1;
+            r = ::tpy::BigInt(-1);
             goto __after_else_1;
         }
         // else:
         std::cout << "else" << " " << r << "\n";
         __after_else_1:;
     }
-    return ::tpy::BigInt(r);
+    return r;
 }
 
 // def with_finally(n: int) -> int:

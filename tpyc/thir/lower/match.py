@@ -1593,11 +1593,8 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
             declared[name] = vtype
             _witness("match.hoist_opt_ptr_local")
             continue
-        declared[name] = vtype
-        render_src = (_resolved_str_value(vtype, lc.analyzer)
-                      or _resolved_bytes_value(vtype, lc.analyzer)
-                      or vtype)
-        hoist_decls.append((name, lc.render_type(render_src)))
+        hoist_decls.append(
+            _statements._value_hoist_entry(name, vtype, declared, lc))
     if hoist_decls:
         _witness("match.hoist_decl")
     if kind == "switch_union":

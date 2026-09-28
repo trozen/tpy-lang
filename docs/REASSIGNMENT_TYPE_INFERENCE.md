@@ -95,10 +95,20 @@ Rules:
    `1.0` spelling, `x: float = 1` converts. Floats widen among themselves.
 5. `None` may lift numeric result to optional.
    - `x = None; x = 123` -> `int | None`
+   - That first value binding fixes the inner type: `x = None; x = 3; x = big`
+     (`big: int64`) is refused (`expected int32, got int64`); annotate
+     `x: int64 | None` (`BUGS.md#optional-int-widening-refused`).
 6. Augmented assignment is not an anchoring operation.
    - `x = 0; x += int32(5)` keeps `x` as `int` (`BigInt`) and emits a warning.
    - `x = 0; x += make_i32()` behaves the same when `make_i32() -> int32`.
    - Explicit `int` anchors (`x: int = 0`, `x = int(0)`) suppress this warning.
+7. A binding may not change the type of a local that a nested def, lambda or
+   generator expression already reads, nor may a `nonlocal` binding change the
+   enclosing function's local: that body was analyzed at the old type.
+   - `x = 3; def g(): print(x + 1)` then `x = big` (`big: int64`) is an error
+     naming the reader and the annotation `x: int64`.
+   - A None-seeded local a body read while it was `None` may still become
+     `T | None`: `x = None; def g(): print(x)` then `x = 5` -> `int | None`.
 
 ### Bool
 
