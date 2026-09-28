@@ -11,3 +11,4 @@ True
 negfd-ValueError
 b'abc'
 closefd-ok
+read-all 20480 True

@@ -421,28 +421,95 @@ int32_t BytesIO::truncate(int32_t size) {
     return n;
 }
 
+// def __init__(self, raw: Own[RawBinaryIO],
+//              buffer_size: int32 = DEFAULT_BUFFER_SIZE) -> None:
+//     # `_raw` is non-default-constructible, so it must be assigned before
+//     # any other statement (the buffer_size guard) runs.
+//     self._raw = Box(raw)
+//     self._buf = b""
+//     self._pos = 0
+//     self._eof = False
+//     self._buffer_size = buffer_size
+//     self._closed = False
+//     if buffer_size <= 0:
+//         raise ValueError("buffer size must be strictly positive")
+BufferedReader::BufferedReader(std::unique_ptr<RawBinaryIO> raw, int32_t buffer_size) : _raw(::tpystd::tplib::box::Box<RawBinaryIO>(std::move(raw))), _buf(::tpy::Bytes{}), _pos(0), _eof(false), _buffer_size(buffer_size), _closed(false) {
+    if ((buffer_size <= 0)) {
+        throw ::tpy::ValueError("buffer size must be strictly positive");
+    }
+}
+
+// def _fill(self, want: int32, to_newline: bool) -> None:
+//     """Read raw chunks until `want` bytes are unread (`want < 0`: until
+//     EOF), or with `to_newline` until a chunk brings a newline."""
+//     if self._eof:
+//         return
+//     have = self._available()
+//     # Appended, not a one-element literal, so the leftover is moved in
+//     # (BUGS.md#list-literal-owned-elem-initializer-copy).
+//     parts: list[bytes] = []
+//     parts.append(bytes(self._buf[self._pos:]))
+//     while want < 0 or have < want:
+//         chunk = self._raw.read(self._buffer_size)
+//         if len(chunk) == 0:
+//             self._eof = True
+//             break
+//         have += len(chunk)
+//         found = to_newline and chunk.find(b"\n") >= 0
+//         parts.append(chunk)
+//         if found:
+//             break
+//     self._buf = b"".join(parts)
+//     self._pos = 0
+void BufferedReader::_fill(int32_t want, bool to_newline) {
+    if (this->_eof) {
+        return;
+    }
+    int32_t have = this->_available();
+    std::vector<::tpy::Bytes> parts = std::vector<::tpy::Bytes>{};
+    parts.push_back(::tpy::Bytes(::tpy::bytes_slice(this->_buf, ::tpy::BasicSlice{this->_pos, std::nullopt})));
+    while (((want < 0) || (have < want))) {
+        ::tpy::Bytes chunk = this->_raw.__deref__().read(this->_buffer_size);
+        if ((::tpy::__len__(chunk) == 0)) {
+            this->_eof = true;
+            break;
+        }
+        have = ::tpy::add_check<int32_t>(have, ::tpy::__len__(chunk));
+        bool found = (to_newline && (::tpy::bytes_find(chunk, ::tpy::bytes_literal("\n", 1)) >= 0));
+        parts.push_back(chunk);
+        if (found) {
+            break;
+        }
+    }
+    this->_buf = ::tpy::bytes_join(::tpy::Bytes{}, parts);
+    this->_pos = 0;
+}
+
 // def read(self, size: int32 = -1) -> bytes:
+//     # CPython validates the length before the closed state.
+//     if size < -1:
+//         raise ValueError("read length must be non-negative or -1")
 //     self._check_open()
 //     if size < 0:
-//         while not self._eof:
-//             self._fill()
-//         return self._take(len(self._buf))
-//     while len(self._buf) < size and not self._eof:
-//         self._fill()
-//     take = size if size < len(self._buf) else len(self._buf)
+//         self._fill(-1, False)
+//         return self._take(self._available())
+//     if self._available() < size:
+//         self._fill(size, False)
+//     take = size if size < self._available() else self._available()
 //     return self._take(take)
 ::tpy::Bytes BufferedReader::read(int32_t size) {
+    if ((size < -1)) {
+        throw ::tpy::ValueError("read length must be non-negative or -1");
+    }
     this->_check_open();
     if ((size < 0)) {
-        while ((!(this->_eof))) {
-            this->_fill();
-        }
-        return this->_take(::tpy::__len__(this->_buf));
+        this->_fill(-1, false);
+        return this->_take(this->_available());
     }
-    while (((::tpy::__len__(this->_buf) < size) && (!(this->_eof)))) {
-        this->_fill();
+    if ((this->_available() < size)) {
+        this->_fill(size, false);
     }
-    int32_t take = (((size < ::tpy::__len__(this->_buf))) ? (size) : (::tpy::__len__(this->_buf)));
+    int32_t take = (((size < this->_available())) ? (size) : (this->_available()));
     return this->_take(take);
 }
 
@@ -450,22 +517,22 @@ int32_t BytesIO::truncate(int32_t size) {
 //     """Read through the next `\\n` (included) or EOF; at most `size`
 //     bytes when `size >= 0`. Matches CPython's BufferedReader.readline."""
 //     self._check_open()
-//     idx = self._buf.find(b"\n")
-//     while idx < 0 and not self._eof and (size < 0 or len(self._buf) < size):
-//         self._fill()
-//         idx = self._buf.find(b"\n")
-//     stop = idx + 1 if idx >= 0 else len(self._buf)
+//     idx = self._newline_at()
+//     if idx < 0 and (size < 0 or self._available() < size):
+//         self._fill(size, True)
+//         idx = self._newline_at()
+//     stop = idx + 1 if idx >= 0 else self._available()
 //     if size >= 0 and size < stop:
 //         stop = size
 //     return self._take(stop)
 ::tpy::Bytes BufferedReader::readline(int32_t size) {
     this->_check_open();
-    int32_t idx = ::tpy::bytes_find(this->_buf, ::tpy::bytes_literal("\n", 1));
-    while ((((idx < 0) && (!(this->_eof))) && ((size < 0) || (::tpy::__len__(this->_buf) < size)))) {
-        this->_fill();
-        idx = ::tpy::bytes_find(this->_buf, ::tpy::bytes_literal("\n", 1));
+    int32_t idx = this->_newline_at();
+    if (((idx < 0) && ((size < 0) || (this->_available() < size)))) {
+        this->_fill(size, true);
+        idx = this->_newline_at();
     }
-    int32_t stop = (((idx >= 0)) ? ((::tpy::add_check<int32_t>(idx, 1))) : (::tpy::__len__(this->_buf)));
+    int32_t stop = (((idx >= 0)) ? ((::tpy::add_check<int32_t>(idx, 1))) : (this->_available()));
     if (((size >= 0) && (size < stop))) {
         stop = size;
     }

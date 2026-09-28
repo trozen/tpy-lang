@@ -18,6 +18,7 @@
 #include <tpy/stdlib/socket_h.hpp>
 #include <tpy/stdlib/termios_h.hpp>
 #include <tpy/stdlib/tz_intern.hpp>
+#include "tpystd/_bindings/zlib.hpp"
 #include "tpystd/_datetime_cal/_datetime_cal.hpp"
 #include "tpystd/_datetime_fmt/_datetime_fmt.hpp"
 #include "tpystd/_datetime_parse/_datetime_parse.hpp"
@@ -30,6 +31,7 @@
 #include "tpystd/datetime.hpp"
 #include "tpystd/errno_mod.hpp"
 #include "tpystd/functools.hpp"
+#include "tpystd/gzip.hpp"
 #include "tpystd/hashlib.hpp"
 #include "tpystd/heapq.hpp"
 #include "tpystd/http.hpp"
@@ -67,6 +69,7 @@
 #include "tpystd/urllib.hpp"
 #include "tpystd/urllib/parse.hpp"
 #include "tpystd/urllib/request.hpp"
+#include "tpystd/zlib.hpp"
 #include "tpystd/zoneinfo.hpp"
 
 namespace tpyapp::main {

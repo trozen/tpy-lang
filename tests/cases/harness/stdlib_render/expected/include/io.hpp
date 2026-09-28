@@ -297,6 +297,8 @@ struct BufferedReader {
     ::tpystd::tplib::box::Box<RawBinaryIO> _raw;
     // _buf: bytes
     ::tpy::Bytes _buf;
+    // _pos: int32
+    int32_t _pos;
     // _eof: bool
     bool _eof;
     // _buffer_size: int32
@@ -313,8 +315,14 @@ struct BufferedReader {
     BufferedReader(BufferedReader&&) = default;
     BufferedReader& operator=(BufferedReader&&) = default;
 
-    // def _fill(self) -> None:
-    void _fill();
+    // def _available(self) -> int32:
+    int32_t _available() const;
+
+    // def _newline_at(self) -> int32:
+    int32_t _newline_at() const;
+
+    // def _fill(self, want: int32, to_newline: bool) -> None:
+    void _fill(int32_t want, bool to_newline);
 
     // def _take(self, n: int32) -> bytes:
     ::tpy::Bytes _take(int32_t n);
@@ -812,23 +820,25 @@ inline ::tpy::Bytes FileIO::read(int32_t size) const {
 }
 
 // def _readall(self) -> bytes:
-//     out: bytes = b""
+//     # Join once at the end: appending each chunk would copy the whole
+//     # result per chunk.
+//     chunks: list[bytes] = []
 //     while True:
-//         chunk: bytes = self._os_read(int64(DEFAULT_BUFFER_SIZE))
+//         chunk = self._os_read(int64(DEFAULT_BUFFER_SIZE))
 //         if len(chunk) == 0:
 //             break
-//         out = out + chunk
-//     return out
+//         chunks.append(chunk)
+//     return b"".join(chunks)
 inline ::tpy::Bytes FileIO::_readall() const {
-    ::tpy::Bytes out = ::tpy::Bytes{};
+    std::vector<::tpy::Bytes> chunks = std::vector<::tpy::Bytes>{};
     while (true) {
         ::tpy::Bytes chunk = this->_os_read(::tpy::int_cast_check<int64_t>(DEFAULT_BUFFER_SIZE));
         if ((::tpy::__len__(chunk) == 0)) {
             break;
         }
-        out = (::tpy::bytes_concat(out, chunk));
+        chunks.push_back(chunk);
     }
-    return out;
+    return ::tpy::bytes_join(::tpy::Bytes{}, chunks);
 }
 
 // def _os_read(self, n: int64) -> bytes:
@@ -911,47 +921,35 @@ inline void FileIO::_check_open() const {
     }
 }
 
-// def __init__(self, raw: Own[RawBinaryIO],
-//              buffer_size: int32 = DEFAULT_BUFFER_SIZE) -> None:
-//     # `_raw` is non-default-constructible, so it must be assigned before
-//     # any other statement (the buffer_size guard) runs.
-//     self._raw = Box(raw)
-//     self._buf = b""
-//     self._eof = False
-//     self._buffer_size = buffer_size
-//     self._closed = False
-//     if buffer_size <= 0:
-//         raise ValueError("buffer size must be strictly positive")
-inline BufferedReader::BufferedReader(std::unique_ptr<RawBinaryIO> raw, int32_t buffer_size) : _raw(::tpystd::tplib::box::Box<RawBinaryIO>(std::move(raw))), _buf(::tpy::Bytes{}), _eof(false), _buffer_size(buffer_size), _closed(false) {
-    if ((buffer_size <= 0)) {
-        throw ::tpy::ValueError("buffer size must be strictly positive");
-    }
+// def _available(self) -> int32:
+//     return len(self._buf) - self._pos
+inline int32_t BufferedReader::_available() const {
+    return (::tpy::sub_check<int32_t>(::tpy::__len__(this->_buf), this->_pos));
 }
 
-// def _fill(self) -> None:
-//     chunk = self._raw.read(self._buffer_size)
-//     if len(chunk) == 0:
-//         self._eof = True
-//     else:
-//         self._buf = self._buf + chunk
-inline void BufferedReader::_fill() {
-    ::tpy::Bytes chunk = this->_raw.__deref__().read(this->_buffer_size);
-    if ((::tpy::__len__(chunk) == 0)) {
-        this->_eof = true;
-    } else {
-        this->_buf = (::tpy::bytes_concat(this->_buf, chunk));
-    }
+// def _newline_at(self) -> int32:
+//     # Index of the first unread `\n`, relative to `_pos`; -1 if none.
+//     # bytes.find takes no start argument (BUGS.md#str-search-start-end-args),
+//     # so search the unread view.
+//     return self._buf[self._pos:].find(b"\n")
+inline int32_t BufferedReader::_newline_at() const {
+    return ::tpy::bytes_find(::tpy::bytes_slice(this->_buf, ::tpy::BasicSlice{this->_pos, std::nullopt}), ::tpy::bytes_literal("\n", 1));
 }
 
 // def _take(self, n: int32) -> bytes:
-//     # Materialize the owned head before reassigning `_buf` (a slice is a
-//     # borrow into the old buffer).
-//     head = bytes(self._buf[:n])
-//     self._buf = bytes(self._buf[n:])
+//     head = bytes(self._buf[self._pos:self._pos + n])
+//     self._pos += n
+//     if self._pos == len(self._buf):
+//         self._buf = b""
+//         self._pos = 0
 //     return head
 inline ::tpy::Bytes BufferedReader::_take(int32_t n) {
-    ::tpy::Bytes head = ::tpy::Bytes(::tpy::bytes_slice(this->_buf, ::tpy::BasicSlice{std::nullopt, n}));
-    this->_buf = ::tpy::Bytes(::tpy::bytes_slice(this->_buf, ::tpy::BasicSlice{n, std::nullopt}));
+    ::tpy::Bytes head = ::tpy::Bytes(::tpy::bytes_slice(this->_buf, ::tpy::BasicSlice{this->_pos, (::tpy::add_check<int32_t>(this->_pos, n))}));
+    this->_pos = ::tpy::add_check<int32_t>(this->_pos, n);
+    if ((this->_pos == ::tpy::__len__(this->_buf))) {
+        this->_buf = ::tpy::Bytes{};
+        this->_pos = 0;
+    }
     return head;
 }
 
@@ -986,11 +984,13 @@ inline bool BufferedReader::readable() const {
 //         self._closed = True
 //         self._raw.close()
 //         self._buf = b""
+//         self._pos = 0
 inline void BufferedReader::close() {
     if ((!(this->_closed))) {
         this->_closed = true;
         this->_raw.__deref__().close();
         this->_buf = ::tpy::Bytes{};
+        this->_pos = 0;
     }
 }
 

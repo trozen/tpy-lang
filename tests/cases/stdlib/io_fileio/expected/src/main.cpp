@@ -52,6 +52,13 @@ int64_t feed(::tpy::BytesView data) {
 //     g.close()
 //     os.close(fd)
 //     print("closefd-ok")
+//
+//     # read(-1) over more than one 8192-byte raw read.
+//     payload = bytes(range(256)) * 80
+//     big = FileIO(feed(payload))
+//     got = big.read()
+//     print("read-all", len(got), got == payload)
+//     big.close()
 void main() {
     ::tpystd::io::FileIO f = ::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("hello world", 11)));
     std::cout << ::tpy::print_bool((f.fileno() >= 0)) << "\n";
@@ -92,6 +99,11 @@ void main() {
     g.close();
     ::tpystd::os::close(fd);
     std::cout << "closefd-ok" << "\n";
+    ::tpy::Bytes payload = (::tpy::bytes_repeat(::tpy::bytes_from_int_iterable(::tpy::Range<int32_t>(256)), 80));
+    ::tpystd::io::FileIO big = ::tpystd::io::FileIO(::tpyapp::main::feed(payload));
+    ::tpy::Bytes got = big.read();
+    std::cout << "read-all" << " " << ::tpy::__len__(got) << " " << ::tpy::print_bool((got == payload)) << "\n";
+    big.close();
 }
 
 // # io.FileIO raw layer over a pipe fd: read(size) issues a single os.read,

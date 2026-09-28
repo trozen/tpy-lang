@@ -12,6 +12,7 @@ import _bindings.posix_signal
 import _bindings.posix_socket
 import _bindings.posix_termios
 import _bindings.tz_intern
+import _bindings.zlib
 import _datetime_cal
 import _datetime_fmt
 import _datetime_parse
@@ -25,6 +26,7 @@ import csv
 import datetime
 import errno
 import functools
+import gzip
 import hashlib
 import heapq
 import http
@@ -93,6 +95,7 @@ import typing
 import urllib
 import urllib.parse
 import urllib.request
+import zlib
 import zoneinfo
 
 

@@ -177,8 +177,9 @@ def _factories() -> dict[str, Callable[[Path], ThirdPartyLib]]:
         from . import pcre2 as _pcre2
         from . import mbedtls as _mbedtls
         from . import date as _date
+        from . import zlib as _zlib
         _FACTORIES = {"pcre2": _pcre2.factory, "mbedtls": _mbedtls.factory,
-                      "date": _date.factory}
+                      "date": _date.factory, "zlib": _zlib.factory}
     return _FACTORIES
 
 
