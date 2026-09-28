@@ -4,96 +4,41 @@ The milestone slice of `TODO.md`. Short bullets only -- each item's full
 entry lives in the file it points to (search the quoted phrase there).
 When a release ships, delete its section and promote the next one.
 
-## Cadence and gate
+## Cadence and readiness gate
 
-A soft trigger, not a deadline: start preparing a release once a cycle
-has about 200-300 commits on `master` or 4-6 weeks have passed,
-whichever comes first. Dates below are aims.
+A release is a dated checkpoint of `master`: it ships what has merged by
+the date. Trigger: about 200-300 commits or 4-6 weeks since the last tag.
 
-- **Preparing a release** means triaging its bug gate. The release ships
-  when that list is clear; work on `master` does not pause for it.
-- **Features are targets, not gates.** What has merged when the gate
-  clears ships; the rest moves to the next release.
-- **The bug gate is a fixed list, triaged when preparation starts** --
-  not the `IMM` / `HIGH` tags, which stay a fix priority. It holds:
-  - regressions since the previous release;
-  - compiler crashes on valid code;
-  - silent miscompiles on everyday shapes.
+Readiness gate, run from the commit to be tagged:
 
-  Every other open defect ships as a known limitation in the release
-  notes. A defect filed later joins the gate only if it is one of the
-  three kinds above.
-- **Regression check:** at triage and again just before tagging, re-run
-  the open `BUGS.md` entries' shapes and the example corpus (`examples/`,
-  `../tpy-examples`) against the previous release tag, in a worktree of
-  that tag, and mark each hit `REGRESSION since vX.Y.Z` in its headline.
+- full suite green with `--force-exec`;
+- `examples/` and `tpy-examples` compile and run CPython-identical;
+- clean-venv install smoke, `_buildinfo` stamp, private-name scan;
+- notes written: a Migration list for breaking changes, known
+  limitations as classes.
 
-## 0.6.0 (ships when the gate below clears; aim early October 2026)
+Defects are fix priorities, not release criteria. Tag after the release
+commit (annotated; the build hook bakes `git describe`), then
+`uv build --wheel` + `uv publish`.
 
-Bug gate, triaged 2026-09-25. Every entry is a regression since v0.5.0
-unless marked otherwise. Batched by likely shared cause; each batch is one
-`/tpy-fix-bug` unit, and the batches are independent of each other.
+## 0.6.0 (aim 2026-09-30)
 
-- **B -- dropped null checks** (both segfault where v0.5.0 kept the
-  `deref_check`; likely one cause):
-  - `optional-list-elem-decl-drops-deref-check`
-  - `unnarrowed-optional-elem-field-read`
-- **E -- lowering rejects and crashes** (mostly THIR lowering arms):
-  - `tuple-ref-element-container-field-read`
-  - `thir-int-methodarg-shift-not-folded` (needs one spelling rule for
-    integer literals first -- TODO: "One spelling rule for integer
-    literals")
-- **A -- generators** (frame-local declaration and narrowing):
-  - `gen-finally-local-assign-internal-error` (crash)
-  - `generator-optional-match-arm-not-narrowed`
-  - `generator-arg-view-temp-hoist-dangles` -- not a regression: v0.5.0
-    warned, master is silent
-- **D -- moves past a last use** (liveness and rebind; overlaps the
-  liveness work landing on `master` since 2026-09-25, so start it once that
-  settles):
-  - `comp-element-move-inside-loop`
-  - `finally-rebind-eager-move-alias-read`
-  - `foreach-rebound-name-reiterated`
-  - `nested-list-literal-alias-rebind-clobbers`
-  - `lambda-body-reads-invisible-to-liveness` -- not a regression: a
-    value moved at its "last use" before a lambda that reads it (added
-    2026-09-27)
-- **C -- loop variable reuse** (added 2026-09-27; not a regression):
-  - `head-first-loop-var-then-head-uninitialized` -- needs
-    `for-head-rebind-of-reference-local-rejected` and
-    `str-local-rebound-by-for-head-rejected` first, so the head can bind
-    without rejecting today's correct programs
-- **F -- sibling-arm joins** (added 2026-09-28): `match` arms and `except`
-  handlers now join a local's bindings, so programs v0.5.0 compiled only
-  because the wider arm came last are refused (the reverse order was a
-  silent truncation there); the regressions:
-  - `optional-int-widening-refused` (the arm forms)
-  - `tuple-element-int-widening-refused` (narrower arm first)
-  - `carried-arm-name-loop-binding-unassigned` (`match` / `except` faces)
-  - `alias-rebind-over-fresh-list-rejected` (the `except` face)
-  - not regressions, the binding forms the join does not reach yet:
-    `sibling-arm-loop-target-not-joined`, `walrus-rebind-never-widens`,
-    `match-capture-wider-than-arm-binding-truncates`
-- **Decision first:** `c-abi-allowlist-overshoot` -- the C-ABI allow-list
-  as "C-spellable" or "ABI-compatible"; until decided it ships as a known
-  limitation.
+Breaking:
 
-Shipped:
+- Scalar types lowercase: `Int32` -> `int32`, `UInt8` -> `uint8`,
+  `Float32` -> `float32`, `Float64` -> `float64`, `Char` -> `char`.
+- Body codegen is THIR only; unlowered shapes are compile errors --
+  TODO: "The post-cutover fix queue: shapes that are now compile errors".
 
-- THIR migration (fallback -> 0, then the AST-codegen deletion).
-  Residual track: TODO: "The post-cutover fix queue: shapes that are now
-  compile errors"
-- Methods on enums (instance, `@staticmethod`, `@classmethod`; covers
-  `Color.from_str`) -- TODO: "Methods on enums"
-- Interop: Optional/None at the `@export` boundary (param + return, and
-  value-form fields) -- `docs/CPYTHON_INTEROP.md` type table
-- Tuples: the U1 silent-divergence work merged so far --
-  `docs/TUPLE_COMPLETION_PLAN.md`
+Shipped: THIR cutover and AST-codegen deletion; methods on enums;
+interop Optional at the `@export` boundary; tuples U1
+(`docs/TUPLE_COMPLETION_PLAN.md`); sibling-arm joins; liveness exit
+edges; `zlib`, `gzip`, `termios`, `tty`; `pytest-hosts`.
 
-Target (ships if merged when the gate clears):
-
-- `collections.defaultdict` -- TODO: "collections: the rest of the
-  module"
+Known limitations: the `HIGH` entries of `BUGS.md` -- moves past a last
+use, multi-hop alias rebinds, dropped Optional null checks, frame view
+dangles, tuple reference elements, unlowered THIR shapes, unfolded int
+literals at method arguments, the C-ABI allow-list overshoot.
 
 ## 0.7.0 (prepared when the trigger above fires after 0.6.0)
 
@@ -107,7 +52,9 @@ Carried from 0.6.0:
   "Iterating a tuple"
 - Nested / multi-`for` comprehensions (list/dict/set + genexprs) --
   TODO: "Nested comprehensions"
-- `collections.defaultdict`, if it misses 0.6.0
+- `collections.defaultdict` -- TODO: "collections: the rest of the
+  module"
+- The 0.6.0 known limitations, silent miscompiles first
 
 Queue (triage at 0.7 planning; not commitments):
 
