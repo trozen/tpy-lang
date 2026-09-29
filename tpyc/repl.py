@@ -14,6 +14,7 @@ from __future__ import annotations
 import ast
 import atexit
 import difflib
+import re
 import readline  # For history support
 import shutil
 import sys
@@ -33,6 +34,44 @@ from .codegen_cpp.context import get_include_path
 from .repl_backends import (
     REPLBackend, BackendResult, ReplBuildDeps, detect_backend, _fmt_ms,
 )
+
+
+_EDITLINE_HEADER = "_HiStOrY_V2_"
+
+
+def _load_history(path: Path) -> None:
+    # Two readline backends write two file formats and neither reads the
+    # other's: editline (uv-managed CPython 3.13+, macOS) rejects GNU
+    # readline's plain lines with EINVAL, and GNU readline takes editline's
+    # header and octal escapes literally. A file the native reader cannot
+    # take is loaded line by line instead, so the history survives a switch.
+    try:
+        head = path.read_text(errors="replace")
+    except OSError:
+        return
+    foreign = head.startswith(_EDITLINE_HEADER) and \
+        getattr(readline, "backend", "readline") != "editline"
+    if not foreign:
+        try:
+            readline.read_history_file(path)
+            return
+        except OSError:
+            pass
+    for line in head.splitlines():
+        if line == _EDITLINE_HEADER:
+            continue
+        line = re.sub(r"\\([0-7]{3})", lambda m: chr(int(m.group(1), 8)), line)
+        if line:
+            readline.add_history(line)
+
+
+def _write_history(path: Path) -> None:
+    # History is best-effort: an unwritable HOME is not worth a traceback at
+    # interpreter exit.
+    try:
+        readline.write_history_file(path)
+    except OSError:
+        pass
 
 
 class REPLSession:
@@ -130,12 +169,9 @@ class REPLSession:
     def _setup_readline(self) -> None:
         """Configure readline for history."""
         history_path = Path.home() / ".tpyc_history"
-        try:
-            readline.read_history_file(history_path)
-        except FileNotFoundError:
-            pass
+        _load_history(history_path)
         readline.set_history_length(1000)
-        atexit.register(readline.write_history_file, history_path)
+        atexit.register(_write_history, history_path)
 
     def _read_paste_mode(self) -> str | None:
         """Read multiline input in paste mode. Returns None if cancelled."""

@@ -33,7 +33,7 @@ def get_docs_dir() -> Path:
 
 # Defined before sub-module imports so that macro_api (imported via sema)
 # can re-export them without hitting a circular-import partial-init state.
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 
 # Lives here (not compiler.py) so the CLI's argument parser can offer the
 # choices without importing the compiler machinery.

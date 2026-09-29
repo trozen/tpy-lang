@@ -4,13 +4,15 @@ The REPL writes each module's generated .hpp/.cpp to disk and hands the paths
 to a build backend. The headers must land at exactly the path codegen baked
 into the `#include` directives, or the build fails with "No such file".
 """
+import errno
+import readline
 from pathlib import Path
 
 from . import get_lib_dir
 from .compilation_context import activate_compiler
 from .codegen_cpp.context import module_to_include_path
 from .compiler import Compiler
-from .repl import REPLSession
+from .repl import REPLSession, _load_history, _write_history
 from .repl_backends import BackendResult, REPLBackend, ReplBuildDeps
 
 
@@ -243,3 +245,48 @@ def test_repl_writes_inline_generator_bodies_beside_the_header():
         f"{sorted(str(p) for p in backend.hpp_paths)}"
     )
     assert "__next__" in inl.read_text()
+
+
+
+def test_setup_readline_survives_unparseable_history(monkeypatch, tmp_path):
+    # editline (uv-managed CPython 3.13+, macOS) raises EINVAL on a history
+    # file GNU readline wrote; the REPL must start with that history loaded
+    # line by line, not die before its first prompt.
+    registered: list[tuple] = []
+    monkeypatch.setattr("tpyc.repl.Path.home", lambda: tmp_path)
+    (tmp_path / ".tpyc_history").write_text("x = 1\nprint(x)\n")
+    session = REPLSession(lib_dirs=_lib_dirs())
+
+    def refuse(path):
+        raise OSError(errno.EINVAL, "Invalid argument")
+
+    monkeypatch.setattr("tpyc.repl.readline.read_history_file", refuse)
+    monkeypatch.setattr("tpyc.repl.atexit.register",
+                        lambda *a: registered.append(a))
+    readline.clear_history()
+    try:
+        session._setup_readline()
+        assert readline.get_history_item(readline.get_current_history_length()) == "print(x)"
+    finally:
+        readline.clear_history()
+        session.cleanup()
+    assert any(len(a) > 1 and a[1] == tmp_path / ".tpyc_history"
+               for a in registered)
+
+
+def test_load_history_reads_editline_file_under_gnu_readline(monkeypatch, tmp_path):
+    # GNU readline would take editline's header and octal escapes literally.
+    path = tmp_path / ".tpyc_history"
+    path.write_text("_HiStOrY_V2_\nx\\040=\\0401\nprint(x)\n")
+    monkeypatch.setattr("tpyc.repl.readline.backend", "readline", raising=False)
+    readline.clear_history()
+    try:
+        _load_history(path)
+        n = readline.get_current_history_length()
+        assert [readline.get_history_item(i) for i in range(1, n + 1)] == ["x = 1", "print(x)"]
+    finally:
+        readline.clear_history()
+
+
+def test_write_history_swallows_unwritable_path(tmp_path):
+    _write_history(tmp_path / "missing-dir" / ".tpyc_history")
