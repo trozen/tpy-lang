@@ -1,5 +1,17 @@
 # Release Notes
 
+## 0.6.1 (2026-09-29)
+
+REPL start-up patch release.
+
+- **`tpy` no longer dies before its first prompt** on an interpreter whose
+  `readline` is editline -- uv-managed CPython 3.13+ (what `uv tool
+  install tpy-lang` gets) and macOS Pythons. Editline rejects a history
+  file GNU readline wrote with `EINVAL`, and GNU readline reads editline's
+  file literally; the REPL now loads such a file line by line, so the
+  history survives switching interpreters, and a history file it cannot
+  write at exit is skipped instead of printing a traceback.
+
 ## 0.6.0 (2026-09-29)
 
 378 commits since 0.5.1. A breaking release -- read Migration first.
