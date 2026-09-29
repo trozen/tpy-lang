@@ -17,8 +17,11 @@ Readiness gate, run from the commit to be tagged:
 - notes written: a Migration list for breaking changes, known
   limitations as classes.
 
-Defects are fix priorities, not release criteria. Tag after the release
-commit (annotated; the build hook bakes `git describe`), then
+Defects are fix priorities, not release criteria. The gate always runs
+on the release commit itself, never the one before it: the version bump
+changes the `harness/stdlib_render` snapshot (`tpy.version` folds
+`__version__`), so regenerate it in that commit first. Tag after the
+release commit (annotated; the build hook bakes `git describe`), then
 `uv build --wheel` + `uv publish`.
 
 ## 0.7.0 (prepared when the trigger above fires)

@@ -15,7 +15,6 @@ from tpy import int32
 from ._version import version as _version, version_info as _version_info
 
 __version__: Final[str] = _version()
-# int32 components rather than `int` (BigInt): version numbers are small
-# and BigInt would waste heap allocations on every access.
+# int32 components, the canonical fixed-width int, rather than `int`.
 version_info: Final[tuple[int32, int32, int32, str, int32]] = _version_info()
 is_compiled: Final[bool] = True

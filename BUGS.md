@@ -3245,6 +3245,30 @@ Entries tagged `deferred: MIR` are gated on the THIR/MIR migration (see `docs/IR
   `BUGS.md#valuetype-arg-shape-keyed-rows`. Repro
   `/tmp/agents/rel06/ex/vt_field_arg.py`; tte binds a local to work
   around it. Reported by the tpy-examples port, 2026-09-29.
+- **[MED small] (ill-formed C++ on valid Python, toolchain-caught; should be a located diagnostic) Assigning an `int` (BigInt) expression to an `int32` `for` variable reaches the C++ build.** [`bigint-into-int32-loop-var-cpp-error`]
+  `for n in range(2, N)` binds `n: int32`; a later `n = a * lookup[c] + d`
+  with `d` read from a `list[int]` is a BigInt expression, and tpyc
+  emits the assignment unchecked -- g++ stops with *cannot convert
+  'tpy::BigInt' to 'int32_t' in assignment* at a generated-code line.
+  Sema should refuse the rebind where the widths meet, in the words the
+  int/float rebind rule uses (one numeric type per local), or convert
+  with a range check. CPython runs it. Repro
+  `/tmp/agents/rel06/ex2/gap_a.py`. Reported by the tpy-examples port of
+  shedskin's collatz, 2026-09-29.
+- **[MED small] (rejects-valid, located) A list local bound BEFORE a loop cannot be rebound from a comprehension INSIDE it: `xs = [0] * n; for k in range(3): xs = [c + 1 for c in xs]`.** [`prebound-list-rebound-in-loop-from-comprehension`]
+  Stops with *this construct is not yet supported by C++ code generation
+  (stmt.var_decl:container_lit.rebound)*; seeding with `xs = [0 for _ in
+  range(n)]` instead compiles, so the `[0] * n` repeat form is what the
+  rebind gate refuses. CPython prints `[3, 3, 3, 3]`. A `list(range(n))`
+  seed rebound by a comprehension is the same gap with no loop at all,
+  reported at the SEED line: `xs = list(range(n)); xs = [x + 1 for x in
+  xs]` stops with `expr.call:call.special.call_type.builtin_generic`
+  (int64 bounds or not; drop the rebind and it compiles; repro
+  `/tmp/agents/rel06/ex2/gap_b4.py`). Distinct from the HIGH
+  `container_lit.rebound` entry above, where the list is first bound
+  inside the loop body and assigned outward. Repro
+  `/tmp/agents/rel06/ex2/gap_c.py`. Reported by the tpy-examples port of
+  shedskin's collatz, 2026-09-29.
 
 ## Safety / borrow checker
 
