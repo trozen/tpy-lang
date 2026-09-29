@@ -1,8 +1,8 @@
 # Release Notes
 
-## 0.6.0 (2026-09-30)
+## 0.6.0 (2026-09-29)
 
-374 commits since 0.5.1. A breaking release -- read Migration first.
+378 commits since 0.5.1. A breaking release -- read Migration first.
 
 ### Migration
 
@@ -71,7 +71,9 @@
   `@staticmethod`, `@classmethod`, generic and `@error_return` -- called
   through a member, the type, and across modules.
 - **`@classmethod`** with `cls` bound to the defining class: `cls(...)`
-  as an alternate constructor, `cls.CONST`, `-> Self`.
+  as an alternate constructor returning `Own[Self]`, `cls.CONST`. (A bare
+  `-> Self` return is still rejected at the call site,
+  `BUGS.md#classmethod-self-return-call-rejects`.)
 - **Value types**: a user `ValueType` record binds, passes, returns,
   yields and is captured like a scalar at every position; a slot
   declared before its first value is default-constructed.
@@ -109,6 +111,12 @@
   `repr()` for `bytes`, `bytearray` and `range`; bare `return` is
   `return None`; a `global`-declared walrus target; `except` / `with` /
   `match` captures over a same-named class.
+- **Fixed for the cut**: an un-narrowed Optional container element read
+  keeps its null check (it segfaulted while the warning promised one); a
+  generator assigning a local in `finally` no longer crashes the
+  compiler; a guarded scalar `match` arm no longer falls into the
+  default arm; a generic function instantiated at `float` compiles; an
+  unknown name imported from `tpy` is refused at the import.
 - **Analysis-only MIR**: a bounded MIR over storage regions, holder
   liveness and retained references, inspectable with `--dump-mir`; no
   effect on generated code yet.
@@ -164,8 +172,8 @@ hoisted into a frame); call arguments and operands are evaluated in the
 C++ compiler's order, not left to right; tuple reference elements at
 consuming positions reject; THIR shapes without a lowering arm reject,
 located; a variable-free int constant at a method argument is evaluated
-at run time and can trap; the C-ABI allow-list overshoots; a generic
-function at `float` and a `match` on a literal enum member reject.
+at run time and can trap; the C-ABI allow-list overshoots; a `match`
+on a literal enum member rejects.
 
 ## 0.5.1 (2026-07-24)
 
