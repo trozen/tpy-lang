@@ -160,7 +160,7 @@ Examples of the policy in action:
 | [`shelve`](#shelve) | P3 | Blocked | 0% | -- | Needs pickle |
 | [`inspect`](#inspect) | P2 | Blocked | 0% | -- | Needs runtime type/func introspection |
 | [`asyncio`](#asyncio) | P1 | Partial | ~40% | pure | v1: `run`/`sleep`/`create_task`/`Task[T]`/`Future[T]`/`Event`/`CancelledError` + thread-local executor with slot table, runnable deque, timer min-heap, cancel-drain at run-end. Bound coroutines: `c = f()` binds a move-only single-use handle consumed later by `await c`/`create_task(c)`/`run(c)`; `run`/`create_task` enforce CPython's coroutine-only TypeError contract at compile time. v1.5 M5+M6: `async with` (cleanup-only), `async for` + `StopAsyncIteration`. v1.5 M8: `wait_for`/`TimeoutError`. v1.5 M9: `gather(*tasks)` (homogeneous variadic-positional) + `gather_list(tasks)` (homogeneous list shape). v2 sync primitives: `Lock`, `Semaphore`, `BoundedSemaphore`, `Queue` (FIFO `list[Waker]` waiter queue, `async with`-capable; `BoundedSemaphore` is a `Semaphore` subclass rejecting over-release; `Queue[T]` adds getter/putter/joiner waiter sets + `maxsize`/`put`/`get`/`*_nowait`/`join`/`task_done`). v2 I/O reactor M1: `Reactor` (epoll on Linux, kqueue on macOS / *BSD behind the shared `tpy_epoll_*` C ABI) + `get_running_loop().sock_recv`/`sock_sendall` on non-blocking sockets (`socket.setblocking`), executor blocks in `epoll_wait` / `kevent` bounded by the timer heap. v2 M2: `get_running_loop().sock_accept`/`sock_connect` (driven via the public socket methods, parking on `BlockingIOError`). v2 streams: `open_connection` -> `StreamReader` (`read`/`readexactly`/`readline`/`readuntil`/`at_eof`) + `StreamWriter` (`write`/`drain`/`close`/`wait_closed`/`is_closing`), socket shared via `Rc[socket]`; `IncompleteReadError`. v2 streams server: `start_server(handler, host, port)` -> `Server` (background accept loop spawning the async `handler` per connection with a `(StreamReader, StreamWriter)` pair; `serve_forever`/`close`/async-with, `server.sockets[0].getsockname()` for the bound address), built on the async-fn->Callable coercion. v2 SIGINT graceful shutdown: `asyncio.run` installs a SIGINT handler -> cancels the root task, runs its cleanup, raises `KeyboardInterrupt` (SIGINT-only, matching CPython; SIGTERM left at default). Missing: CPython-shape *heterogeneous* variadic `gather[*Ts](*coros) -> tuple[*Ts]` (needs variadic generics + async-def `*args` codegen); `StreamReader.readuntil` `limit`/`LimitOverrunError` (the method shipped); graceful SIGTERM (divergent enhancement); multi-thread (v3+) **Un-importable at `--default-int int64` / `BigInt`** -- sema fails inside the module; see BUGS.md "18 stdlib modules fail sema". |
-| `signal` | P2 | Stub | ~5% | pure | Minimal: `raise_signal` + `SIGINT`/`SIGTERM` constants over a libc binding -- backs asyncio.run's SIGINT graceful shutdown and lets programs self-signal portably (CPython has the same surface). No `signal.signal` / handler-registration API (asyncio installs its SIGINT handler internally via the `posix_signal` binding) |
+| `signal` | P2 | Stub | ~5% | pure | Minimal: `raise_signal` + `SIGINT`/`SIGTERM` constants over a libc binding -- backs asyncio.run's SIGINT graceful shutdown and lets programs self-signal portably (CPython has the same surface). No `signal.signal` / handler-registration API (asyncio installs its SIGINT handler internally via the `posix_signal` binding). Outside `asyncio.run`, `raise_signal(SIGINT)` kills the process (exit 130, buffered stdout lost) instead of raising `KeyboardInterrupt` (TODO.md "Synchronous SIGINT -> `KeyboardInterrupt`") |
 | `errno` | P2 | Stub | ~5% | pure + C | Minimal: the constants TPy's own stdlib maps to exception subclasses -- network domain (`EAGAIN`/`EWOULDBLOCK`/`EINPROGRESS`/`EPIPE`/`ECONNRESET`/`ECONNREFUSED`/`ECONNABORTED`, from socket_impl.cpp) + file domain (`ENOENT`/`EEXIST`/`EACCES`/`EPERM`/`EISDIR`/`ENOTDIR`/`EBADF`/`ETIMEDOUT`/`EINVAL`/`ENOTTY`, from os_impl.cpp) -- read from the platform `<errno.h>` via `tpy_const_*` native globals so values are host-correct. Enables `e.errno == errno.ENOENT` against `OSError`'s structured attributes (now populated by os/file and socket raises alike). Grows as constants gain consumers |
 | [`termios`](#termios--tty) | P2 | Partial | ~40% | pure + C | `tcgetattr` -> an opaque `TermAttributes` record (CPython's seven fields; `==` and `repr` match CPython's list), `tcsetattr`, `TCSA*`, `VMIN`/`VTIME`/`NCCS` and the flags `tty` uses; `termios.error` (an `Exception`, as in CPython). No indexing / per-flag editing, no `tcdrain`/`tcflush`/`tcflow`/`tcsendbreak`/window-size calls |
 | [`tty`](#termios--tty) | P2 | Done | ~90% | pure | `setraw`/`setcbreak` (return the previous mode, 3.12 behavior) + `cfmakeraw`/`cfmakecbreak` (in place, 3.12.2 masks). Does not re-export the termios names |
@@ -235,7 +235,7 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 | `list` | Done | `std::vector<T>` |
 | `dict` | Done | Insertion-ordered `tpy::ordered_map<K, V>`; items()/values()/setdefault alias (CPython semantics); two-arg get(k, default) copies reference values with a warning (BUGS.md tracks the borrow form) |
 | `set` | Done | Insertion-ordered `tpy::ordered_set<T>` |
-| `tuple` | Done | `std::tuple<...>` |
+| `tuple` | Partial | `std::tuple<...>`. The `tuple(iterable)` conversion is missing (`tuple(xs)` -> "Unknown function or type: 'tuple'") |
 | `range` | Done | `Range[T]` |
 | `slice`, `basic_slice` | Done | Three-arg and two-arg slices |
 | `frozenset` | Missing | Immutable set; would be `tpy::ordered_set<T>` with mutation-free surface |
@@ -249,7 +249,7 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 
 | Item | Status | Notes |
 |---|---|---|
-| `abs`, `min`, `max`, `sum` | Done | |
+| `abs`, `min`, `max`, `sum` | Partial | `min`/`max` over ONE iterable (`min(xs)`) find no overload (BUGS.md#max-min-single-iterable); the two-or-more-argument form works |
 | `pow`, `divmod`, `round` | Done | |
 | `bin`, `hex`, `oct` | Done | |
 | `chr`, `ord` | Done | |
@@ -259,8 +259,8 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 
 | Item | Status | Notes |
 |---|---|---|
-| `iter`, `next` | Done | |
-| `all`, `any`, `sorted` | Done | |
+| `iter`, `next` | Partial | `next(it, default)` is missing (no overload); `iter(<list literal>)` bound to a local dangles (BUGS.md#comp-iter-rvalue-source) |
+| `all`, `any`, `sorted` | Partial | `sorted(xs, reverse=True)` is missing ("does not support keyword argument 'reverse'"); a builtin function as `key=` (`key=len`) is TODO.md "Builtins as first-class function values" |
 | `enumerate`, `filter`, `map`, `reversed`, `zip` | Done | |
 
 **Functions -- introspection / attribute access**
@@ -283,8 +283,8 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 
 | Item | Status | Notes |
 |---|---|---|
-| `print` | Done | |
-| `open`, `open_text`, `open_binary` | Done | `TextIO` / `BinaryIO` context managers |
+| `print` | Partial | `print(*xs)` is missing (the star argument needs a variadic parameter) |
+| `open`, `open_text`, `open_binary` | Partial | `TextIO` / `BinaryIO` context managers. Iterating a file object (`for line in f` / `for line in open(p)`) is missing -- "Cannot iterate over type TextIO" (TODO.md "Iterating a file object"); `readlines()` works |
 | `input` | Done | Both `input()` and `input(prompt)`; EOF raises `EOFError` |
 
 **Descriptors / class utilities**
@@ -685,7 +685,7 @@ Architecture (no C++ wrapper layer, no pcre2.h in TPy-generated TUs):
 | `compile`, `Pattern` | Done | Pure-TPy class wrapping `Ptr[pcre2.Code]`; JIT-compiled on construct |
 | `search`, `match`, `fullmatch` | Done | Return `Optional[Own[Match]]` |
 | `findall` | Done | List of group-0 strings. Doesn't yet return captures-tuples for grouped patterns (CPython divergence) |
-| `finditer` | Done | Lazy generator yielding `Own[Match]` (like CPython) |
+| `finditer` | Partial | `Pattern.finditer` is a lazy generator yielding `Own[Match]` (like CPython); the module-level `re.finditer(pattern, string)` is missing ("Module 're' has no function 'finditer'") |
 | `sub`, `sub(count=)` | Partial | `count` limits replacements (0 = all, negative = none), matching CPython including empty-match advancement. Backref syntax is PCRE2-native (`$1`, `${name}`), not CPython's `\1` -- syntax translator deferred |
 | `split`, `split(maxsplit=)` | Done | Driven off `finditer`; zero-width patterns and multibyte (UTF-8) input split CPython-identically |
 | `Match.group(int)`, `start`, `end`, `span` | Done | All returning `int32` offsets and TPy `str` slices |
@@ -1210,6 +1210,7 @@ per-call-site record + parse function, so ``args`` is statically typed.
 | Subparsers | Done | `add_subparsers()` returns a sub-builder via `@builder_returns`; each `add_parser(name)` returns a sub-builder collecting its own arg specs. Top namespace lays per-sub fields out flat (`Optional[T]` per name, mirroring CPython argparse's Namespace shape) so portable test code reads `args.cmd` / `args.<sub-field>` under both backends. Honored kwargs: `dest=` (top field for the chosen subcommand name; default `"cmd"`), `required=`, `help=` (per-sub help text, rendered in --help). Macro-time errors: double `add_subparsers()`, top parser with positional args + subparsers (regex matcher gap), nested `add_subparsers()` in a sub-parser, sub-parser dest collision with a common arg or with `sp.dest`, same per-sub field name with conflicting types across subs. Limitations: typed-union escape hatch (``args._subcommand: A | B`` for `match`/`case`) intentionally not stored -- synth records carry the `__tpy_builder_` private prefix that user code can't reference, so the union would be unreachable for `match`/`case`. The pre-pass-6 builder-trace move (now landed) lifted the sema phasing wall that previously blocked emitting `@property` forwarders over the union; closing the rest needs reachability for the synth records plus per-sub forwarder emission alongside the flat fields. CPython divergence: TPy preemptively populates every per-sub field as `None` on the top namespace; CPython only sets attributes for the chosen sub. Tests using non-active per-sub fields therefore need `getattr(args, ..., None)` (or skip cpy phase) |
 | `add_mutually_exclusive_group()` | Missing | At-most-one constraint across flags |
 | Custom `type=<T>` via `from_arg` | Done | Duck-typed: any record with `@staticmethod from_arg(s: str) -> Self` can be passed as `type=`. Macro emits `T.from_arg(token)`; string defaults route through `from_arg` (mirrors CPython's "string defaults run through type="). All four nargs shapes plus `action=store/append/extend` work; required positional / required-flag fields land as plain `T` (not `Optional[T]`) via an accumulator + post-loop unwrap. Remaining gaps: `choices=` would have to compare unparsed tokens (CPython compares parsed values), and list defaults (`default=["a","b"]`) diverge from CPython too (CPython leaves list-default elements as raw strings) -- both stay rejected |
+| Short-option clustering and attached values (`-cc` for a `count` flag, `-vq`, `-ofile`) | Missing | Each is rejected at parse time with `error: unknown argument: -cc` (exit 2); CPython accepts all three. Separate tokens (`-c -c`, `-o file`) work |
 | `parents=`, argument groups, `BooleanOptionalAction`, `allow_abbrev`, `fromfile_prefix_chars`, custom formatter classes, `action=<callable>` | Future | Tier-3; full tier table in MACRO_DESIGN.md's argparse Future Work section |
 | Parse-time error wording still differs from CPython | v1 divergence | Stderr+`sys.exit(2)` shape matches; runtime-derived `prog` (`os.path.basename(sys.argv[0])`) and message phrasing parity (e.g. "the following arguments are required") are Tier 2 |
 

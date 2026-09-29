@@ -21,41 +21,7 @@ Defects are fix priorities, not release criteria. Tag after the release
 commit (annotated; the build hook bakes `git describe`), then
 `uv build --wheel` + `uv publish`.
 
-## 0.6.0 (aim 2026-09-30)
-
-Breaking:
-
-- Scalar types lowercase: `Int32` -> `int32`, `UInt8` -> `uint8`,
-  `Float32` -> `float32`, `Float64` -> `float64`, `Char` -> `char`.
-- Body codegen is THIR only; unlowered shapes are compile errors --
-  TODO: "The post-cutover fix queue: shapes that are now compile errors".
-- `typing.overload` is CPython's form only; bodied variants use
-  `tpy.dispatch`.
-- `-O` / `--release` removed; optimized by default, `--debug` opts out.
-- Inferred int/float joins and rebinds refused; a declared `float` slot
-  converts.
-- `@error_return` classes derive from `Exception` directly, no
-  subclassing; returned as values.
-- Generators are single aliased objects, bound once; `tpy.copy(g)` and
-  rebinding the name are errors.
-- `bytes` / `bytearray` / `String` / `BytesView` / unions have their own
-  C++ types (`@native` companions see the new spellings).
-- Parent initializer rule: a skipped base initializer warns; a skipped
-  base without a default constructor, or a late base-init call, errors.
-- `binding="C"` signatures take C-representable types only.
-- `examples/` moved to the `tpy-examples` repo.
-
-Shipped: THIR cutover and AST-codegen deletion; methods on enums;
-interop Optional at the `@export` boundary; tuples U1
-(`docs/TUPLE_COMPLETION_PLAN.md`); sibling-arm joins; liveness exit
-edges; `zlib`, `gzip`, `termios`, `tty`; `pytest-hosts`.
-
-Known limitations: the `HIGH` entries of `BUGS.md` -- moves past a last
-use, multi-hop alias rebinds, dropped Optional null checks, frame view
-dangles, tuple reference elements, unlowered THIR shapes, unfolded int
-literals at method arguments, the C-ABI allow-list overshoot.
-
-## 0.7.0 (prepared when the trigger above fires after 0.6.0)
+## 0.7.0 (prepared when the trigger above fires)
 
 Carried from 0.6.0:
 
