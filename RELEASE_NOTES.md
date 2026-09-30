@@ -1,5 +1,26 @@
 # Release Notes
 
+## 0.6.2 (2026-09-30)
+
+Licensing and packaging patch release. The compiler, runtime and library
+are unchanged from 0.6.1.
+
+- **TurboPython is licensed under Apache 2.0 with the LLVM Exceptions.**
+  Earlier releases declared no license. `LICENSE` and `NOTICE` ship in
+  the wheel and the sdist. The exception covers the runtime and library
+  code compiled into every program, so a binary built with `tpy` can be
+  distributed without carrying the license text or a notice. The bundled
+  third-party libraries (PCRE2, zlib, Mbed TLS, date, the Mozilla CA
+  bundle) keep their own licenses; `NOTICE` lists them.
+- **Package metadata**: the PyPI summary describes the project as a
+  Python-to-C++ compiler, and the project page gains documentation,
+  issue-tracker and changelog links.
+- **README** (the PyPI project page) reworked: it opens with a status
+  note and a runnable example, states the C++23 compiler requirement in
+  the installation section, shows the ownership copy warning, and adds
+  Status and License sections. The build-cache and signal details moved
+  to the documentation site.
+
 ## 0.6.1 (2026-09-29)
 
 REPL start-up patch release.

@@ -4,7 +4,7 @@
 namespace tpystd::tpy::version {
 
 // version_info: Final[tuple[int32, int32, int32, str, int32]] = _version_info()
-const std::tuple<int32_t, int32_t, int32_t, std::string_view, int32_t> version_info = std::tuple<int32_t, int32_t, int32_t, std::string_view, int32_t>{0, 6, 1, "final", 0};
+const std::tuple<int32_t, int32_t, int32_t, std::string_view, int32_t> version_info = std::tuple<int32_t, int32_t, int32_t, std::string_view, int32_t>{0, 6, 2, "final", 0};
 
 // """Compiler/runtime version and implementation identification for TPy.
 //
