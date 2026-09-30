@@ -229,7 +229,7 @@ invalidation policy must be TPy's, not Rust's (see "Mutable aliasing" below).
     rule, for `Fn` and `Callable` alike. It is rule 35's global-write fact, not
     this loan alone, that makes an opaque call inside a helper count as that
     invalidation (`BUGS.md#readonly-method-global-write-under-live-borrow`,
-    `BUGS.md#noarg-helper-global-write-under-live-borrow`).
+    both gates).
 29. **A temporary root rejects, with ONE fallback** (*split: the reject is
     contract-half A6; the precise liveness is deferred-to-MIR*): a receiver or
     argument root that is a temporary at a call whose result outlives the full
@@ -610,7 +610,7 @@ def main() -> None:
 ```
 
 **G2 -- MUST REJECT.** The same hole through the other gate: a NO-ARGUMENT helper
-(`BUGS.md#noarg-helper-global-write-under-live-borrow`).
+(the no-argument face of `BUGS.md#readonly-method-global-write-under-live-borrow`).
 
 ```python
 pool: list[Node] = [Node(1)]

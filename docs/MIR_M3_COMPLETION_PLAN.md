@@ -4,6 +4,11 @@ Current planning index, updated 2026-09-22. Implementation exists through
 M3.27; review/merge status is separate. The numbered increment plans below record
 their own bounded contracts, not completion of this checklist.
 
+The unchecked items are now scheduled under the breadth-first B-steps of the
+[MIR analysis plan](MIR_ANALYSIS_PLAN.md#breadth-first-order); each carries
+its step as a prefix. The W1-W5 groups remain the dependency view, not the
+order.
+
 ## Completion contract
 
 The [MIR analysis plan](MIR_ANALYSIS_PLAN.md#scope-matrix-and-remaining-increments)
@@ -67,7 +72,8 @@ the others visible.
   [M3.14/M3.15 plan](MIR_M3_RECORD_STORAGE_PLAN.md) records the approved bounded
   batch. M3.14 implements the internal model; M3.15 connects positive THIR facts
   for bounded plain-record if/while hoists.
-- [ ] Cover remaining owning/mixed aggregate backing and materialized expression
+- [ ] **B1** (view temporaries: B2). Cover remaining owning/mixed aggregate
+  backing and materialized expression
   temporaries, with positive producer facts for placement and each write.
   The [approved M3.16/M3.17 batch](MIR_M3_TUPLE_STORAGE_PLAN.md) covers flat
   constructor-owned local tuples, with mixed ownership at the internal IR
@@ -99,7 +105,7 @@ the others visible.
   [M3.18](MIR_M3_TUPLE_ALIAS_PLAN.md) additionally covers fixed whole aliases
   of body-local constructor tuples; alias reseating, owning tuple rebinding
   and hoists remain open, including the source defects listed in that plan.
-- [ ] Extend cyclic copy/move/in-place operations where their existing emitted
+- [ ] **B1.** Extend cyclic copy/move/in-place operations where their existing emitted
   behavior is representable; preserve activation and retained-reference rules.
   The approved [M3.24/M3.25 batch](MIR_M3_CYCLIC_RECORD_STORAGE_PLAN.md)
   covers fresh region-local copy/move internally and constructor IN_PLACE
@@ -132,11 +138,11 @@ dict[int32, int32] keys, with readonly and retained element aliases. This batch
 does not include tuple-language fixes. Protocol iteration and the other W2
 positions remain open after this batch.
 
-- [ ] `for` and iteration regions, including iterator/element dependencies,
+- [ ] **B3.** `for` and iteration regions, including iterator/element dependencies,
   loop binding availability, `break`, `continue` and `else`.
-- [ ] Comprehension evaluation/binding regions and materialized temporaries.
-- [ ] `match` selection, guard evaluation and bound holders.
-- [ ] Other required binding positions, including module and closure execution,
+- [ ] **B3.** Comprehension evaluation/binding regions and materialized temporaries.
+- [ ] **B1.** `match` selection, guard evaluation and bound holders.
+- [ ] **B5.** Other required binding positions, including module and closure execution,
   when their M2 identities and M4 effects are available.
 
 Exit evidence: the CFG models emitted evaluation order and actual scopes for
@@ -146,11 +152,11 @@ critical-path package by default.
 
 ### W3: cleanup and exceptional flow
 
-- [ ] `try`/`except`/`finally` and exceptional edges from supported operations.
-- [ ] Context-manager entry/exit, including suppression and early transfers.
-- [ ] Destruction/cleanup effects, explicit `del`/drop and partial initialization
+- [ ] **Cleanup.** `try`/`except`/`finally` and exceptional edges from supported operations.
+- [ ] **Cleanup.** Context-manager entry/exit, including suppression and early transfers.
+- [ ] **Cleanup.** Destruction/cleanup effects, explicit `del`/drop and partial initialization
   on failing paths.
-- [ ] Error-return bodies and their cleanup/control-transfer conventions.
+- [ ] **Cleanup.** Error-return bodies and their cleanup/control-transfer conventions.
 
 Exit evidence: each relevant normal and exceptional exit runs the correct
 cleanup in order, with dependencies retained until the actual last use/end.
@@ -159,9 +165,9 @@ alone does not satisfy this package.
 
 ### W4: suspension and frame lifetime
 
-- [ ] Generator and async frame-held bindings and backing placement.
-- [ ] `yield`/`await`, resume paths and dependencies retained across suspension.
-- [ ] Abandonment, close/cancellation and frame cleanup, composed with W3.
+- [ ] **B4.** Generator and async frame-held bindings and backing placement.
+- [ ] **B4.** `yield`/`await`, resume paths and dependencies retained across suspension.
+- [ ] **B4.** Abandonment, close/cancellation and frame cleanup, composed with W3.
 
 Exit evidence: a suspended frame retains every borrowed dependency it may use
 after resumption or during cleanup, including the callable requirements for
@@ -169,10 +175,10 @@ frame-carried loans. Frame storage is not ordinary body-local storage.
 
 ### W5: complete propagation through required holders and escapes
 
-- [ ] Closures and their copied/moved/aliased environments.
-- [ ] Required aggregate nesting, views, pointers and container-held references.
-- [ ] Return, field-store and container-insert escape channels.
-- [ ] Call/forwarding boundaries and place-granular effects, using finalized
+- [ ] **B5.** Closures and their copied/moved/aliased environments.
+- [ ] **B1-B3.** Required aggregate nesting, views, pointers and container-held references.
+- [ ] **B2/B3.** Return, field-store and container-insert escape channels.
+- [ ] **B5.** Call/forwarding boundaries and place-granular effects, using finalized
   M4 summaries and the remaining M2 place/operation facts.
 
 Exit evidence: killing the original local never loses a dependency retained
@@ -182,8 +188,8 @@ invalidation policy remains distinct from exclusive-borrow rules.
 
 ## Dependencies and delivery
 
-W1 is the next coherent ordinary-storage package. W2 can extend ordinary CFG
-coverage alongside W1 when its storage facts suffice. W3 and W5 need defined
+Delivery order follows the B-steps; the dependencies below still hold
+inside them. W3 and W5 need defined
 M4 interfaces; W4 needs frame facts and W3 cleanup semantics. M2 representation
 gaps remain prerequisites for their corresponding shapes, not work made
 complete by starting M3.
@@ -239,6 +245,6 @@ on a stacked branch; merging remains the user's decision. Small precision
 extensions can join a relevant batch instead of becoming separate deliveries.
 
 M4 owns finalized interprocedural summaries and per-instantiation obligations.
-M5 owns compatibility/admission decisions and the explicit checker-authority
+B6 owns compatibility/admission decisions and the checker-authority
 transition. Completing M3 alone neither replaces the current provenance logic
 nor authorizes new source diagnostics. All unchecked boxes above remain open.

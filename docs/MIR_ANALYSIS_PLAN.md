@@ -15,6 +15,14 @@ supply all six provisions in `CALLABLE_PROVENANCE_REQUIREMENTS.md` before that
 consumer can become authoritative. Shared mutation stays legal; the eventual
 conflict rule concerns invalidation of borrowed storage, not exclusive access.
 
+**Active sequence (approved 2026-09-29): breadth-first.** MIR now widens the
+representations it models rather than deepening the bounded bool/int32 subset;
+the steps are B1-B6 in [Breadth-first order](#breadth-first-order). Lifetime
+and loan defects are routed to MIR instead of patched in sema (`BUGS.md`
+entries tagged `deferred: MIR`). The numbered increments below are the record
+of what landed, and the M1-M5 stage table is the capability map the B-steps
+deliver.
+
 ## M1: internal scalar CFG foundation
 
 This existing program illustrates the first supported body:
@@ -1819,10 +1827,82 @@ before strict validation ([constant CFG plan](MIR_M3_CONSTANT_CFG_PLAN.md)).
 Mutable-variable propagation, comparison folding and arbitrary truthiness stay
 deferred; every analysis consumes the same resulting structural CFG.
 
+## Breadth-first order
+
+This is the active sequence. The landed increments (M1, M2.x, M3.1-M3.27,
+M4.1-M4.6) stay as records; the open items of the
+[M3 completion checklist](MIR_M3_COMPLETION_PLAN.md) and of the M2/M4 matrix
+below fold into the B-step that needs them.
+
+**Baseline** (front end, release 0.6.1; a stratified sample of 1758 of 4151
+compiling test cases, the whole stdlib and 22 tpy-examples programs). MIR
+lowers 6.8% of test bodies, 2.1% of stdlib bodies and 1.8% of example bodies.
+Of the 2552 loan-active bodies -- sema registered a loan, view, provenance,
+parameter-return, loop or `with` hold, or emitted a lifetime diagnostic -- it
+lowers 24 (0.9%). First blockers over those bodies: type vocabulary (anything
+but bool/int32) 1077, resumable frames 452, module init 186, method receiver
+not modelled 170, generic 147, unsupported statement (`print`, protocol `for`,
+tuple unpack, `try`, nested `def`) 134, record layout 133. The type gate is
+`in (BOOL, INT32)` at about 20 sites in `tpyc/mir/lower.py`, repeated in
+`validate.py`, `dependencies.py` and `storage_evidence.py`.
+
+**Principle.** Model exactly what can create, hold or invalidate a loan;
+everything else is opaque -- opaque contents, never opaque lifetime or
+effects. Anything that can borrow fails closed. Admission keys on type and
+form facts, never on lists of accepted kinds.
+
+- **B1: loan classification.** A recursive classification of representations
+  answering three separate questions: does it hold dependencies; can its
+  storage be lent; can an operation on it invalidate or retain dependencies or
+  run cleanup. Built from existing facts (`is_value_type`,
+  `is_borrowing_view_type`, `has_view_param_form`, tuple element forms,
+  instantiated record fields) plus THIR form/layout/storage facts. It must get
+  right: str/bytes own buffers yet are viewed; BigInt parameters are
+  `const BigInt&`; `TupleType.is_value_type()` is always true; switching a
+  union alternative ends the payload's storage; `Own` reports value-type for
+  owned records; `Ptr` is value-typed; `readonly` limits access, not
+  lifetime. Operations are admitted through proved loan-neutral operation
+  contracts (builtin arithmetic and comparison, `print` reading its arguments
+  including `sep`/`end`), never by result type: a scalar-returning call can
+  mutate a global, a user dunder runs code. The validator, dependency and
+  storage-evidence contracts change together with lowering.
+- **B2: views as places.** str/bytes/Span views carry a loan on their source,
+  starting with parameter, local and field roots (container-element views
+  need B3). str and bytes follow one rule.
+- **B3: containers.** Holders with element places, element views and
+  iterator loans. From here on each step builds the call-effect contracts it
+  needs -- retention, invalidation, result origins, exceptional behavior --
+  where `call_contract.py` today excludes globals and requires empty
+  invalidation and retention.
+- **Cleanup:** exceptional exits and destruction.
+- **B4: generator and async frames.** Frame placement and lifecycle facts
+  published by THIR (close, cancellation, cleanup), not only suspend/resume
+  edges.
+- **B5: remaining general call summaries** (pending callee facts, globals,
+  callbacks) proceed alongside B1-B4 as each step needs them.
+- **B6: advisory checker and authority transition.** Whether authority moves
+  per diagnostic family or in one switch is decided here; this supersedes
+  M5's single switch.
+
+**Constraint on B1-B5**, so both B6 outcomes stay possible: evidence --
+structured conflict kinds, explicit unknowns, locations, complete obligation
+inventories, certificates tied to the exact THIR body/instantiation and
+summary inputs -- is produced independently of which checker owns a
+diagnostic. Sema is never silenced because MIR lowered a body or found no
+conflict.
+
+**Progress metric.** Over a fixed stratified denominator, four counts --
+lowered, all required analyses complete, conflict found, certified for its
+obligations -- plus blocker transitions. Generic coverage counts
+instantiation obligations. A `deferred: MIR` reproducer counts only when MIR
+gives the expected unsafe verdict and a safe sibling is certified;
+sema-rejected reproducers are evaluated on a separate path.
+
 ## Scope matrix and remaining increments
 
-The current M3 completion checklist and batch order live in
-[MIR_M3_COMPLETION_PLAN.md](MIR_M3_COMPLETION_PLAN.md). Historical increment
+The M3 completion checklist lives in
+[MIR_M3_COMPLETION_PLAN.md](MIR_M3_COMPLETION_PLAN.md); its open items are
+scheduled under the B-steps above. Historical increment
 matrices describe their own admission boundaries, not total remaining scope.
 M3.12 separates physical wrapper initialization from source assignment, with
 actual default selections and independent must-facts. M3.13 admits scalar
@@ -1862,6 +1942,9 @@ all prerequisite stages still apply. No omitted cell implies support.
 
 These are work packages, not approved implementation designs or a claim that
 each is one commit. Split them at coherent reviewed boundaries after M1.
+The stage table is the capability map the
+[breadth-first B-steps](#breadth-first-order) deliver, not their order; M5's
+single authority switch is superseded by the B6 decision.
 
 | Stage | Deliverable | Exit gate |
 |---|---|---|

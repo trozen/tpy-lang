@@ -67,7 +67,7 @@ exists on both paths; its payload is initialized only on the selected path.
 - [M2.11/M2.12](MIR_CALL_CAPTURE_PLAN.md) preserves qualified callee identity
   and signatures, explicitly without proving effects, exits or provenance.
 
-Existing tracked hazards include `BUGS.md#const-ref-arg-temporary-stored`,
+Existing tracked hazards include
 `BUGS.md#native-stub-declares-no-param-retention`,
 `BUGS.md#cond-walrus-before-hoisted-temp`,
 `BUGS.md#cond-operand-unspelled-arg-temp-rejects`, and
