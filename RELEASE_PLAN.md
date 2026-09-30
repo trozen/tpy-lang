@@ -14,6 +14,8 @@ Readiness gate, run from the commit to be tagged:
 - full suite green with `--force-exec`;
 - the `tpy-examples` corpus compiles and runs CPython-identical;
 - clean-venv install smoke, `_buildinfo` stamp, private-name scan;
+- the REPL from the installed wheel starts on a pty, with a history
+  file present, under an editline interpreter (`uv run --python 3.14`);
 - notes written: a Migration list for breaking changes, known
   limitations as classes.
 
@@ -26,8 +28,6 @@ release commit (annotated; the build hook bakes `git describe`), then
 
 ## 0.7.0 (prepared when the trigger above fires)
 
-Carried from 0.6.0:
-
 - Tuples: no silent divergence and the everyday shapes compile --
   `docs/TUPLE_COMPLETION_PLAN.md`, the rest of U1 plus U2-U4 (the
   everyday rejects, the policy flips, the mixed-param diagnostics)
@@ -39,6 +39,18 @@ Carried from 0.6.0:
 - `collections.defaultdict` -- TODO: "collections: the rest of the
   module"
 - The 0.6.0 known limitations, silent miscompiles first
+- Builtin gaps the ports and the website audit hit,
+  `docs/STDLIB_ROADMAP.md`: `min` / `max` over an iterable, `tuple(xs)`,
+  `sorted(reverse=)`, `next(it, default)`, `print(*xs)`, iterating a file
+- Rejects the ports filed: `prebound-list-rebound-in-loop-from-comprehension`,
+  `tuple-local-ref-element-unpack-rejects`,
+  `str-field-write-through-subscript-rejects`, module-qualified class
+  names
+- Safe integer widening: same sign, to a wider type; designed at the
+  start -- TODO: "Sub-default-int arithmetic: promote, or keep
+  width-preserving?"
+- Small: uv `cache-keys` naming `tpyc/__init__.py`, so an editable
+  install sees a version bump
 
 Queue (triage at 0.7 planning; not commitments):
 
