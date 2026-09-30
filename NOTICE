@@ -1,0 +1,30 @@
+TurboPython (TPy)
+Copyright 2026 Tomek Rozen
+
+Licensed under the Apache License, Version 2.0, with the LLVM Exceptions.
+See the LICENSE file. Under the exception, the parts of TurboPython that
+end up compiled into a program built with it (the runtime headers and the
+standard library) may be redistributed in that compiled form without the
+conditions of Sections 4(a), 4(b) and 4(d) of the License.
+
+Third-party components
+----------------------
+
+The source tree and the published wheels bundle the libraries below under
+runtime/cpp/third_party/. Each one is compiled into a program only when
+that program imports the standard-library module that needs it, and each
+keeps its own license. The pinned version, download URL and checksum of
+each are recorded in runtime/cpp/third_party/<name>.vendor.json.
+
+- PCRE2 (the `re` module): BSD 3-Clause with the PCRE2 binary exemption.
+  See runtime/cpp/third_party/pcre2/LICENCE.
+- zlib (the `zlib` and `gzip` modules): zlib license.
+  See runtime/cpp/third_party/zlib/LICENSE.
+- Mbed TLS (the `ssl` module): Apache-2.0 OR GPL-2.0-or-later, used here
+  under Apache-2.0. See runtime/cpp/third_party/mbedtls/LICENSE.
+- date by Howard Hinnant (time-zone support in `datetime`): MIT.
+  See runtime/cpp/third_party/date/LICENSE.txt.
+- Mozilla CA certificate bundle, as packaged by certifi (the default trust
+  store of the `ssl` module): Mozilla Public License 2.0.
+  See https://github.com/certifi/python-certifi and
+  https://www.mozilla.org/MPL/2.0/.

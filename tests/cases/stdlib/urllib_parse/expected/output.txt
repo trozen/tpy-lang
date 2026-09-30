@@ -1,4 +1,4 @@
-http | 10.72.70.1:8002 | /das/tables | fmt=json | sec
+http | 192.0.2.10:8002 | /api/tables | fmt=json | sec
 https | user:pw@example.com | /a/b |  | 
  |  | /relative/only | x=1 | 
  | netloc-only | /p |  | 

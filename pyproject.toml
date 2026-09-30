@@ -5,25 +5,36 @@ build-backend = "hatchling.build"
 [project]
 name = "tpy-lang"
 dynamic = ["version"]
-description = "TurboPython compiler - translates restricted Python-syntax to C++ for ultra-low-latency applications"
+description = "TurboPython: a Python-to-C++ compiler. Typed Python to native binaries -- no Python runtime, no GC, no GIL."
 readme = "README.md"
 requires-python = ">=3.12"
+license = "Apache-2.0 WITH LLVM-exception"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Tomek Rozen" }]
+keywords = ["python compiler", "python to c++", "python-to-cpp", "compiler", "transpiler", "c++", "native binary", "aot compiler", "static typing", "ownership", "no gil", "cpython extension"]
 dependencies = []
 classifiers = [
     "Development Status :: 3 - Alpha",
+    "Environment :: Console",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Compilers",
+    "Topic :: Software Development :: Code Generators",
+    "Programming Language :: C++",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Operating System :: POSIX",
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS",
 ]
 
 [project.urls]
 Homepage = "https://tpy-lang.org"
+Documentation = "https://tpy-lang.org/docs/"
 Repository = "https://github.com/trozen/tpy-lang"
+Issues = "https://github.com/trozen/tpy-lang/issues"
+Changelog = "https://github.com/trozen/tpy-lang/blob/master/RELEASE_NOTES.md"
 
 [project.optional-dependencies]
 bundled = ["ziglang>=0.13"]
@@ -34,6 +45,10 @@ tpy = "tpyc.cli:main_tpy"
 
 [tool.uv]
 package = true
+# The version is read from tpyc/__init__.py, which uv does not watch by
+# default; without this an editable install keeps the old version in its
+# metadata after a bump.
+cache-keys = [{ file = "pyproject.toml" }, { file = "tpyc/__init__.py" }]
 
 [tool.uv.workspace]
 members = ["tools/pytest-hosts"]
@@ -77,6 +92,8 @@ only-include = [
     "docs/STDLIB_ROADMAP.md",
     "README.md",
     "RELEASE_NOTES.md",
+    "LICENSE",
+    "NOTICE",
 ]
 
 # The hook stamps _buildinfo.py into the sdist too, so wheel-from-sdist
