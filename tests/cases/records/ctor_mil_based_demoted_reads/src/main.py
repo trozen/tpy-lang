@@ -1,8 +1,6 @@
-# A based record whose declared field order is NOT the assignment order, so
-# `b`'s init could not read `a` from the member initializer list. Both classes
-# here read a source only the constructor BODY can serve -- an inherited field
-# the body writes, and a field with only a class-level default -- so the init
-# demotes and the read is in place. The layout order never comes into it.
+# A based record whose init reads a source only the constructor BODY can
+# serve -- an inherited field the body writes, and a field with only a
+# class-level default -- so the init demotes and the read is in place.
 from tpy import int32
 
 

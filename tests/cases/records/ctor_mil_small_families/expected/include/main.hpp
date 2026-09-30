@@ -132,11 +132,10 @@ inline B::B(int32_t y) : y(y) {}
 inline P::P() : p(nullptr) {}
 
 // def __init__(self) -> None:
-//     self.n = G  # bare global name: demoted to the ctor body
+//     self.n = G  # bare global name: a member-init like a param read
 //     self.strict = True
-inline D::D() {
-    this->n = G;
-    this->strict = true;
-}
+inline D::D()
+    : n(G),
+      strict(true) {}
 void __tpy_init();
 } // namespace tpyapp::main

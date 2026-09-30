@@ -365,6 +365,10 @@ class THIRName(THIRExpr):
     global_binding: THIRGlobalBinding | None = field(default=None, kw_only=True)
     optional_read: THIROptionalRead | None = field(default=None, kw_only=True)
     union_read: THIRUnionLayout | None = field(default=None, kw_only=True)
+    # The move facts, stamped by `_lower_expr` on a read of a source name:
+    # sema's last-use verdict for this read (`SemanticContext.is_last_use`),
+    # and whether a sink here may move the name (`_LowerCtx.movable_now`).
+    # A sink that consumes the value moves only when both hold.
     is_last_use: bool = False
     is_movable: bool = False
     deref: bool = False
@@ -1031,7 +1035,7 @@ class THIRMove(THIRExpr):
     direct-ready move (containers/records/expensive values move out of the
     completing frame; the emit hook unwraps it at pre-finally sites).
     Lowering creates it only when the movability + last-use facts fire
-    (the `movable_locals` + `all_last_uses` reads); the
+    (the working movable set + sema's `is_last_use`); the
     non-movable lvalue shape hoists a `THIRArgTemp` copy instead."""
     value: THIRExpr
 

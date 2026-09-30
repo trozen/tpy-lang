@@ -1,0 +1,13 @@
+ctor.or [1] [1, 94]
+method.walrus 1 50
+method.and [1, 94] [1, 94, 95]
+method.opt_param [1, 2] [1, 2, 3]
+method.accessor 4 77
+holder.walrus_or 2 51 [1, 94, 95] [1, 94, 95, 96]
+ctor.copies 3 30 6 61 6 60
+ctor.base 55 5
+nested.captured [1, 2, 3] 3
+method.opt_elem 7 70
+own_arg.or [1, 94, 95, 96] [1, 94, 95, 96, 81]
+ctor.comp_elem 9 1
+method.comp_elem 8 2 5 5

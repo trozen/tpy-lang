@@ -1,0 +1,17 @@
+main.py:43: warning: copies list[int32] into field; use copy() to make this explicit
+main.py:52: warning: copies P into field; use copy() to make this explicit
+main.py:56: warning: copies list[int32] into field; use copy() to make this explicit
+main.py:60: warning: copies list[int32] | None into field; use copy() to make this explicit
+main.py:65: warning: copies P into field; use copy() to make this explicit
+main.py:91: warning: copies P into field; use copy() to make this explicit
+main.py:92: warning: copies P into field; use copy() to make this explicit
+main.py:93: warning: copies P into field; use copy() to make this explicit
+main.py:94: warning: copies P into field; use copy() to make this explicit
+main.py:119: warning: copies Item into field; use copy() to make this explicit
+main.py:151: warning: copies P into field; use copy() to make this explicit
+main.py:183: warning: copies P into owned storage; use copy() to make this explicit
+main.py:75: warning: copies P into field; use copy() to make this explicit
+main.py:77: warning: copies list[int32] into field; use copy() to make this explicit
+main.py:136: warning: copies list[int32] into field; use copy() to make this explicit
+main.py:132: warning: Own[list[int32]] param 'p' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:160: warning: copies list[int32] into owned storage; use copy() to make this explicit

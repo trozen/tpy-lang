@@ -14,7 +14,7 @@ from ..coercions import CoercionContext, resolve_coercion
 from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction, TpyListRepeat
 from ..parse.nodes import (TpyStrLiteral, TpyBytesLiteral, TpySubscript, TpyFieldAccess,
                            TpyBinOp, TpyIfExpr, TpyNamedExpr, TpyArrayLiteral,
-                           TpyVarDecl)
+                           TpyVarDecl, TpyNoneLiteral, TpyTupleLiteral)
 from ..typesys import (
     recorded_return_borrow_sources,
 
@@ -52,6 +52,8 @@ from ..typesys import (
     unwrap_own,
     unwrap_qualifiers,
     unwrap_readonly,
+    holds_borrowing_view,
+    lands_in_view_member,
     unwrap_ref_type,
     unwrap_send_sync,
 )
@@ -179,6 +181,45 @@ def view_source_is_temporary(expr: TpyExpr) -> bool:
                 or view_source_is_temporary(expr.else_expr))
     # f-string / binop / unknown -> temporary (fail closed).
     return True
+
+
+def view_slot_source_is_temporary(
+        slot: 'TpyType', expr: TpyExpr,
+        type_of: 'Callable[[TpyExpr], TpyType | None]') -> bool:
+    """`view_source_is_temporary` asked of a slot that HOLDS a view
+    (`holds_borrowing_view`), for the part of the slot the value lands in:
+    a `None` holds no view, a select answers per arm, a union member is
+    chosen by the value's type (`lands_in_view_member`), and a tuple literal
+    answers per element against the element slot."""
+    if not holds_borrowing_view(slot):
+        return False
+    inner = expr.expr if isinstance(expr, TpyCoerce) else expr
+    if isinstance(inner, TpyNoneLiteral):
+        return False
+    if isinstance(inner, TpyIfExpr):
+        return (view_slot_source_is_temporary(slot, inner.then_expr, type_of)
+                or view_slot_source_is_temporary(slot, inner.else_expr,
+                                                 type_of))
+    t = unwrap_readonly(slot)
+    if isinstance(t, OptionalType):
+        t = unwrap_readonly(t.inner)
+    if not lands_in_view_member(t, type_of(inner)):
+        return False
+    if (isinstance(t, TupleType) and isinstance(inner, TpyTupleLiteral)
+            and len(inner.elements) == len(t.element_types)):
+        return any(view_slot_source_is_temporary(et, e, type_of)
+                   for et, e in zip(t.element_types, inner.elements))
+    return view_source_is_temporary(expr)
+
+
+def temporary_view_bind_message(view_type: 'TpyType', subject: str,
+                                 name: str) -> str:
+    """The one diagnostic for a view slot -- a local or a field -- bound to a
+    source `view_source_is_temporary` calls temporary."""
+    owned = "list" if is_span(unwrap_readonly(view_type)) else "str/bytes"
+    return (f"Cannot bind {view_type} {subject} to a temporary view source; "
+            f"the backing storage is destroyed at end-of-statement -- "
+            f"annotate '{name}' as an owned {owned} to keep a copy")
 
 
 def collect_pending_source_types(ctx: 'SemanticContext', expr: 'TpyExpr') -> 'list[TpyType]':

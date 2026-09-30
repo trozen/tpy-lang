@@ -1,6 +1,6 @@
-# A `BytesView` field initialized from the constructor's parameter: the
-# member-init ladder has no source form for the view family, even though the
-# generator reading that field routes, so `self.blob = blob` rejects.
+# A `BytesView` field initialized from the constructor's parameter: a field
+# write (member-init or method alike) has no source form for the view family,
+# even though the generator reading that field routes, so it rejects.
 from typing import Iterator
 from tpy import BytesView, int32
 
@@ -10,7 +10,7 @@ class Holder:
 
     def __init__(self, blob: BytesView) -> None:
         # The view parameter is the member-init source.
-        self.blob = blob  # tpyc: error(/ctor\.mil_field\.nominal\.name/)
+        self.blob = blob  # tpyc: error(/assign\.field_write_shape/)
 
     def chunks(self, size: int32, alt: bool) -> Iterator[bytes]:
         if alt:

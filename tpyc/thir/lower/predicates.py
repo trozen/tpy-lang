@@ -15,7 +15,6 @@ from ...parse.nodes import (
     FunctionLinkage,
     TpyArrayLiteral,
     TpyAssert,
-    TpyAssign,
     TpyBinOp,
     TpyBoolLiteral,
     TpyBytesLiteral,
@@ -5210,6 +5209,19 @@ def _value_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
     return t if all(_value_tuple_element_ok(e, analyzer)
                     for e in t.element_types) else None
 
+def _storage_copy_value(t: TpyType | None, analyzer) -> bool:
+    """A union or tuple value that is self-contained STORAGE wherever it is
+    stored -- a field, a container element: a pointer-variant or value
+    union, a pointer-repr, value or nested-storage tuple. An owning sink's
+    copy-assign takes the stored lvalue whole, as it takes a record's."""
+    if t is None:
+        return False
+    return (_eligible_ptr_union(t, analyzer) is not None
+            or _eligible_value_union(t) is not None
+            or _f1_tuple(t, analyzer) is not None
+            or _value_tuple(t, analyzer) is not None
+            or _nested_storage_tuple(t, analyzer) is not None)
+
 def _opt_owned_view_elem_tuple(t: TpyType | None,
                                analyzer) -> 'TupleType | None':
     """A storage tuple carrying at least one value-repr `Optional[str]` /
@@ -6514,22 +6526,6 @@ def _owned_bytes_slot(t: TpyType | None, analyzer) -> bool:
     return bt is not None and is_bytes_type(bt)
 
 
-def _value_opt_owned_str(t: 'TpyType | None', analyzer) -> bool:
-    """A value-repr `Optional[str]` FIELD slot (`std::optional<std::string>`).
-
-    `_value_opt_scalar` excludes the str family for a PARAM-shape reason (the
-    `optional<string_view>` vs `optional<string>` arg split needs the
-    `_maybe_convert_opt_view_param` shim); a FIELD has no such split -- its
-    storage is always the owned `std::optional<std::string>`, into which a str
-    literal assigns bare like any scalar. Scoped to the field sinks for exactly
-    that reason: do NOT reuse this at a param/arg position."""
-    if not isinstance(t, TpyType):
-        return False
-    t = unwrap_readonly(unwrap_send_sync(t))
-    if not (isinstance(t, OptionalType) and not t.uses_pointer_repr()):
-        return False
-    return _owned_str_slot(unwrap_readonly(t.inner), analyzer)
-
 def _container_scalar_read(t: TpyType | None, analyzer) -> bool:
     """A container whose element/value read renders as a bare value via the
     container subscript emit: `list[scalar|str]`, `Array[scalar|str, N]` (sema's
@@ -7412,14 +7408,24 @@ def _field_decl_type(e: TpyFieldAccess, declared: dict[str, TpyType],
         rt = unwrap_readonly(rt.pointee)
     if not (isinstance(rt, NominalType) and rt.is_record):
         return None
+    return _record_field_decl_type(rt, e.field, analyzer)
+
+
+def _record_field_decl_type(rt: TpyType, field: str,
+                            analyzer) -> 'TpyType | None':
+    """The declared type of `field` on record type `rt`, inherited fields
+    included and a generic record's type params read through `rt`'s type
+    args (`Box[U].value` is a `U`)."""
     record = analyzer.registry.get_record_for_type(rt)
     if record is None:
         return None
+    subst = analyzer.type_ops.build_type_substitution(rt)
     # Own fields take precedence over inherited ones (get_all_fields is
     # base-first); the C++ member access renders identically either way.
     for f in reversed(analyzer.registry.get_all_fields(record)):
-        if f.name == e.field:
-            return f.type
+        if f.name == field:
+            return (substitute_type_params_simple(f.type, subst)
+                    if subst else f.type)
     return None
 
 def _unbound_self_field_decl_type(e: TpyExpr, analyzer) -> 'TpyType | None':
@@ -7429,13 +7435,8 @@ def _unbound_self_field_decl_type(e: TpyExpr, analyzer) -> 'TpyType | None':
     if not (isinstance(e, TpyFieldAccess)
             and e.unbound_self_parent_type is not None):
         return None
-    record = analyzer.registry.get_record_for_type(e.unbound_self_parent_type)
-    if record is None:
-        return None
-    for f in reversed(analyzer.registry.get_all_fields(record)):
-        if f.name == e.field:
-            return f.type
-    return None
+    return _record_field_decl_type(e.unbound_self_parent_type, e.field,
+                                   analyzer)
 
 def _container_field_bare_read(e: TpyExpr, declared: dict[str, TpyType],
                                analyzer) -> bool:
@@ -8124,177 +8125,6 @@ def copy_ptr_optional_peel(e: TpyExpr, analyzer) -> 'TpyExpr | None':
     return (arg if isinstance(at, OptionalType) and at.uses_pointer_repr()
             else None)
 
-
-def _owned_optional_call_source(value: TpyExpr, ftype: TpyType,
-                                analyzer) -> bool:
-    """An `Own[T] | None`-returning CALL landing in a pointer-repr
-    `Optional[T]` field. The `Own` inner makes the VALUE a value-repr
-    `std::optional<T>` while the FIELD is pointer-repr, so the same-repr leg
-    cannot see the pair -- yet the assign is BARE, keyed on exactly this
-    shape (`is_owned_optional`). One predicate for both halves: the admission
-    and the tail's lift-suppression must never drift, because a
-    `ptr_to_optional` here would be handed a `std::optional<T>` where it
-    takes a `T*` -- ill-formed C++, not a mere spelling difference."""
-    if not isinstance(value, (TpyCall, TpyMethodCall)):
-        return False
-    if not (isinstance(ftype, OptionalType) and ftype.uses_pointer_repr()):
-        return False
-    vt = analyzer.get_expr_type(value)
-    return (isinstance(vt, OptionalType) and not vt.uses_pointer_repr()
-            and isinstance(vt.inner, OwnType)
-            and vt.inner.wrapped == ftype.inner)
-
-
-def _f2b_optional_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
-                                 pointers: set[str], analyzer) -> bool:
-    """An optional-field write `recv.field = <value>`: the target is a pointer-repr
-    `Optional[record]` field off an F1-record receiver and the value is either a
-    bare borrow `T*` local (`recv.field = ::tpy::ptr_to_optional[_move](p)`, copy
-    or move per last-use), a `None` literal (`recv.field = std::nullopt`), a
-    CALL returning the same pointer-repr Optional (a borrow `T*` rvalue taking
-    the same lift -- `h.value = ptr_to_optional(find_point(pts, 1))`), an
-    `Own[T] | None`-returning call assigning BARE
-    (`_owned_optional_call_source`), or a
-    FIELD read of the same Optional (already `std::optional<T>` STORAGE, so it
-    copies bare). The generic tail picks lift-vs-bare off the LOWERED form, so
-    both new rows share one emit. A TYPE-PARAM inner is admitted for the
-    borrow-`T*` source only.
-
-    A `copy()` wrapper peels first: for a pointer-repr Optional argument the
-    copy is the identity, so `copy(src)` and `src` render the same string."""
-    target = stmt.target
-    if not _field_receiver_ok(target, declared, analyzer):
-        return False
-    ftype = analyzer.get_expr_type(target)
-    if not (isinstance(ftype, OptionalType) and ftype.uses_pointer_repr()):
-        return False
-    value = copy_ptr_optional_peel(stmt.value, analyzer) or stmt.value
-    if not _f1_record(ftype.inner, analyzer):
-        # A TYPE-PARAM inner takes the identical `ptr_to_optional` lift (the
-        # lift keys on the field's repr, not the inner), but only for the
-        # borrow-`T*` local source -- the None / call / field rows below were
-        # never witnessed off a generic field.
-        return (isinstance(ftype.inner, TypeParamRef)
-                and _is_borrow_ptr_local(value, declared, pointers)
-                and _witness("field_write.opt_lift_tparam"))
-    if isinstance(value, TpyNoneLiteral) or _is_borrow_ptr_local(
-            value, declared, pointers):
-        return True
-    if _owned_optional_call_source(value, ftype, analyzer):
-        return True
-    if not isinstance(value, (TpyCall, TpyMethodCall, TpyFieldAccess)):
-        return False
-    # Same-Optional sources only: a differing inner would need a conversion
-    # neither the bare copy nor the plain lift carries.
-    vt = analyzer.get_expr_type(value)
-    if not (isinstance(vt, OptionalType) and vt.uses_pointer_repr()
-            and vt.inner == ftype.inner):
-        return False
-    if isinstance(value, TpyFieldAccess):
-        return _field_receiver_ok(value, declared, analyzer)
-    return True
-
-def _is_borrow_tuple_source(e: TpyExpr, declared: dict[str, TpyType],
-                            storage_tuple_locals: set[str], analyzer) -> bool:
-    """A borrow-form tuple name (`std::tuple<..., T*>`) that lifts to storage form
-    at a field write via `tuple_to_storage`: a borrow tuple PARAM. A storage-tuple
-    alias local (`auto&&`, in `storage_tuple_locals`) is STORAGE form -- a direct
-    copy, no wrap -- and is excluded; a storage-form field/subscript/global source
-    is likewise a direct copy and is not this borrow source."""
-    return (isinstance(e, TpyName)
-            and e.name not in storage_tuple_locals
-            and _f1_tuple(declared.get(e.name), analyzer) is not None)
-
-def _storage_tuple_write_source(e: TpyExpr, ft: 'TupleType',
-                                storage_tuple_locals: 'AbstractSet[str]',
-                                analyzer) -> bool:
-    """A STORAGE-form source of the same F3 tuple type at a tuple sink: a
-    container-element subscript, a field read, or a storage-form tuple NAME
-    (a storage local / seeded read-only global). `needs_tuple_storage_lift`
-    is False for each, so the copy is bare -- no `tuple_to_storage`."""
-    if isinstance(e, TpySubscript):
-        if isinstance(e.index, TpySlice):
-            return False
-    elif isinstance(e, TpyName):
-        if e.name not in storage_tuple_locals:
-            return False
-    elif not isinstance(e, TpyFieldAccess):
-        return False
-    at = analyzer.get_expr_type(e)
-    atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-           if at is not None else None)
-    return atu == ft
-
-
-def _f1_tuple_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
-                             storage_tuple_locals: set[str], analyzer) -> bool:
-    """A tuple-field write `recv.field = <tuple source>`: an F3 tuple field off
-    an F1-record receiver, written from a borrow tuple source (the field-write
-    lifts borrow->storage via `tuple_to_storage` -- a copy) or from a
-    storage-form source (subscript / field / storage name -- the direct bare
-    copy, no wrap; the `Own[tuple]` move arm is not lowered yet)."""
-    target = stmt.target
-    if not _field_receiver_ok(target, declared, analyzer):
-        return False
-    ft = _f1_tuple(analyzer.get_expr_type(target), analyzer)
-    if ft is None:
-        return False
-    # A tuple LITERAL renders the spelled value-form brace-init and the
-    # assign wraps it (`tuple_to_storage<S>(std::tuple<..>{std::move(a), ..})`
-    # -- the storage wrap over the literal's all-VALUE-elements path).
-    # The REF-element ladder spells its slots differently and stays out.
-    if isinstance(stmt.value, TpyTupleLiteral):
-        return (len(stmt.value.elements) == len(ft.element_types)
-                and not _tuple_literal_has_ref_elements(stmt.value, ft))
-    if _storage_tuple_write_source(stmt.value, ft, storage_tuple_locals,
-                                   analyzer):
-        return True
-    return _is_borrow_tuple_source(stmt.value, declared, storage_tuple_locals, analyzer)
-
-
-def _nested_tuple_field_literal_write_ok(stmt: TpyAssign,
-                                         declared: dict[str, TpyType],
-                                         analyzer) -> bool:
-    """A NESTED-storage tuple field written from a tuple LITERAL
-    (`h.q = (9, (8, c))` -> `h.q = std::tuple<...>{9,
-    ::tpy::tuple_to_storage<S2>(std::tuple<int32_t, const P*>{8, &(c)})};`):
-    the outer tuple has no borrow form, so the spelled brace-init assigns
-    directly with NO outer wrap; nested members replay the wrap decision
-    per level (the container-literal elem recursion)."""
-    if not isinstance(stmt.value, TpyTupleLiteral):
-        return False
-    if not _field_receiver_ok(stmt.target, declared, analyzer):
-        return False
-    nt = _nested_storage_tuple(analyzer.get_expr_type(stmt.target), analyzer)
-    return (nt is not None
-            and len(stmt.value.elements) == len(nt.element_types))
-
-
-def _value_tuple_field_literal_write_ok(stmt: TpyAssign,
-                                        declared: dict[str, TpyType],
-                                        analyzer) -> bool:
-    """A VALUE-tuple field written from a tuple LITERAL (`s.auth = ("u", "p")`
-    -> `s.auth = std::tuple<std::string, std::string>{"u", "p"};`): borrow and
-    storage coincide for a value tuple, so the spelled brace-init assigns
-    directly with no `tuple_to_storage` wrap -- the F3 sibling's lift is what
-    distinguishes them."""
-    if not isinstance(stmt.value, TpyTupleLiteral):
-        return False
-    if not _field_receiver_ok(stmt.target, declared, analyzer):
-        return False
-    tt = analyzer.get_expr_type(stmt.target)
-    ut = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(tt))) \
-        if tt is not None else None
-    if isinstance(ut, OptionalType):
-        # An Optional[value-tuple] FIELD stores `std::optional<std::tuple
-        # <..>>`, whose operator= absorbs the same spelled brace-init the
-        # plain tuple field gets (`s.auth = std::tuple<..>{"u", "p"};`).
-        tt = ut.inner
-    vt = _value_tuple(tt, analyzer)
-    if vt is None:
-        return False
-    return (len(stmt.value.elements) == len(vt.element_types)
-            and not _tuple_literal_has_ref_elements(stmt.value, vt))
 
 def _owning_fi(func: TpyFunction, analyzer,
                record_name: str | None) -> 'FunctionInfo | None':

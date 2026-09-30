@@ -227,10 +227,11 @@ inline std::ostream& operator<<(std::ostream& os, const Random& obj) {
 //         self._seed(_os_entropy_uint32())
 //     else:
 //         self._seed(seed_value)
-inline Random::Random(std::optional<uint32_t> seed_value) : _state(std::array<uint32_t, 624>()) {
-    this->_index = _N;
-    this->_gauss_next = 0.0;
-    this->_has_gauss_next = false;
+inline Random::Random(std::optional<uint32_t> seed_value)
+    : _state(std::array<uint32_t, 624>()),
+      _index(_N),
+      _gauss_next(0.0),
+      _has_gauss_next(false) {
     if ((!seed_value.has_value())) {
         this->_seed(::tpy::stdlib::random::os_entropy_uint32());
     } else {

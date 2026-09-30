@@ -10,7 +10,7 @@ class Label:
         self.view = "d"
 
     def mark(self, a: str) -> None:
-        self.view = a + "!"  # tpyc: error(/assign.field_write_shape/)
+        self.view = a + "!"  # tpyc: error(/Cannot bind StrView field 'view' to a temporary view source/)
 
 
 def main() -> None:

@@ -129,6 +129,25 @@ Scripts (run from the repo root with `uv run python`):
   because the latter is an ICE on a record subject
   (`_match_record_arm_always`, `tpyc/thir/lower/match.py`, treats an
   `as`-bound wildcard as an or-pattern).
+- `field_admission_sweep.py` -- **the field-write admission verdict
+  ratchet**. The matrix is (position: `ctor` member-init, `method`, `gen_method`,
+  `async_method`, `local_holder` -- `hold.fld = src` in a free function --
+  and the `local` declaration as the control) x (16 field slot types) x (19
+  source shapes). One program per cell, compiled with `tpyc -o` as a
+  subprocess, so it measures sema errors, lowering rejects and the emitted
+  C++ alike; each cell records the verdict, the first diagnostic, the
+  normalised C++ of the subject write, and a class for a rejected cell (`R`
+  rejects valid code, `E` justified, `?` unclassified). Committed as
+  `field_admission_sweep.expected.json`, not gated by a test. The check run
+  exits 1 on an unexplained move; an `R` cell that starts compiling is
+  printed as PROGRESS, other expected moves go in an `--explain` JSON.
+  `--update` rewrites the table, `--only <text>` takes a slice, `--grid`
+  prints the per-position grids, `--skips` lists every skipped cell with
+  its reason, `--jobs` defaults to min(4, CPUs). `--run` builds and runs a
+  ~40-program behaviour subset against CPython instead (reference slots
+  mutate the aliased source after the write and print both, plus an
+  integer-width block) and reports each program as same / DIFFERS+warn /
+  DIFFERS-DECLARED / DIFFERS-SILENT / tpy-reject / build-fail.
 - `probe_fallback.py`, `probe_site.py`, `probe_programs.py` -- **RETIRED.**
   Each emitted one program through both codegen paths and compared the
   outcomes, so all three stopped working when the AST body emitters were
@@ -254,12 +273,10 @@ now the reference one) and one case's snapshot was regenerated because this
 branch edits its source (`list/extend_container_field`); no other committed
 `expected/` file outside the added and deleted cases moved.
 
-One row of the merged field-write ladder is deliberately NOT on the axis and
-says so in place: `_container_prvalue_field_write_ok` keeps `_f1_container_ref`
-because its render threads `_ExprResultUse.STORAGE` where the reference rvalue
-row threads the copy sink and pins the source type to the slot -- the pin that
-keeps a subclass rvalue from slicing into a base-typed field. Containers have no
-subclass, which is why the two rules can differ at all.
+The field write has since become one family ladder keyed on the declared
+slot (`tpyc/thir/lower/field_write.py`, shared by the constructor
+member-init), so the container-prvalue row these stages left off the axis is
+gone.
 
 **The return ladder merged (2026-09-05), the first of the five.**
 `_lower_stmt_dispatch` now has ONE return arm per slot family:

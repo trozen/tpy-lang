@@ -253,8 +253,6 @@ class Holder:
 
     def __init__(self, c: Coord) -> None:
         self.c = c
-        # BUGS.md#valuetype-optional-ctor-member-init keeps the value out
-        # of the member-init list.
         self.maybe = None
 
     # method: return of the whole optional field

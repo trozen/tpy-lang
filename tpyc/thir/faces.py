@@ -73,8 +73,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # bare at a STORAGE sink
     "containerlit.genrec_own_elem", # container literal at an Own[genrec]
                                     # element slot -> the ru-instance render
-    "mil.generic_record_move",      # Own-param move into a generic-record
-                                    # field _f1_record rejects (Box[Tree[T]])
     "argtemp.ru_wrapper_ctor",      # member-CTOR rvalue into a wrapper slot
                                     # (`Tree __tmp_N = std::move(b);`)
     "argtemp.record_rvalue",        # record-ctor rvalue into a ref slot
@@ -461,6 +459,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.container_iterable",    # container method result as a for-head iterable
     # borrow-returning container method result read transiently (if/in): bare
     "method.borrow_ret_passthrough",
+    "method.ptr_opt_lift",          # borrow ptr-repr Optional method result
+                                    # lifted by a storage sink
     "method.qualcall.container_iterable",  # marker-call container as a for-head iterable
     # marker-call owned-tuple result at an owning Own[tuple] arg slot
     "method.qualcall.own_tuple_slot",
@@ -741,19 +741,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.omit_defaults",           # free/method/qualified call omitting
                                     # trailing default args (defaults ride the
                                     # emitted C++ signature)
-    # Ctor MIL view-family field inits (lowering; the per-family renders --
-    # bare str/StrView source vs the bytes view->owned `Bytes(x)` convert).
-    "mil.str_field",                # str/StrView field: bare source render
-    "mil.bytes_field",              # bytes field: `Bytes(x)` wrap / owned bare
-    # Ctor MIL container-field inits (lowering; the shared container-literal
-    # machinery at the target-threaded MIL cell, plus the bare
-    # container-param copy / Own-param move name row).
-    "mil.container_literal",        # `self.xs = [1, 2]` -> `xs({1, 2})`
-    "mil.container_name",           # `self.xs = p` -> `xs(p)` / `xs(std::move(p))`
-    "mil.container_repeat",         # `self.xs = [e] * n` -> the threaded
-                                    # from_range(repeat_range(..)) prvalue
-    "mil.container_comp",           # `self.xs = [f(i) for i in ..]` -> the
-                                    # comprehension stmt-expr in the MIL cell
     "with.str_target",              # str/StrView __enter__ as-target
     # Container subscript writes (lowering; THIRSetItem's emit arms plus
     # the owned-str element sink copy and the aug-assign desugar).
@@ -798,13 +785,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # via ptr_to_optional / to_value_variant
                                     # (narrowed member names store bare)
                                     # (`::tpy::__setitem__(this->xs, i, v);`)
-    # Plain F1-record FIELD write from a record rvalue (a ctor STORAGE / a
-    # by-value record-returning call VALUE): a bare copy `recv.field =
-    # Inner(args);`, no borrow<->storage lift.
-    "field_write.record_rvalue",
-    # Plain F1-record FIELD write from a record NAME: the bare copy
-    # `recv.field = p;` or `std::move(p)` at a movable name's last use.
-    "field_write.record_name",
     # Container-literal FIELD write: the decl-init literal render assigned
     # into the field lvalue (`this->xs = {n};` / the ordered_map ctor form).
     "field_write.container_lit",
@@ -815,12 +795,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # `recv.field = [e] * n` at a container field: the repeat's from_range
     # build, target-typed by the FIELD slot, assigned bare.
     "field_write.container_repeat",
-    # `recv.field = data.splitlines()` -- a container-returning method-call
-    # RVALUE assigned bare (no move verdict: a prvalue is not a movable name).
-    "field_write.container_method_call",
-    # ... and its FREE-call sibling (`self.data = make_list(n)`), an
-    # `Own[container]` return assigned through the identical bare row.
-    "field_write.container_free_call",
     # The same literal into a STORAGE-form `Optional[container]` field
     # (`this->items = std::vector<T>{10, 20};`) -- lowered against the
     # Optional's INNER, the list brace self-describing for the optional ctor.
@@ -834,29 +808,10 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # into its base; shared bare STR emit)
     "field_write.str_view_call",    # StrView field <- a call returning a
                                     # view (classifier row; bare STR emit)
-    "field_write.bytes_narrowed_opt",  # bytes field <- a NAME declared
-                                    # `bytes | None`, narrowed here
-    "field_write.opt_lift_tparam",  # pointer-repr `Optional[T]` field (T a
-                                    # type param) <- borrow `T*` local
     "field_write.str",
     # Owned bytes FIELD write from a name/literal: a view source copies via
     # `::tpy::Bytes(...)`; an owned source lands bare.
     "field_write.bytes",
-    # Value-storage Optional[record] FIELD write (`std::optional<inner>`) from
-    # a record NAME: the bare copy `recv.opt = p;` (optional::operator=) or
-    # `std::move(p)` at a movable name's last use.
-    "field_write.optrec_name",
-    # The Optional[record] FIELD write from a record RVALUE (ctor / by-value
-    # call of the inner type): the bare copy `recv.opt = Inner(args);`.
-    "field_write.optrec_rvalue",
-    # An `Own[T] | None`-returning CALL into a pointer-repr Optional[T] field:
-    # the return IS the field's std::optional<T>, so it assigns bare (the
-    # ptr_to_optional lift the field's repr implies would not compile).
-    "field_write.owned_opt_call",
-    "field_write.union_member_ctor",  # member ctor rvalue -> bare variant store
-    # Assign-narrowed same-union NAME source: the whole ptr-variant lifts
-    # via to_value_variant into the union field slot.
-    "field_write.union_name_lift",
     # The union field sink's CALL twin: a ptr-variant union call result
     # consumed whole by the sink's to_value_variant lift.
     "call.union_value_lift_ret",
@@ -893,9 +848,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # An owned-str FIELD read at the value-opt view return: the member
     # lands bare in the optional (converting ctor).
     "ret.value_opt_view_field",
-    # A storage-form-tuple-returning call at the ctor MIL slot: bare
-    # (no tuple_to_storage lift).
-    "mil.tuple_storage_call",
     # A bytes ternary mixing a VIEW arm and a bytes-LITERAL arm: the raw
     # mixed render, whole-ternary BORROW (the sink copies).
     "ifexpr.bytes_view_lit",
@@ -929,6 +881,18 @@ THIR_FACES: frozenset[str] = frozenset({
     # `recv.opt = None` at any Optional FIELD: the storage-form `std::nullopt`,
     # keyed on the declared field type (a narrowed write site still stores it).
     "field_write.opt_none",
+    # A borrowed `optional<view>` PARAM into an owned `Optional[str/bytes]`
+    # FIELD: the view->owned shim (`a ? std::make_optional(...) : nullopt`).
+    "field_write.optview_shim",
+    # A numeric literal into a value-union FIELD, retyped to the union so
+    # the variant's converting assignment picks the member.
+    "field_write.value_union_literal",
+    # An `Own`-declared NAME moved at its last use into a slot no other
+    # family renders (a recursive-alias wrapper, a tuple of type params).
+    "field_write.owned_move",
+    # A container literal into a recursive-alias wrapper FIELD: the
+    # wrapper-instance spelled render.
+    "field_write.recursive_alias_literal",
     # Dynamic-attrs (D16) family faces.
     "setitem.any_value",            # `d[k] = v` into a dict[K, Any] slot from
                                     # an Any-typed name (bare, no make_any)
@@ -943,10 +907,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # receiver lvalue
     "delitem.user_record",          # `del recv[k]` on a user record with
                                     # __delitem__ -> ::tpy::__delitem__(recv, k)
-    "field_write.container_narrowed_optptr",  # narrowed ptr-opt param at a
-                                    # plain reference field: the deref copy
-    "field_write.container_name",   # `Optional[container]` FIELD write from a
-                                    # same-family NAME: the shared tail render
     "method.dyn_setattr",           # `obj.x = v` -> the synthesized
                                     # `obj.__setattr__("x", make_any(...))`
     "method.any_ret",               # an Any-returning method call lands
@@ -997,65 +957,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # all the target-less bare renders of _extract_base_inits.
     "baseinit.nonscalar_arg",
     "baseinit.none_slot_spelling",  # None arg spelled from the base slot ({} / nullopt / nullptr)
-    # Ctor member-init-list cells (lowering; the small value families beyond
-    # the scalar / record / Optional[record] arms).
-    "mil.optional_none",            # `f(std::nullopt)` -- any Optional field,
-                                    # inner-independent (incl. value-repr)
-    "mil.ptr_none",                 # `p(nullptr)` -- None into a Ptr[T] field
-    "mil.genrec_literal",           # container literal into a generic-instance
-                                    # wrapper field: the ru-instance spelled render
-    "mil.union_none",               # `u(std::monostate{})` -- None into a
-                                    # value-variant union field
-    "mil.union_lift",               # `u(::tpy::to_value_variant<...>(v))` --
-                                    # a borrow ptr-variant name source
-    "mil.union_rvalue",             # `u(A(3))` -- a member-record ctor rvalue
-                                    # constructs the variant directly
-    "mil.value_union",              # `u(u)` / `u(5)` -- value-union bare render
-    "mil.tuple_storage",            # `t(::tpy::tuple_to_storage<...>(t))` --
-                                    # a borrow pointer-repr tuple param
-    "mil.tuple_storage_subscript",  # `pair(::tpy::__getitem__(items, 0))` --
-                                    # a storage-tuple element read stores bare
-    "mil.tuple_storage_mixed_call", # `t(::tpy::tuple_to_storage<S>(
-                                    # make_mixed(b)))` -- non-move lift
-    "mil.ptr_tuple_literal",        # `t(::tpy::tuple_to_storage<S>(S{...}))`
-                                    # -- a spelled pointer-repr tuple literal
-    "mil.value_tuple_name",         # `t(t)` -- value-tuple param bare copy
-    "mil.nested_tuple_literal",     # nested-storage tuple literal: bare
-                                    # spelled brace-init, lifts inside
-    "mil.value_tuple_literal",      # `t(std::tuple<...>{...})` spelled literal
-    "mil.optional_value_copy",      # `f(value)` -- value-repr Optional field
-                                    # bare-copied from a same-typed opt param
-    "mil.optview_shim",             # value-repr Optional[str/bytes] field <-
-                                    # borrow optional<view> param (arg-split shim)
-    "mil.optional_container_literal",  # `lst(std::vector<int32_t>{1, 2, 3})` --
-                                    # a container literal into a value-repr
-                                    # Optional[container] field (inner-threaded)
-    "mil.optional_str_literal",     # `s("xy")` -- a str literal into a
-                                    # value-repr Optional[str] field
-    "mil.optional_ptr_lift",        # `f(::tpy::ptr_to_optional(p))` -- a borrow
-                                    # `T*` source into a pointer-repr Optional
-                                    # field, inner-agnostic
-    "mil.unclaimed_family_move",    # own-param move into a field family no
-                                    # per-family arm claims (classifier row:
-                                    # the render is the shared M3b-move emit)
-    "mil.any_coerce",               # `payload(::tpy::make_any(...))` -- an Any
-                                    # field from an into_any coerce (classifier
-                                    # row; shared bare emit)
-    "mil.container_default",       # `items(std::vector<T>())` -- the
-                                    # empty-container ctor call in a MIL cell
-    "mil.span_copy",              # `items(items)` -- std::span field
-                                    # bare-copied from a same-typed param
-    "mil.callable_copy",            # `on_event(cb)` -- std::function field
-                                    # bare-copied from a same-typed param
-    "mil.callable_lambda",          # `action([]() { ... })` -- routable
-                                    # lambda into the std::function field
-    "mil.record_method_rvalue",     # Own-returning method rvalue constructs
-                                    # the record field directly (Rc.new)
-    "mil.own_param_copy",           # Own record param at a NON-last use: the
-                                    # warned bare `field(param)` copy
-    # An own-field init demoted from the MIL to the ctor body (bare non-param
-    # name / nested-def name / body-local ref) -- demoted rather than
-    # rejecting the whole ctor (lowering verdict; the body machinery renders it).
+    # An own-field init demoted from the MIL to the ctor body because its
+    # source reads something not bound at member-init time (a nested-def
+    # name, a body local, a walrus) -- demoted rather than rejecting the
+    # whole ctor (lowering verdict; the body machinery renders it).
     "mil.demote_mirror",
     # Container/str subscript read off a FIELD-ACCESS receiver (lowering;
     # `::tpy::__getitem__(this->xs, i)` -- the receiver renders as its own
@@ -1642,6 +1547,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.callable_field_arg",
     # A Callable-VALUE field read at a value position: the bare member read.
     "field.callable_value",
+    "field.storage_copy",           # union / tuple FIELD read at the owning
+                                    # copy sink: the bare member read
+    "subscript.storage_elem_copy",  # Optional / union / tuple ELEMENT read at
+                                    # the owning copy sink: the checked
+                                    # element lvalue, copied whole
     # An empty container instantiation into an Own[container] ctor slot
     # (the @dataclass default_factory fill): the spelled default ctor.
     "ctor.own_container_instantiation",
@@ -1817,8 +1727,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # coincide, so no lift)
     "arg.record_borrow_ret_marker", # T&-returning record call bound bare at
                                     # a marker callee's record ref slot
-    "mil.native_ctor",              # ctor MIL field init from a plain @native
-                                    # record ctor (`_logger(::ns::H(name))`)
     "arg.own_tparam_call_rvalue",   # T-returning call rvalue bare at the
                                     # same open Own[T] slot
     "call.dyn_getattr_builtin",     # 2-arg getattr(obj, name) delegated to
@@ -3151,7 +3059,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.loop_slot_bind",           # frame_slot loop var admitted ((*x) reads)
     "binop.poly_inline_narrow",     # inline poly-isinstance under && (spelled static_cast RHS)
     "truthy.optional_field_whole",  # truthy Optional field condition (is_truthy over raw storage)
-    "mil.demote_probe",             # dynamic MIL demote (the probe registers a temp)
+    "mil.demote_probe",             # MIL demote: the lowered source declares a temp
     "res.return_opt_record_none",   # storage Optional[record] async return of None (nullopt)
     "res.return_ptr_opt_field",     # ptr-repr Optional field lift at the BORROW async return
     "res.poly_cond",                # poly isinstance Branch cond (no-alias dynamic_cast check)
@@ -3269,35 +3177,15 @@ THIR_FACES: frozenset[str] = frozenset({
     # A tuple LITERAL at a tuple field: the spelled value brace-init, plus
     # the `tuple_to_storage` wrap at an F3 (non-value-element) slot.
     "field_write.tuple_literal",
-    "field_write.tuple_storage_copy",  # F3 tuple field from a storage-form
-                                    # source (subscript / field / storage
-                                    # name) -- the bare copy, no wrap
     "call.field_copy_borrow_ret",   # the T&-returning call admitted at the
                                     # field-write COPY sink (renders bare)
     "setitem.borrow_call_copy",     # the T&-returning call value copies
                                     # into the checked setitem's V param
-    "field_write.field_copy",       # `h.p = h2.p;` -- the field-read
-                                    # reference source copies bare
-    "field_write.subscript_copy",   # `h.p = pts[0];` -- the record-elem
-                                    # subscript reference source copies bare
-    "field_write.borrow_call_copy",  # `h.p = identity(pt);` -- the T&-
-                                     # returning call copies bare on assign
-    # `t.w = e.make(4);` -- a record-returning METHOD call RVALUE copies bare
-    # into the field. The borrow-returning twin rejects.
-    "field_write.method_rvalue_copy",
-    "field_write.ptr_local_copy",   # `this->r = (*saved);` -- pointer-local
-                                    # record source copies through the deref
-    # A plain F1-record FIELD write whose TARGET auto-derefs through a user
-    # `__deref__` wrapper (`this->_state.__deref__()._recv_waker = waker;`).
-    # Target-position only: the value rows above decide copy-vs-move.
-    "field_write.record_user_deref",
     # `copy()` sources at a record / Optional[record] FIELD write: the
     # copy-CONSTRUCT rvalue (`field = T(x);`) and the constructor-argument
     # peel (`copy(T(...))` renders as the bare `T(...)` prvalue).
     "field_write.record_copy",
     "field_write.record_copy_ctor",
-    "field_write.optrec_copy",
-    "field_write.optrec_copy_ctor",
     # A VALUE-repr `Optional[scalar]` field write (lowering; `s.count = 42;`
     # -- the scalar converts implicitly into `std::optional<int32_t>`, so no
     # `ptr_to_optional` lift, which is the POINTER-repr sibling's).
@@ -3335,7 +3223,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "decl.bytearray_view_copy",     # bytearray slot from a coerced view:
                                     # the materialize `Bytes(x)`
     "field.none_unit_write",        # NoneType field write: bare assign
-    "mil.none_unit",                # ctor MIL None field: slot(monostate{})
     "top_level.global_no_init",     # annotation-only global: emits nothing
     "top_level.global_slot",
     "top_level.global_slot_comp",   # comp init renders its stmt-expr inside

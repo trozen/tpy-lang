@@ -647,12 +647,6 @@ namespace tpystd::datetime {
 // @dataclass(frozen=True)
 // class datetime(ValueType):
 struct datetime {
-    // _tz_off_us: int64
-    int64_t _tz_off_us;
-    // _us: int32
-    int32_t _us;
-    // _tz_name_id: int32
-    int32_t _tz_name_id;
     // _y: int16
     int16_t _y;
     // _mo: int8
@@ -665,8 +659,14 @@ struct datetime {
     int8_t _mm;
     // _ss: int8
     int8_t _ss;
+    // _us: int32
+    int32_t _us;
     // _tzf: int8
     int8_t _tzf;
+    // _tz_off_us: int64
+    int64_t _tz_off_us;
+    // _tz_name_id: int32
+    int32_t _tz_name_id;
 
     // def __init__(self, year: int, month: int, day: int, hour: int = 0,
     //              minute: int = 0, second: int = 0, microsecond: int = 0,

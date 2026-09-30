@@ -24,7 +24,7 @@ from .parse import (
     TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyContinue, TpyRaise,
     TpyMatch, TpyNestedDef, TpyDelVar, TpyTry, TpyWith, TpyNonlocal,
     TpyName, TpyFieldAccess, TpySubscript, TpyNamedExpr, TpyFunction,
-    TpyBoolLiteral, TpyAssert, TpyTupleLiteral,
+    TpyBoolLiteral, TpyAssert, TpyTupleLiteral, TpyLambda,
 )
 from .parse.nodes import stmts_have_any_suspension, written_names
 
@@ -71,6 +71,10 @@ class _Walk:
     # alias hiding stays out so a source is not moved through a loop body
     # where the alias may be live from a previous iteration.
     mark: bool = True
+    # Names a nested def's body reads from its enclosing scope: the closure
+    # may run again and the enclosing frame may read them after it, so no
+    # read of one in this body is a last use.
+    captured: frozenset[str] = frozenset()
 
 
 def _live_only(w: _Walk, ex: _Exits) -> _Walk:
@@ -80,6 +84,7 @@ def _live_only(w: _Walk, ex: _Exits) -> _Walk:
 def analyze_last_uses(
     stmts: list[TpyStmt],
     alias_sources: dict[str, str] | None = None,
+    captured: frozenset[str] = frozenset(),
 ) -> IdentitySet:
     """Analyze a function body to find last-use sites for auto-move.
 
@@ -89,6 +94,8 @@ def analyze_last_uses(
 
     When alias_sources is provided (alias_name -> source_name), auto-move of
     a source variable is suppressed if any of its T& aliases are still live.
+    `captured`: for a nested def's body, the enclosing-scope names it reads
+    (`nested_def_free_names`) -- never a last use there.
 
     The analysis is conservative: if unsure, a node is NOT marked as last use.
     A missed optimization is just a copy (same as current behavior).
@@ -115,7 +122,8 @@ def analyze_last_uses(
     # the rebound variable, not the old object.
     live: set[str] = _collect_nested_def_captures(stmts)
     w = _Walk(IdentitySet(), source_aliases, detached_aliases,
-              returned_through=_returned_names_by_try(stmts))
+              returned_through=_returned_names_by_try(stmts),
+              captured=captured)
     _analyze_stmts_backward(stmts, live, w, first_reassign_pos)
     return w.last_uses
 
@@ -129,6 +137,13 @@ def _nested_def_captures(stmt: TpyNestedDef) -> set[str]:
     the choice is spelled out instead.
     """
     return _free_names_approx(stmt.func)
+
+
+def nested_def_free_names(func: TpyFunction) -> frozenset[str]:
+    """The enclosing-scope names a nested def's body reads (the syntactic
+    approximation `_free_names_approx`), for `analyze_last_uses`'s
+    `captured`."""
+    return frozenset(_free_names_approx(func))
 
 
 def _collect_nested_def_captures(stmts: list[TpyStmt]) -> set[str]:
@@ -1118,8 +1133,9 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[str],
         return
     walrus_defs: set[str] = set()
     reads: list[TpyName] = []
+    in_lambda = IdentitySet()
     for expr in exprs:
-        reads.extend(_collect_reads_expr(expr, walrus_defs))
+        reads.extend(_collect_reads_expr(expr, walrus_defs, in_lambda))
     if not reads and not walrus_defs:
         return
 
@@ -1134,6 +1150,8 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[str],
     # and have no live T& aliases (prevents dangling references)
     for node in reads:
         if (name_counts[node.name] == 1
+                and node not in in_lambda
+                and node.name not in w.captured
                 and node.name not in live
                 and not _has_live_alias(node.name, live, w.source_aliases,
                                         w.detached_aliases)):
@@ -1148,12 +1166,16 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[str],
 
 
 def _collect_reads_expr(expr: TpyExpr,
-                        walrus_defs: set[str] | None = None) -> list[TpyName]:
+                        walrus_defs: set[str] | None = None,
+                        lambda_reads: IdentitySet | None = None
+                        ) -> list[TpyName]:
     """Collect TpyName nodes read (not defined) in an expression.
 
     Uses TpyExpr.children() for iterative traversal.
     If walrus_defs is provided, also records walrus (:=) target names into it
     (those are definitions, not reads, and are excluded from the returned list).
+    A lambda's free-name reads are reads here too (`_lambda_free_reads`);
+    `lambda_reads`, when given, records those nodes.
     """
     result: list[TpyName] = []
     stack: list[TpyExpr] = [expr]
@@ -1164,5 +1186,23 @@ def _collect_reads_expr(expr: TpyExpr,
             continue
         if isinstance(node, TpyNamedExpr) and walrus_defs is not None:
             walrus_defs.add(node.target)
+        if isinstance(node, TpyLambda):
+            inner = _lambda_free_reads(node)
+            result.extend(inner)
+            if lambda_reads is not None:
+                for n in inner:
+                    lambda_reads.add(n)
+            continue
         stack.extend(node.children())
     return result
+
+
+def _lambda_free_reads(lam: TpyLambda) -> list[TpyName]:
+    """The enclosing names a lambda body reads: the body minus the lambda's
+    params and the names it binds. The lambda may run any time after it is
+    built, so those names stay live where it is built -- but a read inside it
+    is never a last use (the body may run again)."""
+    bound: set[str] = set()
+    reads = _collect_reads_expr(lam.body, bound)
+    bound.update(lam.param_names)
+    return [n for n in reads if n.name not in bound]

@@ -1,0 +1,47 @@
+start None None init (0, '') [] 0 True None
+method.opt_params s b'b' init (0, '') [] 0 True None
+method.opt_fresh text! b'xy' init (0, '') [] 0 True None
+method.opt_view_field in b'xy' init (0, '') [] 0 True None
+method.union_literal in b'xy' 7 (0, '') [] 0 True None
+method.union_view in b'xy' text (0, '') [] 0 True None
+method.union_conv in b'xy' 42 (0, '') [] 0 True None
+method.tuple_int64 in b'xy' 42 (1, 'one') [] 0 True 5000000000
+method.ref_fresh in b'xy' 42 (1, 'one') [42, 2, 9] 11 False 5000000000
+method.op_copy 5 99
+method.opt_params None None 42 (1, 'one') [42, 2, 9] 11 False 5000000000
+method.opt_fresh abc! b'xy' 42 (1, 'one') [42, 2, 9] 11 False 5000000000
+method.opt_view_field None b'xy' 42 (1, 'one') [42, 2, 9] 11 False 5000000000
+method.union_literal None b'xy' 7 (1, 'one') [42, 2, 9] 11 False 5000000000
+method.union_view None b'xy' abc (1, 'one') [42, 2, 9] 11 False 5000000000
+method.union_conv None b'xy' 7 (1, 'one') [42, 2, 9] 11 False 5000000000
+method.tuple_int64 None b'xy' 7 (2, 'two') [42, 2, 9] 11 False 1
+method.ref_fresh None b'xy' 7 (2, 'two') [7, 2, 9] 12 False 1
+method.op_copy 6 99
+gen.yield 1
+gen.writes gen b'xy' 11 (2, 'two') [8, 3, 8] 12 False 1
+gen.yield 2
+gen.frame_locals [8, 30, 31, 32] gt! gt!
+async.writes async b'xy' 3 (3, 'tx') [8, 30, 31, 32] 12 False 1
+async.frame_locals [3, 40, 41, 42] tx? tx?
+holder.writes hold None ht (3, 'three') [9, 4, 5, 6] 0 True 77
+holder.ctor_arg_temp 4
+method.adjacent bytearray(b'src') 5
+method.not_last_use (100000000000000000000, 7) 1000000000000000000000 kept string long enough to heap (100000000000000000000, 7) 1000000000000000000000 kept string long enough to heap
+nested.captured 37 37 (100000000000000000000, 2) 1000000000000000000000000000000 (100000000000000000000, 2) 1000000000000000000000000000000
+lambda.live 3 3
+ctor.callback 4
+ctor.lambda 4
+ctor.fields 4 [4, 5, 99] 3 abcd bc 1 8 9 5 6 1 3 8
+ctor.pick 0
+ctor.pick 1
+ctor.closed_pt 2
+ctor.closed_union Pt(6)
+ctor.closed (1.5, 3) 1 tt b'bb' b'z' None
+ctor.pick 3
+ctor.pick 4
+ctor.base True 46 3 4
+ctor.base_reads 5 6
+ctor.based_q0_init
+ctor.based_order 7 1 7
+view_slots True
+local.view_of_borrow held

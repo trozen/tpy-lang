@@ -1674,8 +1674,6 @@ inline Wrapped::Wrapped(Calm z, int32_t k)
 
 // def __init__(self, c: Coord) -> None:
 //     self.c = c
-//     # BUGS.md#valuetype-optional-ctor-member-init keeps the value out
-//     # of the member-init list.
 //     self.maybe = None
 inline Holder::Holder(Coord c)
     : c(c),

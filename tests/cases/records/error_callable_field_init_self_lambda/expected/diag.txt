@@ -1,1 +1,1 @@
-main.py:13: error: in the constructor of 'Handler': this construct is not yet supported by C++ code generation (ctor.mil_field.callable.lambda)
+main.py:13: error: A lambda stored in field 'action' cannot capture 'self': a copy or move of the object would leave the closure pointing at the original

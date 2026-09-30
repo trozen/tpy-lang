@@ -1,1 +1,1 @@
-main.py:36: error: in function 'take': this construct is not yet supported by C++ code generation (expr.method_call:assign.field_write_lends_from_temporary)
+main.py:36: error: Cannot bind StrView field 'v' to a temporary view source; the backing storage is destroyed at end-of-statement -- annotate 'v' as an owned str/bytes to keep a copy

@@ -51,6 +51,7 @@ from ...parse.nodes import (
 )
 from ...typesys import (
     ConcreteFrameType, ConcreteGenType,
+    holds_borrowing_view, lands_in_view_member,
     collapse_tuple_own_elements,
     recorded_return_borrow_sources,
     return_const_projected,
@@ -373,7 +374,6 @@ from .predicates import (
     _value_opt_tuple,
     _value_opt_tuple_pass_arg,
     _tuple_literal_value_opt_arg,
-    _value_opt_owned_str,
     _value_opt_scalar,
     _value_opt_record,
     _value_opt_scalar_name,
@@ -2386,14 +2386,13 @@ def _viewfam_field_write_receiver_ok(target: TpyExpr,
 
 
 def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
-                           analyzer,
-                           pointers: 'AbstractSet[str]' = frozenset()) -> bool:
+                           analyzer, pointers: 'AbstractSet[str]',
+                           ftype: 'TpyType | None') -> bool:
     """A scalar-field write `recv.field = <scalar>`: a value-scalar field at a
     shared field-write receiver (`_field_receiver_ok` also rejects the
     property-setter / __setattr__ write target), written with an eligible
-    scalar expression. The scalar sibling of `_f2b_optional_field_write_ok`
-    -- it emits the default field assign (`recv.field = <value>;`, no
-    borrow<->storage lift). A record-element tuple subscript target
+    scalar expression -- it emits the default field assign (`recv.field =
+    <value>;`, no borrow<->storage lift). A record-element tuple subscript target
     (`t[N].field = <scalar>` -> `std::get<N>(t)->field = ...`, the write
     analog of the record-element read) rides the shared ladder; an
     Optional-element target is rejected by its markers. A char field writes
@@ -2403,7 +2402,6 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     target = stmt.target
     if not _field_write_receiver_ok(target, declared, analyzer, pointers):
         return False
-    ftype = analyzer.get_expr_type(target)
     if _eligible_char(ftype):
         if isinstance(stmt.value, TpyStrLiteral):
             return False
@@ -2411,28 +2409,18 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
               or _eligible_enum(ftype, analyzer) is not None
               or _is_type_param_slot(ftype)
               or _eligible_ptr_value(ftype, analyzer)
-              # The Callable-field twin of the value plan's lambda-NAME
-              # row (`self.callback = add_offset;`).
-              or (_callable_value(ftype)
-                  and isinstance(_peel_coerce(stmt.value), TpyName))
-              # ... and its Optional[Callable] flavor (`self.on_event =
-              # cb;` -- `std::optional<std::function>`'s operator= absorbs
-              # the same bare name; None rides the opt-none family).
+              # A Callable field and its Optional flavor: `std::function`'s
+              # copy / converting assignment absorbs the closure whatever
+              # renders it (None rides the opt-none family).
+              or _callable_value(ftype)
               or (isinstance(ftype, OptionalType)
-                  and _callable_value(unwrap_readonly(ftype.inner))
-                  and isinstance(_peel_coerce(stmt.value), TpyName))
+                  and _callable_value(unwrap_readonly(ftype.inner)))
               # A VALUE-repr `Optional[scalar]` field (`std::optional<T>`):
               # the scalar converts implicitly, so the store is bare like a
               # plain scalar's. Deliberately not the pointer-repr sibling --
               # that one needs the `ptr_to_optional` lift.
               or (_value_opt_scalar(ftype, analyzer) is not None
                   and not isinstance(stmt.value, TpyNoneLiteral))
-              # The owned-str twin (`s.label = "hello"` at a `str | None`
-              # field): same bare store into `std::optional<std::string>`.
-              # LITERAL values only -- a view-form source would raise the
-              # owned-vs-view conversion question the scalar row never has.
-              or (_value_opt_owned_str(ftype, analyzer)
-                  and isinstance(_peel_coerce(stmt.value), TpyStrLiteral))
               # A NoneType field (`slot: None` -> `std::monostate`): borrow
               # and storage coincide, so the store is bare like a scalar's
               # (a None literal renders the STORAGE `std::monostate{}`).
@@ -2472,7 +2460,8 @@ def _bytearray_value_slot_init(init: 'TpyExpr | None',
 
 def _user_deref_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
                                narrowed: 'AbstractSet[str]', analyzer,
-                               pointers: 'AbstractSet[str]') -> bool:
+                               pointers: 'AbstractSet[str]',
+                               ftype: 'TpyType | None') -> bool:
     """A scalar-field write auto-dereffed through a USER Deref wrapper
     (`r.x = <scalar>` -> `r.__deref__().x = <scalar>`): the user-Deref sibling
     of `_scalar_field_write_ok`. Value set matches (scalar / char / enum / Ptr
@@ -2481,38 +2470,11 @@ def _user_deref_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     if not _user_deref_field_recv_ok(target, declared, narrowed, analyzer,
                                      pointers):
         return False
-    ftype = analyzer.get_expr_type(target)
     if _eligible_char(ftype):
         return not isinstance(stmt.value, TpyStrLiteral)
     return (_eligible_scalar(ftype)
             or _eligible_enum(ftype, analyzer) is not None
             or _eligible_ptr_value(ftype, analyzer))
-
-def _ptr_union_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
-                              analyzer) -> bool:
-    """A union-field write `recv.field = <source>` (F4 U2): a value-variant
-    field off an F1-record receiver written from a borrow-form pointer-variant
-    name of the same union (lowers to the borrow->storage `THIRFormConvert`,
-    `::tpy::to_value_variant<...>` -- the union sibling of the F2b Optional
-    write), a `None` literal (a monostate store, `recv.field =
-    std::monostate{};`), or a same-union field lvalue (a storage-to-storage
-    copy: a field source is not a ptr-variant source, so it
-    assigns bare with no lift), or a member-typed CTOR rvalue (`h.pet =
-    Cat(9)` -- the variant assignment absorbs the member, so the bare ctor
-    assigns with no lift; exact member type only)."""
-    target = stmt.target
-    if not _field_receiver_ok(target, declared, analyzer):
-        return False
-    u = _eligible_ptr_union(analyzer.get_expr_type(target), analyzer)
-    if u is None:
-        return False
-    if isinstance(stmt.value, TpyNoneLiteral):
-        return True
-    if _union_member_ctor_rvalue(stmt.value, u, analyzer):
-        return True
-    return _ptr_union_source_ok(stmt.value, declared, analyzer, u,
-                                allow_field=True)
-
 
 def _union_member_ctor_rvalue(value: TpyExpr, u: UnionType, analyzer) -> bool:
     """A constructor-call rvalue whose type is EXACTLY a member of `u` --
@@ -2538,142 +2500,6 @@ def _nondef_ctor_field(ftype: 'TpyType | None', analyzer) -> bool:
     return (isinstance(ftype, TpyType)
             and cpp_default_init(ftype) is CppDefaultInit.NONE)
 
-def _ref_field_write_ok(
-        stmt: TpyAssign, declared: dict[str, TpyType], analyzer,
-        pointers: set[str], narrowed: AbstractSet[str],
-        prescan: '_Prescan') -> bool:
-    """A plain REFERENCE-axis field write `recv.field = <source>` -- ONE
-    admission for the record and builtin-container halves of `record_like`,
-    which take the same default field assign with no borrow<->storage lift.
-    Source rows (beyond the two below: a borrow-returning call, a field
-    read, an element subscript, and a pointer-local -- each copies
-    bare, the last through its deref):
-
-      * a **reference rvalue** (the `_record_rvalue_source_shape` -- a ctor /
-        by-value reference-returning call): a direct copy
-        `recv.field = Inner(args);`. The exact source-type == field-type check
-        keeps a subclass rvalue (a slicing copy) out.
-      * a **reference NAME** (a declared borrow param / owned local of a
-        record or container type, incl. `Own[T]` params): the bare copy
-        `recv.field = p;` (plus sema's implicit-copy warning,
-        path-independent), or `std::move(p)` at a movable name's last use
-        (`_maybe_move`) -- the plain STORAGE convert arm. Narrowed names
-        (`(*o)` deref renders), pointer-locals (`(*p)`), `self`, and
-        coerce-wrapped sources reject.
-
-    Three rows come from the container half and name a builtin container on
-    purpose: `copy(xs)`'s copy-CONSTRUCT rvalue, a container LITERAL /
-    `[e] * n` repeat, and an owned-rvalue call whose result materializes the
-    field's own storage. Each is a decision about how the VALUE is built,
-    not about which family the SLOT is -- the one place a lowering gate may
-    name a container -- and the lowering keeps them as their own render
-    rows for the same reason.
-
-    In a constructor body this gate sees only DEMOTED inits (the MIL hoist
-    already ran in `lower_constructor`), which take the same
-    default assign -- routed, except a field type with a suppressed default
-    ctor (see `_nondef_ctor_field`, which raises). An unbound-self
-    `BaseN.field` target joins both source rows unchanged.
-
-    A USER-Deref receiver (`r.field = p` on `r: Rc[T]` ->
-    `r.__deref__().field = p`) joins the same source rows: the deref chain is
-    a target-position render decided by the receiver, orthogonal to the value
-    row that decides copy-vs-move. Only the PLAIN `record_like` slot is widened
-    -- a pointer-repr `Optional[record]` at a deref target needs the
-    `ptr_to_optional` lift and keeps rejecting."""
-    target = stmt.target
-    if not (_field_receiver_or_unbound_self_ok(target, declared, analyzer)
-            or _user_deref_field_recv_ok(target, declared, narrowed,
-                                         analyzer, pointers)):
-        return False
-    ftype = analyzer.get_expr_type(target)
-    if not record_like(ftype, analyzer):
-        return False
-    if prescan.is_constructor and _nondef_ctor_field(ftype, analyzer):
-        return False
-    # `copy(T(...))` peels to its constructor (identical render); `copy(name)`
-    # is the copy-CONSTRUCT rvalue `T(name)`. Both land at the field bare.
-    ctor_peel = copy_ctor_rvalue_source(stmt.value, analyzer)
-    if ctor_peel is not None:
-        return (_record_rvalue_source_shape(ctor_peel, analyzer)
-                and analyzer.get_expr_type(ctor_peel) == ftype)
-    # One classifier, both families: the RECORD half still checks slot
-    # equality (a subclass source would spell the wrong ctor), the container
-    # half does not -- the copy render follows the SOURCE type, and no
-    # builtin container has a subclass to slice.
-    crec = copy_construct_source(stmt.value, analyzer, pointers)
-    if crec is not None:
-        return crec == ftype if _f1_record(crec, analyzer) else True
-    # The container LITERAL / repeat and the owned-rvalue call whose result
-    # materializes its own container -- tried BEFORE the exact-typed rvalue
-    # row below, whose type check would otherwise turn an `Own[C]`-returning
-    # free call into a reject rather than let its own render row claim it.
-    if (_container_field_write_ok(stmt, declared, analyzer)
-            or _container_prvalue_field_write_ok(stmt, declared, analyzer)):
-        return True
-    if _record_rvalue_source_shape(stmt.value, analyzer):
-        vt = analyzer.get_expr_type(stmt.value)
-        return (vt == ftype
-                or _record_slice_upcast_ok(vt, ftype, analyzer))
-    v = stmt.value
-    # A BORROW-returning call source copies bare on assignment
-    # (`h.p = identity(pt);` / `self.mirror = h.peek();` -- the C++
-    # copy-assign absorbs the `T&`; sema warns the container copy, so the
-    # alias-vs-copy divergence is declared rather than silent). Both call
-    # kinds and both halves of the axis: the copy-assign absorbs a reference
-    # the same way whichever produced it.
-    if (isinstance(v, (TpyCall, TpyMethodCall))
-            and v.resolved_function_info is not None
-            and call_returns_cpp_ref(analyzer, v.resolved_function_info)
-            and analyzer.get_expr_type(v) == ftype
-            and record_like(ftype, analyzer)):
-        return _witness("field_write.borrow_call_copy")
-    # A reference-returning METHOD call rvalue copies bare too
-    # (`task._waker = handle->make_waker_for_slot(..);`). Shallow like the
-    # free-call rvalue shape: the method arm validates and lowers the callee
-    # and args itself, gated on the same copy-sink flag this write threads.
-    # RVALUE only -- a borrow-returning method result is the REF_ALIAS
-    # frontier the lowering arms keep rejecting.
-    if (isinstance(v, TpyMethodCall) and v.resolved_function_info is not None
-            and is_rvalue_source(analyzer, v)
-            and analyzer.get_expr_type(v) == ftype
-            and record_like(ftype, analyzer)):
-        return _witness("field_write.method_rvalue_copy")
-    # A FIELD or element SUBSCRIPT source copies bare
-    # (`h.p = h2.p;` / `h.p = ::tpy::__getitem__(pts, 0);` -- the reads
-    # are references, the assign copies; never movable).
-    if isinstance(v, TpyFieldAccess):
-        return (_field_receiver_ok(v, declared, analyzer)
-                and record_like(analyzer.get_expr_type(v), analyzer)
-                and analyzer.get_expr_type(v) == ftype
-                and _witness("field_write.field_copy"))
-    if isinstance(v, TpySubscript):
-        return (_container_record_elem_subscript(v, declared, analyzer,
-                                                pointers)
-                and analyzer.get_expr_type(v) == ftype
-                and _witness("field_write.subscript_copy"))
-    # A POINTER-local source copies through the deref
-    # (`this->result = (*saved);` -- the indirect-name read;
-    # pointers are never movable, so no move wrap).
-    if (isinstance(v, TpyName) and v.name in pointers
-            and v.name in declared and v.name not in narrowed
-            and not (prescan.has_self and v.name == "self")):
-        vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-            declared[v.name])))
-        return (record_like(vt, analyzer)
-                and vt == unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(ftype)))
-                and _witness("field_write.ptr_local_copy"))
-    if not (isinstance(v, TpyName) and v.name in declared
-            and v.name not in narrowed and v.name not in pointers
-            and not (prescan.has_self and v.name == "self")):
-        return False
-    vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[v.name])))
-    own = unwrap_optional_own(vt)
-    if own is not None:
-        vt = own.wrapped
-    return record_like(vt, analyzer)
-
 def _optional_record_field_inner(t: 'TpyType | None', analyzer) -> 'TpyType | None':
     """The inner record type of a pointer-repr `Optional[F1-record]` field slot
     (stored `std::optional<inner>`, inner a non-value record) -- or None. Shared
@@ -2685,84 +2511,6 @@ def _optional_record_field_inner(t: 'TpyType | None', analyzer) -> 'TpyType | No
             and _f1_record(u.inner, analyzer)):
         return u.inner
     return None
-
-def _optional_value_record_field_inner(t: 'TpyType | None',
-                                       analyzer) -> 'TpyType | None':
-    """The field-write sibling of `_optional_record_field_inner` for a
-    VALUE-record inner (`o: V | None` on a `ValueType` V, stored
-    `std::optional<V>`), or None.
-
-    The pointer-repr predicate excludes this inner on the grounds that its
-    borrow->storage convert has no plain-non-value emit arm. For a VALUE
-    record there IS no such convert: borrow and storage forms coincide, so
-    the write is bare (`this->o = v;`) and the optrec name arm applies
-    no FormConvert either (the source lowers VALUE, not BORROW). Kept
-    separate from the pointer-repr predicate because the SETITEM widened
-    family also consumes that one and has its own convert arms.
-    """
-    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if (isinstance(u, OptionalType) and not u.uses_pointer_repr()
-            and _f1_record(u.inner, analyzer)):
-        return u.inner
-    return None
-
-
-def _optional_record_field_write_ok(
-        stmt: TpyAssign, declared: dict[str, TpyType], pointers: set[str],
-        analyzer, narrowed: AbstractSet[str], prescan: '_Prescan') -> bool:
-    """A value-storage `Optional[record]` field write `recv.opt = <record>` off
-    an F1-record receiver: the field stores `std::optional<inner>`, and the
-    source is a record RVALUE (ctor / by-value call of the inner type -- copied
-    bare, exact-type to keep a subclass slice out), an OWNED-record METHOD-call
-    rvalue of the inner type (`a.get().next = b.clone()` -- the Own return
-    lands bare, optional::operator= absorbs the move), or a record NAME (a
-    record param / owned local, incl. `Own[T]` params) copied bare (`opt = p;`,
-    optional::operator= absorbs the inner lvalue) or moved at a movable name's
-    last use (`opt = std::move(p);`). The receiver is an admitted field-write
-    receiver -- a NAME (`_field_receiver_ok`) or a mutable-ref-returning
-    method call (`a.get().next`, `_method_recv_field_write_ok`). The
-    record-field-write shape at an Optional
-    slot; the F2b `T*`->ptr_to_optional lift (a pointer-local source) and the
-    `None` store stay their own arms. Narrowed / pointer-local / `self` sources
-    need other renders and reject."""
-    target = stmt.target
-    if not (_field_receiver_ok(target, declared, analyzer)
-            or _method_recv_field_write_ok(target, declared, analyzer)):
-        return False
-    tgt_t = analyzer.get_expr_type(target)
-    inner = (_optional_record_field_inner(tgt_t, analyzer)
-             or _optional_value_record_field_inner(tgt_t, analyzer))
-    if inner is None:
-        return False
-    v = stmt.value
-    # The `copy()` rows, exactly as at the plain-record slot: a constructor
-    # argument peels (identical render), a record NAME copy-constructs
-    # `T(name)`. `optional::operator=` absorbs either inner rvalue.
-    ctor_peel = copy_ctor_rvalue_source(v, analyzer)
-    if ctor_peel is not None:
-        return (_record_rvalue_source_shape(ctor_peel, analyzer)
-                and analyzer.get_expr_type(ctor_peel) == inner)
-    crec = copy_construct_source(v, analyzer, pointers)
-    if crec is not None:
-        return crec == inner
-    if _record_rvalue_source_shape(v, analyzer):
-        vt = analyzer.get_expr_type(v)
-        return vt == inner or _record_slice_upcast_ok(vt, inner, analyzer)
-    if (isinstance(v, TpyMethodCall)
-            and is_rvalue_source(analyzer, v)):
-        vt = analyzer.get_expr_type(v)
-        vt = (_unwrap_own(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-            vt)))) if isinstance(vt, TpyType) else None)
-        return vt == inner and _f1_record(vt, analyzer)
-    if not (isinstance(v, TpyName) and v.name in declared
-            and v.name not in pointers and v.name not in narrowed
-            and not (prescan.has_self and v.name == "self")):
-        return False
-    vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[v.name])))
-    own = unwrap_optional_own(vt)
-    if own is not None:
-        vt = own.wrapped
-    return _f1_record(vt, analyzer)
 
 def _covariant_record_upcast_ok(vt: 'TpyType | None', target: 'TpyType | None',
                                 analyzer) -> bool:
@@ -2792,33 +2540,6 @@ def _record_slice_upcast_ok(vt: 'TpyType | None', target: 'TpyType | None',
             and _f1_record(target, analyzer)
             and analyzer.registry.is_subclass_of(vt, target))
 
-
-def _optional_record_field_upcast_write_ok(
-        stmt: TpyAssign, declared: dict[str, TpyType], analyzer) -> bool:
-    """A covariant-generic record RVALUE written into a pointer-repr
-    `Optional[generic]` field (`recv.opt = Box(conn)` at a `Box[Proto] | None`
-    slot): the default field assign renders the bare plain assign -- the
-    source spells its OWN inferred type (`Box<HTTPConnection>(...)`) and
-    `optional::operator=` absorbs the converting move -- so the field's inner
-    type is never rendered, and its F1-ness does not gate the write. At emit
-    the inner qualifies F1 (generation context), so the admitted write rides
-    the optrec rvalue arm; corpus witness: the tplib/requests_* cases'
-    `s._connection = Box(conn)`. Name sources stay out: their move/copy
-    renders ride the exact-type arm's rules."""
-    target = stmt.target
-    if not _field_receiver_ok(target, declared, analyzer):
-        return False
-    ft = unwrap_readonly(unwrap_ref_type(
-        unwrap_send_sync(analyzer.get_expr_type(target))))
-    if not (isinstance(ft, OptionalType) and ft.uses_pointer_repr()
-            and isinstance(ft.inner, NominalType)):
-        return False
-    v = stmt.value
-    if not _record_rvalue_source_shape(v, analyzer):
-        return False
-    vt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        analyzer.get_expr_type(v))))
-    return _covariant_record_upcast_ok(vt, ft.inner, analyzer)
 
 def _container_storage_field(t) -> bool:
     """A reference-axis container FIELD type the container-literal slices
@@ -2876,131 +2597,41 @@ def _container_field_write_slot(stmt: TpyAssign, declared: dict[str, TpyType],
         return None
     return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(fdt)))
 
-def _container_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
-                              analyzer) -> bool:
-    """A container-literal field write `recv.field = [...] / {...}` off an
-    F1-record receiver: the default field assign renders the value against the
-    FIELD type as target -- the same target-threaded literal
-    render a decl init gets (`{e1, e2}` consumed by the vector lvalue, the
-    spelled empty list, the `::tpy::ordered_map<K, V>(...)` /
-    `ordered_set<T>(...)` constructor forms) with no move wrap (a literal is
-    never a movable name). Element admission is the shared
-    container-literal slice. A COMPREHENSION joins the row: its stmt-expr
-    builds the field's own container in place (the member-init prefix's
-    `mil.container_comp` render, one position down), so it lands bare too;
-    the comprehension's own route owns every element reject.
-
-    A storage-form `Optional[container]` ftype takes the same render one
-    unwrap down -- the field is a `std::optional<C>` and the literal is
-    classified against C."""
-    comp = isinstance(stmt.value, (TpyListComprehension, TpySetComprehension,
-                                   TpyDictComprehension))
-    if not comp and not isinstance(stmt.value, (TpyArrayLiteral,
-                                                TpyDictLiteral,
-                                                TpySetLiteral)):
-        return False
-    if not _field_receiver_or_unbound_self_ok(stmt.target, declared,
-                                              analyzer):
-        return False
-    ftype = _container_field_write_slot(stmt, declared, analyzer)
-    if ftype is None:
-        return False
-    oc_inner = _optional_container_storage_inner(ftype)
-    if oc_inner is not None:
-        # A storage-form `std::optional<C>` field: the literal render unwraps
-        # the Optional itself, so the
-        # literal is classified (and lowered) against the INNER -- element
-        # targets derived from the Optional would be wrong.
-        if comp:
-            return _container_comp_arg(stmt.value, oc_inner)
-        return _container_literal_shape_ok(stmt.value, oc_inner, analyzer)
-    if comp:
-        return _container_comp_arg(stmt.value, ftype)
-    return _container_literal_shape_ok(stmt.value, ftype, analyzer)
-
-def _container_prvalue_field_write_ok(stmt: TpyAssign,
-                                      declared: dict[str, TpyType],
-                                      analyzer) -> bool:
-    """A container field written from a value that MATERIALIZES its own owned
-    container: `recv.field = [e] * n` (TpyListRepeat) or a container-returning
-    METHOD-call rvalue (`self.lines = data.splitlines()`). Neither shape needs
-    a name indirection or an
-    Optional unwrap, and neither is a movable NAME, so the field assign
-    lands the value render bare.
-
-    Rvalue-only for the method call: a borrow-returning method aliases its
-    receiver and the by-value field copy off that alias is not what the bare
-    passthrough spells -- the same line the return-position row draws. A
-    storage-form `Optional[container]` ftype stays out: its literal row unwraps
-    the Optional before threading a target, a decision neither prvalue here
-    makes. The slot is the DECLARED field type, so a flow-narrowed
-    `Optional[container]` field stays out too.
-
-    The CONTAINER half of the axis on purpose, and the one row of the merged
-    field-write ladder that is not on `record_like`. Its render threads
-    `_ExprResultUse.STORAGE` where the reference rvalue row threads the
-    copy sink, and the reference rvalue row pins the source type to the slot
-    -- the check that keeps a subclass rvalue (a slicing copy) out. Widening
-    this row to `record_like` would claim every record ctor rvalue and move it
-    onto the STORAGE render; dropping the record row's type pin to let this
-    one claim only what that row refuses would reopen the slice. Containers
-    have no subclass, which is why the two rules can differ at all."""
-    if not _field_receiver_or_unbound_self_ok(stmt.target, declared, analyzer):
-        return False
-    ftype = _container_field_write_slot(stmt, declared, analyzer)
-    if not _f1_container_ref(ftype):
-        return False
-    if isinstance(stmt.value, TpyListRepeat):
-        return _container_literal_shape_ok(stmt.value, ftype, analyzer)
-    # A FREE call joins the method call on the same rvalue-only terms: an
-    # `Own[container]` return materializes its own container and lands bare,
-    # while a borrow-returning free call aliases its argument and is not what
-    # the bare passthrough spells.
-    if not (isinstance(stmt.value, (TpyMethodCall, TpyCall))
-            and is_rvalue_source(analyzer, stmt.value)):
-        return False
-    vt = unwrap_readonly(unwrap_ref_type(
-        unwrap_send_sync(analyzer.get_expr_type(stmt.value))))
-    return _f1_container_ref(vt)
-
-
-def _owned_viewfam_source_ok(value: TpyExpr, slot: TpyType,
-                             analyzer) -> bool:
-    """Whether a non-NAME source may land in an OWNING str-family (`str`,
-    `String`) or `bytes` slot -- a ctor member-init or a field write. Any
-    source whose resolved type is in the slot's family is admitted: the slot
-    builds its own buffer from whatever the source renders (an owned prvalue
-    lands bare, a view is copied by `std::string`'s ctor / `operator=` or by
-    the bytes family's STORAGE convert), so the source's SHAPE is not the
-    gate's business -- the argument the scalar arm makes for any source.
-
-    A view slot (`StrView` / `BytesView`) is out: it would keep a view of a
-    fresh value that dies with the statement. A NAME source stays with the
-    callers' declared-type rows: a `str | None` name narrowed to `str`
-    renders a deref that moves at a last use, which the bare slot render
-    does not spell."""
-    if is_str_type(slot) or is_string_type(slot):
-        family = _resolved_str_value
-    elif is_bytes_type(slot):
-        family = _resolved_bytes_value
-    else:
-        return False
-    if isinstance(_peel_coerce(value), TpyName):
-        return False
-    return family(analyzer.get_expr_type(value), analyzer) is not None
-
-
-def _keeps_str_view(value: TpyExpr, analyzer) -> bool:
-    """Whether a str-family value is itself a VIEW (`StrView` -- or a str
-    `Literal`, whose values are static), so a `StrView` slot may keep it. An
-    owned `str` / `String` value is fresh: a view slot would dangle."""
-    t = _resolved_str_value(analyzer.get_expr_type(value), analyzer)
-    return t is not None and is_str_view_type(t)
+def view_slot_shape_ok(slot: 'TpyType', value: TpyExpr, analyzer) -> bool:
+    """The view-slot fence, for every slot that holds a view (bare, Optional,
+    tuple, union): the part of the value that lands in a view is a literal, a
+    slice, a call or a name -- a view of storage nothing proves the holder
+    does not outlive (another object's field, an element, a `dict.get`)
+    stays out. Whether the source outlives the statement is sema's verdict
+    (the temporary-view rule), not this one. A `None`, a select (per arm), a
+    union member chosen by the value's type and a tuple literal (per
+    element) answer for the part they fill."""
+    if not holds_borrowing_view(slot):
+        return True
+    v = _peel_coerce(value)
+    if isinstance(v, TpyNoneLiteral):
+        return True
+    if isinstance(v, TpyIfExpr):
+        return (view_slot_shape_ok(slot, v.then_expr, analyzer)
+                and view_slot_shape_ok(slot, v.else_expr, analyzer))
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
+    if isinstance(t, OptionalType):
+        t = unwrap_readonly(t.inner)
+    if not lands_in_view_member(t, analyzer.get_expr_type(v)):
+        return True
+    if isinstance(t, TupleType) and isinstance(v, TpyTupleLiteral):
+        return (len(v.elements) == len(t.element_types)
+                and all(view_slot_shape_ok(et, e, analyzer)
+                        for et, e in zip(t.element_types, v.elements)))
+    if isinstance(v, (TpyStrLiteral, TpyBytesLiteral, TpyName, TpyCall,
+                      TpyMethodCall)):
+        return True
+    return isinstance(v, TpySubscript) and isinstance(v.index, TpySlice)
 
 
 def _str_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
-                        analyzer,
-                        pointers: 'AbstractSet[str]' = frozenset()) -> bool:
+                        analyzer, pointers: 'AbstractSet[str]',
+                        ftype: 'TpyType | None', view_slot: bool) -> bool:
     """A str-family field write `recv.field = <value>` at a shared field-write
     receiver: the default field assign renders the value BARE (`recv.field =
     s;` / `= "lit";`) -- `std::string::operator=(string_view)` absorbs a view
@@ -3009,18 +2640,13 @@ def _str_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     movable set (value-typed decl arms don't register), so no move wrap
     either.
 
-    An OWNING slot (`str` / `String`) takes any non-name str-family source
-    (`_owned_viewfam_source_ok`, shared with the ctor member-init). The shape
-    rows after it are what a `StrView` slot admits -- sources that are a
-    view of storage the write does not own: a literal, a SLICE (a view into
-    its base; a fresh base rejects at the slice's own lowering) and a call
-    returning a view (`_keeps_str_view`). A fresh value -- a concat, an
-    owned-str call, `str(x)`, a `builds_fresh_value` coerce -- has no row:
-    the view would dangle as soon as the statement ends. A same-family
-    COERCE wrap peels transparently before those rows. A NAME
-    declared `str | None` and narrowed to `str` stays OUT: the deref moves
-    at a last use (`this->s = std::move((*s));`) and this arm renders it
-    bare.
+    An OWNING slot (`str` / `String`) builds its own buffer from whatever
+    str-family source renders, so it takes any. A VIEW slot (`view_slot`)
+    takes a literal, a slice, a call and a name -- sema has already refused
+    a source rooted in a temporary; a field or element read stays out,
+    since nothing proves its object outlives the one holding the view. A
+    same-family COERCE wrap peels transparently before those rows. A name
+    is admitted by its read type, as the bytes twin admits one.
 
     The RECEIVER is the shared ladder's business, not this row's: a nested
     or element receiver (`o.inner.name = "b"`, `rows[0].name = "b"`) renders
@@ -3031,53 +2657,43 @@ def _str_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     if not _viewfam_field_write_receiver_ok(stmt.target, declared, analyzer,
                                             pointers):
         return False
-    slot = _resolved_str_value(analyzer.get_expr_type(stmt.target), analyzer)
-    if slot is None:
+    if _resolved_str_value(ftype, analyzer) is None:
         return False
-    # An owning slot takes any str-family source, the ctor member-init's rule;
-    # the rows below are what a StrView slot (and a name) still admits.
-    if _owned_viewfam_source_ok(stmt.value, slot, analyzer):
-        return True
     v = stmt.value
-    if isinstance(v, TpyCoerce) and v.coercion.builds_fresh_value:
-        return False
     outer_str = _resolved_str_value(analyzer.get_expr_type(v), analyzer)
-    if isinstance(v, TpyCoerce):
-        v = v.expr
-    if isinstance(v, TpyStrLiteral):
-        return True
-    if (isinstance(v, TpySubscript) and isinstance(v.index, TpySlice)
-            and outer_str is not None):
-        return _witness("field_write.str_slice")
-    if isinstance(v, (TpyCall, TpyMethodCall)) and _keeps_str_view(v, analyzer):
-        return _witness("field_write.str_view_call")
-    return (isinstance(v, TpyName) and v.name in declared
-            and _resolved_str_value(declared[v.name], analyzer) is not None)
+    if not view_slot and not isinstance(_peel_coerce(v), TpyName):
+        return outer_str is not None
+    if view_slot:
+        if not view_slot_shape_ok(ftype, v, analyzer):
+            return False
+        if isinstance(v, TpyCoerce):
+            v = v.expr
+        if isinstance(v, TpyStrLiteral):
+            return True
+        if isinstance(v, TpySubscript) and outer_str is not None:
+            return _witness("field_write.str_slice")
+        if isinstance(v, (TpyCall, TpyMethodCall)) and outer_str is not None:
+            return _witness("field_write.str_view_call")
+    v = _peel_coerce(v)
+    if not isinstance(v, TpyName):
+        return False
+    vt = analyzer.get_expr_type(v)
+    vt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vt)))
+          if vt is not None else None)
+    if isinstance(vt, OwnType):
+        vt = unwrap_readonly(vt.wrapped)
+    return vt is not None and _resolved_str_value(vt, analyzer) is not None
 
 def _bytes_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
-                          analyzer,
-                          pointers: 'AbstractSet[str]' = frozenset()) -> bool:
-    """The bytes twin of `_str_field_write_ok`: an owned `bytes` field write
-    `recv.field = <bytes literal | bytes name>` at a shared field-write
-    receiver.
-    Unlike str, `std::vector<uint8_t>` has no span ctor, so a view (span)
-    source copies via the S6 `::tpy::Bytes(...)` STORAGE convert (the
-    lowering picks it off the source form) -- an owned source (bytes literal /
-    owned local) lands bare. `bytearray` (a reference type) is excluded by
-    `is_bytes_type`. A NAME declared `bytes | None` and narrowed to `bytes`
-    here joins the plain name row: its deref is a view either way, so it
-    takes the same `Bytes(x)` convert -- never a move, which is what keeps
-    the str twin of this row OUT of `_str_field_write_ok`. A bytes SLICE
-    source (`self.b = x[1:3]`) mirrors the str slice row, but lands on the
-    OTHER side of the split the str docstring names: the sema coerce carries
-    no materialization for bytes, so the view-form slice takes this family's
-    ordinary `Bytes(x)` STORAGE convert.
-
-    Every non-name source is the shared owning-slot rule
-    (`_owned_viewfam_source_ok`): the family's verdict is read off the
-    lowered source's FORM, so an owned rvalue (literal, concat, `bytes(x)`)
-    assigns bare and a view (a slice, a view-returning call) takes the
-    `Bytes(x)` convert -- no shape needs a row of its own beyond admission.
+                          analyzer, pointers: 'AbstractSet[str]',
+                          ftype: 'TpyType | None') -> bool:
+    """An owned `bytes` field write `recv.field = <value>` at a shared
+    field-write receiver, from any source of the bytes family: `std::vector`
+    has no span ctor, so a view (span) source copies via the S6
+    `::tpy::Bytes(...)` STORAGE convert (the lowering picks it off the
+    source form) and an owned source (a literal, a concat, an owned local, a
+    narrowed `bytes | None` name's deref) lands bare. `bytearray` (a
+    reference type) is excluded by `is_bytes_type`.
 
     The RECEIVER is the str twin's view-family gate, for the reason given
     there: which lvalue the store lands in decides nothing about the
@@ -3086,24 +2702,15 @@ def _bytes_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     if not _viewfam_field_write_receiver_ok(stmt.target, declared, analyzer,
                                             pointers):
         return False
-    ft = _resolved_bytes_value(analyzer.get_expr_type(stmt.target), analyzer)
+    ft = _resolved_bytes_value(ftype, analyzer)
     if ft is None or not is_bytes_type(ft):
         return False
-    if _owned_viewfam_source_ok(stmt.value, ft, analyzer):
-        return True
-    # The name rows key the RAW node: a coerce-wrapped name is a shape no
-    # render row was measured against.
-    v = stmt.value
-    if not (isinstance(v, TpyName) and v.name in declared):
-        return False
-    dt = declared[v.name]
-    if _resolved_bytes_value(dt, analyzer) is not None:
-        return True
-    return (isinstance(dt, OptionalType)
-            and _resolved_bytes_value(dt.inner, analyzer) is not None
-            and _resolved_bytes_value(analyzer.get_expr_type(v),
-                                      analyzer) is not None
-            and _witness("field_write.bytes_narrowed_opt"))
+    vt = analyzer.get_expr_type(stmt.value)
+    vt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vt)))
+          if vt is not None else None)
+    if isinstance(vt, OwnType):
+        vt = unwrap_readonly(vt.wrapped)
+    return vt is not None and _resolved_bytes_value(vt, analyzer) is not None
 
 def _class_const_write_target_ok(target, declared: dict[str, TpyType],
                                  pointers: set[str], analyzer) -> bool:
@@ -4977,6 +4584,19 @@ def _native_union_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     return bool((_eligible_value_union(u) is not None
                  or _eligible_ptr_union_wide(u, analyzer) is not None)
                 and _witness("arg.native_union_name"))
+
+def _record_copy_borrow_ret(use, analyzer, fi, ret) -> bool:
+    """A borrow-returning record / container call -- free or method -- at
+    the owning COPY sink (`h.p = o.get_p();`, `h.p = identity(pt);`):
+    the copy-assign absorbs the `T&` inside the full expression and nothing
+    binds off it, so the call renders bare. Declarations keep rejecting:
+    they bind a reference alias off the same result."""
+    return bool(use.admits(SinkForm.RECORD_COPY)
+                and fi is not None
+                and call_returns_cpp_ref(analyzer, fi)
+                and record_like(ret, analyzer)
+                and _witness("call.field_copy_borrow_ret"))
+
 
 def _lambda_routable(a: TpyExpr, analyzer, *,
                      self_capturable: bool = False) -> bool:
@@ -7079,7 +6699,7 @@ def _is_move_source_facts(value: TpyExpr,
     inner = _peel_coerce(value)
     return (isinstance(inner, TpyName)
             and inner.name in movable_locals
-            and inner in analyzer.ctx.all_last_uses)
+            and analyzer.ctx.is_last_use(inner))
 
 
 def _own_opt_ptr_name_move_arg_facts(
@@ -7482,7 +7102,7 @@ def _own_move_arg(a: TpyExpr, ptype: TpyType | None,
         locals_[a.name])))
     if own is None or own.wrapped.is_value_type():
         return False
-    return a in analyzer.ctx.all_last_uses
+    return analyzer.ctx.is_last_use(a)
 
 def _own_lvalue_arg(a: TpyExpr, ptype: TpyType | None,
                     locals_: dict[str, TpyType],
@@ -14088,6 +13708,19 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
                 and call_returns_cpp_ref(analyzer, fi)
                 and _alias_ref_container(ret)
                 and _witness("method.borrow_ret_passthrough"))
+            # A borrow-returning record / container result at the owning
+            # COPY sink (`h.p = o.get_p();`): the free-call row's method
+            # twin -- the copy-assign absorbs the `T&` inside the full
+            # expression and nothing binds off it.
+            or _record_copy_borrow_ret(use, analyzer, fi, ret)
+            # ... and a borrow `T*` of a pointer-repr Optional the storage
+            # sink lifts (`h.o = o.find();` -> `ptr_to_optional(...)`).
+            # A property getter's result is the field's storage optional by
+            # reference, not a `T*`, so it takes no lift.
+            or (use.admits(SinkForm.PTR_OPT_LIFT)
+                and not fi.is_property_getter
+                and _ptr_opt_borrow_call_ret(e, ret)
+                and _witness("method.ptr_opt_lift"))
             # A value-repr Optional return at a WHOLE-optional sink
             # (`a.gettimeout() is None` / `== 0.0` -- the has_value /
             # std::optional mixed-compare renders take the bare call).

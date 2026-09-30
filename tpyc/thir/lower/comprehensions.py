@@ -92,7 +92,6 @@ from .context import (
     SinkPos,
 )
 from .expressions import (
-    _is_move_source,
     _lower_checked_container_elem,
     _lower_container_elem,
     _lower_expr,
@@ -658,7 +657,10 @@ def _comp_container_name_elem(e, vt: 'TpyType | None', lc: '_LowerCtx',
     if (e.name not in body_declared or e.name in lc.pointers
             or e.name in lc.narrow.narrowed):
         return False
-    if _is_move_source(e, lc):
+    # Sema's move verdict for this read: its last use (as sema left it) of
+    # a name the frame owns -- the element body itself moves nothing.
+    if (lc.analyzer.ctx.is_last_use(e)
+            and (e.name in lc.sema_movable_locals or e.name in lc.own_params)):
         return False
     peel = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         body_declared[e.name])))
@@ -1105,15 +1107,8 @@ def _lower_owned_comp_sink(e, slot: 'TpyType | None', lc: '_LowerCtx',
     movable would multi-move). A bare-loop-var LAST sink moves UNCONDITIONALLY
     (structurally the last use, sequenced after any earlier read); an
     earlier/derived sink defers to the ordinary last-use move gate."""
-    # Whole-set REPLACEMENT for this one sink render -- an expression-position
-    # override, not a lexical scope, so it stays a manual single-set swap
-    # rather than a branch_scope (context.py's _BRANCH_SCOPED_SETS).
-    saved = lc.movable_locals
-    lc.movable_locals = {gen.var}
-    try:
+    with lc.moves_only({gen.var}):
         lowered = _lower_container_elem(e, slot, lc, body_declared)
-    finally:
-        lc.movable_locals = saved
     inner = e
     while isinstance(inner, TpyCoerce):
         inner = inner.expr
@@ -1268,9 +1263,10 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
             # here so the element's read of the leaked name resolves (Python
             # evaluates the filter before the element each iteration).
             pre = set(body_declared)
-            conditions_lowered = tuple(
-                _lower_truthy(c, lc, body_declared, temps_ok=True)
-                for c in gen.conditions)
+            with lc.moves_only(()):
+                conditions_lowered = tuple(
+                    _lower_truthy(c, lc, body_declared, temps_ok=True)
+                    for c in gen.conditions)
             for leaked in set(body_declared) - pre:
                 declared[leaked] = body_declared[leaked]
             _witness("comp.filter_walrus_leak")
@@ -1295,11 +1291,14 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
                                                is_last_sink=True)
                 value_moved = isinstance(value, THIRMove)
             else:
-                key = _lower_container_elem(init.key_expr, kt, lc,
-                                            body_declared)
-                value = _lower_comp_container_elem(init.value_expr, vt, lc,
-                                                   body_declared,
-                                                   typed_brace=True)
+                # The body runs once per iteration: a name bound outside it
+                # is never moved there, whatever its last use says.
+                with lc.moves_only(()):
+                    key = _lower_container_elem(init.key_expr, kt, lc,
+                                                body_declared)
+                    value = _lower_comp_container_elem(
+                        init.value_expr, vt, lc, body_declared,
+                        typed_brace=True)
         else:
             elem_t = _comp_result_type(init.result_elem_type, analyzer)
             cpp_elem = lc.render_type(elem_t)
@@ -1317,14 +1316,16 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
                 # push_back.
                 # Dict key/value sinks keep the default (no emit window
                 # there).
-                element = _lower_comp_container_elem(
-                    init.element_expr, elem_t, lc, body_declared,
-                    allow_temps=True)
+                with lc.moves_only(()):
+                    element = _lower_comp_container_elem(
+                        init.element_expr, elem_t, lc, body_declared,
+                        allow_temps=True)
             key = value = None
         if conditions_lowered is None:
-            conditions_lowered = tuple(
-                _lower_truthy(c, lc, body_declared, temps_ok=True)
-                for c in gen.conditions)
+            with lc.moves_only(()):
+                conditions_lowered = tuple(
+                    _lower_truthy(c, lc, body_declared, temps_ok=True)
+                    for c in gen.conditions)
     range_start = range_stop = None
     start_lit = stop_lit = False
     iterable = None

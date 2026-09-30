@@ -2431,13 +2431,13 @@ class TypeRegistrar:
                     is_gen = bool(record.type_params)
                     for fld in inferred:
                         self._validate_instance_field(fld, record, is_gen)
-                    # record_info.fields IS record.fields (same list), so mutate
-                    # in place -- both the AST (codegen) and RecordInfo (sema)
-                    # see it. Reorder to __init__ assignment order (matching the
-                    # parser's base-less path) so the C++ struct-member and
-                    # init-list orders agree -- else -Werror=reorder.
-                    record.fields[:] = reorder_fields_by_init(
-                        init_method, record.fields + inferred)
+                # record_info.fields IS record.fields (same list), so mutate
+                # in place -- both the AST (codegen) and RecordInfo (sema) see
+                # it. Own fields take __init__ assignment order (as the
+                # parser's base-less path does), so the C++ member-init list,
+                # which runs in declaration order, runs in source order.
+                record.fields[:] = reorder_fields_by_init(
+                    init_method, record.fields + inferred)
 
         # Needs MRO, so cannot run earlier.
         self._check_field_shadowing(record, record_info)

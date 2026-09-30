@@ -61,7 +61,7 @@ a case under `tests/cases/records/`:
 | stub-method argument | `arg.lends_from_temporary` | `_method_arg` |
 | retaining builtin | `arg.lends_from_temporary` | `_retaining_builtin` |
 | for-each / comprehension | `foreach.iter_lends_from_temporary` | `_foreach`, `_comp` |
-| field store | `assign.field_write_lends_from_temporary` | `error_property_view_store_temporary` |
+| field store | `assign.field_write_lends_from_temporary`; a VIEW field answers first in sema (`Cannot bind ... to a temporary view source`) | `error_property_view_store_temporary` |
 | setitem value | `setitem_value.lends_from_temporary` | `_setitem` |
 | `with` manager | `with_manager.lends_from_temporary` | `_with` |
 | return | `return.lends_from_temporary` | `_return` |
@@ -78,7 +78,8 @@ in the module-level decl routing and predates this rule.
 Three more sinks refuse the lend by construction but are reached through a
 different tag, because a shape gate answers first: a ternary arm at
 `ifexpr.getter_arm_const_source`, a walrus at `expr.walrus`, and the constructor
-member-init list at `mil_init.lends_from_temporary`. An aggregate ELEMENT slot
+member-init list at `mil_init.lends_from_temporary` (a VIEW field there, as at
+any field store, is refused first by sema's temporary-view rule). An aggregate ELEMENT slot
 is refused one step earlier and by a WIDER rule
 (`container_elem.accessor_lends_storage`, which holds off a NAMED receiver too).
 

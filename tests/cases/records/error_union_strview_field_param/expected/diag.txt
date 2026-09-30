@@ -1,0 +1,1 @@
+main.py:14: error: in function 'mark': this construct is not yet supported by C++ code generation (stmt.assign:field_write.lift.borrow)

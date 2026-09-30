@@ -1325,13 +1325,10 @@ class TypeCompatibility:
             # family. An open type-param payload is no exception: the copy is
             # the same one the monomorphic twin makes, and `copy()` is
             # spellable there now that it takes a readonly source.
-            arrives_borrowed = self.arrives_borrowed(source_expr)
             warned_ptr_repr_tuple = False
-            if (not is_return and source_expr is not None
-                    and (ref_scalar or ptr_repr_tuple)
-                    and arrives_borrowed
-                    and not self.is_copy_call(source_expr)
-                    and not is_auto_moved):
+            if (not is_return and (ref_scalar or ptr_repr_tuple)
+                    and self.source_copies_into_storage(source_expr,
+                                                        is_auto_moved)):
                 if ptr_repr_tuple:
                     before = len(self.ctx.diagnostics)
                     if self.warn_pointer_repr_tuple_copy(
@@ -4218,12 +4215,26 @@ class TypeCompatibility:
             return f" ({CONSUMING_FIELD_MOVE_NOTE})"
         return NOCOPY_REMEDIATION_HINT
 
+    def source_copies_into_storage(self, expr: 'TpyExpr | None',
+                                   auto_moved: bool) -> bool:
+        """Whether an owning slot (a field, a container element, an `Own`
+        parameter) fed from `expr` holds a COPY of an object that outlives
+        the store, where CPython would alias it: the source arrives borrowed
+        (`arrives_borrowed`), is not an explicit `copy()` and is not an
+        auto-moved last use (`auto_moved`, asked once by the caller since the
+        question may retract a last-use mark). The one source rule every
+        owning sink asks; the sink decides which slot types a copy is
+        observable in."""
+        return (expr is not None and self.arrives_borrowed(expr)
+                and not self.is_copy_call(expr) and not auto_moved)
+
     def arrives_borrowed(self, expr: 'TpyExpr | None') -> bool:
         """The source names storage that outlives the expression, so an
         owning slot copies it: an lvalue (a ternary of lvalue arms included),
         a borrow-returning call (a tuple result carrying a borrowed element
-        included), a walrus whose value is one of those, or a MIXED-arm
-        ternary whose name arm is a reference. The one question every `Own`
+        included), a walrus (whatever its value: it names the binding it
+        just made, which outlives the store), or a MIXED-arm ternary whose
+        name arm is a reference. The one question every `Own`
         slot and owned-storage member asks before its copy rule.
 
         A walrus renders `(d = &(c), *d)`, a read of the named object that
@@ -4239,7 +4250,7 @@ class TypeCompatibility:
             return True
         inner = expr.expr if isinstance(expr, TpyCoerce) else expr
         if isinstance(inner, TpyNamedExpr):
-            return self.arrives_borrowed(inner.value)
+            return True
         if not isinstance(inner, TpyIfExpr):
             return False
         result = unwrap_qualifiers(self.ctx.get_expr_type(inner))

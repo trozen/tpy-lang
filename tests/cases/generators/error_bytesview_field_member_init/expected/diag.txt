@@ -1,1 +1,1 @@
-main.py:13: error: in the constructor of 'Holder': this construct is not yet supported by C++ code generation (ctor.mil_field.nominal.name)
+main.py:13: error: in the constructor of 'Holder': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)

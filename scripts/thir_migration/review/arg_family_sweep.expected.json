@@ -24652,42 +24652,42 @@
  "rec_own__mut__closure_capture__ctor": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "%k0: CALLEE = ctor(CALLEE, [move(%s0)]) print(%k0.tag [raw]) call(inner, [])"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(R move){%s0}]) print(%k0.tag [raw]) call(inner, [])"
  ],
  "rec_own__mut__closure_capture__fn": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE, [move(%s0)]) call(inner, [])"
+  "call(CALLEE, [%argtmp(R move){%s0}]) call(inner, [])"
  ],
  "rec_own__mut__closure_capture__gen": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), move(%s0)]) call(inner, [])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(R move){%s0}]) call(inner, [])"
  ],
  "rec_own__mut__closure_capture__genrec": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%g, CALLEE, [move(%s0)]) call(inner, [])"
+  "method_call(%g, CALLEE, [%argtmp(R move){%s0}]) call(inner, [])"
  ],
  "rec_own__mut__closure_capture__meth": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%t, CALLEE, [move(%s0)]) call(inner, [])"
+  "method_call(%t, CALLEE, [%argtmp(R move){%s0}]) call(inner, [])"
  ],
  "rec_own__mut__closure_capture__nested": [
-  "ok",
+  "reject:expr.call:call.ctor_arg.own_record_f1",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [move(%s0)]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []),"
+  ""
  ],
  "rec_own__mut__closure_capture__proto": [
-  "ok",
+  "reject:expr.method_call:method.protocol.arg_shape",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%pp, CALLEE, [move(%s0)]) call(inner, [])"
+  ""
  ],
  "rec_own__mut__closure_capture__static": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE, [move(%s0)]) call(inner, [])"
+  "call(CALLEE, [%argtmp(R move){%s0}]) call(inner, [])"
  ],
  "rec_own__mut__copy_call__ctor": [
   "ok",
@@ -25612,42 +25612,42 @@
  "rec_own__ro__closure_capture__ctor": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "%k0: CALLEE = ctor(CALLEE, [move(%s0)]) print(%k0.tag [raw]) call(inner, [])"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(R move){%s0}]) print(%k0.tag [raw]) call(inner, [])"
  ],
  "rec_own__ro__closure_capture__fn": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE, [move(%s0)]) call(inner, [])"
+  "call(CALLEE, [%argtmp(R move){%s0}]) call(inner, [])"
  ],
  "rec_own__ro__closure_capture__gen": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), move(%s0)]) call(inner, [])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(R move){%s0}]) call(inner, [])"
  ],
  "rec_own__ro__closure_capture__genrec": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%g, CALLEE, [move(%s0)]) call(inner, [])"
+  "method_call(%g, CALLEE, [%argtmp(R move){%s0}]) call(inner, [])"
  ],
  "rec_own__ro__closure_capture__meth": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%t, CALLEE, [move(%s0)]) call(inner, [])"
+  "method_call(%t, CALLEE, [%argtmp(R move){%s0}]) call(inner, [])"
  ],
  "rec_own__ro__closure_capture__nested": [
-  "ok",
+  "reject:expr.call:call.ctor_arg.own_record_f1",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [move(%s0)]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []),"
+  ""
  ],
  "rec_own__ro__closure_capture__proto": [
-  "ok",
+  "reject:expr.method_call:method.protocol.arg_shape",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "method_call(%pp, CALLEE, [move(%s0)]) call(inner, [])"
+  ""
  ],
  "rec_own__ro__closure_capture__static": [
   "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  "call(CALLEE, [move(%s0)]) call(inner, [])"
+  "call(CALLEE, [%argtmp(R move){%s0}]) call(inner, [])"
  ],
  "rec_own__ro__copy_call__ctor": [
   "ok",

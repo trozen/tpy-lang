@@ -33,10 +33,10 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // class Inherited(Base):
 struct Inherited : Base {
-    // b: int32
-    int32_t b;
     // a: int32
     int32_t a;
+    // b: int32
+    int32_t b;
 
     // def __init__(self) -> None:
     Inherited();
@@ -50,10 +50,10 @@ inline std::ostream& operator<<(std::ostream& os, const Inherited& obj) {
 
 // class Defaulted(Base):
 struct Defaulted : Base {
-    // b: int32
-    int32_t b;
     // a: int32
     int32_t a;
+    // b: int32
+    int32_t b;
     // d: int32 = int32(7)
     int32_t d = 7;
 

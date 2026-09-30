@@ -1,1 +1,0 @@
-main.py:18: error: in function 'load': this construct is not yet supported by C++ code generation (stmt.assign:call.callee_kind)
