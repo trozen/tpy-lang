@@ -1834,41 +1834,44 @@ M4.1-M4.6) stay as records; the open items of the
 [M3 completion checklist](MIR_M3_COMPLETION_PLAN.md) and of the M2/M4 matrix
 below fold into the B-step that needs them.
 
-**Baseline** (front end, release 0.6.1; a stratified sample of 1758 of 4151
-compiling test cases, the whole stdlib and 22 tpy-examples programs). MIR
-lowers 6.8% of test bodies, 2.1% of stdlib bodies and 1.8% of example bodies.
-Of the 2552 loan-active bodies -- sema registered a loan, view, provenance,
+**Baseline** (front end, the tree before B1, measured with
+`scripts/mir_coverage/`; its name-hash sample of 1720 of 4151 compiling test
+cases, the whole stdlib and 22 tpy-examples programs). MIR lowers 7.1% of test
+bodies, 2.1% of stdlib bodies and 1.8% of example bodies. Of the 2525
+loan-active bodies -- sema registered a loan, view, provenance,
 parameter-return, loop or `with` hold, or emitted a lifetime diagnostic -- it
-lowers 24 (0.9%). First blockers over those bodies: type vocabulary (anything
+lowers 25 (1.0%). First blockers over those bodies, from the first
+measurement's draw (the blocker mix, not the counts, is what matters): type vocabulary (anything
 but bool/int32) 1077, resumable frames 452, module init 186, method receiver
 not modelled 170, generic 147, unsupported statement (`print`, protocol `for`,
-tuple unpack, `try`, nested `def`) 134, record layout 133. The type gate is
-`in (BOOL, INT32)` at about 20 sites in `tpyc/mir/lower.py`, repeated in
-`validate.py`, `dependencies.py` and `storage_evidence.py`.
+tuple unpack, `try`, nested `def`) 134, record layout 133. As of 0.6.1 the
+type gate was `in (BOOL, INT32)` at about 20 sites in `tpyc/mir/lower.py`,
+repeated in `validate.py`, `dependencies.py` and `storage_evidence.py`.
 
 **Principle.** Model exactly what can create, hold or invalidate a loan;
 everything else is opaque -- opaque contents, never opaque lifetime or
 effects. Anything that can borrow fails closed. Admission keys on type and
 form facts, never on lists of accepted kinds.
 
-- **B1: loan classification.** A recursive classification of representations
-  answering three separate questions: does it hold dependencies; can its
-  storage be lent; can an operation on it invalidate or retain dependencies or
-  run cleanup. Built from existing facts (`is_value_type`,
-  `is_borrowing_view_type`, `has_view_param_form`, tuple element forms,
-  instantiated record fields) plus THIR form/layout/storage facts. It must get
-  right: str/bytes own buffers yet are viewed; BigInt parameters are
-  `const BigInt&`; `TupleType.is_value_type()` is always true; switching a
-  union alternative ends the payload's storage; `Own` reports value-type for
-  owned records; `Ptr` is value-typed; `readonly` limits access, not
-  lifetime. Operations are admitted through proved loan-neutral operation
-  contracts (builtin arithmetic and comparison, `print` reading its arguments
-  including `sep`/`end`), never by result type: a scalar-returning call can
-  mutate a global, a user dunder runs code. The validator, dependency and
-  storage-evidence contracts change together with lowering.
+- **B1: loan classification.** Landed as the [B1 contract](#b1-contract): a
+  tri-state loan classifier over representations (`typesys.loan_class`:
+  holds a borrow, lendable), a parameter-passing fact carried on
+  `THIRParam` -- a mirror of the parameter renderers, pinned against them
+  by `tpyc/test_loan_class.py` (TODO follow-up (i) makes the renderers read
+  it) -- and a primitive-operation contract
+  on the TypeDef. It admits every loan-inert primitive and enum value as a
+  scalar leaf in the layouts MIR already modeled, certified primitive
+  operators and scalar `print`. Aggregates keep their own models, and
+  records are recognized by their TypeDef, never as "not a leaf". Operations are admitted through proved
+  loan-neutral contracts, never by result type: a scalar-returning call can
+  mutate a global, a user dunder runs code.
 - **B2: views as places.** str/bytes/Span views carry a loan on their source,
   starting with parameter, local and field roots (container-element views
-  need B3). str and bytes follow one rule.
+  need B3). str and bytes follow one rule. The classification B1 leaves
+  UNKNOWN comes here: str/bytes own buffers yet are viewed; BigInt parameters
+  are `const BigInt&`; `TupleType.is_value_type()` is always true; `Own` is
+  not position-transparent (a value type becomes a value, a reference type
+  `T&&`); `Ptr` is value-typed; `readonly` limits access, not lifetime.
 - **B3: containers.** Holders with element places, element views and
   iterator loans. From here on each step builds the call-effect contracts it
   needs -- retention, invalidation, result origins, exceptional behavior --
@@ -1896,7 +1899,76 @@ lowered, all required analyses complete, conflict found, certified for its
 obligations -- plus blocker transitions. Generic coverage counts
 instantiation obligations. A `deferred: MIR` reproducer counts only when MIR
 gives the expected unsafe verdict and a safe sibling is certified;
-sema-rejected reproducers are evaluated on a separate path.
+sema-rejected reproducers are evaluated on a separate path. The counts come
+from `scripts/mir_coverage/` (its README defines them), measured over its
+name-hash sample of `tests/cases` (a rule, not a file, so membership is stable
+as the corpus grows).
+
+### B1 contract
+
+- **Invariant.** A value MIR admits as a scalar leaf holds no borrowed leaf,
+  has no storage a compiler-introduced borrow can point into, and is passed
+  by value, in the representation it has at that point
+  (`typesys.loan_class`; one predicate, `thir/scalar_leaves.storage_leaf`,
+  asked at the parameter's passing convention, the return representation,
+  or storage). Leaves: every fixed-width int, `float`, `float32`, `bool`,
+  `char` (`TypeDef.loan_inert`), and enum values. User enums and records
+  are TypeDefs of one compilation, so every MIR lowering path
+  (`--dump-mir`, the coverage tool, the tests) runs under
+  `activate_compiler`. A parameter's representation is the passing THIR
+  publishes on `THIRParam` and MIR carries on the parameter slot; an
+  unpublished passing is refused. Aggregates are never leaves: tuple,
+  Optional and union keep their own models (a tuple or scalar-union
+  parameter is still a `const &` to the whole, a payload extraction still a
+  `PAYLOAD_ALIAS`). Records are recognized by their TypeDef
+  (`scalar_leaves.record_type`), never as "not a leaf"; a type with no
+  TypeDef still reads as a record (failing closed there is filed in
+  TODO.md, MIR entry). The validator re-checks every SCALAR slot and
+  wrapper/container member at its representation, and the dependency pass's
+  "no leaves" answer keys on that verified class, failing closed otherwise.
+- **Literals.** A number literal takes its context's leaf type (the other
+  comparison or arithmetic operand, the slot, the parameter); alone it is the
+  C++ literal it spells (`int` / `double`). Its value must fit that type
+  (`scalar_leaves.leaf_constant`, from `TypeDef.zero_value` and the int
+  traits). Conditions stay `bool`, range induction stays `int32`, constant
+  CFG folding stays `bool`.
+- **Operation rule.** An operator is admitted only when THIR publishes
+  `certified_op` on its node: the resolved dunder's owner carries the
+  primitive-operation contract (`TypeDef.primitive_ops`), no promotion
+  (`ResolvedBinop.promotion`), operand cast or template override converts
+  an operand, and every operand and the result is an inert leaf; a
+  number-literal operand converts into the typed operand's primitive. Comparisons lower to `MIRCompare`, every
+  other certified operator to `MIROp(op, operands, may_raise)`, a read of its
+  operands with no dependency transfer. No method-name list decides either.
+  The validator re-checks the contract on every `MIROp`, `MIRCompare` and
+  `MIRPrint` operand (`scalar_leaves.primitive_leaf`).
+- **Print rule.** `print` lowers to `MIRPrint`, a read of its arguments, when
+  every argument is a leaf whose TypeDef carries the primitive contract
+  (printed by the runtime, no user method can run) and whose `PrintForm` is
+  scalar (RAW, INT8, BOOL, FLOAT, FLOAT32), with a literal or default
+  `sep`/`end` and no `file=` sink. Enum values stay out of print (a user enum
+  may define `__str__`).
+- **Exception rule.** The primitive contract admits raising (checked
+  overflow, a zero divisor), so every `MIROp` is `may_raise`. A body may
+  contain one, but its call summary is OPAQUE ("summary raising operation"):
+  `normal_return_only` is not reinterpreted, and callers stay uncovered until
+  summaries carry exit semantics. A body that prints is OPAQUE too ("summary
+  output effect"): output is no parameter-rooted effect.
+- **Deferred (not covered).** User ValueType records as opaque kinds;
+  certifying operations on whole aggregates; summaries of raising calls;
+  enum operations and enum print (no enum TypeDef carries the primitive
+  contract); `len()` and other builtin calls (B3); BigInt,
+  str, bytes and String (B2); formatter resolution for aggregates in print.
+- **Measured** (`scripts/mir_coverage/`, same name-hash sample as the
+  baseline): lowered test bodies 7.1% -> 9.4% (997 of 10554), example bodies
+  1.8% -> 9.0%, stdlib bodies 2.1% -> 2.9%. Loan-active USER bodies (tests
+  and examples, 2215; the 310 stdlib ones lower on neither tree) 25 -> 47
+  (1.1% -> 2.1%); certified test bodies 26 -> 35. One conflict, and a true
+  one: `pointers/escape_hoist_conditional` binds a loop-local record to an
+  outer name in one branch, which sema already warns about; MIR's retention
+  pass reports the replaced storage. The top loan-active blockers are now
+  return and local types outside the leaf set (str views first), resumable
+  frames and module init.
 
 ## Scope matrix and remaining increments
 

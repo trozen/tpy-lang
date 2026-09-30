@@ -194,6 +194,7 @@ class OperatorResolver:
         self, method: FunctionInfo, type_subst: dict[str, TpyType],
         receiver_type: TpyType, loc_node, left_wrapper: str = "{expr}",
         right_wrapper: str = "{expr}", is_reverse: bool = False,
+        promotion: FunctionInfo | None = None,
     ) -> ResolvedBinop:
         """Create ResolvedBinop with type params substituted in method signature."""
         # Bound check before substitution rewrites `method` (bounds are on the
@@ -236,6 +237,7 @@ class OperatorResolver:
             right_wrapper=right_wrapper,
             is_reverse=is_reverse,
             receiver_type=receiver_type,
+            promotion=promotion,
         )
 
     def resolve_binop(
@@ -301,6 +303,7 @@ class OperatorResolver:
                         return self._make_resolved(
                             method, right_subst, right_effective, loc_node,
                             left_wrapper=int_method.cpp_template or "{expr}",
+                            promotion=int_method,
                         )
 
         # 3. Try reverse: right.__radd__(left)
@@ -324,6 +327,7 @@ class OperatorResolver:
                         return self._make_resolved(
                             method, left_subst, left_effective, loc_node,
                             right_wrapper=int_method.cpp_template or "{expr}",
+                            promotion=int_method,
                         )
 
         return None

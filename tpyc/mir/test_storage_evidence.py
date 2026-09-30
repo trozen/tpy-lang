@@ -7,6 +7,7 @@ import pytest
 
 from ..thir.nodes import Form, THIRBorrowedRecord
 from ..thir.testutil import _compile, _entry
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, OptionalType, ReadonlyType
 from ..mir_workspace import analyze_call_workspace
 from .collect import call_definitions
@@ -302,8 +303,8 @@ def activation(definitions: MIRDefinitions, *, retain: bool, optional: bool = Fa
     if not retain:
         iteration += (MIRAssign(MIRPlace(SAVED), MIRAlias(OWNER)),)
     return MIRFunction(LOOP, INT32, (
-        MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER), _ref(OWNER, cell, MIRSlotKind.PARAMETER),
-        MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER), _ref(SAVED, cell, MIRSlotKind.LOCAL, ROOT), backing,
+        MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), _ref(OWNER, cell, MIRSlotKind.PARAMETER),
+        MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), _ref(SAVED, cell, MIRSlotKind.LOCAL, ROOT), backing,
         MIRSlot(OUT, INT32, MIRSlotKind.LOCAL, residence=ROOT)), (
         MIRBlock(ENTRY, (MIRAssign(MIRPlace(SAVED), MIRAlias(OWNER)), MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(VALUE)))),
                  MIRGoto(HEADER), ROOT),
@@ -448,8 +449,8 @@ def returning(definitions: MIRDefinitions, *, escape: bool) -> MIRFunction:
     once = MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE)
     local_arm = MIRBorrow(MIRPlace(R_LOCAL)) if escape else MIRAlias(R_OWNER)
     return MIRFunction(RETURN, ReadonlyType(cell), (
-        MIRSlot(R_FLAG, BOOL, MIRSlotKind.PARAMETER), _ref(R_OWNER, cell, MIRSlotKind.PARAMETER),
-        MIRSlot(R_VALUE, INT32, MIRSlotKind.PARAMETER), storage, replace(storage, id=R_SPARE),
+        MIRSlot(R_FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), _ref(R_OWNER, cell, MIRSlotKind.PARAMETER),
+        MIRSlot(R_VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), storage, replace(storage, id=R_SPARE),
         _ref(R_SAVED, cell, MIRSlotKind.LOCAL, region)), (
         MIRBlock(R_ENTRY, (MIRAssign(MIRPlace(R_LOCAL), MIRConstruct((R_VALUE,)), storage_write=once),
                            MIRAssign(MIRPlace(R_SPARE), MIRConstruct((R_VALUE,)), storage_write=once)),

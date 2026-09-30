@@ -8,7 +8,8 @@ from ...parse.nodes import (
     TpyLambda, TpyListComprehension, TpyNestedDef, TpySetComprehension,
     TpyStmt, TpyVarDecl,
 )
-from ...typesys import BOOL, INT32, TpyType, unwrap_readonly, unwrap_ref_type
+from ...typesys import TpyType, unwrap_readonly, unwrap_ref_type
+from ..scalar_leaves import storage_leaf
 from ..nodes import (
     THIRCapture, THIRCaptureRelation, THIRCaptureSlot, THIRCaptureSourceKind,
     THIRClosureIdentity, THIRClosureKind,
@@ -116,7 +117,7 @@ def capture_facts(node: Closure, lc: '_LowerCtx', declared: dict[str, TpyType]
             source_kind = THIRCaptureSourceKind.RECEIVER
             relation = THIRCaptureRelation.RECEIVER_ALIAS
             bare, readonly = reference.type, reference.readonly
-        elif typ in (BOOL, INT32):
+        elif storage_leaf(typ):
             if name not in params and name not in lc.capture_sites.entry_locals:
                 return identity, None
             relation = THIRCaptureRelation.SCALAR_BINDING if by_ref else THIRCaptureRelation.SCALAR_SNAPSHOT

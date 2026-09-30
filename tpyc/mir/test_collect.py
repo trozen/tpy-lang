@@ -48,7 +48,7 @@ def choose(flag: bool) -> int32:
     return current.value
 
 def unsupported() -> None:
-    print(1)
+    print("text")
 
 print(choose(True))
 """

@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from ..thir.nodes import Form
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, OptionalType
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant,
@@ -29,9 +30,9 @@ SLOTS = (
             value_kind=MIRValueKind.OPTIONAL, optional_layout=LAYOUT),
     MIRSlot(GUARD, BOOL, MIRSlotKind.LOCAL),
     MIRSlot(COPY, BOOL, MIRSlotKind.LOCAL),
-    MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER),
+    MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
     MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL),
-    MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER),
+    MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
 )
 CAPTURE = MIRAssign(MIRPlace(CURRENT), MIROptionalCopy(PARAM))
 TEST = MIRAssign(MIRPlace(GUARD), MIRIsPresent(CURRENT))

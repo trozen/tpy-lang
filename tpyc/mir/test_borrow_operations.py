@@ -7,6 +7,7 @@ import pytest
 
 from ..thir.nodes import Form, THIRBorrowedRecord
 from ..thir.testutil import _compile, _entry
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, ReadonlyType, TupleType
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, _dependencies
@@ -51,7 +52,7 @@ def forwarding(definitions: MIRDefinitions, *, dead: bool = False) -> MIRFunctio
     return MIRFunction(BODY, INT32 if dead else ReadonlyType(cell), (
         _ref(FIRST, cell, MIRSlotKind.PARAMETER), _ref(SECOND, cell, MIRSlotKind.PARAMETER),
         _ref(CURRENT, cell, MIRSlotKind.LOCAL, ROOT), _ref(ALIAS, cell, MIRSlotKind.LOCAL, ROOT),
-        MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER)), (
+        MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)), (
         MIRBlock(ENTRY, (MIRAssign(MIRPlace(CURRENT), MIRAlias(FIRST)),
                          MIRAssign(MIRPlace(ALIAS), MIRAlias(CURRENT)),
                          MIRAssign(MIRPlace(CURRENT), MIRAlias(SECOND))),
@@ -279,7 +280,7 @@ def test_incomplete_join_is_rejected_before_origin_union(definitions: MIRDefinit
     # first arm's origins must not turn that missing path into positive evidence.
     left, right, join = (MIRBlockId(BODY, i) for i in (1, 2, 3))
     flag = MIRSlotId(BODY, 5)
-    fn = replace(fn, slots=(*fn.slots, MIRSlot(flag, BOOL, MIRSlotKind.PARAMETER)), blocks=(
+    fn = replace(fn, slots=(*fn.slots, MIRSlot(flag, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)), blocks=(
         MIRBlock(ENTRY, (), MIRBranch(flag, left, right), ROOT),
         MIRBlock(left, (MIRAssign(MIRPlace(ALIAS), MIRAlias(FIRST)),), MIRGoto(join), ROOT),
         MIRBlock(right, (), MIRGoto(join), ROOT),

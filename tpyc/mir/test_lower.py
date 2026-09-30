@@ -6,6 +6,7 @@ import pytest
 
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32
 from .dump import dump_function
 from .lower import lower_function
@@ -149,7 +150,7 @@ def test_boolean_value_select_sibling(functions: dict[str, th.THIRFunction],
 
 
 def test_dump_small_function() -> None:
-    fn = th.THIRFunction("f", (th.THIRParam("x", INT32),), INT32,
+    fn = th.THIRFunction("f", (th.THIRParam("x", INT32, passing=ParamPassing.VALUE),), INT32,
                          (th.THIRReturn(th.THIRName(INT32, "x")),), th.THIRFunctionLayout())
     assert dump_function(lower(fn)) == (
         "fn test::fixture -> int32\nentry bb0\n"

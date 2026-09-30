@@ -193,8 +193,8 @@ def test_native_facts_fail_closed(artifacts, damage: str) -> None:
     assert isinstance(result, MIRNotCovered)
 
 
-@pytest.mark.parametrize("typ", ["list[bool]", "list[tuple[int32, int32]]", "list[Cell | None]",
-                                  "set[bool]", "dict[int32, Cell]"])
+@pytest.mark.parametrize("typ", ["list[str]", "list[tuple[int32, int32]]", "list[Cell | None]",
+                                  "set[int]", "dict[int32, Cell]", "dict[str, int32]"])
 def test_other_native_elements_remain_uncovered(typ: str) -> None:
     _, bodies, _ = compile_bodies(PREFIX + f'''def other(xs: {typ}) -> int32:
     for item in xs:

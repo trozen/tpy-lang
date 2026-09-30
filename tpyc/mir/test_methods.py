@@ -8,6 +8,7 @@ from ..thir import nodes as th
 from ..thir.lower.functions import lower_function as lower_thir
 from ..thir.testutil import _assert_rejects_at, _compile, _entry, _strict_reject
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
+from ..type_def_registry import ParamPassing
 from ..typesys import INT32, ReadonlyType
 from .definitions import MIRDefinitions
 from .lower import lower_function
@@ -194,7 +195,7 @@ def test_receiver_and_body_kind_must_agree(artifacts: Artifacts) -> None:
     uncovered(fn, "body kind and receiver mismatch", MIRBodyKind.FREE_FUNCTION)
     uncovered(fn, "unsupported body kind", MIRBodyKind.CONSTRUCTOR)
     uncovered(replace(fn, receiver=replace(fn.receiver, type=INT32)), "unsupported reference fact")
-    uncovered(replace(fn, params=(th.THIRParam("self", INT32),)), "duplicate binding")
+    uncovered(replace(fn, params=(th.THIRParam("self", INT32, passing=ParamPassing.VALUE),)), "duplicate binding")
     with pytest.raises(THIRValidationError, match="invalid receiver fact"):
         validate_thir(replace(fn, receiver=replace(fn.receiver, readonly=1)))
 

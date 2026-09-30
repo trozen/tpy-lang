@@ -22,7 +22,11 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from ..identity_map import IdentityMap, IdentitySet
 from ..temp_schedule import banks_in_region
 from ..parse import RebindStorage, SourceLocation, TryTier
-from ..typesys import NominalType, ResolvedBinop, TpyType
+from ..type_def_registry import ParamPassing
+from ..typesys import (
+    NominalType, ResolvedBinop, ResolvedUnaryop, TpyType,
+    certified_primitive_comparison, certified_primitive_op, is_inert_leaf,
+)
 
 if TYPE_CHECKING:
     from .temp_plan import THIRTempPlan
@@ -438,6 +442,29 @@ class THIRBinOp(THIRExpr):
     # no parens (`::tpy::add_check<int64_t>(l, r)`).
     template_override: 'str | None' = None
 
+    @property
+    def certified_op(self) -> bool:
+        """Whether the operation as rendered here is a certified primitive
+        operation over inert leaves (`typesys.certified_primitive_op`). Any
+        conversion around the operator refuses it: a promotion wrapper
+        (`ResolvedBinop.promotion`), an operand cast, or a template that
+        replaces the resolved one."""
+        if (self.left_cast is not None or self.right_cast is not None
+                or self.template_override is not None):
+            return False
+        rb = self.resolved
+        if rb is None:
+            return (self.op in COMPARISON_OPS
+                    and certified_primitive_comparison(self.left.result_type, self.right.result_type)
+                    and is_inert_leaf(self.result_type))
+        return (rb.promotion is None
+                and certified_primitive_op(rb.method, (self.left.result_type, self.right.result_type),
+                                           self.result_type))
+
+
+# The comparisons sema may leave to the bare C++ operator.
+COMPARISON_OPS = frozenset({"==", "!=", "<", "<=", ">", ">="})
+
 
 @dataclass(frozen=True)
 class THIRValueSelect(THIRExpr):
@@ -694,9 +721,19 @@ class THIRUnaryArith(THIRExpr):
     float/int negation, `::tpy::neg_check<int32_t>({self})` for a checked
     fixed-int neg) and the emitter expands it over the lowered operand. The
     folded negated-int literal and the IntEnum-negation static_cast are
-    separate arms (a plain literal / `THIREnumWrap`)."""
+    separate arms (a plain literal / `THIREnumWrap`). `resolved` is the
+    resolution `cpp_template` came from."""
     cpp_template: str
     operand: THIRExpr
+    resolved: ResolvedUnaryop | None = None
+
+    @property
+    def certified_op(self) -> bool:
+        """Whether the operation is a certified primitive operation over
+        inert leaves (`typesys.certified_primitive_op`)."""
+        return (self.resolved is not None
+                and certified_primitive_op(self.resolved.method, (self.operand.result_type,),
+                                           self.result_type))
 
 
 @dataclass(frozen=True)
@@ -1839,7 +1876,7 @@ class THIRStoragePlacement(Enum):
 @dataclass(frozen=True)
 class THIRWrapperDefault:
     alternative: int
-    value: bool | int | None
+    value: bool | int | float | str | None  # the first member's `TypeDef.zero_value`
 
 
 class HoistDecl(NamedTuple):
@@ -3678,6 +3715,9 @@ class THIRParam:
     union_layout: THIRUnionLayout | None = None
     tuple_layout: THIRTupleLayout | None = None
     native_container: THIRNativeContainer | None = None
+    # How the signature passes it (`TpyType.param_passing` at the param's
+    # const verdict); None when unpublished (a hand-built body).
+    passing: ParamPassing | None = None
 
 
 @dataclass(frozen=True)

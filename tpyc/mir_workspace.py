@@ -74,3 +74,10 @@ def analyze_call_workspace(functions: tuple[tuple[MIRBodyId, th.THIRFunction], .
         if result.state is MIRSummaryState.PENDING:
             summaries[key] = MIRSummaryResult.opaque("recursive or recursion-dependent call")
     return MIRCallWorkspace(MappingProxyType(summaries), MappingProxyType(bodies))
+
+
+@dataclass(frozen=True)
+class MIRProgram:
+    """The workspace-wide MIR inputs every per-body lowering of one compilation shares."""
+    definitions: MIRDefinitions
+    workspace: MIRCallWorkspace

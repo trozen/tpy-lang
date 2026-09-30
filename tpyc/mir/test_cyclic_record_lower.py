@@ -236,13 +236,19 @@ def test_native_iteration_nested_exits_and_callable_positions(artifacts: Artifac
     assert heap[1][field] == 7
 
 
-def test_source_storage_fact_is_required(artifacts: Artifacts) -> None:
+@pytest.mark.parametrize("dropped,reason", [
+    ({"storage_placement": None}, "loop copy or move needs scoped or hoisted storage"),
+    # Without its owned storage the copy is an ordinary value local, and a record is no leaf.
+    ({"owned_storage": None, "storage_placement": None}, "unsupported local type or form"),
+])
+def test_source_storage_fact_is_required(artifacts: Artifacts, dropped: dict, reason: str) -> None:
     fn = artifacts[0]["copied_readonly"]
     loop = fn.body[2]
-    decl = replace(loop.body[0], owned_storage=None, storage_placement=None)
+    assert isinstance(loop.body[0].init, th.THIRCopy)
+    decl = replace(loop.body[0], **dropped)
     fn = replace(fn, body=(*fn.body[:2], replace(loop, body=(decl, *loop.body[1:])), fn.body[-1]))
     result = lower_function(fn, MIRBodyId("cyclic", "missing"), definitions=artifacts[2], kind=MIRBodyKind.FREE_FUNCTION)
-    assert isinstance(result, MIRNotCovered) and result.reason == "unsupported metadata: cpp_type"
+    assert isinstance(result, MIRNotCovered) and result.reason == reason
 
 
 def test_codegen_collection_includes_loop_copy() -> None:

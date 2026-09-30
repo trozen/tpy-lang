@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from ..thir.nodes import Form
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionType
 from .dependencies import analyze_dependencies, MIRReferent
 from .dump import dump_function
@@ -49,8 +50,8 @@ def function(*statements: MIRAssign) -> MIRFunction:
                 tuple_layout=LAYOUT, storage_duration=MIRStorageDuration.BODY, residence=ROOT),
         MIRSlot(EXTERNAL, CELL, MIRSlotKind.PARAMETER, form=Form.BORROW,
                 value_kind=MIRValueKind.BORROWED_RECORD),
-        MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER),
-        MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER),
+        MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+        MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
         MIRSlot(SAVED, CELL, MIRSlotKind.LOCAL, form=Form.BORROW,
                 value_kind=MIRValueKind.BORROWED_RECORD, residence=ROOT),
         MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL, residence=ROOT),

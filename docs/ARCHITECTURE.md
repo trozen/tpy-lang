@@ -26,16 +26,20 @@ drivers, frames at their leaf seams, type rendering). There is no second body
 emitter: a body THIR cannot lower is a compile error (`ThirRejectError`), not a
 reroute. The landed half of the IR direction in `docs/IR_DESIGN.md`.
 
-`tpyc/mir/` provides an internal CFG builder, verifier and dump for bool/int32
-scalars, borrowed/owned plain records, flat tuples, selected Optional payloads
-and nonrecursive unions of bool/int32 values or borrowed plain records.
+`tpyc/mir/` provides an internal CFG builder, verifier and dump for scalar
+leaves, borrowed/owned plain records, flat tuples, selected Optional payloads
+and nonrecursive unions of scalar leaves or borrowed plain records. A scalar
+leaf is a value the loan classifier (`typesys.loan_class`) proves inert at
+its representation: every fixed-width int, `float`, `float32`, `bool`,
+`char`, and enum values (`thir/scalar_leaves.storage_leaf`; the rules are
+the B1 contract in `MIR_ANALYSIS_PLAN.md`).
 THIR carries immutable borrowed-parameter,
 alias-binding, owned-storage and direct-field facts from the existing lowering decisions.
 Ordinary monomorphic instance methods also carry a borrowed receiver fact with
 the finalized method readonly verdict. MIR maps THIRSelf to the first borrowed
 parameter slot and reuses local alias, tuple and field-place operations; reseating
 the receiver is forbidden. Bounded constructors have an explicit receiver
-initialization before the CFG: every bool/int32 field comes from a scalar
+initialization before the CFG: every scalar-leaf field comes from a scalar
 parameter or literal, then existing body operations run on that same storage.
 Initialization is separate from record replacement. Constructor-call summaries
 still require an empty tail; body coverage does not imply call-effect coverage.
@@ -45,7 +49,7 @@ MIR uses body-scoped reference holders and explicit alias transfers; scalar
 global slots instead carry a qualified module/binding identity and refer to
 caller-supplied shared storage. THIR carries the selected scalar global binding
 and write permission; MIR does not infer either from C++ names. Same-module
-bool/int32 globals and direct module attributes are covered; from-import names,
+scalar-leaf globals and direct module attributes are covered; from-import names,
 reexports, native globals and module initialization remain uncovered.
 MIR scalar field places contain dereference and qualified field projections. Distinct
 holders can reference the same object, and readonly access does not imply
@@ -68,7 +72,7 @@ record storage into a nullable holder, OWN replacement redirects that holder,
 IN_PLACE replaces its present referent and None clears only the holder. THIR
 records payload ownership at the constructor-backed declaration producer;
 MIR consumes the effective replacement verdict and retains presence checks.
-Their layouts contain only bool/int32 fields and have no custom special members; construction
+Their layouts contain only scalar-leaf fields and have no custom special members; construction
 requires a complete, pure constructor definition. `MIRDefinitions` indexes and
 checks the emitted `THIRConstructor` artifacts and their logical layout/member
 facts, without reaching back into sema. Each OWN replacement site has distinct
@@ -96,7 +100,7 @@ freshness policy. Record pointer-wrapper writes do not end the pointee.
 `--dump-mir` exposes these results only for already covered source bodies;
 general cleanup and lifetime safety remain future work
 (`MIR_M3_PAYLOAD_LIFETIME_PLAN.md`).
-Tuple construction/copy snapshots bool/int32 values and borrowed record identities;
+Tuple construction/copy snapshots scalar leaves and borrowed record identities;
 reseating one tuple holder leaves copies independent. THIR carries finalized
 element capture/capability layouts and normalized constant indices. Tuple field
 places compose index, dereference and field selection, checked by a typed
@@ -110,14 +114,14 @@ unpacking, nested/owned elements and wrappers remain uncovered. Existing fronten
 gates still exclude standalone local-tuple captures, reseated captures and
 record-tuple parameter copies into later-reseated locals. Readonly auto-copy
 metadata mismatches also remain uncovered (`BUGS.md#readonly-auto-tuple-copy-fact`).
-Optional bool/int32 values and nullable borrowed plain records
+Optional scalar leaves and nullable borrowed plain records
 have explicit absent/present construction, whole-value copies, presence tests
 and typed payload projections. THIR records the selected payload layout and
 whole-wrapper versus extracted-name reads. Presence verification propagates
 finite holder facts and boolean-test implications through CFG joins and loops;
 holder writes invalidate their old implications. Presence permits payload
 selection only, never a lifetime proof. Nonrecursive unions use the same finite
-selection analysis for bool/int32 alternatives or borrowed plain-record
+selection analysis for scalar-leaf alternatives or borrowed plain-record
 alternatives, optionally including None. Record extraction captures the referent;
 scalar extraction aliases the wrapper payload and any wrapper replacement
 invalidates that alias until re-extraction. Live projections require a current
@@ -222,7 +226,7 @@ full-expression lifetime; this correspondence needs no named-argument plan.
 Mixed plain-record ternaries use planned optional backing, initialized empty
 at declaration and filled at the exact selected operand with `OPTIONAL_ASSIGN`.
 They share the existing borrowed-expression CFG and lifetime evidence, with
-hook-free movable bool/int32-field constructors and stable scalar operands.
+hook-free movable scalar-leaf-field constructors and stable scalar operands.
 Readonly holders retain readonly access to mutable backing. This consumer
 allows one emplacement per declaration activation, including fresh loop-body
 activations; repeated while-head emplacement and record and/or remain
@@ -524,9 +528,18 @@ there), `iter_yields_ref_tuple_proxies` (an
 internal stopgap for dict_items, whose iteration yields proxy reference
 tuples -- drives the resumable-frame borrow-tuple loop binding; set by the
 private stub kwarg `_iter_yields_ref_tuple_proxies` and slated for removal), `needs_explicit_element_target`,
-`param_kinds`, `type_factory`, category payloads `int_traits`,
+`param_kinds`, `type_factory`, the loan-model facts `loan_inert` (a
+value holds no borrow and lends no storage), `primitive_ops` (the
+primitive-operation contract: runtime operators, printed with no user
+method), `zero_value` (the value of value-initialized storage) and
+`param_passing` (the parameter convention, where the default derivation
+from `is_value_type` does not spell it), category payloads `int_traits`,
 `float_traits`, `enum: EnumInfo`, `record: RecordInfo`,
-`protocol: ProtocolInfo`). The `is_indirecting`
+`protocol: ProtocolInfo`). `loan_inert` and `param_passing` are read
+through `typesys.loan_class` and `TpyType.param_passing`; `zero_value` is
+read directly (`zero_value_of`, by `mir/lower.py` and `mir/validate.py`),
+and `primitive_ops` through `thir/scalar_leaves.primitive_leaf` and
+`typesys.certified_primitive_op`. The `is_indirecting`
 flag is set from `@native(..., indirecting=True)` on the stub class --
 it flows parser -> `TpyRecord` -> `RecordInfo` -> `TypeDef` during
 `attach_dynamic_type_def`. Cycle detection consults it to decide

@@ -7,6 +7,7 @@ import pytest
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionType
 from .definitions import MIRDefinitions
 from .lower import lower_function
@@ -50,7 +51,7 @@ def read(definitions: MIRDefinitions, value: int = 7) -> th.THIRFieldAccess:
 
 
 def function(expr: th.THIRExpr) -> th.THIRFunction:
-    return th.THIRFunction("example", (th.THIRParam("flag", BOOL),), expr.result_type,
+    return th.THIRFunction("example", (th.THIRParam("flag", BOOL, passing=ParamPassing.VALUE),), expr.result_type,
                            (th.THIRReturn(expr),), th.THIRFunctionLayout())
 
 
@@ -116,7 +117,7 @@ def test_condition_activation_ends_before_both_successors(definitions: MIRDefini
     field = read(definitions)
     condition = th.THIRBinOp(BOOL, th.THIRName(BOOL, "flag"), "&&",
                             th.THIRBinOp(BOOL, field, "==", th.THIRLiteral(INT32, 7), None), None)
-    source = th.THIRFunction("repeat", (th.THIRParam("flag", BOOL),), INT32, (
+    source = th.THIRFunction("repeat", (th.THIRParam("flag", BOOL, passing=ParamPassing.VALUE),), INT32, (
         th.THIRWhile(condition, (th.THIRAssign(th.THIRName(BOOL, "flag"), th.THIRLiteral(BOOL, False)),)),
         th.THIRReturn(th.THIRLiteral(INT32, 5)),
     ), th.THIRFunctionLayout())
@@ -143,7 +144,7 @@ def test_discarded_constructor_has_storage_but_no_result(definitions: MIRDefinit
 def test_final_false_condition_also_constructs_and_ends(definitions: MIRDefinitions) -> None:
     field = read(definitions)
     field = replace(field, receiver=replace(field.receiver, args=(th.THIRName(INT32, "n"),)))
-    source = th.THIRFunction("repeat", (th.THIRParam("n", INT32),), INT32, (
+    source = th.THIRFunction("repeat", (th.THIRParam("n", INT32, passing=ParamPassing.VALUE),), INT32, (
         th.THIRWhile(th.THIRBinOp(BOOL, field, "==", th.THIRLiteral(INT32, 1), None), (
             th.THIRAssign(th.THIRName(INT32, "n"), th.THIRLiteral(INT32, 2)),
         )),

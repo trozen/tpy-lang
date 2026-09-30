@@ -11,6 +11,7 @@ from ..thir import nodes as th
 from ..thir.lower.storage import record_layout
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_constructor, validate_function
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType
 from .definitions import MIRDefinitions
 from .dump import dump_function
@@ -276,7 +277,7 @@ def test_constructor_arguments_are_complete_and_pure(
     functions, constructors = artifacts
     fn = functions["shared"]
     declaration = replace(fn.body[0], init=change(fn.body[0].init))
-    fn = replace(fn, params=(th.THIRParam("n", INT32),), body=(declaration, *fn.body[1:]))
+    fn = replace(fn, params=(th.THIRParam("n", INT32, passing=ParamPassing.VALUE),), body=(declaration, *fn.body[1:]))
     result = lower_function(fn, MIRBodyId("owned", fn.name), kind=MIRBodyKind.FREE_FUNCTION,
                             definitions=MIRDefinitions(constructors))
     assert isinstance(result, MIRNotCovered) and reason in result.reason

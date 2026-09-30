@@ -3,7 +3,7 @@
 from ..parse import SourceLocation
 from .nodes import (
     MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref, MIRField,
-    MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRValueKind,
+    MIRGoto, MIRFunction, MIRNot, MIROp, MIRPrint, MIRPlace, MIRRead, MIRReturn, MIRValueKind,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
     MIRRegionId, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRTupleInitialization,
@@ -113,6 +113,10 @@ def dump_function(fn: MIRFunction) -> str:
             if isinstance(stmt, MIRCallStmt):
                 lines.append(f"  {_call(stmt.call)}{_location(stmt.loc)}")
                 continue
+            if isinstance(stmt, MIRPrint):
+                arguments = ", ".join(f"%{s.index}" for s in stmt.arguments)
+                lines.append(f"  print ({arguments}){_location(stmt.loc)}")
+                continue
             if isinstance(stmt, MIRRecordStorageInit):
                 lines.append(f"  initialize-record-wrapper {_place(stmt.target)} empty{_location(stmt.loc)}")
                 continue
@@ -173,6 +177,8 @@ def dump_function(fn: MIRFunction) -> str:
                     rhs = f"%{left.index} {op} %{right.index}"
                 case MIRNot(operand=operand):
                     rhs = f"not %{operand.index}"
+                case MIROp(op=op, operands=values, may_raise=may_raise):
+                    rhs = f"op {op} (" + ", ".join(f"%{v.index}" for v in values) + ")" + (" may-raise" if may_raise else "")
                 case _:
                     raise AssertionError("validated rvalue missing dump")
             fact = stmt.storage_write

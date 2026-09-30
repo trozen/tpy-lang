@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from ..thir.nodes import Form
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRCompare,
@@ -16,7 +17,7 @@ from .validate import MIRValidationError, validate_function
 B = MIRBodyId("test", "f")
 P, X, Y = (MIRSlotId(B, i) for i in range(3))
 A, C, D, E = (MIRBlockId(B, i) for i in range(4))
-SLOTS = (MIRSlot(P, BOOL, MIRSlotKind.PARAMETER, "flag"),
+SLOTS = (MIRSlot(P, BOOL, MIRSlotKind.PARAMETER, "flag", passing=ParamPassing.VALUE),
          MIRSlot(X, INT32, MIRSlotKind.LOCAL, "x"), MIRSlot(Y, INT32, MIRSlotKind.TEMPORARY))
 GOOD = MIRFunction(B, INT32, SLOTS,
                    (MIRBlock(A, (MIRAssign(MIRPlace(X), MIRConstant(1)), MIRAssign(MIRPlace(Y), MIRRead(MIRPlace(X)))), MIRReturn(Y)),), A)

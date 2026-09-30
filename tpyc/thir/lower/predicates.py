@@ -179,6 +179,7 @@ from ...prescan import chain_root_name, parse_deref_view_key
 from ..reject import ThirUnsupported, note_detail, stmt_reject_reason
 from ..faces import witness as _witness
 from ..nodes import (
+    COMPARISON_OPS,
     Form,
     TruthinessMode,
     THIRArgTemp,
@@ -205,10 +206,6 @@ _ARITH_OPS = frozenset({"+", "-", "*", "div", "//", "%", "**"})
 # concat special cases stay inert for them.
 _BITWISE_OPS = frozenset({"&", "|", "^", "<<", ">>"})
 
-# Comparison operators -- `<`/`==` dunders carry a `{self} OP {0}` template (the
-# derived ones emit as a bare C++ operator); the result is bool. Admitted both
-# as `if`/`while` conditions and as values (`x = a < b`).
-_COMPARE_OPS = frozenset({"<", "<=", ">", ">=", "==", "!="})
 
 # Logical and/or (the parser folds `a and b` to TpyBinOp("&&")). A bool result
 # over bool operands renders as the bare C++ operator (`(l && r)`); the non-bool
@@ -2480,7 +2477,7 @@ def _has_widened_int_name(e: TpyExpr, declared: dict[str, TpyType],
         return (d is not None and _runtime_bigint(d, analyzer)
                 and not _runtime_bigint(analyzer.get_expr_type(e), analyzer))
     if isinstance(e, TpyBinOp):
-        if e.op in ("==", "!=", "<", ">", "<=", ">="):
+        if e.op in COMPARISON_OPS:
             return False
         return (_has_widened_int_name(e.left, declared, analyzer)
                 or _has_widened_int_name(e.right, declared, analyzer))
@@ -2858,7 +2855,7 @@ def _binop_operand_casts(e: TpyBinOp, analyzer) -> 'tuple[str | None, str | None
             return wrap if t is not None and is_int_enum_type(t) else None
 
         return (enum_side(e.left), enum_side(e.right))
-    if e.op in _COMPARE_OPS:
+    if e.op in COMPARISON_OPS:
         # Per-side `get_resolved_type`: a bare
         # float literal opposite a BigInt resolves to `double`, so the
         # is_float_type check below fires (is_float_type excludes the

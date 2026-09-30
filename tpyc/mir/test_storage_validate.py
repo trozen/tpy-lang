@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from ..thir.nodes import Form
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch,
@@ -32,7 +33,7 @@ SLOTS = (
             value_kind=MIRValueKind.BORROWED_RECORD),
     MIRSlot(X, INT32, MIRSlotKind.LOCAL),
     MIRSlot(Y, BOOL, MIRSlotKind.LOCAL),
-    MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER),
+    MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
 )
 BIND = MIRAssign(MIRPlace(Q), MIRAlias(P))
 STORE = MIRAssign(field(Q), MIRConstant(7))

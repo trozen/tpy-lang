@@ -74,6 +74,20 @@ class CppDefaultInit(Enum):
         return self if self.value <= other.value else other
 
 
+class ParamPassing(Enum):
+    """How a parameter of a type is passed in the generated C++ -- the
+    convention `to_cpp_param` / `to_cpp_const_param` spell, as a fact a
+    consumer can read without parsing the spelling."""
+    VALUE = "value"          # by value in the type's own storage form
+    VIEW = "view"            # by value, as a distinct view over the type's
+                             #   owning storage form (`str` -> string_view)
+    CONST_REF = "const_ref"  # `const T&`
+    MUT_REF = "mut_ref"      # `T&`
+    OWN = "own"              # `T&&` -- an ownership transfer of a reference type
+    POINTER = "pointer"      # a borrow pointer passed by value (`T*`, `Union<A*, B*>`)
+    TRAIT = "trait"          # a template-dependent form (`param_val_or_ref_t<T>`, ...)
+
+
 @dataclass(frozen=True)
 class IntTraits:
     """Fixed-width integer traits: width + signedness.
@@ -206,6 +220,24 @@ class TypeDef:
     # (e.g. bytearray's `const std::vector<uint8_t>&`); otherwise the
     # mutable form falls back to param_cpp_formatter.
     param_mut_cpp_formatter: Optional[Callable[[tuple], str]] = None
+    # The convention `param_cpp_formatter` spells, for a value type whose
+    # param form is not a by-value copy of its storage form. None leaves it
+    # to the default: a value type passes VALUE, a reference type a
+    # reference (const or not per the signature's const verdict).
+    param_passing: Optional[ParamPassing] = None
+    # A value holds no borrowed leaf and has no storage a compiler-introduced
+    # borrow can point into, and it passes and returns by value: a loan can
+    # neither start, pass through nor end at it (`typesys.loan_class`).
+    loan_inert: bool = False
+    # Every operator dunder the type's stub declares is a primitive
+    # operation: it reads its operands by value, allocates and retains
+    # nothing and runs no user code, though it may raise (checked
+    # arithmetic). Printing a value goes through the runtime's scalar
+    # formatter, so no user method runs there either.
+    primitive_ops: bool = False
+    # The Python value of the type's value-initialized storage (`T{}`), for
+    # a primitive whose zero a fact must name; None when not declared.
+    zero_value: Any = None
     # element_of(type_args) -> "element type produced by iterating this type".
     # Overrides NominalType.get_element_type's default (first TpyType arg).
     # Needed when the raw first type_arg needs reshaping -- e.g. Span/SpanIter
@@ -621,6 +653,13 @@ def is_free_copy_scalar(t: "TpyType") -> bool:
             or is_float_category(t) or is_enum_type(t))
 
 
+def zero_value_of(t: "TpyType") -> Any:
+    """The Python value of `t`'s value-initialized storage, when its TypeDef
+    declares one (`TypeDef.zero_value`)."""
+    td = type_def_of(t)
+    return td.zero_value if td is not None else None
+
+
 def is_boundary_marshallable(t: "TpyType | None", allow_void: bool = False) -> bool:
     """Whether `t` crosses the CPython @export boundary (copy-in). Single
     admission rule shared by the sema validator and the glue emitter's drift
@@ -898,8 +937,9 @@ def has_view_param_form(t: "TpyType") -> bool:
     storage form -- `str` (`std::string_view` over `std::string`) and `bytes`
     (`::tpy::BytesView` over `::tpy::Bytes`) today.
 
-    Derived from the TypeDef's two formatters rather than enumerated, so a
-    future family joins by registering its forms. `String` and `bytearray`
+    Read off the passing fact (`TpyType.param_passing`), which a TypeDef
+    declares next to its param formatter, so a future family joins by
+    declaring `ParamPassing.VIEW` there. `String` and `bytearray`
     are NOT this shape: their param form is a reference TO the storage form,
     which an owned lvalue binds.
 
@@ -912,14 +952,7 @@ def has_view_param_form(t: "TpyType") -> bool:
     C++ resolves the convention from the instantiation's C++ type and so
     cannot see the TPy param form. Such an argument owes an owned
     materialization, spelled by `view_to_owned_conv`."""
-    from tpyc.typesys import TypeParamRef
-    # An unsubstituted slot renders `param_val_or_ref_t<T>`, which is
-    # "distinct" for a spelling reason, not a form one.
-    if isinstance(t, TypeParamRef):
-        return False
-    storage = t.to_cpp()
-    return t.to_cpp_param_type() not in (storage, f"const {storage}&",
-                                         f"{storage}&")
+    return t.param_passing() is ParamPassing.VIEW
 
 
 def view_owned_copy_init(t: "TpyType", arg: str) -> str:
@@ -1103,7 +1136,7 @@ def _populate() -> None:
             qn = f"tpy.{prefix}{bits}"
             register(TypeDef(
                 qn, TC.FIXED_INT, is_value_type=True, boundary_marshal=True,
-                cpp_default_init=_INERT,
+                cpp_default_init=_INERT, loan_inert=True, primitive_ops=True, zero_value=0,
                 cpp_formatter=_int_cpp(bits, signed),
                 param_cpp_formatter=_int_cpp(bits, signed),
                 int_traits=IntTraits(bits=bits, signed=signed),
@@ -1114,18 +1147,21 @@ def _populate() -> None:
         "builtins.int", TC.BIG_INT, cpp_default_init=_INERT, is_value_type=True, boundary_marshal=True,
         cpp_formatter=lambda args: "::tpy::BigInt",
         param_cpp_formatter=lambda args: "const ::tpy::BigInt&",
+        param_passing=ParamPassing.CONST_REF,
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
     ))
 
     # Floats.
     register(TypeDef(
         "builtins.float", TC.FLOAT, cpp_default_init=_INERT, is_value_type=True, boundary_marshal=True,
+        loan_inert=True, primitive_ops=True, zero_value=0.0,
         cpp_formatter=lambda args: "double",
         param_cpp_formatter=lambda args: "double",
         float_traits=FloatTraits(bits=64),
     ))
     register(TypeDef(
         "tpy.float32", TC.FLOAT, cpp_default_init=_INERT, is_value_type=True,
+        loan_inert=True, primitive_ops=True, zero_value=0.0,
         cpp_formatter=lambda args: "float",
         param_cpp_formatter=lambda args: "float",
         float_traits=FloatTraits(bits=32),
@@ -1134,12 +1170,14 @@ def _populate() -> None:
     # Bool and char.
     register(TypeDef(
         "builtins.bool", TC.BOOL, cpp_default_init=_INERT, is_value_type=True, boundary_marshal=True,
+        loan_inert=True, primitive_ops=True, zero_value=False,
         ctor_arg_truth_test=True,
         cpp_formatter=lambda args: "bool",
         param_cpp_formatter=lambda args: "bool",
     ))
     register(TypeDef(
         "tpy.char", TC.CHAR, cpp_default_init=_INERT, is_value_type=True,
+        loan_inert=True, primitive_ops=True, zero_value="\0",
         cpp_formatter=lambda args: "char",
         param_cpp_formatter=lambda args: "char",
     ))
@@ -1157,6 +1195,7 @@ def _populate() -> None:
         "builtins.str", TC.STR, cpp_default_init=_INERT, is_value_type=True, boundary_marshal=True,
         cpp_formatter=lambda args: "std::string",
         param_cpp_formatter=lambda args: "std::string_view",
+        param_passing=ParamPassing.VIEW,
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
         element_of=_char_elem,
     ))
@@ -1164,6 +1203,7 @@ def _populate() -> None:
         "tpy.String", TC.STR, cpp_default_init=_INERT, is_value_type=True,
         cpp_formatter=lambda args: "::tpy::String",
         param_cpp_formatter=lambda args: "const ::tpy::String&",
+        param_passing=ParamPassing.CONST_REF,
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
         element_of=_char_elem,
     ))
@@ -1195,6 +1235,7 @@ def _populate() -> None:
         "builtins.bytes", TC.BYTES, cpp_default_init=_INERT, is_value_type=True, boundary_marshal=True,
         cpp_formatter=lambda args: "::tpy::Bytes",
         param_cpp_formatter=lambda args: "::tpy::BytesView",
+        param_passing=ParamPassing.VIEW,
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
         element_of=_u8_elem,
     ))

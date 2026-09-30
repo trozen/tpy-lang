@@ -1680,11 +1680,56 @@ alongside related feature work; only the big-rock deferrals live here.
 
 - **MIR (analysis-only): the place / loan model.** Order (approved
   2026-09-29): breadth-first, `docs/MIR_ANALYSIS_PLAN.md` "Breadth-first
-  order" -- B1 loan classification of representations (the bool/int32 type
-  gate is the top blocker), B2 views as places, B3 containers and iterators,
+  order" -- B1 loan classification of representations (landed: every
+  loan-inert primitive and enum value is a leaf), B2 views as places, B3 containers and iterators,
   cleanup, B4 generator/async frames; B5 call summaries alongside; B6 advisory
   checker and authority transition. Lifetime/loan bugs tagged `deferred: MIR`
   in BUGS.md wait on it. The history below records the landed increments.
+  **Body-kind selection is wrong on both entry paths** (951 measured bodies:
+  676 dunders, 104 methods, 95 properties, 76 staticmethods report "body
+  kind and receiver mismatch"): `analyze_call_workspace`
+  (`tpyc/mir_workspace.py`) lowers every scheduled callable as a free
+  function, so a method's receiver is refused, and `tpyc/mir/collect.py`
+  passes the method kind to a staticmethod, which has no receiver. Decide
+  the kind from the callable's own receiver fact in one place and have both
+  paths read it; measure with `scripts/mir_coverage/`.
+  **B1 follow-ups** (the leaf vocabulary's facts still decided twice):
+  - (i) The parameter renderers (`to_cpp_param` / `to_cpp_const_param` and
+    `gen_params`) should read `TpyType.param_passing`, so passing is decided
+    once; today it is a hand-kept mirror guarded by drift pins
+    (`tpyc/test_loan_class.py`).
+  - (ii) Fold `typesys.return_representation` into
+    `classify_result_representation` as a position. They disagree on
+    pointer-representation Optional/Union returns -- a design question, not
+    a rename.
+  - (iii) One record predicate across THIR storage (`borrowed_record`), the THIR
+    validator and MIR (`scalar_leaves.record_type`). `record_type` still
+    reads "no TypeDef" as a record: failing closed there needs every MIR
+    test to lower under `activate_compiler` and hand-built records to be
+    registered TypeDefs (about 1200 unit-test items today).
+  - (iv) THIR should publish a number literal's contextual leaf type instead of
+    MIR re-deriving it (`mir/coverage.literal_type`).
+  - (v) A `Coercion` field for "renders the literal in the target type" instead
+    of MIR's `_LITERAL_COERCIONS` row-name set.
+  - (vi) A stub-level cannot-raise fact so `MIROp.may_raise` is derived; today it
+    is always True, which makes every arithmetic body's summary opaque.
+  - (vii) A print/IO effect in the call-summary vocabulary instead of an opaque
+    summary for every body that prints.
+  - (viii) Call summaries derive a callee's parameter passing from
+    `typ.param_passing()` at the non-const verdict (`mir/call_contract.py`),
+    because `THIRCallableSignature` carries no passing. Carry
+    `THIRParam.passing` into the signature so there is one channel.
+  - (ix) The iterator-object alias row in `thir/lower/statements.py` sets
+    `cpp_type` `"auto&"` with the default VALUE form. Publish BORROW so
+    "VALUE form means held by value" holds for every THIR local
+    declaration (MIR keeps it out today only because its type is never a
+    leaf). It may affect emit, so it needs its own zero-churn check.
+  - (x) `ResolvedBinop.promotion` and `left_wrapper` / `right_wrapper`
+    carry one decision twice: render the wrapper from `promotion` and drop
+    the string fields.
+  - (xi) Move `COMPARISON_OPS` below both sema and THIR (e.g. `typesys`)
+    so the literal copies in `sema/narrowing.py`, `sema/expressions.py`
+    and `codegen_cpp/types.py` collapse onto it.
   Design: `docs/IR_DESIGN.md`
   (MIR Design; Phasing and Dependencies, phase 2). Active plan:
   `docs/MIR_ANALYSIS_PLAN.md`, analysis-first sequence approved 2026-09-17,

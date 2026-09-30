@@ -193,6 +193,7 @@ from ..reject import (
     note_detail,
     stmt_reject_reason,
 )
+from ..scalar_leaves import storage_leaf
 from ..nodes import (
     HoistDecl,
     THIRStoragePlacement,
@@ -5969,9 +5970,9 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
         placement = None
         if isinstance(result, THIRVarDecl):
             if (result.owned_storage is not None
-                    or result.optional_layout is not None and result.optional_layout.payload in (BOOL, INT32)
+                    or result.optional_layout is not None and storage_leaf(result.optional_layout.payload)
                     or result.union_layout is not None and all(
-                        m is None or m in (BOOL, INT32) for m in result.union_layout.elements)):
+                        m is None or storage_leaf(m) for m in result.union_layout.elements)):
                 placement = THIRStoragePlacement.SCOPE
         elif result.owned_storage is not None:
             if result.kind in (PtrSlotKind.OPT_RVALUE, PtrSlotKind.RECORD_RVALUE):
@@ -11692,7 +11693,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 _witness("decl.storage_record_tuple")
                 layout = None
                 if isinstance(init, THIRTupleLiteral) and all(
-                        typ in (BOOL, INT32) or isinstance(value, THIRCtorCall)
+                        storage_leaf(typ) or isinstance(value, THIRCtorCall)
                         for typ, value in zip(tuple_t.element_types, init.elements)):
                     layout = tuple_layout(tuple_t, analyzer, captures=stmt.init.elem_capture, own_records=True)
                     if layout is not None:
