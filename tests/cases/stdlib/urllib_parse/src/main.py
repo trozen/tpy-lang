@@ -10,7 +10,7 @@ def show(u: str) -> None:
 
 
 def main() -> None:
-    show("http://10.72.70.1:8002/das/tables?fmt=json#sec")
+    show("http://192.0.2.10:8002/api/tables?fmt=json#sec")
     show("https://user:pw@example.com/a/b")
     show("/relative/only?x=1")
     show("//netloc-only/p")
