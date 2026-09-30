@@ -1,209 +1,282 @@
-# TurboPython (TPy)
+# TurboPython: a Python-to-C++ compiler
 
-A compiler that translates Python to C++.
+**TurboPython** (TPy, package `tpy-lang`) compiles statically typed Python
+through C++ to a native binary. The result has no interpreter, no garbage
+collector, no automatic reference counting and no GIL; an ownership model
+provides deterministic, compile-checked memory management. Source files
+stay valid Python, so existing editors and linters read them, but
+TurboPython is not a drop-in replacement for CPython.
 
-**Goals:**
+[Website](https://tpy-lang.org) |
+[Documentation](https://tpy-lang.org/docs/) |
+[Examples](https://github.com/trozen/tpy-examples) |
+[Release notes](https://github.com/trozen/tpy-lang/blob/master/RELEASE_NOTES.md)
 
-1. **Performance** — Low-latency compiled output with opt-in constraints for hot paths (e.g. `@noalloc`). If the goals below conflict, performance wins.
-2. **Regular Python compatibility** — We aim to compile and run regular Python code whenever possible, with clear diagnostics when a feature is unsupported or when semantics differ from CPython.
-3. **Constrained C++ interop** — Easy integration with existing C/C++ code, but only through explicitly supported interop shapes and rules (not arbitrary native types/signatures).
-4. **Familiar syntax** — Keep the language readable for non-programmers and close to regular Python where possible.
-5. **Semantic transparency** — Warn when TurboPython behavior differs from CPython so differences are explicit during development.
-6. **Tooling-friendly** — Source files are valid Python, so existing IDEs, linters, type checkers, and LLMs work without special plugins.
-7. **Thread safety** — Unlike CPython (GIL), TurboPython targets multi-threaded, high-performance environments. The compiler should be thread-safe by default where possible without sacrificing performance, and give the user explicit control where trade-offs exist.
+> **Status: early development.** The core language compiles and runs real
+> programs, but some ordinary Python constructs are still rejected, the
+> standard library is a subset, and known bugs can produce wrong results
+> silently. See [what works](https://tpy-lang.org/docs/compatibility/)
+> before relying on it.
 
 ## Example
 
-Main differences from CPython:
-
-- Type annotations required on functions (parameters + return) and class fields; local variables are inferred
-- `int32` for integer literals (overrideable), `int32`/`int64` for explicit fixed-width, `int` = `BigInt` for arbitrary precision
-- Value types (`int32`, `bool`, `str`, ...) are copied; reference types (classes, containers) are passed by reference to functions but stored inline in fields and containers. `Own[T]` transfers ownership (move) at function boundaries. The distinction is one axis, not a list of blessed types: `bytearray` and `Array[T, N]` are reference types alongside `list`/`dict`/`set` and your own classes, and reach the same slots by the same rule
-- No GIL, no refcounting, no GC -- deterministic destruction via RAII
-
-```python
-from tpy import int32
-
-def fib(n: int32) -> int32:
-    if n <= 1:
-        return n
-    return fib(n - 1) + fib(n - 2)
-
-for i in range(40):
-    print(fib(i))
-```
-
-```bash
-$ tpy fib.py             # compile to C++ (-O3) and run
-$ tpy --debug fib.py     # unoptimized build with debug info (-g -O0)
-$ tpy --dump-code fib.py # inspect generated C++
-```
-
-Reference types (classes, `list`, `dict`, ...) are passed by reference to functions, but stored
-inline in class fields and containers. `Own[T]` marks ownership transfer -- the value is moved,
-not referenced:
+The source is Python with type annotations and two TurboPython types,
+`int32` and `Own`:
 
 ```python
 from dataclasses import dataclass
 from tpy import Own, int32
 
 @dataclass
-class Event:
-    timestamp: int32
-    code: int32
+class Stats:
+    count: int32
+    total: int32
+    longest: int32
 
-def make_batch(n: int32) -> Own[list[Event]]:
-    # list comprehension creates a new list; Own means it is moved out to the caller
-    return [Event(i, i * 2) for i in range(n)]
+def measure(words: list[str]) -> Own[Stats]:
+    total, longest = 0, 0
+    for w in words:
+        total += len(w)
+        longest = max(longest, len(w))
+    return Stats(len(words), total, longest)
 
-batch = make_batch(3)  # batch owns the list (moved, not copied)
-for e in batch:
-    print(e.timestamp, e.code)
+s = measure("the quick brown fox jumps over the lazy dog".split())
+print(s.count, s.total, s.longest)
 ```
 
-Where TurboPython would silently copy what CPython shares by reference (e.g. storing a parameter into a field or container), the compiler warns and suggests an explicit `copy()` -- so dual-target code behaves identically under both runtimes.
+`tpy` compiles and runs it; `tpyc -b` leaves a standalone binary:
 
-There is no GIL: real OS threads with compile-checked safety (`spawn`, `Arc[Mutex[T]]`, atomics, cross-thread channels -- a non-thread-safe capture is a compile error, not a race). A TPy module can also compile into a regular CPython extension: mark it `# tpy: ext_module` and import the built `.so` from ordinary Python.
+```console
+$ tpy stats.py
+9 35 5
+$ tpyc -b stats.py
+$ ./__tpyc__/stats.d/release/stats
+9 35 5
+```
 
-Source files are valid Python -- your IDE, linter, and type checker work as-is.
+`int32` is a fixed-width integer. Integer literals and `len()` are `int32`
+by default, so `total` and `longest` need no annotation, and arithmetic on
+them is checked: an overflow stops the program with an error instead of
+wrapping. Plain `int` stays arbitrary-precision, as in Python. `Stats`
+becomes a plain struct of three 32-bit integers and the loop runs over the
+list's storage directly: nothing is heap-allocated per object,
+reference-counted or garbage-collected. `Own[Stats]` says the function
+hands its result to the caller; see
+[Ownership](https://tpy-lang.org/docs/guide/ownership/).
 
 ## Installation
 
-```bash
-pip install tpy-lang
-pip install "tpy-lang[bundled]"   # also installs zig as a bundled C++ compiler
+Requirements: **Python 3.12+** and a **C++23 compiler** on the PATH
+(g++ 13+ or clang++ 19+). Linux and macOS are supported; on Windows, WSL is
+the recommended setup.
+
+```console
+$ pip install tpy-lang
+$ pip install "tpy-lang[bundled]"   # also installs zig as a bundled C++ compiler
 ```
 
-Or as an isolated tool with uv:
+Or as an isolated tool: `uv tool install tpy-lang` or `pipx install tpy-lang`.
 
-```bash
-uv tool install tpy-lang
-uv tool install "tpy-lang[bundled]"
+Two commands are installed: `tpy` runs programs and drops to a REPL with no
+arguments; `tpyc` compiles only and emits `.hpp`/`.cpp` files or a binary.
+
+## Usage
+
+```console
+$ tpy                        # interactive REPL
+$ tpy -c "print(1 + 2)"      # run one line
+$ tpy --debug app.py         # unoptimized build with debug info (-g -O0)
+$ tpy --dump-code app.py     # print the generated C++
+$ tpyc -o out/ app.py        # emit .hpp/.cpp into out/
 ```
 
-Two commands are installed: `tpy` (runs programs, drops to a REPL with no args) and `tpyc` (compile-only; emits `.hpp`/`.cpp`).
+[Building & running](https://tpy-lang.org/docs/guide/building/)
+covers every command and flag, and the
+[getting-started guide](https://tpy-lang.org/docs/getting-started/) walks
+through a first program.
 
-### From source
+## How it differs from Python
 
-```bash
-uv sync                          # in a checkout of the source tree
-uv run tpy hello.py              # any TPy program
-```
+- Function parameters and return types are annotated (a missing return
+  annotation means `-> None`), and class fields are declared with
+  annotations; local variables are inferred.
+- Integer literals and `len()` are `int32`, with checked overflow; `int`
+  stays arbitrary-precision.
+- Every value has exactly one owner: a function frame, a field or a
+  container. Storing an object that stays in use afterwards copies it, and
+  the compiler warns where CPython would have shared a reference. `Own[T]`
+  moves a value instead.
+- No GIL: `spawn` runs real OS threads and checks `Send`/`Sync` at compile
+  time. A task that is not `Send`, or state shared through `Arc` that is not
+  `Sync`, is rejected; shared mutable state goes through `Arc[Mutex[T]]`,
+  `RwLock`, atomics or channels.
+- No CPython packages: everything a program imports is TurboPython source,
+  compiled with it. Dependencies are TurboPython packages, either the
+  standard-library subset and `tplib` that ship with the compiler, or others
+  written for it.
+- Running a file under CPython, or type-checking its `tpy` imports, needs
+  the `tpy` stub package from the source tree (`lib/cpy`) on the path; it is
+  not yet part of the installed package.
 
-## Quick Start
-
-```bash
-tpy                              # interactive REPL
-tpy -c "print(1 + 2)"            # run inline code
-```
-
-Create a `hello.py`:
+The ownership rule is the one deep difference. A list owns its elements, so
+appending an object that is still in use afterwards stores a copy, and the
+compiler says so:
 
 ```python
+from dataclasses import dataclass
+
+@dataclass
+class Reading:
+    sensor: str
+
 def main() -> None:
-    print("Hello from TurboPython!")
+    log: list[Reading] = []
+    r = Reading("boiler-3")
+    log.append(r)            # r is used below, so the list gets a copy
+    r.sensor = "renamed"
+    print(log[0].sensor)     # boiler-3 -- not renamed
 
 main()
 ```
 
-Then:
-
-```bash
-tpy hello.py                     # compile and run a file
-tpy --debug hello.py             # debug build (-g -O0; the default is -O3)
-tpy --dump-code hello.py         # inspect generated C++
-tpy --dump-code --emit-source hello.py  # ... with each definition's Python source as a comment block
-tpy --cxx list                   # show available C++ compilers
-tpy -j4 hello.py                 # parallel compilation (4 jobs)
-tpy --install-agent-docs docs/   # install TPy agent docs into your project
-
-tpyc hello.py                    # compile only -- emit .hpp/.cpp into __tpyc__/
-tpyc -o out/ hello.py            # compile only, custom output directory
+```
+warning: copies Reading into owned storage; use copy() to make this explicit
 ```
 
-Re-running an unchanged program skips the whole pipeline: after a
-successful build, `tpy` records every input (sources, imported modules,
-compiler and toolchain identity, options) next to the binary and, when
-nothing changed, executes the binary directly (~100ms startup instead of a
-rebuild). Anything changed -- a source edit, a new file that shadows an
-imported module, a compiler upgrade, different flags -- triggers a normal
-rebuild. `--rebuild` forces one, precompiled header included; it's also
-the escape hatch for the (ccache-grade) blind spots: system-mode
-third-party libraries
-(`--pcre2=system` etc.) resolve at link time outside the tracked inputs,
-and compile-affecting environment variables (`CPATH`,
-`CPLUS_INCLUDE_PATH`, `LIBRARY_PATH`, `CCACHE_*`) are not part of the
-key -- after changing either, run once with `--rebuild`.
+Under CPython this program prints `renamed`. The program still compiles, and
+the warning makes the difference visible at compile time; writing `copy(r)`
+(`from tpy import copy`) states the intent and silences it. Unlike Cython, mypyc or Nuitka, the
+output does not use the CPython runtime; unlike Codon and Shed Skin, memory
+is managed by ownership instead of a garbage collector.
+[How TPy differs](https://tpy-lang.org/docs/guide/differences/) lists every
+difference with the compiler's actual diagnostics, and
+[Ownership](https://tpy-lang.org/docs/guide/ownership/) teaches the model.
 
-Ctrl-C reaches the running program after both fresh builds and cached runs.
-After a fresh build, the launcher reports signal termination as exit status
-`128 + signal` (130 for SIGINT, 143 for SIGTERM); a program that handles the
-signal keeps its own exit status. An intentionally inherited ignored SIGINT
-remains ignored. Cached runs replace the launcher, so process supervisors
-observe signal termination directly instead of a normal launcher exit.
+## Status
 
-A `sources.cmake` file is generated alongside the C++ output for easy CMake integration.
-By default, the tpy runtime headers are bundled into the output directory so the
-result is self-contained and can be committed or copied to another machine.
-Use `--no-bundle-runtime` to skip the copy (e.g. during development on the runtime itself).
+TurboPython is pre-1.0 and changes between releases; read the
+[release notes](https://github.com/trozen/tpy-lang/blob/master/RELEASE_NOTES.md)
+before upgrading.
+
+- **What works** is listed per feature and per standard-library module in
+  [Compatibility](https://tpy-lang.org/docs/compatibility/).
+- **What is broken** is tracked in the open, in
+  [`BUGS.md`](https://github.com/trozen/tpy-lang/blob/master/BUGS.md). It
+  is long. Most entries are valid Python the compiler still rejects with
+  an error; the ones that matter most are the silent miscompiles, and
+  those are fixed first.
+- **Memory safety is partial.** The compiler rejects a reference that would
+  outlive its owner, but it does not enforce Rust's aliasing rules: mutating
+  a container while a reference into it is live draws a warning, not an
+  error. Known holes in the escape check are tracked in the Safety section
+  of `BUGS.md`.
+- **How it is checked**: more than 6,500 test programs. Each pins the
+  compiler's diagnostics and the generated C++; the ones that run are
+  built, executed, and -- wherever the program is also valid CPython --
+  byte-compared against CPython's output.
+- **Bug reports are welcome**, especially a program that compiles and
+  prints something CPython does not:
+  [open an issue](https://github.com/trozen/tpy-lang/issues).
+
+## Design goals
+
+1. **Efficient native code** -- no interpreter, garbage collector or
+   automatic reference counting, and opt-in constraints such as `@noalloc`
+   for hot paths. Where efficiency and CPython compatibility conflict,
+   efficiency wins.
+2. **Explicit divergence** -- a construct that behaves differently from
+   CPython is rejected or warned about, with a diagnostic that names the fix.
+3. **Valid Python source** -- existing editors, linters and coding agents
+   read TurboPython code without plugins.
+4. **C/C++ interop** -- generated code links with existing C and C++ code,
+   and calls go in both directions: TurboPython calls native functions and
+   types through `@native`, and native code calls exported TurboPython
+   functions.
+5. **Checked concurrency** -- no GIL; what crosses a thread boundary is
+   checked at compile time.
+
+## Using the generated C++
+
+`tpy --dump-code` prints the C++ the compiler writes, and `tpyc` emits it
+as `.hpp`/`.cpp` files for use in a C++ project. The `Stats` class and the
+`measure` function from the example above come out as:
+
+```cpp
+namespace tpyapp::stats {
+
+struct Stats {
+    int32_t count;
+    int32_t total;
+    int32_t longest;
+
+    Stats() = default;
+    explicit Stats(int32_t count, int32_t total, int32_t longest);
+    // ... __eq__, __repr__, operator== and a class-name constant
+};
+
+Stats measure(const std::vector<std::string>& words) {
+    int32_t total = 0;
+    int32_t longest = 0;
+    auto& __obj_0 = words;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::string_view w = *__beg_0;
+        total = ::tpy::add_check<int32_t>(total, ::tpy::__len__(w));
+        longest = ::std::max(longest, ::tpy::__len__(w));
+    }
+    return Stats(::tpy::__len__(words), total, longest);
+}
+
+} // namespace tpyapp::stats
+```
+
+`add_check` is the overflow-checked add; `words` is borrowed as a `const&`
+and each `w` is a `std::string_view` into it, with no copies.
+
+With an explicit output directory (`tpyc -o out/ myapp.py`), a
+`sources.cmake` and the runtime headers and sources are written next to the
+generated code, so `out/` is self-contained and can be committed or copied
+to another machine:
 
 ```cmake
-include(path/to/__tpyc__/myapp.d/sources.cmake)
+include(path/to/out/sources.cmake)
 add_executable(myapp ${TPYC_SOURCES})
 target_include_directories(myapp PRIVATE ${TPYC_INCLUDE_DIRS})
 target_link_libraries(myapp PRIVATE ${TPYC_LIBRARIES})
 set_target_properties(myapp PROPERTIES CXX_STANDARD ${TPYC_CXX_STANDARD})
 ```
 
-## Coding with an AI agent (recommended)
+The generated code needs C++23 and the GCC statement-expression extension:
+g++ 13+, clang++ 19+ or another LLVM-based compiler. MSVC is not supported.
+Existing C and C++ code is reached through `@native` declarations, a
+TurboPython function gets C linkage with `@export(binding="C")`, and a
+module marked `# tpy: ext_module` builds into a regular CPython extension;
+see [Emit and integrate C++](https://tpy-lang.org/docs/guide/building/#emit-and-integrate-c)
+and [Native interop](https://github.com/trozen/tpy-lang/blob/master/docs/NATIVE_INTEROP.md).
 
-TurboPython source is valid Python, so coding agents (Claude Code, Cursor,
-Copilot, ...) and your existing tooling work out of the box. The fastest way to
-be productive is to hand the agent TPy's rules and exact API surface up front:
+## Coding with an AI agent
 
-```bash
-tpy --install-agent-docs docs/   # writes TPY_*.md into ./docs and prints a
-                                 # snippet to add to your AGENTS.md / CLAUDE.md
-```
-
-This installs four reference files into your project:
-
-- `TPY_FOR_AGENTS.md` -- concise Python-to-TPy bootstrap (the delta, ownership
-  rules, idiomatic patterns)
-- `TPY_LANGUAGE_FEATURES.md` -- full language reference (only **Working**
-  sections are usable today)
-- `TPY_STDLIB_ROADMAP.md` -- stdlib coverage (what's available vs missing)
-- `TPY_API_REFERENCE.md` -- the exact callable API surface, generated from the
-  installed version
-
-Append the printed snippet to your `AGENTS.md` / `CLAUDE.md` so the agent reads
-them before writing TPy code. Re-run after upgrading `tpy-lang` to refresh.
-
-## Dependencies
-
-- Python 3.12+
-- A C++23 compiler: g++ 13+, clang++ 19+, or zig (auto-detected)
-
-Compilers below the floor are skipped during auto-detection (falling
-through to the next viable one, e.g. the `[bundled]` zig toolchain); an
-explicit `--cxx`/`$CXX` selection is honored with a warning.
-
-No external C/C++ libraries are required by the runtime.
+TurboPython source is valid Python, so coding agents work without a plugin.
+What they lack is where TurboPython departs from Python.
+`tpy --install-agent-docs docs/` writes four reference files into a project
+(a Python-to-TPy bootstrap, the language reference, standard-library
+coverage and the exact API of the installed version) and prints a snippet
+to add to `AGENTS.md` or `CLAUDE.md`. Re-running it after an upgrade
+refreshes them.
+[Details](https://tpy-lang.org/docs/getting-started/#coding-with-an-ai-agent).
 
 ## Development
 
-```bash
-# Run all tests
-uv run pytest
+From a source checkout: `uv sync`, then `uv run tpy app.py` and
+`uv run pytest`. `docs/ARCHITECTURE.md` describes the compiler.
 
-# Run tests for a specific case
-uv run pytest -k hello
+## License
 
-# View built-in type documentation
-uv run tpy --print-types | glow -p
-```
-
-From a source checkout: see `docs/ARCHITECTURE.md` for the compiler
-architecture, `docs/LANGUAGE_FEATURES.md` for the full language reference, and
-`docs/TPY_FOR_AGENTS.md` for the agent-facing bootstrap (also installable into
-your project via `tpy --install-agent-docs`).
+Apache License 2.0 with the LLVM Exceptions -- see
+[`LICENSE`](https://github.com/trozen/tpy-lang/blob/master/LICENSE). The
+exception covers the runtime and library code that is compiled into every
+program: a binary built with `tpy` can be distributed without carrying the
+license text or a notice. The bundled third-party libraries keep their own
+licenses, listed in
+[`NOTICE`](https://github.com/trozen/tpy-lang/blob/master/NOTICE).
