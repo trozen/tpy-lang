@@ -6,6 +6,7 @@ import pytest
 
 from ..thir.nodes import Form
 from ..thir.testutil import _compile, _entry
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
@@ -139,11 +140,11 @@ def backing_function() -> MIRFunction:
     a, loop, end = (MIRBlockId(body, i) for i in range(3))
     cell = NominalType("Cell", _module_qname="storage.Cell")
     field = MIRField(MIRFieldId(cell, "value"), INT32)
-    slots = (MIRSlot(n, INT32, MIRSlotKind.PARAMETER),
+    slots = (MIRSlot(n, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
              MIRSlot(store, cell, MIRSlotKind.TEMPORARY, form=Form.STORAGE,
                      value_kind=MIRValueKind.RECORD_STORAGE, storage_duration=MIRStorageDuration.BODY),
              MIRSlot(holder, cell, MIRSlotKind.LOCAL, form=Form.BORROW, value_kind=MIRValueKind.BORROWED_RECORD),
-             MIRSlot(result, INT32, MIRSlotKind.LOCAL), MIRSlot(flag, BOOL, MIRSlotKind.PARAMETER))
+             MIRSlot(result, INT32, MIRSlotKind.LOCAL), MIRSlot(flag, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE))
     return MIRFunction(body, INT32, slots, (
         MIRBlock(a, (), MIRGoto(loop)),
         MIRBlock(loop, (

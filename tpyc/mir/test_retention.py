@@ -5,6 +5,7 @@ from dataclasses import dataclass, replace
 import pytest
 
 from ..thir.nodes import Form
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionType
 from .dependencies import MIRDependencies, MIRReferent, analyze_dependencies
 from .liveness import MIRPoint, analyze_liveness
@@ -77,7 +78,7 @@ def loop_function(shape: str, *, safe: bool = False, optional_owner: bool = Fals
                if optional_owner else reference(CURRENT))
     storage = MIRSlot(INITIAL, CELL, MIRSlotKind.TEMPORARY, form=Form.STORAGE,
                       value_kind=MIRValueKind.RECORD_STORAGE, storage_duration=MIRStorageDuration.BODY)
-    slots = (MIRSlot(N, INT32, MIRSlotKind.PARAMETER), MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER),
+    slots = (MIRSlot(N, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
              storage, replace(storage, id=SITE), current, reference(TEMP), holder,
              replace(holder, id=COPIED), MIRSlot(OUT, INT32, MIRSlotKind.LOCAL))
     initial = MIRAssign(MIRPlace(INITIAL), MIRConstruct((N,)),
@@ -138,7 +139,7 @@ def test_real_source_detects_only_late_alias_read(safe: bool) -> None:
 
 def in_place_function(*, live_alias: bool, rhs_only: bool = False) -> MIRFunction:
     slots = (reference(CURRENT, parameter=True), reference(SAVED),
-             MIRSlot(N, INT32, MIRSlotKind.PARAMETER), MIRSlot(OUT, INT32, MIRSlotKind.LOCAL))
+             MIRSlot(N, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), MIRSlot(OUT, INT32, MIRSlotKind.LOCAL))
     alias = MIRAssign(MIRPlace(SAVED), MIRAlias(CURRENT))
     read_alias = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(SAVED, (MIRDeref(), FIELD))))
     write = MIRAssign(MIRPlace(CURRENT, (MIRDeref(),)), MIRConstruct((OUT if rhs_only else N,)),

@@ -6,6 +6,7 @@ import pytest
 
 from ..thir.nodes import Form
 from ..thir.testutil import _compile, _entry
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionType, VoidType
 from .liveness import MIRPoint, analyze_liveness, dump_liveness
 from .definitions import MIRDefinitions
@@ -35,9 +36,9 @@ FIELD = MIRField(MIRFieldId(CELL, "value"), INT32)
 
 
 def scalar_slots() -> tuple[MIRSlot, ...]:
-    return (MIRSlot(P, BOOL, MIRSlotKind.PARAMETER),
-            MIRSlot(X, INT32, MIRSlotKind.PARAMETER),
-            MIRSlot(Y, INT32, MIRSlotKind.PARAMETER),
+    return (MIRSlot(P, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+            MIRSlot(X, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+            MIRSlot(Y, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
             MIRSlot(Z, INT32, MIRSlotKind.LOCAL))
 
 
@@ -109,7 +110,7 @@ def test_nonterminating_loop_and_unreachable_reads() -> None:
 def test_projected_write_uses_receiver_even_without_a_later_read() -> None:
     slots = (MIRSlot(P, CELL, MIRSlotKind.PARAMETER, form=Form.BORROW,
                      value_kind=MIRValueKind.BORROWED_RECORD),
-             MIRSlot(X, INT32, MIRSlotKind.PARAMETER))
+             MIRSlot(X, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE))
     fn = MIRFunction(B, VoidType(), slots, (MIRBlock(A, (
         MIRAssign(MIRPlace(P, (MIRDeref(), FIELD)), MIRRead(MIRPlace(X))),
     ), MIRReturn()),), A)
@@ -120,7 +121,7 @@ def test_projected_write_uses_receiver_even_without_a_later_read() -> None:
 
 def test_global_write_uses_rhs_without_claiming_to_eliminate_the_store() -> None:
     slots = (MIRSlot(P, INT32, MIRSlotKind.GLOBAL, global_id=MIRGlobalId("liveness", "count")),
-             MIRSlot(X, INT32, MIRSlotKind.PARAMETER))
+             MIRSlot(X, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE))
     store = MIRAssign(MIRPlace(P), MIRRead(MIRPlace(X)))
     fn = MIRFunction(B, VoidType(), slots, (MIRBlock(A, (store,), MIRReturn()),), A)
     result = analyze_liveness(fn)
@@ -155,7 +156,7 @@ def test_scalar_payload_alias_keeps_union_live_until_value_read() -> None:
 def test_receiver_initialization_is_an_entry_use_not_a_loop_use() -> None:
     slots = (MIRSlot(P, CELL, MIRSlotKind.PARAMETER, form=Form.BORROW,
                      value_kind=MIRValueKind.BORROWED_RECORD),
-             MIRSlot(X, INT32, MIRSlotKind.PARAMETER))
+             MIRSlot(X, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE))
     fn = MIRFunction(B, VoidType(), slots, (MIRBlock(A, (), MIRReturn()),), A,
                      records=(MIRRecordLayout(CELL, (FIELD,), True, True),),
                      receiver_init=MIRReceiverInit(P, (X,)), kind=MIRBodyKind.CONSTRUCTOR)
@@ -177,8 +178,8 @@ def test_invalid_mir_is_not_an_empty_success() -> None:
 def test_rvalue_operands_survive_dead_destinations(operation: str) -> None:
     ref = MIRSlot(P, CELL, MIRSlotKind.PARAMETER, form=Form.BORROW,
                   value_kind=MIRValueKind.BORROWED_RECORD)
-    scalar = MIRSlot(X, INT32, MIRSlotKind.PARAMETER)
-    other = MIRSlot(Y, INT32, MIRSlotKind.PARAMETER)
+    scalar = MIRSlot(X, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)
+    other = MIRSlot(Y, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)
     target = MIRSlot(Z, CELL, MIRSlotKind.TEMPORARY, form=Form.STORAGE,
                      value_kind=MIRValueKind.RECORD_STORAGE)
     records = (MIRRecordLayout(CELL, (FIELD,), True, True),)
@@ -279,6 +280,8 @@ def owners() -> int32:
 def booleans(flag: bool, value: int32) -> bool:
     current = not flag
     return current or value > 0
+def arithmetic(value: int32) -> int32:
+    return value * 2 + 1
 def range_target(stop: int32) -> int32:
     result = 0
     for index in range(stop):

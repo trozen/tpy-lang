@@ -7,6 +7,7 @@ import pytest
 from ..thir import nodes as th
 from ..thir.testutil import _assert_rejects_at, _compile, _entry, _strict_reject
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
+from ..type_def_registry import ParamPassing
 from ..typesys import INT32, TupleType
 from .lower import lower_function
 from .nodes import MIRBodyId, MIRBodyKind, MIRFieldId, MIRFunction, MIRNotCovered
@@ -209,7 +210,7 @@ def test_parameter_layout_is_required_and_cannot_increase_access(artifacts: Arti
 
 def test_empty_tuple_parameter_at_internal_boundary() -> None:
     # Empty tuple source syntax retains its frontend gate; its IR payload has no elements.
-    fn = th.THIRFunction("empty", (th.THIRParam("pair", TupleType(()), tuple_layout=th.THIRTupleLayout(())),),
+    fn = th.THIRFunction("empty", (th.THIRParam("pair", TupleType(()), tuple_layout=th.THIRTupleLayout(()), passing=ParamPassing.CONST_REF),),
                          INT32, (th.THIRReturn(th.THIRLiteral(INT32, 1)),), th.THIRFunctionLayout())
     validate_thir(fn)
     assert execute(lower(fn), TupleValue(())) == 1

@@ -8,6 +8,7 @@ import pytest
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType
 from .dump import dump_function
 from .lower import lower_function
@@ -198,7 +199,7 @@ def test_alias_conversions_cannot_acquire_ownership_effects(
 
 @pytest.mark.parametrize("typ", [BOOL, INT32])
 def test_scalar_nominals_cannot_claim_borrowed_record_facts(typ: NominalType) -> None:
-    fn = th.THIRFunction("f", (th.THIRParam("x", typ, th.THIRBorrowedRecord(typ, False)),),
+    fn = th.THIRFunction("f", (th.THIRParam("x", typ, th.THIRBorrowedRecord(typ, False), passing=ParamPassing.MUT_REF),),
                          INT32, (th.THIRReturn(th.THIRLiteral(INT32, 1)),), th.THIRFunctionLayout())
     not_covered(fn, "unsupported reference fact")
 

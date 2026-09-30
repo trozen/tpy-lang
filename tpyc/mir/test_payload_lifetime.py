@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from ..thir.testutil import _compile, _entry
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NoneType, OptionalType, UnionType
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
@@ -37,8 +38,8 @@ def wrapper_function(optional: bool, *blocks: MIRBlock) -> MIRFunction:
                           else MIRStorageDuration.BODY, **layout)
                   for sid, kind in ((PARAM, MIRSlotKind.PARAMETER), (CURRENT, MIRSlotKind.LOCAL),
                                     (SAVED, MIRSlotKind.LOCAL)))
-    return MIRFunction(BODY, INT32, (*slots, MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER),
-                                   MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER),
+    return MIRFunction(BODY, INT32, (*slots, MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+                                   MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
                                    MIRSlot(GUARD, BOOL, MIRSlotKind.LOCAL)), blocks, ENTRY)
 
 

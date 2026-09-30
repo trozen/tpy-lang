@@ -5,6 +5,7 @@ from enum import Enum, auto
 
 from ..parse import SourceLocation
 from ..thir.nodes import Form, THIRBorrowedRecord
+from ..type_def_registry import ParamPassing
 from ..typesys import NominalType, TpyType
 from .call_contract import MIRCallSummary
 
@@ -147,6 +148,9 @@ class MIRSlot:
     residence: MIRRegionId | None = None
     record_storage: MIRRecordStorageKind = MIRRecordStorageKind.DIRECT
     container_layout: MIRContainerLayout | None = None
+    # How the signature passes a PARAMETER slot (`THIRParam.passing`);
+    # None elsewhere, and a parameter without it is no scalar leaf.
+    passing: ParamPassing | None = None
 
 
 @dataclass(frozen=True)
@@ -208,7 +212,8 @@ class MIRPlace:
 
 @dataclass(frozen=True)
 class MIRConstant:
-    value: int | bool
+    # The Python value of a scalar leaf constant (`scalar_leaves.leaf_constant`).
+    value: int | bool | float | str
 
 
 @dataclass(frozen=True)
@@ -307,6 +312,19 @@ class MIRNot:
 
 
 @dataclass(frozen=True)
+class MIROp:
+    """A certified primitive operation (`THIRBinOp.certified_op` /
+    `THIRUnaryArith.certified_op`): it reads its inert-leaf operands by
+    value and allocates, retains and borrows nothing. `op` names it for
+    inspection only. `may_raise`: it can exit by exception (checked
+    overflow, a zero divisor), which the call-summary interface does not
+    model."""
+    op: str
+    operands: tuple[MIRSlotId, ...]
+    may_raise: bool
+
+
+@dataclass(frozen=True)
 class MIRIteratorInit:
     source: MIRSlotId
 
@@ -333,7 +351,7 @@ class MIRRangeAdvance:
     step: int
 
 
-MIRRvalue = (MIRConstant | MIRCall | MIRRead | MIRCompare | MIRNot | MIRAlias | MIRBorrow
+MIRRvalue = (MIRConstant | MIRCall | MIRRead | MIRCompare | MIRNot | MIROp | MIRAlias | MIRBorrow
              | MIRConstruct | MIRCopy | MIRMove | MIRTupleConstruct | MIRTupleCopy
              | MIROptionalConstruct | MIROptionalCopy | MIRIsPresent
              | MIRUnionConstruct | MIRUnionCopy | MIRIsAlternative | MIRUnionExtract
@@ -400,14 +418,23 @@ class MIRCallStmt:
     loc: SourceLocation | None = None
 
 
-MIRStatement = MIRAssign | MIRStorageInit | MIRRecordStorageInit | MIRCallStmt
+@dataclass(frozen=True)
+class MIRPrint:
+    """Write inert leaves to standard output through the runtime's scalar
+    formatter: a read of each argument, and an effect outside every
+    parameter-rooted summary."""
+    arguments: tuple[MIRSlotId, ...]
+    loc: SourceLocation | None = None
+
+
+MIRStatement = MIRAssign | MIRStorageInit | MIRRecordStorageInit | MIRCallStmt | MIRPrint
 
 
 def statement_target(stmt: MIRStatement) -> MIRPlace | None:
     match stmt:
         case MIRAssign(target=target) | MIRStorageInit(target=target) | MIRRecordStorageInit(target=target):
             return target
-        case MIRCallStmt():
+        case MIRCallStmt() | MIRPrint():
             return None
         case _:
             raise TypeError("unknown MIR statement")
@@ -417,7 +444,7 @@ def statement_call(stmt: MIRStatement) -> MIRCall | None:
     match stmt:
         case MIRAssign(value=MIRCall() as call) | MIRCallStmt(call=call):
             return call
-        case MIRAssign() | MIRStorageInit() | MIRRecordStorageInit():
+        case MIRAssign() | MIRStorageInit() | MIRRecordStorageInit() | MIRPrint():
             return None
         case _:
             raise TypeError("unknown MIR statement")

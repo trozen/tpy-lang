@@ -137,6 +137,12 @@ def test_incomplete_or_unsupported_initialization_fails_closed(
     assert isinstance(result, MIRNotCovered) and reason in result.reason
 
 
+def test_constructor_parameter_needs_published_passing(artifacts: Artifacts) -> None:
+    ctor = artifacts[0]["Plain"]
+    bad = replace(ctor, params=(replace(ctor.params[0], passing=None),))
+    assert MIRDefinitions((bad,)).records[ctor.record_layout.type] == "unpublished parameter passing"
+
+
 @pytest.mark.parametrize("fields", [(), (MIRConstant(True),), (MIRConstant(2**31),),
                                     (MIRSlotId(MIRBodyId("other", "body"), 0),)])
 def test_malformed_entry_values_are_rejected(
@@ -164,7 +170,7 @@ def test_entry_cannot_read_a_local_or_initialize_readonly_receiver(artifacts: Ar
 @pytest.mark.parametrize("fields,body,reason", [
     ("value: int32 = 4", "pass", "incomplete constructor"),
     ("value: int32", "saved = value\n        self.value = saved", "incomplete constructor"),
-    ("value: int32", "self.value = value\n        print(value)", "unsupported statement"),
+    ("value: int32", "self.value = value\n        print(\"made\")", "unsupported expression"),
     ("value: int32", "self.value = value + 1", "parameter or literal"),
 ])
 def test_actual_emitted_exclusions(fields: str, body: str, reason: str) -> None:

@@ -50,14 +50,15 @@ from ..codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union, LoopBin
 from ..type_def_registry import (
     is_basic_slice_type, is_bytearray_type, is_bytes_type, is_bytes_view_type,
     is_slice_type, is_span, is_str_type, is_str_view_type, is_string_type,
-    is_list, is_array, is_set, is_dict,
+    is_list, is_array, is_set, is_dict, zero_value_of,
 )
 from ..typesys import (
-    BOOL, INT32, INT32_MIN, INT32_MAX, AnyType, NominalType, OptionalType, OwnType, PtrType, ReadonlyType, TupleType,
+    AnyType, NominalType, OptionalType, OwnType, PtrType, ReadonlyType, TupleType,
     UnionType, TpyType,
     TypeParamRef,
-    is_void_like_type, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
+    is_inert_leaf, is_void_like_type, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
+from .scalar_leaves import leaf_constant, storage_leaf
 from .nodes import (
     FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign, THIRCall, THIRChainedCompareStmtExpr,
     THIRCoerce, THIRConstructor, THIRCopy, THIRMove,
@@ -102,16 +103,15 @@ def _check_native_container(owner: str, node: object, fact: THIRNativeContainer,
     member = fact.element
     args = bare.type_args
     if not ((is_list(bare) or is_set(bare)) and len(args) == 1
-            or is_dict(bare) and args == (INT32, INT32)
+            or is_dict(bare) and len(args) == 2 and all(storage_leaf(a) for a in args)
             or is_array(bare) and len(args) == 2 and type(args[1]) is int and args[1] >= 0):
         _fail(owner, node, "invalid native container arguments")
     element_type = member.type if isinstance(member, THIRBorrowedRecord) else member
     if (element_type != bare.type_args[0]
-            or is_dict(bare) and bare.type_args != (INT32, INT32)
-            or element_type != INT32 and not (
+            or not (not isinstance(member, THIRBorrowedRecord) and storage_leaf(element_type)) and not (
                 isinstance(member, THIRBorrowedRecord) and isinstance(member.type, NominalType)
                 and member.type.qualified_name() is not None and not member.type.type_args
-                and not member.type.is_protocol and member.type not in (BOOL, INT32)
+                and not member.type.is_protocol and not is_inert_leaf(member.type)
                 and (is_list(bare) or is_array(bare)) and member.readonly is fact.readonly)):
         _fail(owner, node, "invalid native element fact")
 
@@ -127,12 +127,12 @@ def _check_tuple(owner: str, node: object, layout: THIRTupleLayout, typ: TpyType
             valid = (isinstance(member.type, NominalType)
                      and member.type.qualified_name() is not None
                      and not member.type.type_args and not member.type.is_protocol
-                     and member.type not in (BOOL, INT32)
+                     and not is_inert_leaf(member.type)
                      and type(member.readonly) is bool
                      and unwrap_readonly(element) == member.type
                      and (not readonly and not isinstance(element, ReadonlyType) or member.readonly))
         else:
-            valid = member in (BOOL, INT32) and element == member
+            valid = storage_leaf(member) and element == member
         if not valid:
             _fail(owner, node, "invalid tuple member fact")
     if any(isinstance(m, THIROwnedRecord) for m in layout.elements):
@@ -178,10 +178,10 @@ def _check_optional(owner: str, node: THIRNode, layout: THIROptionalLayout,
     if isinstance(payload, THIRBorrowedRecord):
         valid = (isinstance(payload.type, NominalType) and payload.type.qualified_name() is not None
                  and not payload.type.type_args and not payload.type.is_protocol
-                 and payload.type not in (BOOL, INT32) and type(payload.readonly) is bool)
+                 and not is_inert_leaf(payload.type) and type(payload.readonly) is bool)
         inner = payload.type
     else:
-        valid = payload in (BOOL, INT32)
+        valid = storage_leaf(payload)
         inner = payload
     if not valid:
         _fail(owner, node, "invalid optional payload")
@@ -215,7 +215,7 @@ def _check_union(owner: str, node: object, layout: THIRUnionLayout,
                 _fail(owner, node, "union layout increases access or changes type")
             kinds.add("reference")
         else:
-            if payload not in (BOOL, INT32) or payload != member:
+            if not storage_leaf(payload) or payload != member:
                 _fail(owner, node, "invalid union scalar alternative")
             kinds.add("scalar")
     if len(kinds) != 1:
@@ -256,7 +256,7 @@ def _check_captures(owner: str, node: THIRLambda | THIRNestedDef) -> None:
         names.add(fact.source_name)
         match fact.relation:
             case THIRCaptureRelation.SCALAR_BINDING | THIRCaptureRelation.SCALAR_SNAPSHOT:
-                if (fact.type not in (BOOL, INT32) or fact.source_kind is THIRCaptureSourceKind.RECEIVER
+                if (not storage_leaf(fact.type) or fact.source_kind is THIRCaptureSourceKind.RECEIVER
                         or (fact.relation is THIRCaptureRelation.SCALAR_SNAPSHOT and not fact.readonly)):
                     _fail(owner, node, "invalid scalar capture")
             case THIRCaptureRelation.RECORD_REFERENT | THIRCaptureRelation.RECEIVER_ALIAS:
@@ -265,7 +265,7 @@ def _check_captures(owner: str, node: THIRLambda | THIRNestedDef) -> None:
                             else THIRCaptureSourceKind.RECEIVER)
                 if (fact.source_kind is not expected or not isinstance(fact.type, NominalType)
                         or not fact.type.qualified_name() or fact.type.type_args or fact.type.is_protocol
-                        or fact.type in (BOOL, INT32)):
+                        or is_inert_leaf(fact.type)):
                     _fail(owner, node, "invalid reference capture")
 
 
@@ -287,12 +287,14 @@ def _check_hoists(owner: str, node: THIRIf | THIRWhile | THIRForRange | THIRForE
         if default is not None:
             optional = binding.optional_layout
             union = binding.union_layout
-            scalar = (optional is not None and optional.payload in (BOOL, INT32) and union is None
+            scalar = (optional is not None and storage_leaf(optional.payload) and union is None
                       or union is not None and optional is None
-                      and all(m is None or m in (BOOL, INT32) for m in union.elements))
+                      and all(m is None or storage_leaf(m) for m in union.elements))
             first = union.elements[0] if union is not None else None
-            expected = None if first is None else False if first == BOOL else 0
-            if (not scalar or binding.borrowed_record is not None or binding.tuple_layout is not None
+            expected = None if first is None else zero_value_of(first)
+            # A None value only defaults the None alternative.
+            if (not scalar or first is not None and expected is None
+                    or binding.borrowed_record is not None or binding.tuple_layout is not None
                     or not isinstance(default, THIRWrapperDefault)
                     or type(default.alternative) is not int or default.alternative != 0
                     or type(default.value) is not type(expected) or default.value != expected):
@@ -320,7 +322,7 @@ def _check_node(owner: str, node: THIRNode) -> None:
     if isinstance(node, THIRCtorCall) and node.full_expression_storage is not None:
         fact = node.full_expression_storage
         if (not isinstance(fact, THIROwnedRecord) or not isinstance(fact.type, NominalType)
-                or fact.type in (BOOL, INT32) or not fact.type.qualified_name()
+                or is_inert_leaf(fact.type) or not fact.type.qualified_name()
                 or fact.type.type_args or fact.type.is_protocol or fact.type != node.result_type
                 or fact.readonly is not False or node.form is not Form.STORAGE or node.brace_init):
             _fail(owner, node, "full-expression storage disagrees with constructor")
@@ -365,7 +367,7 @@ def _check_node(owner: str, node: THIRNode) -> None:
     if isinstance(node, (THIRName, THIRModuleVar, THIRWalrus)) and node.global_binding is not None:
         fact = node.global_binding
         if (not isinstance(fact, THIRGlobalBinding) or not fact.module or not fact.name
-                or fact.type not in (BOOL, INT32) or fact.type != node.result_type
+                or not storage_leaf(fact.type) or fact.type != node.result_type
                 or node.form is not Form.VALUE or type(fact.writable) is not bool):
             _fail(owner, node, "invalid scalar global binding")
         if isinstance(node, THIRWalrus) and not fact.writable:
@@ -404,8 +406,7 @@ def _check_node(owner: str, node: THIRNode) -> None:
             if (not isinstance(value, THIRLiteral) or type(value.value) is not type(fact.value)
                     or value.value != fact.value or not (
                         member is None and fact.value is None
-                        or member == BOOL and type(fact.value) is bool
-                        or member == INT32 and type(fact.value) is int and INT32_MIN <= fact.value <= INT32_MAX)):
+                        or leaf_constant(member, fact.value))):
                 _fail(owner, node, "union literal payload mismatch")
     if isinstance(node, THIRName) and node.union_read is not None:
         _check_union(owner, node, node.union_read)
@@ -547,13 +548,13 @@ def _check_node(owner: str, node: THIRNode) -> None:
             isinstance(node.receiver, THIRSubscript) and node.receiver.tuple_index is not None) or (
             isinstance(node.receiver, THIRNarrowedRead) and node.receiver.union_extraction is not None) or (
             isinstance(node.receiver, THIRCtorCall) and node.receiver.full_expression_storage is not None
-            and fact.type in (BOOL, INT32) and not node.is_arrow)
+            and storage_leaf(fact.type) and not node.is_arrow)
         typ = unwrap_readonly(fact.type)
-        record = (isinstance(typ, NominalType) and typ not in (BOOL, INT32)
+        record = (isinstance(typ, NominalType) and not is_inert_leaf(typ)
                   and not typ.type_args and not typ.is_protocol)
         if (not direct or not fact.name
                 or unwrap_readonly(unwrap_ref_type(node.receiver.result_type)) != fact.owner
-                or (not record and (fact.type not in (BOOL, INT32)
+                or (not record and (not storage_leaf(fact.type)
                                     or node.result_type != fact.type or node.form is not Form.VALUE))
                 or (record and unwrap_readonly(unwrap_ref_type(node.result_type)) != typ)):
             _fail(owner, node, "field identity disagrees with its access")
@@ -1052,7 +1053,7 @@ def validate_function(fn: THIRFunction) -> None:
     if fn.receiver is not None:
         fact = fn.receiver
         if (not isinstance(fact, THIRBorrowedRecord) or not isinstance(fact.type, NominalType)
-                or fact.type.qualified_name() is None or fact.type in (BOOL, INT32)
+                or fact.type.qualified_name() is None or is_inert_leaf(fact.type)
                 or fact.type.type_args or fact.type.is_protocol or type(fact.readonly) is not bool
                 or any(p.name == "self" for p in fn.params)):
             _fail(fn.name, fn, "invalid receiver fact")

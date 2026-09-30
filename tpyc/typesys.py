@@ -408,6 +408,7 @@ def clear_all_compilation_state() -> None:
     _evaluating_sync.clear()
     _evaluating_movable.clear()
     _evaluating_drop.clear()
+    _evaluating_loan.clear()
     _evaluating_alias_value.clear()
     clear_dynamic_type_defs()
 
@@ -634,6 +635,18 @@ class TpyType:
             return self.to_cpp()
         return f"{self.to_cpp()}&"
 
+    def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
+        """The passing convention of this type's parameter form -- the fact
+        `to_cpp_param` (`signature_const` False) or `to_cpp_const_param`
+        (True) spells. Every class overriding the parameter render
+        overrides this beside it."""
+        td = self._nominal_td()
+        if td is not None and td.param_passing is not None:
+            return td.param_passing
+        if self.is_value_type():
+            return ParamPassing.VALUE
+        return ParamPassing.CONST_REF if signature_const else ParamPassing.MUT_REF
+
     def to_cpp_param(self, name: str) -> str:
         """Return the C++ mutable-context parameter declaration for this type.
 
@@ -836,6 +849,9 @@ class LiteralType(TpyType):
     def to_cpp_param_type(self) -> str:
         return self.base_type.to_cpp_param_type()
 
+    def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
+        return self.base_type.param_passing(signature_const)
+
     def to_cpp_param(self, name: str) -> str:
         return self.base_type.to_cpp_param(name)
 
@@ -979,6 +995,9 @@ class TypeParamRef(TpyType):
         if self.kind == TypeParamKind.INT:
             return "std::size_t"
         return f"::tpy::param_val_or_ref_t<{self.name}>"
+
+    def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
+        return ParamPassing.VALUE if self.kind == TypeParamKind.INT else ParamPassing.TRAIT
 
     def to_cpp_param(self, name: str) -> str:
         if self.kind == TypeParamKind.INT:
@@ -1702,6 +1721,9 @@ class PtrType(TpyType):
     def drop_runs_user_code(self) -> bool:
         return False
 
+    def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
+        return ParamPassing.POINTER
+
     def to_cpp(self) -> str:
         # Ptr[None] -> void* (and Ptr[readonly[None]] -> const void*).
         # `void*` is the canonical opaque-pointer idiom in C/C++ and is
@@ -1821,6 +1843,15 @@ class OwnType(TpyType):
             return f"::tpy::own_param_t<{cpp_type}>"
         return f"{cpp_type}&&"
 
+    def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
+        # Not the wrapped type's convention: a value type moves in as its
+        # storage form (`Own[str]` is `std::string`, never the view).
+        if is_dyn_protocol(self.wrapped) or self.wrapped.is_value_type():
+            return ParamPassing.VALUE
+        if isinstance(self.wrapped, TypeParamRef):
+            return ParamPassing.TRAIT
+        return ParamPassing.OWN
+
     def to_cpp_param(self, name: str) -> str:
         if is_dyn_protocol(self.wrapped):
             return f"std::unique_ptr<{self.wrapped.to_cpp()}> {name}"
@@ -1891,6 +1922,9 @@ class ReadonlyType(TpyType):
         # Readonly params use the const version of the wrapped type
         dummy = self.wrapped.to_cpp_const_param("__x")
         return dummy.rsplit(" __x", 1)[0]
+
+    def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
+        return self.wrapped.param_passing(True)
 
     def to_cpp_param(self, name: str) -> str:
         return self.wrapped.to_cpp_const_param(name)
@@ -2206,6 +2240,9 @@ class _MarkerType(TpyType):
     def to_cpp_param_type(self) -> str:
         return self.wrapped.to_cpp_param_type()
 
+    def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
+        return self.wrapped.param_passing(signature_const)
+
     def to_cpp_param(self, name: str) -> str:
         return self.wrapped.to_cpp_param(name)
 
@@ -2439,6 +2476,11 @@ class RefType(TpyType):
         if isinstance(self.wrapped, TypeParamRef):
             return f"::tpy::param_val_or_ref_t<{self.wrapped.name}>"
         return f"{self.wrapped.to_cpp()}&"
+
+    def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
+        if isinstance(self.wrapped, TypeParamRef):
+            return ParamPassing.TRAIT
+        return ParamPassing.CONST_REF if signature_const else ParamPassing.MUT_REF
 
     def to_cpp_param(self, name: str) -> str:
         return f"{self.to_cpp_param_type()} {name}"
@@ -3013,6 +3055,215 @@ def is_bufferless_scalar(t: 'TpyType | None') -> bool:
         t = t.base_type
     return (is_numeric_type(t) or is_char_type(t) or is_enum_type(t)
             or isinstance(t, (NoneType, IntLiteralType, FloatLiteralType)))
+
+
+class Loan(Enum):
+    """A tri-state loan fact; UNKNOWN is never read as NO."""
+    NO = "no"
+    YES = "yes"
+    UNKNOWN = "unknown"
+
+    def join(self, other: 'Loan') -> 'Loan':
+        """The answer for a value made of two parts: UNKNOWN absorbs, then
+        YES wins."""
+        if Loan.UNKNOWN in (self, other):
+            return Loan.UNKNOWN
+        return Loan.YES if Loan.YES in (self, other) else Loan.NO
+
+
+class Representation(Enum):
+    """The shape a value has at one position, which decides what a loan
+    fact is asked of: the type's own storage, or something pointing at
+    storage held elsewhere."""
+    # The type's own storage form, held in place: a local, a field, an
+    # element, a global, a by-value parameter or return.
+    STORAGE = "storage"
+    # By value, a distinct view type over storage owned elsewhere.
+    VIEW = "view"
+    # A C++ reference or pointer to storage owned elsewhere.
+    REFERENCE = "reference"
+    # A template-dependent form whose shape only the instantiation knows.
+    TRAIT = "trait"
+
+
+def passing_representation(passing: ParamPassing) -> Representation:
+    """The representation a parameter passed this way has in its body."""
+    match passing:
+        case ParamPassing.VALUE:
+            return Representation.STORAGE
+        case ParamPassing.VIEW:
+            return Representation.VIEW
+        case ParamPassing.TRAIT:
+            return Representation.TRAIT
+    return Representation.REFERENCE
+
+
+def return_representation(t: TpyType) -> Representation:
+    """The representation a function's result has at its return, following
+    `to_cpp_return`: value types and `Own[T]` return by value, everything
+    else as a reference or pointer into the callee's reach."""
+    t = unwrap_send_sync(unwrap_readonly(t))
+    if isinstance(t, TypeParamRef) or (
+            isinstance(t, (OwnType, RefType)) and isinstance(t.wrapped, TypeParamRef)):
+        return Representation.TRAIT
+    if isinstance(t, OwnType):
+        return Representation.STORAGE
+    if isinstance(t, RefType):
+        return Representation.REFERENCE
+    if isinstance(t, (OptionalType, UnionType)) and t.uses_pointer_repr():
+        return Representation.REFERENCE
+    return Representation.STORAGE if t.is_value_type() else Representation.REFERENCE
+
+
+@dataclass(frozen=True)
+class LoanClass:
+    """What a value can do in the loan model at one representation.
+
+    `holds`: the value holds a borrowed leaf (a view, pointer or reference).
+    `lendable`: a borrow the compiler introduces (a reference parameter, an
+    element or payload alias, a view) can point into its storage. An
+    explicit `Ptr` taken by the program is not such a borrow; it is a value
+    of its own that the loan model classifies separately."""
+    holds: Loan
+    lendable: Loan
+
+    @property
+    def inert(self) -> bool:
+        """Proved to take no part in any loan: nothing borrowed in it,
+        nothing it can lend."""
+        return self.holds is Loan.NO and self.lendable is Loan.NO
+
+
+_LOAN_INERT = LoanClass(Loan.NO, Loan.NO)
+_LOAN_UNKNOWN = LoanClass(Loan.UNKNOWN, Loan.UNKNOWN)
+_LOAN_BORROW = LoanClass(Loan.YES, Loan.UNKNOWN)
+
+# Records whose loan class is being computed; re-entering one answers
+# UNKNOWN, since a self-referential record's fields are not proved yet.
+_evaluating_loan: set['NominalType'] = set()
+
+
+def loan_class(t: TpyType, representation: Representation = Representation.STORAGE) -> LoanClass:
+    """The loan class of a value of type `t` at `representation`.
+
+    Sound, not complete: a family the loan model does not describe yet
+    answers UNKNOWN. Aggregates are never inert even when every leaf is --
+    a tuple / union / Optional parameter binds a reference to the whole,
+    and a payload extraction aliases into it."""
+    match representation:
+        case Representation.TRAIT:
+            return _LOAN_UNKNOWN
+        case Representation.VIEW | Representation.REFERENCE:
+            return _LOAN_BORROW
+    return _storage_loan_class(t)
+
+
+def is_inert_leaf(t: TpyType, representation: Representation = Representation.STORAGE) -> bool:
+    """`loan_class(t, representation).inert`, answered without walking a
+    record's fields: records and aggregates always lend, so only None and
+    a nominal whose TypeDef is inert can be."""
+    if representation is not Representation.STORAGE:
+        return False
+    t = _storage_subject(t)
+    if isinstance(t, (NoneType, VoidType)):
+        return True
+    return isinstance(t, NominalType) and _inert_nominal(t)
+
+
+def _storage_subject(t: TpyType) -> TpyType:
+    """The type whose storage a value of `t` is: structural facts see
+    through the ownership wrapper (`Own[T]` stores a T) and modifiers."""
+    t = unwrap_send_sync(unwrap_readonly(t))
+    while isinstance(t, (OwnType, _TypeModifierWrapper, LiteralType)):
+        t = t.base_type if isinstance(t, LiteralType) else t.wrapped
+        t = unwrap_send_sync(unwrap_readonly(t))
+    return t
+
+
+def _inert_nominal(t: 'NominalType') -> bool:
+    td = type_def_of(t)
+    return td is not None and (td.loan_inert or td.enum is not None)
+
+
+def _storage_loan_class(t: TpyType) -> LoanClass:
+    t = _storage_subject(t)
+    match t:
+        case NoneType() | VoidType():
+            return _LOAN_INERT
+        case RefType() | PtrType():
+            return _LOAN_BORROW
+        case TupleType():
+            return _aggregate_loan_class(t.element_types)
+        case OptionalType():
+            return _aggregate_loan_class((t.inner,))
+        case UnionType():
+            return _aggregate_loan_class(tuple(m for m in t.members if not is_void_like_type(m)))
+        case NominalType():
+            pass
+        case _:
+            return _LOAN_UNKNOWN
+    if _inert_nominal(t):
+        return _LOAN_INERT
+    td = type_def_of(t)
+    if td is None:
+        return _LOAN_UNKNOWN
+    if td.is_borrowing_view:
+        return _LOAN_BORROW
+    rec = td.record
+    if rec is None or rec.is_native or t.is_protocol:
+        return _LOAN_UNKNOWN
+    if t in _evaluating_loan:
+        return _LOAN_UNKNOWN
+    _evaluating_loan.add(t)
+    try:
+        holds = Loan.NO
+        for sub in _fields_and_parents_under_args(rec, t.type_args):
+            holds = holds.join(_storage_loan_class(sub).holds)
+    finally:
+        _evaluating_loan.discard(t)
+    return LoanClass(holds, Loan.UNKNOWN if t.is_value_type() else Loan.YES)
+
+
+def _aggregate_loan_class(parts: 'Sequence[TpyType]') -> LoanClass:
+    holds = Loan.NO
+    for part in parts:
+        holds = holds.join(_storage_loan_class(part).holds)
+    return LoanClass(holds, Loan.YES)
+
+
+def certified_primitive_op(method: 'FunctionInfo | None', operands: 'Sequence[TpyType]',
+                           result: TpyType) -> bool:
+    """Whether `method` applied to `operands` is a certified primitive
+    operation: the type that declares it carries the primitive-operation
+    contract (`TypeDef.primitive_ops`) and every operand and the result is
+    an inert leaf. A dunder a contract-less type declares -- a native generic
+    extension included -- is not certified. Conversions around the call
+    are the caller's to refuse."""
+    if method is None or method.owning_type_qname is None:
+        return False
+    td = get_type_def(method.owning_type_qname)
+    # A literal operand converts at compile time into the declared parameter
+    # (or receiver) type, so it is inert exactly when every one of those is.
+    literal_ok = all(is_inert_leaf(p.type) for p in method.params)
+    return (td is not None and td.primitive_ops and is_inert_leaf(result)
+            and all(is_inert_leaf(t) or literal_ok and _is_number_literal(t) for t in operands))
+
+
+def certified_primitive_comparison(left: TpyType, right: TpyType) -> bool:
+    """Whether a comparison sema resolves to no dunder (the derived
+    `<= > >= !=`, rendered as the bare C++ operator) is a certified
+    primitive operation: the typed operands are one inert type whose
+    TypeDef carries the primitive-operation contract, and any other operand
+    is a number literal, which the operator converts to that type."""
+    typed = [t for t in (left, right) if not _is_number_literal(t)]
+    if not typed or any(t != typed[0] for t in typed):
+        return False
+    td = type_def_of(typed[0])
+    return td is not None and td.primitive_ops and is_inert_leaf(typed[0])
+
+
+def _is_number_literal(t: TpyType) -> bool:
+    return isinstance(t, (IntLiteralType, FloatLiteralType))
 
 
 def is_void_like_type(t: 'TpyType | None') -> bool:
@@ -3624,6 +3875,15 @@ class OptionalType(TpyType):
             return f"std::optional<{fam.view_type.to_cpp()}>"
         return self.to_cpp()
 
+    def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
+        if self.uses_generic_param_trait():
+            return ParamPassing.TRAIT
+        if self.uses_pointer_repr():
+            return ParamPassing.POINTER
+        if view_family_for_type(self.inner) is not None:
+            return ParamPassing.VIEW
+        return ParamPassing.VALUE
+
     def to_cpp_param(self, name: str) -> str:
         if self.uses_generic_param_trait():
             return f"::tpy::opt_param_t<{self.inner.to_cpp()}> {name}"
@@ -4048,6 +4308,13 @@ class UnionType(TpyType):
             return self.to_cpp_ptr_variant()
         return f"const {self.to_cpp()}&"
 
+    def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
+        if self.needs_wrapper():
+            return ParamPassing.CONST_REF if signature_const else ParamPassing.MUT_REF
+        if self.uses_pointer_repr():
+            return ParamPassing.POINTER
+        return ParamPassing.CONST_REF
+
     def to_cpp_param(self, name: str) -> str:
         if self.needs_wrapper():
             return f"{self.to_cpp()}& {name}"
@@ -4418,6 +4685,11 @@ class TupleType(TpyType):
             return f"std::tuple<{args}>&&"
         args = ", ".join(self._element_to_cpp_param(t, const=False) for t in self.element_types)
         return f"const std::tuple<{args}>&"
+
+    def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
+        if self.is_owned_movable() and not signature_const:
+            return ParamPassing.OWN
+        return ParamPassing.CONST_REF
 
     def to_cpp_param(self, name: str) -> str:
         if self.is_owned_movable():
@@ -5020,6 +5292,13 @@ class CallableType(TpyType):
     def to_cpp_param_type(self) -> str:
         return f"const {self._std_function_sig()}&"
 
+    def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
+        # A `Fn` param is a template parameter of its own; the const form
+        # (a constructor param) takes the std::function by value.
+        if self.is_template:
+            return ParamPassing.TRAIT
+        return ParamPassing.VALUE if signature_const else ParamPassing.CONST_REF
+
     def to_cpp_param(self, name: str) -> str:
         return f"const {self._std_function_sig()}& {name}"
 
@@ -5446,7 +5725,7 @@ SLICE = NominalType("slice", (), _module_qname="builtins.slice")
 # override is set on the TypeDef). Anything not in this set returns None --
 # user records, protocols, enums, primitives, etc.
 from tpyc.type_def_registry import TypeCategory as _TypeCategory
-from tpyc.type_def_registry import CppDefaultInit
+from tpyc.type_def_registry import CppDefaultInit, ParamPassing, get_type_def, type_def_of
 _ELEMENT_FROM_FIRST_ARG_CATEGORIES = frozenset({
     _TypeCategory.LIST,
     _TypeCategory.DICT,
@@ -6895,6 +7174,10 @@ class ResolvedBinop:
     right_wrapper: str  # cpp template for right
     is_reverse: bool = False  # True if using reverse operator (swap {self} and {0})
     receiver_type: 'TpyType | None' = None  # Type of the receiver ({self})
+    # The `__int__` that converts one operand into the operator owner's type
+    # when resolution promoted it -- decided here, since an untemplated
+    # promotion renders the same wrapper as no conversion at all.
+    promotion: 'FunctionInfo | None' = None
 
 
 @dataclass

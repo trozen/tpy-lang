@@ -6,6 +6,7 @@ import pytest
 
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
 from .lower import lower_function
@@ -60,7 +61,7 @@ def test_nonterminating_loop_discards_synthetic_exit_and_following_declarations(
         th.THIRWhile(literal(True), (th.THIRContinue(),)),
         th.THIRVarDecl("dead", INT32, literal(3)),
         th.THIRIf(literal(True), (th.THIRVarDecl("nested_dead", INT32, literal(4)),)),
-    ), th.THIRParam("unused", INT32)))
+    ), th.THIRParam("unused", INT32, passing=ParamPassing.VALUE)))
     assert not any(isinstance(b.terminator, (MIRBranch, MIRReturn)) for b in fn.blocks)
     assert {s.name for s in fn.slots if s.kind is MIRSlotKind.LOCAL} == set()
     assert [s.name for s in fn.slots if s.kind is MIRSlotKind.PARAMETER] == ["unused"]
@@ -98,7 +99,7 @@ def test_select_destination_and_comparison_are_not_constant_facts() -> None:
     flag = th.THIRName(BOOL, "flag")
     condition = th.THIRIfExpr(BOOL, flag, literal(True), literal(False))
     fn = lower(function((th.THIRIf(condition, (th.THIRReturn(literal(1)),),
-                                  (th.THIRReturn(literal(2)),)),), th.THIRParam("flag", BOOL)))
+                                  (th.THIRReturn(literal(2)),)),), th.THIRParam("flag", BOOL, passing=ParamPassing.VALUE)))
     assert sum(isinstance(b.terminator, MIRBranch) for b in fn.blocks) == 2
     assert execute(fn, True) == 1
     assert execute(fn, False) == 2
@@ -112,7 +113,7 @@ def test_parameter_dependent_assignment_still_needs_both_paths() -> None:
     value = th.THIRName(INT32, "value")
     fn = function((th.THIRVarDecl("value", INT32),
                    th.THIRIf(th.THIRName(BOOL, "flag"), (th.THIRAssign(value, literal(1)),)),
-                   th.THIRReturn(value)), th.THIRParam("flag", BOOL))
+                   th.THIRReturn(value)), th.THIRParam("flag", BOOL, passing=ParamPassing.VALUE))
     result = lower_function(fn, MIRBodyId("test", "dynamic"), kind=MIRBodyKind.FREE_FUNCTION)
     assert isinstance(result, MIRNotCovered) and "definite assignment" in result.reason
 

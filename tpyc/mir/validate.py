@@ -5,10 +5,12 @@ from dataclasses import dataclass
 
 from ..identity_map import IdentitySet
 from ..parse import SourceLocation
-from ..thir.nodes import Form
+from ..thir.nodes import COMPARISON_OPS, Form
 from ..type_def_registry import is_list, is_array, is_set, is_dict
+from ..thir.scalar_leaves import leaf_constant, primitive_leaf, record_type, storage_leaf
+from ..type_def_registry import ParamPassing, zero_value_of
 from ..typesys import (
-    BOOL, INT32, INT32_MAX, INT32_MIN, NominalType, OptionalType, ReadonlyType, TupleType, TpyType, VoidType,
+    BOOL, INT32, NominalType, OptionalType, ReadonlyType, TupleType, TpyType, VoidType,
     UnionType, is_void_like_type, unwrap_readonly,
 )
 from .nodes import (
@@ -23,11 +25,11 @@ from .nodes import (
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
     MIRContainerLayout, MIRContainerElements, MIRContainerStructure,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
-    MIRRangeAdvance,
+    MIRRangeAdvance, MIROp, MIRPrint,
     statement_target,
 )
 from .presence import MIRPresence, _analyze_presence
-from .coverage import owned_tuple, scalar_wrapper
+from .coverage import owned_tuple, scalar_member, scalar_slot, scalar_wrapper
 from .region_flow import MIRRegionFlow, outgoing_edges
 from .call_contract import result_problem, summary_problem
 
@@ -144,6 +146,8 @@ def operands(value: MIRRvalue) -> tuple[MIRSlotId, ...]:
             return (left, right)
         case MIRNot(operand=operand):
             return (operand,)
+        case MIROp(operands=values):
+            return values
         case MIRConstant():
             return ()
         case _:
@@ -166,6 +170,8 @@ def statement_reads(stmt: MIRStatement) -> tuple[MIRSlotId, ...]:
     match stmt:
         case MIRCallStmt(call=call):
             return operands(call)
+        case MIRPrint(arguments=arguments):
+            return arguments
         case MIRStorageInit() | MIRRecordStorageInit():
             return ()
         case MIRAssign(target=target, value=value):
@@ -176,7 +182,7 @@ def statement_reads(stmt: MIRStatement) -> tuple[MIRSlotId, ...]:
 
 def source_definition(stmt: MIRStatement) -> MIRSlotId | None:
     match stmt:
-        case MIRStorageInit() | MIRRecordStorageInit() | MIRCallStmt():
+        case MIRStorageInit() | MIRRecordStorageInit() | MIRCallStmt() | MIRPrint():
             return None
         case MIRAssign(target=target):
             return None if target.projections else target.root
@@ -242,16 +248,14 @@ def _validate_structure(fn: MIRFunction) -> None:
              "missing borrowed return record layout")
     field_types: dict[MIRFieldId, TpyType] = {}
     for record in fn.records:
-        _require(isinstance(record.type, NominalType) and record.type.qualified_name() is not None
-                 and record.type not in (BOOL, INT32) and not record.type.type_args
-                 and not record.type.is_protocol, "unsupported record layout identity")
+        _require(record_type(record.type), "unsupported record layout identity")
         _require(type(record.copyable) is bool and type(record.movable) is bool,
                  "invalid record eligibility")
         seen: set[MIRFieldId] = set()
         for member in record.fields:
             _require(isinstance(member, MIRField) and isinstance(member.id, MIRFieldId)
                      and member.id.owner == record.type and bool(member.id.name)
-                     and member.id not in seen and member.type in (BOOL, INT32),
+                     and member.id not in seen and storage_leaf(member.type),
                      "invalid record layout field")
             seen.add(member.id)
             field_types[member.id] = member.type
@@ -294,19 +298,18 @@ def _validate_structure(fn: MIRFunction) -> None:
             member = layout.element
             args = slot.type.type_args
             _require((is_list(slot.type) or is_set(slot.type)) and len(args) == 1
-                     or is_dict(slot.type) and args == (INT32, INT32)
+                     or is_dict(slot.type) and len(args) == 2 and all(storage_leaf(a) for a in args)
                      or is_array(slot.type) and len(args) == 2 and type(args[1]) is int and args[1] >= 0,
                      "invalid native container arguments")
             _require((is_list(slot.type) or is_array(slot.type) or is_set(slot.type) or is_dict(slot.type))
-                     and slot.type.type_args[0] == member.type
-                     and (not is_dict(slot.type) or slot.type.type_args == (INT32, INT32)),
+                     and slot.type.type_args[0] == member.type,
                      "unsupported native container type")
             _require(type(member.readonly) is bool and (
-                member.kind is MIRValueKind.SCALAR and member.type == INT32 and not member.readonly
+                scalar_member(member)
                 or member.kind is MIRValueKind.BORROWED_RECORD and member.type in records
                 and member.readonly == slot.readonly
                 and (is_list(slot.type) or is_array(slot.type))
-                and all(f.type in (BOOL, INT32) for f in records[member.type].fields)),
+                and all(storage_leaf(f.type) for f in records[member.type].fields)),
                 "unsupported native element")
             _require(slot.value_kind is not MIRValueKind.NATIVE_ITERATOR
                      or slot.kind is MIRSlotKind.TEMPORARY, "iterator must be an internal temporary")
@@ -326,18 +329,15 @@ def _validate_structure(fn: MIRFunction) -> None:
                          and unwrap_readonly(typ) == member.type, "union member type mismatch")
                 kinds.add(member.kind)
                 if member.kind is MIRValueKind.SCALAR:
-                    _require(member.type in (BOOL, INT32) and not member.readonly, "unsupported union scalar")
+                    _require(scalar_member(member), "unsupported union scalar")
                 else:
-                    _require(member.kind is MIRValueKind.BORROWED_RECORD
-                             and isinstance(member.type, NominalType) and member.type.qualified_name() is not None
-                             and not member.type.type_args and not member.type.is_protocol
-                             and member.type not in (BOOL, INT32)
+                    _require(member.kind is MIRValueKind.BORROWED_RECORD and record_type(member.type)
                              and (typ == member.type or member.readonly), "unsupported union reference")
             _require(len(kinds) == 1 and len(layout.elements) >= 2, "mixed or empty union layout")
             _require(slot.storage_duration is not MIRStorageDuration.CALLER
                      or kinds == {MIRValueKind.SCALAR}, "caller duration requires borrowed scalar union wrapper")
         elif slot.value_kind is MIRValueKind.PAYLOAD_ALIAS:
-            _require(slot.type in (BOOL, INT32) and slot.form is Form.BORROW and slot.readonly
+            _require(storage_leaf(slot.type) and slot.form is Form.BORROW and slot.readonly
                      and slot.kind is not MIRSlotKind.PARAMETER
                      and isinstance(slot.alias_source, MIRPlace), "unsupported payload alias")
         elif slot.value_kind is MIRValueKind.OPTIONAL:
@@ -347,12 +347,9 @@ def _validate_structure(fn: MIRFunction) -> None:
                      and not slot.readonly and type(layout.readonly) is bool, "unsupported optional slot")
             _require(unwrap_readonly(slot.type.inner) == layout.type, "optional payload type mismatch")
             if layout.kind is MIRValueKind.SCALAR:
-                _require(layout.type in (BOOL, INT32) and not layout.readonly, "unsupported optional scalar")
+                _require(scalar_member(layout), "unsupported optional scalar")
             else:
-                _require(layout.kind is MIRValueKind.BORROWED_RECORD
-                         and isinstance(layout.type, NominalType) and layout.type.qualified_name() is not None
-                         and layout.type not in (BOOL, INT32) and not layout.type.type_args
-                         and not layout.type.is_protocol
+                _require(layout.kind is MIRValueKind.BORROWED_RECORD and record_type(layout.type)
                          and (slot.type.inner == layout.type or layout.readonly), "unsupported optional reference")
         elif slot.value_kind is MIRValueKind.TUPLE:
             layout = slot.tuple_layout
@@ -367,20 +364,16 @@ def _validate_structure(fn: MIRFunction) -> None:
                 _require(isinstance(member, MIRTupleElement) and type(member.readonly) is bool,
                          "invalid tuple element")
                 if member.kind is MIRValueKind.SCALAR:
-                    _require(member.type in (BOOL, INT32) and typ == member.type and not member.readonly,
-                             "invalid tuple scalar")
+                    _require(scalar_member(member) and typ == member.type, "invalid tuple scalar")
                 elif member.kind is MIRValueKind.RECORD_STORAGE:
                     _require(member.type in records and unwrap_readonly(typ) == member.type
                              and (typ == member.type or member.readonly), "invalid owned tuple record")
                 else:
                     _require(member.kind is MIRValueKind.BORROWED_RECORD
-                             and isinstance(member.type, NominalType)
-                             and member.type.qualified_name() is not None
-                             and member.type not in (BOOL, INT32) and not member.type.type_args
-                             and not member.type.is_protocol and unwrap_readonly(typ) == member.type
+                             and record_type(member.type) and unwrap_readonly(typ) == member.type
                              and (typ == member.type or member.readonly), "invalid tuple reference")
         elif slot.value_kind is MIRValueKind.SCALAR:
-            _require(slot.type in (INT32, BOOL) and slot.form is Form.VALUE
+            _require(scalar_slot(slot) and slot.form is Form.VALUE
                      and (not slot.readonly or slot.kind is MIRSlotKind.GLOBAL),
                      "unsupported slot type or form")
         elif slot.value_kind is MIRValueKind.RECORD_STORAGE:
@@ -388,10 +381,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                      and slot.kind is not MIRSlotKind.PARAMETER,
                      "unsupported record storage type or form")
         else:
-            _require(slot.value_kind is MIRValueKind.BORROWED_RECORD
-                     and isinstance(slot.type, NominalType) and slot.type.qualified_name() is not None
-                     and slot.type not in (BOOL, INT32)
-                     and not slot.type.type_args and not slot.type.is_protocol
+            _require(slot.value_kind is MIRValueKind.BORROWED_RECORD and record_type(slot.type)
                      and slot.form is Form.BORROW, "unsupported reference slot type or form")
         _require(type(slot.readonly) is bool, "invalid access capability")
         _require(slot.value_kind is MIRValueKind.TUPLE or slot.tuple_layout is None,
@@ -405,6 +395,8 @@ def _validate_structure(fn: MIRFunction) -> None:
         _require(slot.value_kind in (MIRValueKind.BORROWED_CONTAINER, MIRValueKind.NATIVE_ITERATOR)
                  or slot.container_layout is None, "container layout on unrelated slot")
         _require(isinstance(slot.kind, MIRSlotKind), "invalid slot kind")
+        _require(slot.passing is None or slot.kind is MIRSlotKind.PARAMETER and isinstance(slot.passing, ParamPassing),
+                 "passing fact on a non-parameter slot")
 
     if fn.receiver_init is not None:
         init = fn.receiver_init
@@ -424,9 +416,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                              and slots[value].value_kind is MIRValueKind.SCALAR
                              and slots[value].type == member.type, "invalid receiver initializer parameter")
                 case MIRConstant(value=literal):
-                    _require((member.type == BOOL and type(literal) is bool)
-                             or (member.type == INT32 and type(literal) is int
-                                 and INT32_MIN <= literal <= INT32_MAX), "invalid receiver initializer constant")
+                    _require(leaf_constant(member.type, literal), "invalid receiver initializer constant")
                 case _:
                     raise MIRValidationError("invalid receiver initializer")
 
@@ -483,10 +473,8 @@ def _validate_structure(fn: MIRFunction) -> None:
                     _require(isinstance(projection.id, MIRFieldId) and projection.id.owner == typ
                              and bool(projection.id.name), "field owner mismatch")
                     member_type = unwrap_readonly(projection.type)
-                    inline_record = (isinstance(member_type, NominalType) and member_type not in (BOOL, INT32)
-                                     and member_type.qualified_name() is not None
-                                     and not member_type.type_args and not member_type.is_protocol)
-                    _require(projection.type in (BOOL, INT32) or inline_record, "unsupported field type")
+                    inline_record = record_type(member_type)
+                    _require(storage_leaf(projection.type) or inline_record, "unsupported field type")
                     if typ in records:
                         _require(projection.id in field_types, "field missing from record layout")
                     _require(field_types.setdefault(projection.id, projection.type) == projection.type,
@@ -542,8 +530,16 @@ def _validate_structure(fn: MIRFunction) -> None:
         _require(block.id.body == fn.id and block.id.index >= 0,
                  "foreign or invalid block ID")
         for stmt in block.statements:
-            _require(isinstance(stmt, (MIRAssign, MIRStorageInit, MIRRecordStorageInit, MIRCallStmt)), "unknown instruction")
+            _require(isinstance(stmt, (MIRAssign, MIRStorageInit, MIRRecordStorageInit, MIRCallStmt, MIRPrint)),
+                     "unknown instruction")
             target_place = statement_target(stmt)
+            if isinstance(stmt, MIRPrint):
+                _require(isinstance(stmt.arguments, tuple) and all(
+                    sid in slots and scalar_slot(slots[sid]) and slots[sid].kind is not MIRSlotKind.GLOBAL
+                    for sid in stmt.arguments), "print needs local inert leaf arguments")
+                # A user method could format any other leaf (an enum's `__str__`).
+                _require(all(primitive_leaf(slots[sid].type) for sid in stmt.arguments),
+                         "print argument lacks the primitive contract")
             if isinstance(stmt, MIRCallStmt):
                 validate_call(stmt.call)
                 _require(isinstance(stmt.call.summary.callee.signature.return_type, VoidType),
@@ -572,8 +568,9 @@ def _validate_structure(fn: MIRFunction) -> None:
                                  and isinstance(stmt.value, MIRConstant), "invalid wrapper default")
                         default_type = (None if target.value_kind is MIRValueKind.OPTIONAL
                                         or target.union_layout.elements[0] is None else target.union_layout.elements[0].type)
-                        expected = None if default_type is None else False if default_type == BOOL else 0
-                        _require(type(stmt.value.value) is type(expected) and stmt.value.value == expected,
+                        expected = None if default_type is None else zero_value_of(default_type)
+                        _require((default_type is None or expected is not None)
+                                 and type(stmt.value.value) is type(expected) and stmt.value.value == expected,
                                  "invalid wrapper default value")
                 _require(target.id not in payload_initializations, "repeated payload initialization")
                 payload_initializations.add(target.id)
@@ -829,7 +826,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                     result = value.summary.callee.signature.borrowed_result
                     _require(not stmt.target.projections, "call needs whole result holder")
                     if result is None:
-                        _require(target.value_kind is MIRValueKind.SCALAR and target_type in (BOOL, INT32)
+                        _require(scalar_slot(target)
                                  and target_type == value.summary.callee.signature.return_type,
                                  "call result type or target mismatch")
                     else:
@@ -837,12 +834,9 @@ def _validate_structure(fn: MIRFunction) -> None:
                                  and target_type == result.type and (not result.readonly or target.readonly),
                                  "call result type or access mismatch")
                 case MIRConstant():
-                    _require((target_type == BOOL and type(value.value) is bool)
-                             or (target_type == INT32 and type(value.value) is int
-                                 and INT32_MIN <= value.value <= INT32_MAX),
-                             "constant type or range mismatch")
+                    _require(leaf_constant(target_type, value.value), "constant type or range mismatch")
                 case MIRRead():
-                    _require(target.value_kind is not MIRValueKind.PAYLOAD_ALIAS and target_type in (BOOL, INT32)
+                    _require(target.value_kind is not MIRValueKind.PAYLOAD_ALIAS and storage_leaf(target_type)
                              and target_type == place_type(value.source), "read type mismatch")
                 case MIRAlias():
                     target = slots[stmt.target.root]
@@ -855,18 +849,26 @@ def _validate_structure(fn: MIRFunction) -> None:
                     _require(target.kind is not MIRSlotKind.PARAMETER, "reference parameter reseat")
                     _require(not source.readonly or target.readonly, "alias increases access")
                 case MIRCompare():
-                    _require(value.op in ("==", "!=", "<", "<=", ">", ">="),
+                    _require(value.op in COMPARISON_OPS,
                              "unsupported comparison")
                     _require(target_type == BOOL, "comparison result is not bool")
-                    _require(slot_type(value.left) in (BOOL, INT32)
-                             and slot_type(value.left) == slot_type(value.right)
-                             and slots[value.left].value_kind is MIRValueKind.SCALAR
-                             and slots[value.right].value_kind is MIRValueKind.SCALAR,
+                    _require(slot_type(value.left) == slot_type(value.right)
+                             and scalar_slot(slots[value.left]) and scalar_slot(slots[value.right]),
                              "comparison operand type mismatch")
+                    _require(primitive_leaf(slot_type(value.left)), "comparison lacks the primitive contract")
                 case MIRNot():
                     _require(target_type == BOOL and slot_type(value.operand) == BOOL
                              and slots[value.operand].value_kind is MIRValueKind.SCALAR,
                              "not operand or result is not bool")
+                case MIROp():
+                    _require(not stmt.target.projections and scalar_slot(target)
+                             and target.kind is not MIRSlotKind.GLOBAL
+                             and isinstance(value.op, str) and bool(value.op) and type(value.may_raise) is bool
+                             and isinstance(value.operands, tuple) and 1 <= len(value.operands) <= 2
+                             and all(scalar_slot(slots[operand]) for operand in value.operands),
+                             "primitive operation needs inert leaf operands and result")
+                    _require(primitive_leaf(target_type) and all(primitive_leaf(slot_type(o)) for o in value.operands),
+                             "primitive operation lacks the primitive contract")
                 case _:
                     raise MIRValidationError("unknown rvalue semantics")
         term = block.terminator

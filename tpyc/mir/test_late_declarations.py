@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from ..thir.testutil import _compile, _entry
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
@@ -191,7 +192,7 @@ def conditional_region() -> MIRFunction:
     fn = region_fixture()
     entry, iteration, after = fn.blocks
     initialize = MIRBlockId(fn.id, 3)
-    skip = MIRSlot(MIRSlotId(fn.id, 3), BOOL, MIRSlotKind.PARAMETER)
+    skip = MIRSlot(MIRSlotId(fn.id, 3), BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)
     return replace(fn, slots=(*fn.slots, skip), blocks=(entry,
         replace(iteration, statements=(), terminator=MIRBranch(skip.id, after.id, initialize)),
         after, replace(iteration, id=initialize)))

@@ -1,16 +1,17 @@
 """Local effect/exit evidence from validated MIR, without callee scheduling."""
 
 from ..thir import nodes as th
-from ..typesys import BOOL, INT32, unwrap_readonly, unwrap_ref_type
+from ..thir.scalar_leaves import storage_leaf
+from ..typesys import unwrap_readonly, unwrap_ref_type
 from .call_contract import MIRCallSummary, MIRParameterWrite, MIRSummaryResult, MIRSummaryState, summary_problem
 from .call_effects import resolve_call_writes
-from .coverage import MIRUnsupported
+from .coverage import MIRUnsupported, scalar_slot
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, analyze_dependencies, resolve_referents
 from .liveness import analyze_liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyKind, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref,
-    MIRField, MIRFunction, MIRNot, MIRNotCovered, MIRPoint, MIRRead, MIRReturn, MIRPlace, MIRSlotKind, MIRValueKind,
+    MIRField, MIRFunction, MIRNot, MIRNotCovered, MIROp, MIRPoint, MIRPrint, MIRRead, MIRReturn, MIRPlace, MIRSlotKind, MIRValueKind,
     statement_call,
 )
 from .validate import _cyclic_blocks, successors, validate_function
@@ -42,7 +43,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         if slot.kind is MIRSlotKind.GLOBAL:
             return MIRSummaryResult.opaque("summary global access")
         match slot.value_kind:
-            case MIRValueKind.SCALAR if slot.type in (BOOL, INT32):
+            case MIRValueKind.SCALAR if scalar_slot(slot):
                 pass
             case MIRValueKind.BORROWED_RECORD:
                 try:
@@ -71,7 +72,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         for origin in origins:
             path = origin.place.projections
             if (not origin.external or origin.place.root not in parameters or len(path) != 1
-                    or not isinstance(path[0], MIRField) or path[0].type not in (BOOL, INT32)):
+                    or not isinstance(path[0], MIRField) or not storage_leaf(path[0].type)):
                 return "summary unsupported write origin"
             field = path[0]
             if field not in definitions.get(declaration, field.id.owner).layout.fields:
@@ -99,6 +100,9 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     return MIRSummaryResult.opaque(problem)
             if isinstance(stmt, MIRCallStmt):
                 continue
+            if isinstance(stmt, MIRPrint):
+                # Output is an effect outside every parameter-rooted summary.
+                return MIRSummaryResult.opaque("summary output effect")
             if not isinstance(stmt, MIRAssign) or stmt.storage_write is not None:
                 return MIRSummaryResult.opaque("summary storage operation")
             target = slots[stmt.target.root]
@@ -112,6 +116,11 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     pass
                 case MIRConstant() | MIRCompare() | MIRNot():
                     pass
+                case MIROp(may_raise=True):
+                    # The interface only describes normal returns; an exception exit is not in it.
+                    return MIRSummaryResult.opaque("summary raising operation")
+                case MIROp():
+                    pass
                 case MIRRead(source=source):
                     # Scalar field reads are safe on a live borrowed record;
                     # wrapper extraction and other projections need more proof.
@@ -120,7 +129,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                         and len(source.projections) == 2
                         and isinstance(source.projections[0], MIRDeref)
                         and isinstance(source.projections[1], MIRField)
-                        and source.projections[1].type in (BOOL, INT32)
+                        and storage_leaf(source.projections[1].type)
                     ):
                         return MIRSummaryResult.opaque("summary unsupported read projection")
                 case MIRAlias():

@@ -7,6 +7,7 @@ import pytest
 
 from ..thir.nodes import Form
 from ..thir.testutil import _compile, _entry
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, OptionalType, ReadonlyType, TupleType, UnionType, VoidType
 from .definitions import MIRDefinitions
 from .dependencies import MIRDependencies, MIRReferent, analyze_dependencies, dump_dependencies
@@ -74,7 +75,7 @@ def test_aggregate_copy_retains_original_payload(shape: str) -> None:
         wrapper = MIRSlot(X, TupleType((CELL, INT32)), MIRSlotKind.LOCAL,
                           value_kind=MIRValueKind.TUPLE,
                           tuple_layout=MIRTupleLayout((member, MIRTupleElement(INT32))))
-        scalar = MIRSlot(Z, INT32, MIRSlotKind.PARAMETER)
+        scalar = MIRSlot(Z, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)
         initial, copy, reseat = MIRTupleConstruct((P, Z)), MIRTupleCopy(X), MIRTupleConstruct((Q, Z))
         path = (MIRTupleIndex(0),)
     elif shape == "optional":
@@ -114,7 +115,7 @@ def test_local_storage_copy_move_and_replacement_keep_distinct_origins() -> None
     storage = MIRSlot(STORE, CELL, MIRSlotKind.TEMPORARY, form=Form.STORAGE,
                       value_kind=MIRValueKind.RECORD_STORAGE, storage_duration=MIRStorageDuration.BODY)
     third = MIRSlotId(B, 9)
-    slots = (MIRSlot(P, INT32, MIRSlotKind.PARAMETER), reference(X), reference(Y), reference(Z),
+    slots = (MIRSlot(P, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), reference(X), reference(Y), reference(Z),
              storage, replace(storage, id=STORE2), replace(storage, id=third))
     fn = MIRFunction(B, VoidType(), slots, (MIRBlock(A, (
         MIRAssign(MIRPlace(STORE), MIRConstruct((P,))),
@@ -212,7 +213,7 @@ def test_recursive_field_graph_is_rejected_before_unbounded_path_growth(readonly
 def test_missing_and_malformed_backing_facts_fail_explicitly() -> None:
     storage = MIRSlot(STORE, CELL, MIRSlotKind.TEMPORARY, form=Form.STORAGE,
                       value_kind=MIRValueKind.RECORD_STORAGE)
-    fn = MIRFunction(B, VoidType(), (storage, MIRSlot(P, INT32, MIRSlotKind.PARAMETER)), (
+    fn = MIRFunction(B, VoidType(), (storage, MIRSlot(P, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)), (
         MIRBlock(A, (MIRAssign(MIRPlace(STORE), MIRConstruct((P,))),), MIRReturn()),), A, records=(LAYOUT,))
     result = analyze_dependencies(fn, analyze_liveness(fn))
     assert isinstance(result, MIRNotCovered) and "missing storage duration" in result.reason
@@ -253,7 +254,7 @@ def test_scalar_union_alias_depends_on_wrapper_but_scalar_copy_does_not(local: b
 
 def loop_function() -> MIRFunction:
     slots = (reference(P, param=True), reference(Q, param=True), reference(X), reference(Y),
-             MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER), MIRSlot(OUT, INT32, MIRSlotKind.LOCAL))
+             MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), MIRSlot(OUT, INT32, MIRSlotKind.LOCAL))
     return MIRFunction(B, INT32, slots, (
         MIRBlock(A, (MIRAssign(MIRPlace(X), MIRAlias(P)), MIRAssign(MIRPlace(Y), MIRAlias(Q))), MIRGoto(C)),
         MIRBlock(C, (), MIRBranch(FLAG, D, E)),

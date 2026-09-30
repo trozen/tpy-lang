@@ -5,7 +5,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from ..typesys import BOOL, INT32, NominalType, unwrap_readonly
+from ..thir.scalar_leaves import record_type
+from ..typesys import NominalType, unwrap_readonly
 from .dump import _place
 from .liveness import MIRLiveness, MIRPoint
 from .nodes import (
@@ -17,12 +18,12 @@ from .nodes import (
     MIRUnionCopy, MIRUnionExtract, MIRUnionPayload, MIRValueKind,
     MIRContainerStructure, MIRContainerElements,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
-    MIRRangeAdvance,
+    MIRRangeAdvance, MIROp, MIRTupleElement, MIROptionalLayout,
     statement_target,
 )
 from .validate import MIRPrepared, MIRValidationError, _validated_function, successors
 from .region_flow import MIRRegionFlow, outgoing_edges
-from .coverage import owned_tuple
+from .coverage import owned_tuple, scalar_member, scalar_slot
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,16 @@ class MIRDependencies:
     entry_active: MIRReferents
 
 
+def _holds(member: MIRTupleElement | MIROptionalLayout) -> bool:
+    """Whether a wrapper member is a dependency leaf. A SCALAR member holds
+    none only because it is a verified inert leaf; anything else fails."""
+    if member.kind is MIRValueKind.SCALAR:
+        if not scalar_member(member):
+            raise MIRValidationError("scalar member is not an inert leaf")
+        return False
+    return member.kind is MIRValueKind.BORROWED_RECORD
+
+
 def _leaves(slot: MIRSlot) -> tuple[MIRPlace, ...]:
     match slot.value_kind:
         case (MIRValueKind.BORROWED_RECORD | MIRValueKind.PAYLOAD_ALIAS
@@ -51,16 +62,20 @@ def _leaves(slot: MIRSlot) -> tuple[MIRPlace, ...]:
             return (MIRPlace(slot.id),)
         case MIRValueKind.TUPLE:
             return tuple(MIRPlace(slot.id, (MIRTupleIndex(i),))
-                         for i, m in enumerate(slot.tuple_layout.elements)
-                         if m.kind is MIRValueKind.BORROWED_RECORD)
+                         for i, m in enumerate(slot.tuple_layout.elements) if _holds(m))
         case MIRValueKind.OPTIONAL:
             return ((MIRPlace(slot.id, (MIROptionalPayload(),)),)
-                    if slot.optional_layout.kind is MIRValueKind.BORROWED_RECORD else ())
+                    if _holds(slot.optional_layout) else ())
         case MIRValueKind.UNION:
             return tuple(MIRPlace(slot.id, (MIRUnionPayload(i),))
                          for i, m in enumerate(slot.union_layout.elements)
-                         if m is not None and m.kind is MIRValueKind.BORROWED_RECORD)
-        case MIRValueKind.SCALAR | MIRValueKind.RECORD_STORAGE:
+                         if m is not None and _holds(m))
+        case MIRValueKind.SCALAR:
+            # No loan can start, pass through or end at a verified inert leaf.
+            if not scalar_slot(slot):
+                raise MIRValidationError("scalar holder is not an inert leaf")
+            return ()
+        case MIRValueKind.RECORD_STORAGE:
             return ()
         case _:
             raise MIRValidationError("unknown dependency holder kind")
@@ -86,7 +101,7 @@ def _coverage(fn: MIRFunction) -> str | None:
     graph: dict[NominalType, set[NominalType]] = {}
     for place in places:
         for projection in place.projections:
-            if isinstance(projection, MIRField) and (typ := unwrap_readonly(projection.type)) not in (BOOL, INT32):
+            if isinstance(projection, MIRField) and record_type(typ := unwrap_readonly(projection.type)):
                 graph.setdefault(projection.id.owner, set()).add(typ)
                 graph.setdefault(typ, set())
     degree = {typ: 0 for typ in graph}
@@ -199,7 +214,7 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
                 leaf = MIRPlace(target.root, (MIRUnionPayload(alternative),))
                 if source is not None and leaf in leaves[target.root]:
                     result[leaf] = state.get(MIRPlace(source), empty)
-            case (MIRConstant() | MIRRead() | MIRCompare() | MIRNot() | MIRIsPresent()
+            case (MIRConstant() | MIRRead() | MIRCompare() | MIRNot() | MIROp() | MIRIsPresent()
                   | MIRIsAlternative() | MIRConstruct() | MIRCopy() | MIRMove() | MIRIteratorHasNext()
                   | MIRRangeAdvance()):
                 pass

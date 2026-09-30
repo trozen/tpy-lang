@@ -252,7 +252,7 @@ def test_method_admission_and_shared_constructor_facts(artifacts: Artifacts) -> 
 
 @pytest.mark.parametrize("annotation", [
     "Cell | int32", "Own[Cell | Other]", "str | int32", "tuple[int32] | bool",
-    "list[int32] | Cell", "float | bool",
+    "list[int32] | Cell", "str | bool", "int | bool",
 ])
 def test_deferred_union_families_remain_uncovered(annotation: str) -> None:
     compiler, modules = _compile(SOURCE + "\nfrom tpy import Own\n" +

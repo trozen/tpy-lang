@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NoneType, OptionalType, UnionType
 from .dependencies import analyze_dependencies
 from .dump import dump_function
@@ -44,8 +45,8 @@ def function(shape: str, *blocks: MIRBlock) -> MIRFunction:
                    union_layout=None if optional else MIRUnionLayout(tuple(
                        None if isinstance(typ, NoneType) else MIRTupleElement(typ) for typ in members)),
                    storage_duration=MIRStorageDuration.BODY, residence=ROOT)
-    return MIRFunction(BODY, INT32, (slot, MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER),
-                                    MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER),
+    return MIRFunction(BODY, INT32, (slot, MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+                                    MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
                                     MIRSlot(GUARD, BOOL, MIRSlotKind.LOCAL, residence=ROOT)),
                        blocks, ENTRY, regions=(MIRRegion(ROOT, None, ENTRY),))
 

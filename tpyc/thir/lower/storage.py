@@ -4,13 +4,14 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from ...symbol_binding import SymbolKind
-from ...type_def_registry import is_list, is_array, is_set, is_dict
+from ...type_def_registry import is_list, is_array, is_set, is_dict, zero_value_of
 
 from ...parse.nodes import TpyFieldAccess, TpyName, TpySubscript, TupleElemCapture
 from ...typesys import (
-    BOOL, INT32, INT32_MIN, INT32_MAX, NominalType, OptionalType, ReadonlyType, TupleType, TpyType,
+    NominalType, OptionalType, ReadonlyType, TupleType, TpyType,
     UnionType, is_void_like_type, unwrap_readonly, unwrap_ref_type,
 )
+from ..scalar_leaves import leaf_constant, storage_leaf
 from ..nodes import (
     Form, THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldAccess, THIRFieldIdentity, THIRName,
     THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout, THIRUnionLayout,
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
 def global_name_binding(name: str, typ: TpyType, lc: '_LowerCtx') -> THIRGlobalBinding | None:
     analyzer = lc.analyzer
     if (not lc.global_binding_scope or lc.top_level_scope or lc.capture_funcs or name in lc.prescan.param_names
-            or typ not in (BOOL, INT32) or not lc.prescan.binds_global(name)
+            or not storage_leaf(typ) or not lc.prescan.binds_global(name)
             or name not in analyzer.ctx.top_level_decls or name in lc.prescan.native_globals):
         return None
     declared = analyzer.ctx.global_scope.lookup(name)
@@ -43,7 +44,7 @@ def global_name_binding(name: str, typ: TpyType, lc: '_LowerCtx') -> THIRGlobalB
 def module_global_binding(module: str, name: str, typ: TpyType,
                           analyzer: 'SemanticAnalyzer') -> THIRGlobalBinding | None:
     info = analyzer.registry.get_module(module)
-    if typ not in (BOOL, INT32) or info is None or info.module_attributes is None:
+    if not storage_leaf(typ) or info is None or info.module_attributes is None:
         return None
     cell = info.module_attributes.get(name)
     variable = info.variables.get(name)
@@ -75,25 +76,25 @@ def native_container(typ: TpyType, readonly: bool,
         return None
     args = typ.type_args
     if not ((is_list(typ) or is_set(typ)) and len(args) == 1
-            or is_dict(typ) and args == (INT32, INT32)
+            or is_dict(typ) and len(args) == 2 and all(storage_leaf(a) for a in args)
             or is_array(typ) and len(args) == 2 and type(args[1]) is int and args[1] >= 0):
         return None
     element = args[0]
-    if element != INT32:
+    if not storage_leaf(element):
         if not (is_list(typ) or is_array(typ)) or unwrap_readonly(unwrap_ref_type(element)) != element:
             return None
         element = borrowed_record(element, readonly, analyzer)
         if element is None:
             return None
         record = analyzer.registry.get_record_for_type(element.type)
-        if any(f.type not in (BOOL, INT32) for f in record.fields):
+        if any(not storage_leaf(f.type) for f in record.fields):
             return None
     return THIRNativeContainer(typ, element, readonly)
 
 
 def hoisted_binding(name: str, typ: TpyType, analyzer: 'SemanticAnalyzer', *,
                     borrow: bool = False, readonly: bool = False) -> THIRHoistedBinding | None:
-    if typ in (BOOL, INT32) and not borrow:
+    if storage_leaf(typ) and not borrow:
         return THIRHoistedBinding(name, typ)
     if isinstance(typ, TupleType):
         layout = tuple_layout(typ, analyzer, borrow=borrow, readonly=readonly)
@@ -108,7 +109,11 @@ def hoisted_binding(name: str, typ: TpyType, analyzer: 'SemanticAnalyzer', *,
             layout = union_layout(typ, analyzer, borrow=False, readonly=readonly)
             if layout is not None:
                 first = layout.elements[0]
-                default = None if first is None else False if first == BOOL else 0
+                default = None if first is None else zero_value_of(first)
+                # A first member with no declared zero (an enum) has no
+                # physical default to publish, so the hoist stays unmodeled.
+                if first is not None and default is None:
+                    return None
                 return THIRHoistedBinding(name, typ, union_layout=layout,
                                          physical_default=THIRWrapperDefault(0, default))
         return None
@@ -178,7 +183,7 @@ def tuple_layout(typ: TpyType, analyzer: 'SemanticAnalyzer', *,
     for i, element in enumerate(typ.element_types):
         mode = captures[i] if captures is not None else (
             TupleElemCapture.REF if borrow else TupleElemCapture.VALUE)
-        if element in (BOOL, INT32):
+        if storage_leaf(element):
             if captures is not None and mode is not TupleElemCapture.VALUE:
                 return None
             elements.append(element)
@@ -216,7 +221,7 @@ def optional_layout(typ: TpyType, analyzer: 'SemanticAnalyzer', *,
     if not isinstance(typ, OptionalType) or typ.force_pointer_repr:
         return None
     inner = unwrap_readonly(typ.inner)
-    if inner in (BOOL, INT32):
+    if storage_leaf(inner):
         return THIROptionalLayout(inner) if not typ.uses_pointer_repr() else None
     if not borrow:
         return None
@@ -246,7 +251,7 @@ def union_layout(typ: TpyType, analyzer: 'SemanticAnalyzer', *,
             if reference is None:
                 return None
             elements.append(reference)
-        elif member in (BOOL, INT32):
+        elif storage_leaf(member):
             elements.append(member)
         else:
             return None
@@ -260,12 +265,14 @@ def union_literal(expr: THIRExpr | None, layout: THIRUnionLayout) -> THIRUnionLi
         expr = expr.expr
     if not isinstance(expr, THIRLiteral):
         return None
-    if type(expr.value) is int and not INT32_MIN <= expr.value <= INT32_MAX:
-        return None
-    typ = BOOL if type(expr.value) is bool else INT32 if type(expr.value) is int else None
-    if (expr.value is None or typ is not None) and typ in layout.elements:
-        return THIRUnionLiteral(layout, layout.elements.index(typ), expr.value)
-    return None
+    if expr.value is None:
+        return THIRUnionLiteral(layout, layout.elements.index(None), None) if None in layout.elements else None
+    # The literal's own type names its alternative when it is one; otherwise
+    # exactly one alternative may hold the value.
+    if expr.result_type in layout.elements and leaf_constant(expr.result_type, expr.value):
+        return THIRUnionLiteral(layout, layout.elements.index(expr.result_type), expr.value)
+    holders = [i for i, m in enumerate(layout.elements) if m is not None and leaf_constant(m, expr.value)]
+    return THIRUnionLiteral(layout, holders[0], expr.value) if len(holders) == 1 else None
 
 
 def full_expression_record(expr: THIRExpr, analyzer: 'SemanticAnalyzer') -> THIRExpr:
@@ -274,7 +281,7 @@ def full_expression_record(expr: THIRExpr, analyzer: 'SemanticAnalyzer') -> THIR
     layout = record_layout(expr.result_type, analyzer)
     if (layout is None or layout.type != expr.result_type or not layout.unique_constructor
             or layout.custom_copy or layout.custom_move or layout.custom_destructor
-            or any(f.type not in (BOOL, INT32) for f in layout.fields)):
+            or any(not storage_leaf(f.type) for f in layout.fields)):
         return expr
     return replace(expr, full_expression_storage=THIROwnedRecord(layout.type))
 
@@ -302,7 +309,7 @@ def direct_field(expr: TpyFieldAccess,
         return None
     info = analyzer.registry.get_record_for_type(reference.type)
     member = next((f for f in info.fields if f.name == expr.field), None)
-    if member is None or (member.type not in (BOOL, INT32)
+    if member is None or (not storage_leaf(member.type)
                           and borrowed_record(member.type, False, analyzer) is None):
         return None
     return THIRFieldIdentity(reference.type, member.name, member.type)

@@ -71,6 +71,11 @@ class _Unplanned(Exception):
     pass
 
 
+# Semantic layout facts a destination carries for the loan analysis; the
+# emitted C++ does not read them, so they place no temporary.
+_LAYOUT_FACTS = frozenset({"optional_layout", "union_layout", "union_literal"})
+
+
 def _plain(node: object, allowed: set[str]) -> None:
     if unsupported_metadata(node, allowed) is not None:
         raise _Unplanned()
@@ -220,12 +225,12 @@ class _Planner:
                         raise _Unplanned()
                     _plain(stmt, {"name", "resolved_type", "init", "cpp_type", "form", "is_const",
                                   "cpp_local_representation", "owned_storage", "storage_placement", "storage_borrow",
-                                  "alias_binding"})
+                                  "alias_binding"} | _LAYOUT_FACTS | {"tuple_layout", "native_container"})
                     if stmt.init is not None:
                         self.expr(stmt.init)
                     self.flush(stmt, scope)
                 case th.THIRAssign():
-                    _plain(stmt, {"target", "value", "alias_binding"})
+                    _plain(stmt, {"target", "value", "alias_binding"} | _LAYOUT_FACTS)
                     self.expr(stmt.target)
                     self.expr(stmt.value)
                     self.flush(stmt, scope)
@@ -234,10 +239,10 @@ class _Planner:
                         raise _Unplanned()
                     if isinstance(stmt, th.THIRPtrLocalDecl):
                         _plain(stmt, {"name", "resolved_type", "kind", "init", "cpp_type",
-                                      "is_const", "alias_binding", "storage_borrow"})
+                                      "is_const", "alias_binding", "storage_borrow"} | _LAYOUT_FACTS)
                         value = stmt.init
                     else:
-                        _plain(stmt, {"name", "kind", "value", "alias_binding", "storage_borrow"})
+                        _plain(stmt, {"name", "kind", "value", "alias_binding", "storage_borrow"} | _LAYOUT_FACTS)
                         value = stmt.value
                     if value is not None:
                         self.expr(value)

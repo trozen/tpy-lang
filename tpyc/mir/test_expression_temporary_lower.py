@@ -229,10 +229,10 @@ def test_debug_dump_exposes_temporary_region() -> None:
 
 
 def test_metadata_omitted_for_broader_shapes() -> None:
-    source = '''from tpy import int32, int64
+    source = '''from tpy import int32
 class Wide:
-    value: int64
-    def __init__(self, value: int64):
+    value: int
+    def __init__(self, value: int):
         self.value = value
 class Finalized:
     value: int32
@@ -244,7 +244,7 @@ class Generic[T]:
     value: T
     def __init__(self, value: T):
         self.value = value
-def wide() -> int64:
+def wide() -> int:
     return Wide(3).value
 def finalized() -> int32:
     return Finalized(4).value

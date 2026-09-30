@@ -1034,6 +1034,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     src_rt = func.return_type if stub is None else stub.return_type
     params = tuple(THIRParam(
         name=n, type=t,
+        passing=t.param_passing(_param_is_const(n, func, analyzer, record_name)),
         native_container=native_container(t, _param_is_const(n, func, analyzer, record_name), analyzer),
         union_layout=_union_source_layout(n, t, lc),
         borrowed_record=borrowed_record(t, _param_is_const(n, func, analyzer, record_name),
@@ -2020,6 +2021,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
             record_layout=layout,
             params=tuple(THIRParam(
                 name=n, type=t, union_layout=_union_source_layout(n, t, lc),
+                passing=t.param_passing(_param_is_const(n, init_method, analyzer, record.name)),
                 native_container=native_container(
                     t, _param_is_const(n, init_method, analyzer, record.name), analyzer),
                 optional_layout=optional_layout(

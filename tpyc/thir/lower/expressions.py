@@ -172,6 +172,7 @@ from ...sema.type_ops import signature_may_return_borrow
 from ...codegen_cpp.functions import NULL_PROTOCOL_ARG_CPP
 from ...codegen_cpp.int_literals import render_int_literal_value
 from ..nodes import (
+    COMPARISON_OPS,
     Form,
     TruthinessMode,
     THIRArgTemp,
@@ -266,7 +267,6 @@ from .predicates import (
     _param_is_deep_const,
     _ARITH_OPS,
     _BITWISE_OPS,
-    _COMPARE_OPS,
     _FLOAT32_LIT_COERCION,
     _INT_LIT_COERCION,
     _IS_OPS,
@@ -3762,7 +3762,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 reject()
         if e.op in _BITWISE_OPS:
             _witness("binop.bitwise")
-    elif e.op in _COMPARE_OPS:
+    elif e.op in COMPARISON_OPS:
         if rtype is None or not is_bool_type(rtype):
             reject()
         ptr_tuple_pair = _ptr_tuple_literal_compare_pair(e, analyzer)
@@ -4583,7 +4583,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             value_repr=value_repr,
             form=Form.VALUE,
             loc=loc)
-    if e.op in _COMPARE_OPS and ptr_tuple_pair is not None:
+    if e.op in COMPARISON_OPS and ptr_tuple_pair is not None:
         # The deref-aware tuple compare: borrow-form literal operands
         # (`std::tuple<int32_t, Box*>{1, &(a)}`) into the tuple_eq /
         # tuple_lt helper composition (derived ops negate / swap sides;
@@ -4613,7 +4613,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         }[e.op]
         return THIRBinOp(result_type=rtype, left=left, op=e.op, right=right,
                          resolved=None, template_override=tpl, loc=loc)
-    if e.op in _COMPARE_OPS and opt_eq_targets is not None:
+    if e.op in COMPARISON_OPS and opt_eq_targets is not None:
         # The optional_safe_eq render: each optional side reads bare (a
         # narrowed side derefs at the name arm), the plain side opposite an
         # UN-narrowed optional renders against that optional's inner (the
@@ -4631,7 +4631,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             _lower_char_targeted(e.right, r_tgt, lc, declared,
                                  allow_whole_optional=True),
             r_tgt, lc)
-    elif e.op in _COMPARE_OPS:
+    elif e.op in COMPARISON_OPS:
         if (_narrowed_opt_char_vs_str_literal(e.left, e.right, lc, declared)
                 or _narrowed_opt_char_vs_str_literal(
                     e.right, e.left, lc, declared)):
@@ -7556,6 +7556,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     result_type=rtype,
                     cpp_template=resolved.method.cpp_template,
                     operand=operand,
+                    resolved=resolved,
                     loc=loc)
             raise ThirUnsupported("expr.unary")
         if enum_neg is not None:
@@ -17244,7 +17245,7 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
             # a str/bytes concat -- so the op set only has to carry the
             # already-bool ops, and the rest ride the type question.
             if (mode is None and not native_scalar
-                    and e.op not in (_COMPARE_OPS | _LOGICAL_OPS
+                    and e.op not in (COMPARISON_OPS | _LOGICAL_OPS
                                      | _IS_OPS | _MEMBERSHIP_OPS)):
                 raise ThirUnsupported("truthy.binop")
         elif isinstance(e, TpyMethodCall):

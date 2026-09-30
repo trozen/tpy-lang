@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from ..thir.nodes import Form
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NoneType, NominalType, UnionType
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant,
@@ -29,9 +30,9 @@ SLOTS = (
     MIRSlot(SAVED, TYPE, MIRSlotKind.LOCAL, value_kind=MIRValueKind.UNION, union_layout=LAYOUT),
     MIRSlot(GUARD, BOOL, MIRSlotKind.LOCAL),
     MIRSlot(COPY, BOOL, MIRSlotKind.LOCAL),
-    MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER),
+    MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
     MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL),
-    MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER),
+    MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
     MIRSlot(ALIAS, INT32, MIRSlotKind.LOCAL, form=Form.BORROW, readonly=True,
             value_kind=MIRValueKind.PAYLOAD_ALIAS, alias_source=PAYLOAD),
 )
@@ -228,7 +229,7 @@ def reference_function(source_const: bool = False, dest_const: bool = False) -> 
         MIRSlot(CURRENT, typ, MIRSlotKind.LOCAL, value_kind=MIRValueKind.UNION, union_layout=layout(dest_const)),
         MIRSlot(SAVED, typ, MIRSlotKind.PARAMETER, value_kind=MIRValueKind.UNION, union_layout=layout(source_const)),
         MIRSlot(GUARD, BOOL, MIRSlotKind.LOCAL),
-        MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER),
+        MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
         MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL),
         MIRSlot(FLAG, cell, MIRSlotKind.PARAMETER, value_kind=MIRValueKind.BORROWED_RECORD, form=Form.BORROW),
         MIRSlot(ALIAS, cell, MIRSlotKind.LOCAL, value_kind=MIRValueKind.BORROWED_RECORD, form=Form.BORROW,

@@ -11,9 +11,12 @@ from ..type_def_registry import is_list, is_array, is_set, is_dict
 from ..parse import RebindStorage, SourceLocation
 from ..thir import nodes as th
 from ..thir.temp_plan import if_chain, validate_plan
+from ..thir.scalar_leaves import leaf_constant, primitive_leaf, record_type, storage_leaf
+from ..type_def_registry import ParamPassing, zero_value_of
 from ..typesys import (
-    BOOL, INT32, INT32_MAX, INT32_MIN, IntLiteralType, NominalType, TpyType,
-    NoneType, OptionalType, ReadonlyType, TupleType, UnionType, VoidType, is_void_like_type, unwrap_readonly, unwrap_ref_type,
+    BOOL, INT32, NominalType, TpyType,
+    NoneType, OptionalType, ReadonlyType, TupleType, UnionType, VoidType, is_void_like_type,
+    return_representation, unwrap_readonly, unwrap_ref_type,
 )
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch, MIRStorageInit, MIRStatement,
@@ -23,14 +26,14 @@ from .nodes import (
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRRecordStorageInit, MIRRecordStorageKind,
     MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode,
     MIRRegion, MIRRegionId,
-    MIRRangeAdvance,
+    MIRRangeAdvance, MIROp, MIRPrint,
     MIRContainerLayout, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout, MIRTupleInitialization,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
     MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
     statement_target,
 )
-from .coverage import MIRUnsupported, plain as _plain, require as _require, scalar_wrapper
+from .coverage import MIRUnsupported, literal_type, plain as _plain, require as _require, scalar_param, scalar_wrapper
 from .definitions import MIRConstructorDefinition, MIRDefinitions, constructor_initialization
 from .call_contract import MIRCallSummary, MIRSummaryResult, MIRSummaryState, summary_problem
 from .validate import (MIRDefiniteAssignmentError, MIRPresenceError, MIRRepeatedInitializationError,
@@ -40,6 +43,14 @@ from .validate import (MIRDefiniteAssignmentError, MIRPresenceError, MIRRepeated
 def _literal(expr: th.THIRExpr) -> bool:
     return isinstance(expr, th.THIRLiteral) or (
         isinstance(expr, th.THIRCoerce) and isinstance(expr.expr, th.THIRLiteral))
+
+
+# The literal-into-slot coercions that render the inner literal directly in
+# the slot's type; any other coercion converts a value.
+_LITERAL_COERCIONS = frozenset({"int_literal_to_fixed_int", "float_literal_to_float", "float_literal_to_float32"})
+# The print forms that stream a scalar leaf through the runtime's formatter.
+_SCALAR_PRINT_FORMS = frozenset({th.PrintForm.RAW, th.PrintForm.INT8, th.PrintForm.BOOL,
+                                 th.PrintForm.FLOAT, th.PrintForm.FLOAT32})
 
 
 class _Coverage:
@@ -72,6 +83,9 @@ class _Coverage:
         self.borrowed_bindings: IdentityMap[th.THIRStmt, th.THIRBorrowedRecord] = IdentityMap()
         self.argument_temporaries: IdentityMap[th.THIRArgTemp, th.THIRBorrowedRecord] = IdentityMap()
         self.select_temporaries: IdentityMap[th.THIRSlotEmplace, th.THIRBorrowedRecord] = IdentityMap()
+        # The leaf type each checked expression has in MIR; a number literal's
+        # comes from its context, not its node.
+        self.types: IdentityMap[th.THIRExpr, TpyType] = IdentityMap()
 
     def call(self, expr: th.THIRCall) -> None:
         _plain(expr, {"callee", "args", "callee_cpp", "resolved_callee"})
@@ -104,7 +118,7 @@ class _Coverage:
                 _require(arg, not isinstance(arg, th.THIRName)
                          or (arg.name not in self.optionals and arg.name not in self.unions),
                          "call needs unwrapped scalar binding")
-                _require(arg, self.expr(arg) == typ, "call scalar argument mismatch")
+                _require(arg, self.expr(arg, typ) == typ, "call scalar argument mismatch")
             else:
                 if isinstance(arg, th.THIRArgTemp):
                     self.argument_temporary(arg, ref)
@@ -166,8 +180,10 @@ class _Coverage:
             case th.THIRName():
                 return (expr.global_binding is None and expr.name not in self.optionals
                         and expr.name not in self.unions and expr.name not in self.payload_aliases)
-            case th.THIRLiteral() | th.THIRSelf():
+            case th.THIRLiteral() | th.THIRCharLiteral() | th.THIRSelf():
                 return True
+            case th.THIRUnaryArith():
+                return self.ordered_temporary_expression(expr.operand)
             case th.THIRCoerce():
                 return self.ordered_temporary_expression(expr.expr)
             case th.THIRUnaryNot():
@@ -192,7 +208,7 @@ class _Coverage:
                        *, write: bool = False) -> TpyType:
         fact = expr.global_binding
         _require(expr, isinstance(fact, th.THIRGlobalBinding) and bool(fact.module and fact.name)
-                 and fact.type in (BOOL, INT32) and fact.type == expr.result_type
+                 and storage_leaf(fact.type) and fact.type == expr.result_type
                  and expr.form is th.Form.VALUE and type(fact.writable) is bool,
                  "missing or invalid scalar global binding")
         _require(expr, not write or fact.writable, "global binding is not writable")
@@ -218,16 +234,18 @@ class _Coverage:
             self.reference(fn, result, fn.return_type)
             self.records[result.type] = self.definitions.get(fn, result.type)
         else:
-            _require(fn, fn.return_type in (BOOL, INT32) or isinstance(fn.return_type, VoidType),
-                     "unsupported return type")
+            _require(fn, storage_leaf(fn.return_type, return_representation(fn.return_type))
+                     or isinstance(fn.return_type, VoidType), "unsupported return type")
         if fn.receiver is not None:
             self.reference(fn, fn.receiver, fn.receiver.type)
             self.bindings["self"] = fn.receiver.type
             self.references["self"] = fn.receiver
             self.parameters.add("self")
         for p in fn.params:
-            _plain(p, {"name", "type", "borrowed_record", "optional_layout", "union_layout", "tuple_layout", "native_container"})
+            _plain(p, {"name", "type", "passing", "borrowed_record", "optional_layout", "union_layout", "tuple_layout",
+                        "native_container"})
             _require(fn, p.name not in self.bindings, "duplicate binding")
+            _require(p, isinstance(p.passing, ParamPassing), "unpublished parameter passing")
             if p.native_container is not None:
                 _require(p, all(f is None for f in (p.borrowed_record, p.optional_layout, p.union_layout, p.tuple_layout)),
                          "conflicting parameter facts")
@@ -255,7 +273,7 @@ class _Coverage:
                 self.references[p.name] = p.borrowed_record
                 self.bindings[p.name] = p.borrowed_record.type
             else:
-                _require(fn, p.type in (BOOL, INT32), "unsupported parameter type")
+                _require(fn, scalar_param(p), "unsupported parameter type")
                 self.bindings[p.name] = p.type
         self.declarations(fn.body, 0)
         if self.argument_temporaries or self.select_temporaries:
@@ -365,12 +383,14 @@ class _Coverage:
                     self.borrowed_binding(stmt, declaration=True)
                     continue
                 _require(stmt, isinstance(stmt, th.THIRVarDecl), "missing alias binding")
-                _plain(stmt, {"name", "resolved_type", "init", "is_const"})
-                _require(stmt, stmt.form is th.Form.VALUE and stmt.resolved_type in (BOOL, INT32),
+                # A VALUE-form leaf is held by value whichever way its C++
+                # declaration is spelled (an enum local names its type).
+                _plain(stmt, {"name", "resolved_type", "init", "is_const", "cpp_type"})
+                _require(stmt, stmt.form is th.Form.VALUE and storage_leaf(stmt.resolved_type),
                          "unsupported local type or form")
                 _require(stmt, stmt.name not in self.bindings, "duplicate binding")
                 if stmt.init is not None:
-                    _require(stmt, self.full_expression(stmt.init) == stmt.resolved_type,
+                    _require(stmt, self.full_expression(stmt.init, expected=stmt.resolved_type) == stmt.resolved_type,
                              "initializer type mismatch")
                 self.bindings[stmt.name] = stmt.resolved_type
             else:
@@ -407,7 +427,7 @@ class _Coverage:
                 params = definition.constructor.params
                 _require(expr, len(expr.args) == len(params), "incomplete constructor arguments")
                 for arg, param in zip(expr.args, params):
-                    _require(arg, self.expr(arg) == param.type, "constructor argument type")
+                    _require(arg, self.expr(arg, param.type) == param.type, "constructor argument type")
                     _require(arg, not self.writes[arg], "effectful constructor argument")
             case th.THIRCopy() | th.THIRMove():
                 _plain(expr, {"value", "cpp_type"} if isinstance(expr, th.THIRCopy) else {"value"})
@@ -464,10 +484,7 @@ class _Coverage:
 
     def reference(self, node: object, ref: th.THIRBorrowedRecord, typ: TpyType) -> None:
         _require(node, isinstance(ref, th.THIRBorrowedRecord), "invalid reference fact")
-        _require(node, isinstance(ref.type, NominalType) and ref.type.qualified_name() is not None
-                 and ref.type not in (BOOL, INT32)
-                 and not ref.type.type_args and not ref.type.is_protocol
-                 and type(ref.readonly) is bool, "unsupported reference fact")
+        _require(node, record_type(ref.type) and type(ref.readonly) is bool, "unsupported reference fact")
         _require(node, unwrap_readonly(unwrap_ref_type(typ)) == ref.type,
                  "reference type mismatch")
 
@@ -479,7 +496,7 @@ class _Coverage:
                  "invalid native container fact")
         args = bare.type_args
         _require(node, ((is_list(bare) or is_set(bare)) and len(args) == 1
-                       or is_dict(bare) and args == (INT32, INT32)
+                       or is_dict(bare) and len(args) == 2 and all(storage_leaf(a) for a in args)
                        or is_array(bare) and len(args) == 2 and type(args[1]) is int and args[1] >= 0),
                  "unsupported native container type")
         member = fact.element
@@ -489,7 +506,7 @@ class _Coverage:
                      "unsupported native record element")
             self.records[member.type] = self.definitions.get(node, member.type)
         else:
-            _require(node, member == args[0] == INT32, "unsupported native scalar element")
+            _require(node, member == args[0] and storage_leaf(member), "unsupported native scalar element")
 
     def container_name(self, expr: th.THIRExpr) -> th.THIRNativeContainer:
         _require(expr, isinstance(expr, th.THIRName), "container source needs local name")
@@ -646,7 +663,7 @@ class _Coverage:
                          and unwrap_readonly(alternative) == alternative), "union layout increases access")
                 kinds.add("reference")
             else:
-                _require(node, member in (BOOL, INT32) and member == alternative, "unsupported union scalar")
+                _require(node, storage_leaf(member) and member == alternative, "unsupported union scalar")
                 kinds.add("value")
         _require(node, len(kinds) == 1 and len(layout.elements) >= 2, "mixed or empty union layout")
 
@@ -668,15 +685,14 @@ class _Coverage:
                      "invalid union literal fact")
             if isinstance(expr, th.THIRCoerce):
                 _plain(expr, {"expr", "coercion_name"})
-                _require(expr, expr.coercion_name == "int_literal_to_fixed_int", "unsupported union literal coercion")
+                _require(expr, expr.coercion_name in _LITERAL_COERCIONS, "unsupported union literal coercion")
                 expr = expr.expr
             _require(expr, isinstance(expr, th.THIRLiteral), "union literal fact needs literal source")
             _plain(expr, {"value", "int_cpp", "none_cpp"})
             member = target.elements[literal.alternative]
             _require(expr, type(expr.value) is type(literal.value) and expr.value == literal.value
                      and (member is None and literal.value is None
-                          or member == BOOL and type(literal.value) is bool
-                          or member == INT32 and type(literal.value) is int and INT32_MIN <= literal.value <= INT32_MAX),
+                          or not isinstance(member, th.THIRBorrowedRecord) and leaf_constant(member, literal.value)),
                      "union literal payload mismatch")
             return
         if isinstance(expr, th.THIRName) and expr.name in self.unions:
@@ -732,7 +748,7 @@ class _Coverage:
             _require(node, (not outer_readonly and unwrap_readonly(typ.inner) == typ.inner) or member.readonly,
                      "optional layout increases access")
         else:
-            _require(node, member in (BOOL, INT32) and unwrap_readonly(typ.inner) == member,
+            _require(node, storage_leaf(member) and unwrap_readonly(typ.inner) == member,
                      "unsupported optional payload")
 
     def optional_name(self, expr: th.THIRName, *, extract: bool) -> th.THIROptionalLayout:
@@ -774,19 +790,18 @@ class _Coverage:
         elif _literal(expr):
             # Hoisted assignments contextualize the literal with the wrapper type.
             _require(expr, expr.form is th.Form.VALUE, "unsupported optional literal form")
+            payload = target.payload
             if isinstance(expr, th.THIRCoerce):
                 _plain(expr, {"expr", "coercion_name"})
-                _require(expr, expr.coercion_name == "int_literal_to_fixed_int" and target.payload == INT32
-                         and expr.result_type in (INT32, OptionalType(INT32)), "unsupported optional literal coercion")
+                _require(expr, expr.coercion_name in _LITERAL_COERCIONS
+                         and expr.result_type in (payload, OptionalType(payload)), "unsupported optional literal coercion")
                 expr = expr.expr
             _plain(expr, {"value", "int_cpp"})
-            typ = INT32 if isinstance(expr.result_type, IntLiteralType) else expr.result_type
-            _require(expr, expr.form is th.Form.VALUE and typ in (target.payload, OptionalType(target.payload))
-                     and (target.payload == BOOL and type(expr.value) is bool
-                          or target.payload == INT32 and type(expr.value) is int and INT32_MIN <= expr.value <= INT32_MAX),
-                     "optional literal payload mismatch")
+            typ = literal_type(expr, payload)
+            _require(expr, expr.form is th.Form.VALUE and typ in (payload, OptionalType(payload))
+                     and leaf_constant(payload, expr.value), "optional literal payload mismatch")
         else:
-            _require(expr, self.expr(expr) == target.payload and not self.writes[expr],
+            _require(expr, self.expr(expr, target.payload) == target.payload and not self.writes[expr],
                      "effectful or mistyped optional payload")
 
     def tuple_layout(self, node: object, layout: th.THIRTupleLayout | None,
@@ -807,7 +822,7 @@ class _Coverage:
                     _require(node, definition.layout.movable, "tuple construction needs movable record")
                     self.records[member.type] = definition
             else:
-                _require(node, member in (BOOL, INT32) and member == element,
+                _require(node, storage_leaf(member) and member == element,
                          "unsupported tuple scalar")
 
     def tuple_compatible(self, node: object, source: th.THIRTupleLayout,
@@ -855,7 +870,7 @@ class _Coverage:
                     _require(element, source.type == member.type and (not source.readonly or member.readonly),
                              "tuple capture type or access mismatch")
                 else:
-                    _require(element, self.expr(element) == member and not self.writes[element],
+                    _require(element, self.expr(element, member) == member and not self.writes[element],
                              "effectful or mistyped tuple element")
         self.tuple_layout(expr, layout, expr.result_type, allow_owned=allow_owned)
         _require(expr, expr.form is th.Form.STORAGE if layout.owns_records and isinstance(expr, th.THIRName)
@@ -915,7 +930,7 @@ class _Coverage:
                  "field owner mismatch")
         readonly = reference.readonly or isinstance(fact.type, ReadonlyType)
         _require(expr, not (write and readonly), "readonly field store")
-        if fact.type in (BOOL, INT32):
+        if storage_leaf(fact.type):
             _require(expr, expr.result_type == fact.type and expr.form is th.Form.VALUE,
                      "unsupported field type or form")
             return fact.type
@@ -933,7 +948,8 @@ class _Coverage:
         self.active_temporaries.append(expr)
         return fact
 
-    def full_expression(self, expr: th.THIRExpr, *, discard: bool = False) -> TpyType:
+    def full_expression(self, expr: th.THIRExpr, *, discard: bool = False,
+                        expected: TpyType | None = None) -> TpyType:
         assert self.active_temporaries is None
         self.active_temporaries = []
         try:
@@ -945,27 +961,29 @@ class _Coverage:
                     self.call(expr)
                     typ = expr.result_type
                 else:
-                    typ = self.expr(expr)
+                    typ = self.expr(expr, expected)
             if self.active_temporaries:
                 self.full_expressions.add(expr)
             return typ
         finally:
             self.active_temporaries = None
 
-    def expr(self, expr: th.THIRExpr) -> TpyType:
+    def expr(self, expr: th.THIRExpr, expected: TpyType | None = None) -> TpyType:
+        """Check a value expression; `expected` is the leaf type its context
+        converts it to, which only an unresolved number literal adopts."""
         _require(expr, expr.form is th.Form.VALUE, "unsupported expression form")
-        typ = expr.result_type
-        if isinstance(expr, th.THIRLiteral) and isinstance(typ, IntLiteralType):
-            typ = INT32
-        _require(expr, typ in (BOOL, INT32), "unsupported expression type")
+        typ = literal_type(expr, expected) if isinstance(expr, th.THIRLiteral) else expr.result_type
+        _require(expr, storage_leaf(typ), "unsupported expression type")
+        _require(expr, self.types.get(expr, typ) == typ, "literal adopts two types")
+        self.types[expr] = typ
         writing = False
         match expr:
             case th.THIRLiteral():
                 _plain(expr, {"value", "int_cpp"})
-                _require(expr, (typ == BOOL and type(expr.value) is bool)
-                         or (typ == INT32 and type(expr.value) is int
-                             and INT32_MIN <= expr.value <= INT32_MAX),
-                         "unsupported literal value")
+                _require(expr, leaf_constant(typ, expr.value), "unsupported literal value")
+            case th.THIRCharLiteral():
+                _plain(expr, {"value"})
+                _require(expr, leaf_constant(typ, expr.value), "unsupported literal value")
             case th.THIRCall():
                 self.call(expr)
                 writing = bool(self.calls[expr].writes)
@@ -1015,10 +1033,9 @@ class _Coverage:
                          "optional test representation mismatch")
             case th.THIRCoerce():
                 _plain(expr, {"expr", "coercion_name"})
-                _require(expr, typ == INT32
-                         and expr.coercion_name == "int_literal_to_fixed_int"
+                _require(expr, expr.coercion_name in _LITERAL_COERCIONS
                          and isinstance(expr.expr, th.THIRLiteral), "unsupported coercion")
-                _require(expr, self.expr(expr.expr) == INT32, "unsupported literal coercion")
+                _require(expr, self.expr(expr.expr, typ) == typ, "unsupported literal coercion")
             case th.THIRWalrus():
                 _require(expr, expr.name not in self.range_counters, "range target write needs separate induction")
                 _plain(expr, {"name", "cpp_name", "value", "global_binding"})
@@ -1027,7 +1044,7 @@ class _Coverage:
                 else:
                     _require(expr, self.bindings.get(expr.name) == typ, "walrus needs existing scalar local")
                 before = len(self.active_temporaries or ())
-                _require(expr, self.expr(expr.value) == typ, "walrus type mismatch")
+                _require(expr, self.expr(expr.value, typ) == typ, "walrus type mismatch")
                 _require(expr, expr.global_binding is None or len(self.active_temporaries or ()) == before,
                          "temporary global assignment")
                 writing = True
@@ -1037,28 +1054,26 @@ class _Coverage:
                          "not requires bool")
                 writing = self.writes[expr.operand]
             case th.THIRBinOp():
-                _plain(expr, {"left", "right", "op", "resolved", "paren_wrap"})
-                _require(expr, expr.op in ("&&", "||", "==", "!=", "<", "<=", ">", ">="),
-                         "unsupported binary operation")
-                left, right = self.expr(expr.left), self.expr(expr.right)
-                _require(expr, typ == BOOL and left == right, "comparison operand type mismatch")
+                _plain(expr, {"left", "right", "op", "resolved", "paren_wrap", "divisor_non_zero",
+                              "both_literal_int_operands"})
                 if expr.op in ("&&", "||"):
-                    _require(expr, left == BOOL and expr.resolved is None, "unsupported boolean operation")
+                    left, right = self.expr(expr.left), self.expr(expr.right)
+                    _require(expr, typ == BOOL and left == BOOL and right == BOOL and expr.resolved is None,
+                             "unsupported boolean operation")
                 else:
+                    _require(expr, expr.certified_op, "uncertified binary operation")
+                    left, right = self.operands(expr.left, expr.right)
                     if ((self.writes[expr.left] and not _literal(expr.right))
                             or (self.writes[expr.right] and not _literal(expr.left))):
                         raise MIRUnsupported(expr, "order-sensitive eager operands")
-                    rb = expr.resolved
-                    if rb is not None:
-                        expected = {"<": "__lt__", "<=": "__le__", ">": "__gt__",
-                                    ">=": "__ge__", "==": "__eq__", "!=": "__ne__"}
-                        _require(expr, rb.receiver_type in (BOOL, INT32)
-                                 and rb.method.name in (expected[expr.op],
-                                                        "__eq__" if expr.op == "!=" else expected[expr.op])
-                                 and not rb.is_reverse
-                                 and rb.left_wrapper == "{expr}" and rb.right_wrapper == "{expr}",
-                                 "unsupported comparison dispatch")
+                    _require(expr, expr.op not in th.COMPARISON_OPS or typ == BOOL and left == right,
+                             "comparison operand type mismatch")
                 writing = self.writes[expr.left] or self.writes[expr.right]
+            case th.THIRUnaryArith():
+                _plain(expr, {"cpp_template", "operand", "resolved"})
+                _require(expr, expr.certified_op, "uncertified unary operation")
+                self.expr(expr.operand)
+                writing = self.writes[expr.operand]
             case th.THIRValueSelect():
                 _plain(expr, {"lhs", "rhs", "op", "lhs_temp_cpp"})
                 _require(expr, expr.op in ("&&", "||") and typ == BOOL, "unsupported value select")
@@ -1075,13 +1090,21 @@ class _Coverage:
             case th.THIRIfExpr():
                 _plain(expr, {"cond", "then", "orelse"})
                 _require(expr, self.expr(expr.cond) == BOOL, "condition requires bool")
-                _require(expr, self.expr(expr.then) == typ and self.expr(expr.orelse) == typ,
+                _require(expr, self.expr(expr.then, typ) == typ and self.expr(expr.orelse, typ) == typ,
                          "conditional arm type mismatch")
                 writing = any(self.writes[e] for e in (expr.cond, expr.then, expr.orelse))
             case _:
                 raise MIRUnsupported(expr, "unsupported expression")
         self.writes[expr] = writing
         return typ
+
+    def operands(self, left: th.THIRExpr, right: th.THIRExpr) -> tuple[TpyType, TpyType]:
+        """Check both operands; a literal one converts to the other's type."""
+        if isinstance(left, th.THIRLiteral) and not isinstance(right, th.THIRLiteral):
+            right_type = self.expr(right)
+            return self.expr(left, right_type), right_type
+        left_type = self.expr(left)
+        return left_type, self.expr(right, left_type)
 
     def stmt(self, stmt: th.THIRStmt, loops: int) -> None:
         match stmt:
@@ -1180,7 +1203,7 @@ class _Coverage:
                          "write through scalar payload alias")
                 target_type = (self.field(stmt.target, write=True) if isinstance(stmt.target, th.THIRFieldAccess)
                                else self.expr(stmt.target))
-                value_type = self.full_expression(stmt.value)
+                value_type = self.full_expression(stmt.value, expected=target_type)
                 _require(stmt, not (isinstance(stmt.target, th.THIRName) and stmt.target.global_binding is not None
                                    and stmt.value in self.full_expressions), "temporary global assignment")
                 _require(stmt, target_type == value_type, "assignment type mismatch")
@@ -1194,7 +1217,8 @@ class _Coverage:
                 elif self.fn.resolved_callee is not None and self.fn.resolved_callee.signature.borrowed_result is not None:
                     self.borrowed_expression(stmt.value, self.fn.resolved_callee.signature.borrowed_result)
                 else:
-                    _require(stmt, self.full_expression(stmt.value) == self.fn.return_type, "return type mismatch")
+                    _require(stmt, self.full_expression(stmt.value, expected=self.fn.return_type) == self.fn.return_type,
+                             "return type mismatch")
             case th.THIRForRange():
                 self.range_loop(stmt, loops)
             case th.THIRForEach():
@@ -1215,6 +1239,15 @@ class _Coverage:
             case th.THIRBreak() | th.THIRContinue():
                 _plain(stmt, set())
                 _require(stmt, loops > 0, "loop control outside loop")
+            case th.THIRPrint():
+                _plain(stmt, {"args", "sep_value", "end_value"})
+                _require(stmt, all(v is None or isinstance(v, str) for v in (stmt.sep_value, stmt.end_value)),
+                         "print separator needs a literal")
+                for arg in stmt.args:
+                    _plain(arg, {"expr", "print_form"})
+                    _require(arg.expr, arg.print_form in _SCALAR_PRINT_FORMS
+                             and primitive_leaf(self.full_expression(arg.expr))
+                             and arg.expr not in self.full_expressions, "print argument needs a scalar leaf")
             case _:
                 raise MIRUnsupported(stmt, "unsupported statement")
 
@@ -1234,7 +1267,7 @@ class _Coverage:
                      "range bound capture disagrees with expression")
             if bound is not None:
                 _require(bound, (_literal(bound) or isinstance(bound, (th.THIRName, th.THIRFieldAccess, th.THIRSubscript)))
-                         and self.expr(bound) == INT32, "unsupported range bound")
+                         and self.expr(bound, INT32) == INT32, "unsupported range bound")
         _require(stmt, stmt.var not in self.range_counters, "nested range target changes outer induction")
         _require(stmt, self.bindings.get(stmt.var) == INT32 if stmt.hoist_loop_var else stmt.var not in self.bindings,
                  "range target residence mismatch")
@@ -1308,7 +1341,7 @@ class _Coverage:
                 typ = fact.type
             elif fact.union_layout is not None:
                 self.union_layout(stmt, fact.union_layout, fact.type)
-                _require(stmt, all(m is None or m in (BOOL, INT32) for m in fact.union_layout.elements),
+                _require(stmt, all(m is None or storage_leaf(m) for m in fact.union_layout.elements),
                          "unsupported hoisted union storage")
                 self.unions[fact.name] = fact.union_layout
                 typ = fact.type
@@ -1317,15 +1350,16 @@ class _Coverage:
                 self.tuples[fact.name] = fact.tuple_layout
                 typ = fact.type
             else:
-                _require(stmt, fact.type in (BOOL, INT32), "unsupported hoisted value")
+                _require(stmt, storage_leaf(fact.type), "unsupported hoisted value")
                 typ = fact.type
             wrapper = (fact.union_layout is not None or fact.optional_layout is not None
-                       and fact.optional_layout.payload in (BOOL, INT32))
+                       and storage_leaf(fact.optional_layout.payload))
             if wrapper:
                 default = fact.physical_default
                 first = fact.union_layout.elements[0] if fact.union_layout is not None else None
-                expected = None if first is None else False if first == BOOL else 0
-                _require(stmt, isinstance(default, th.THIRWrapperDefault)
+                expected = None if first is None else zero_value_of(first)
+                _require(stmt, (first is None or expected is not None)
+                         and isinstance(default, th.THIRWrapperDefault)
                          and type(default.alternative) is int and default.alternative == 0
                          and type(default.value) is type(expected) and default.value == expected,
                          "missing or inconsistent physical wrapper default")
@@ -1375,6 +1409,7 @@ class _Builder:
         self.global_facts = coverage.globals
         self.globals: dict[MIRGlobalId, MIRSlotId] = {}
         self.full_expressions = coverage.full_expressions
+        self.types = coverage.types
         self.calls = coverage.calls
         self.record_temporaries = IdentityMap((*coverage.argument_temporaries.items(),
                                               *coverage.select_temporaries.items()))
@@ -1427,7 +1462,8 @@ class _Builder:
              global_binding: th.THIRGlobalBinding | None = None,
              container: th.THIRNativeContainer | None = None, iterator: bool = False,
              storage_duration: MIRStorageDuration | MIRRegionId | None = None,
-             record_storage: MIRRecordStorageKind = MIRRecordStorageKind.DIRECT) -> MIRSlotId:
+             record_storage: MIRRecordStorageKind = MIRRecordStorageKind.DIRECT,
+             passing: ParamPassing | None = None) -> MIRSlotId:
         sid = MIRSlotId(self.body, len(self.slots))
         self.slots.append(MIRSlot(sid, container.type if container else reference.type if reference else (
             unwrap_ref_type(unwrap_readonly(unwrap_ref_type(typ)))
@@ -1456,7 +1492,7 @@ class _Builder:
                                   global_id=MIRGlobalId(global_binding.module, global_binding.name)
                                   if global_binding is not None else None,
                                   storage_duration=storage_duration,
-                                  record_storage=record_storage,
+                                  record_storage=record_storage, passing=passing,
                                   residence=(self.regions[0].id if storage_duration is MIRStorageDuration.BODY else
                                              storage_duration if storage and isinstance(storage_duration, MIRRegionId)
                                              else self.region) if kind in (MIRSlotKind.LOCAL, MIRSlotKind.TEMPORARY)
@@ -1469,16 +1505,15 @@ class _Builder:
         return (MIROptionalLayout(member.type, MIRValueKind.BORROWED_RECORD, member.readonly)
                 if isinstance(member, th.THIRBorrowedRecord) else MIROptionalLayout(member))
 
-    def optional_value(self, expr: th.THIRExpr | None) -> MIRRvalue:
+    def optional_value(self, expr: th.THIRExpr | None, layout: th.THIROptionalLayout) -> MIRRvalue:
         if expr is None or isinstance(expr, th.THIRLiteral) and expr.value is None:
             return MIROptionalConstruct()
         if _literal(expr):
             literal = expr.expr if isinstance(expr, th.THIRCoerce) else expr
-            typ = BOOL if type(literal.value) is bool else INT32
-            return MIROptionalConstruct(self.result(typ, MIRConstant(literal.value), expr.loc))
+            return MIROptionalConstruct(self.result(layout.payload, MIRConstant(literal.value), expr.loc))
         if isinstance(expr, th.THIRName) and expr.optional_read is not None and not expr.optional_read.extract:
             return MIROptionalCopy(self.bindings[expr.name])
-        if isinstance(expr, th.THIRName) and expr.result_type not in (BOOL, INT32):
+        if isinstance(layout.payload, th.THIRBorrowedRecord):
             return MIROptionalConstruct(self.bindings[expr.name])
         return MIROptionalConstruct(self.expr(expr))
 
@@ -1510,7 +1545,7 @@ class _Builder:
                 source = self.bindings[expr.name]
                 if self.slots[source.index].type == member.type:
                     return MIRUnionConstruct(index, source)
-            elif member == (INT32 if isinstance(expr.result_type, IntLiteralType) else expr.result_type):
+            elif member == self.types[expr]:
                 return MIRUnionConstruct(index, self.expr(expr))
         raise AssertionError("coverage and union construction disagree")
 
@@ -1651,15 +1686,15 @@ class _Builder:
 
     def expr(self, expr: th.THIRExpr) -> MIRSlotId:
         self.initialize_temporaries(expr)
-        typ = INT32 if isinstance(expr.result_type, IntLiteralType) else expr.result_type
+        typ = self.types[expr]
         loc = expr.loc
         match expr:
             case th.THIRCall():
                 return self.result(typ, self.call(expr), loc)
-            case th.THIRLiteral():
+            case th.THIRLiteral() | th.THIRCharLiteral():
                 return self.result(typ, MIRConstant(expr.value), loc)
             case th.THIRCoerce():
-                return self.result(INT32, MIRConstant(expr.expr.value), loc)
+                return self.result(typ, MIRConstant(expr.expr.value), loc)
             case th.THIRName() | th.THIRModuleVar() | th.THIRFieldAccess() | th.THIRSubscript() | th.THIRNarrowedRead():
                 return self.result(typ, MIRRead(self.place(expr)), loc)
             case th.THIRIsinstance():
@@ -1688,7 +1723,13 @@ class _Builder:
                     return self.select(left, expr.right if expr.op == "&&" else left,
                                        left if expr.op == "&&" else expr.right, BOOL, loc)
                 right = self.expr(expr.right)
-                return self.result(BOOL, MIRCompare(expr.op, left, right), loc)
+                if expr.op in th.COMPARISON_OPS:
+                    return self.result(BOOL, MIRCompare(expr.op, left, right), loc)
+                # A primitive operation's contract admits raising.
+                return self.result(typ, MIROp(expr.op, (left, right), may_raise=True), loc)
+            case th.THIRUnaryArith():
+                return self.result(typ, MIROp(expr.resolved.method.name, (self.expr(expr.operand),),
+                                              may_raise=True), loc)
             case th.THIRValueSelect():
                 left = self.expr(expr.lhs)
                 return self.select(left, expr.rhs if expr.op == "&&" else left,
@@ -1706,8 +1747,11 @@ class _Builder:
                 members = {}
                 for mil in definition.constructor.mil_inits:
                     value = mil.value
+                    literal = value.expr if isinstance(value, th.THIRCoerce) else value
+                    # The definition proved each initializer a parameter or a constant of its field.
                     members[mil.field_identity.name] = (args[value.name] if isinstance(value, th.THIRName)
-                                                         else self.expr(value))
+                                                         else self.result(mil.field_identity.type,
+                                                                          MIRConstant(literal.value), value.loc))
                 return MIRConstruct(tuple(members[f.id.name] for f in definition.layout.fields))
             case th.THIRCopy():
                 return MIRCopy(MIRPlace(self.place(expr.value).root, (MIRDeref(),)))
@@ -1731,7 +1775,7 @@ class _Builder:
     def full_expression_value(self, expr: th.THIRExpr) -> MIRSlotId:
         if expr not in self.full_expressions:
             return self.expr(expr)
-        result = self.slot(expr.result_type)
+        result = self.slot(self.types[expr])
         with self.full_expression(expr):
             self.write(result, MIRRead(MIRPlace(self.expr(expr))), expr.loc)
         return result
@@ -1784,7 +1828,7 @@ class _Builder:
                 case th.THIRVarDecl() if stmt.union_layout is not None:
                     dest = self.slot(stmt.union_layout.type, MIRSlotKind.LOCAL, stmt.name,
                                      union_layout=stmt.union_layout, storage_duration=(self.placement(stmt)
-                                         if all(m is None or m in (BOOL, INT32)
+                                         if all(m is None or storage_leaf(m)
                                                 for m in stmt.union_layout.elements) else None))
                     self.write(dest, self.union_value(stmt.init, stmt.union_layout, stmt.union_literal), loc,
                                self.payload_write(dest, MIRPayloadWriteMode.INITIALIZE))
@@ -1796,11 +1840,11 @@ class _Builder:
                 case th.THIRVarDecl() | th.THIRPtrLocalDecl() if stmt.optional_layout is not None:
                     dest = self.slot(stmt.resolved_type, MIRSlotKind.LOCAL, stmt.name,
                                      optional_layout=stmt.optional_layout, storage_duration=(self.placement(stmt)
-                                         if stmt.optional_layout.payload in (BOOL, INT32) else None))
+                                         if storage_leaf(stmt.optional_layout.payload) else None))
                     if stmt.owned_storage is not None:
                         self.placement(stmt)
                     value = (self.optional_record(stmt.init, stmt.owned_storage, self.initial_mode())
-                             if stmt.owned_storage is not None else self.optional_value(stmt.init))
+                             if stmt.owned_storage is not None else self.optional_value(stmt.init, stmt.optional_layout))
                     self.write(dest, value, loc, self.payload_write(dest, MIRPayloadWriteMode.INITIALIZE))
                     self.bindings[stmt.name] = dest
                 case th.THIRAssign() | th.THIRPtrLocalRebind() if stmt.optional_layout is not None:
@@ -1813,7 +1857,7 @@ class _Builder:
                         self.write(MIRPlace(dest, (MIROptionalPayload(), MIRDeref())),
                                    self.record_value(stmt.value), loc, MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, dest))
                     else:
-                        self.write(dest, self.optional_value(stmt.value), loc,
+                        self.write(dest, self.optional_value(stmt.value, stmt.optional_layout), loc,
                                    self.payload_write(dest, MIRPayloadWriteMode.ASSIGN))
                 case th.THIRVarDecl() | th.THIRPtrLocalDecl() if stmt.owned_storage is not None:
                     fact = stmt.owned_storage
@@ -1958,6 +2002,9 @@ class _Builder:
                     self.range_loop(stmt)
                 case th.THIRForEach():
                     self.native_loop(stmt)
+                case th.THIRPrint():
+                    arguments = tuple(self.expr(arg.expr) for arg in stmt.args)
+                    self.current.statements.append(MIRPrint(arguments, loc))
                 case th.THIRBreak():
                     self.end(MIRGoto(self.loops[-1][1], loc))
                 case th.THIRContinue():
@@ -2143,12 +2190,13 @@ class _Builder:
                                               "self", self.fn.receiver)
         for p in self.fn.params:
             self.bindings[p.name] = self.slot(p.type, MIRSlotKind.PARAMETER, p.name,
-                                               p.borrowed_record, optional_layout=p.optional_layout,
+                                               p.borrowed_record, passing=p.passing,
+                                               optional_layout=p.optional_layout,
                                                container=p.native_container,
                                                union_layout=p.union_layout, tuple_layout=p.tuple_layout,
                                                storage_duration=MIRStorageDuration.CALLER
                                                if p.union_layout is not None and all(
-                                                   member is None or member in (BOOL, INT32)
+                                                   member is None or storage_leaf(member)
                                                    for member in p.union_layout.elements) else None)
         for identity, fact in self.global_facts.items():
             self.globals[identity] = self.slot(fact.type, MIRSlotKind.GLOBAL, fact.name, global_binding=fact)

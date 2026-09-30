@@ -6,6 +6,7 @@ import pytest
 
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, OptionalType
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
@@ -230,7 +231,7 @@ def region_fixture() -> MIRFunction:
     init = MIRAssign(MIRPlace(local), MIROptionalConstruct(value),
                      storage_write=MIRPayloadWrite(MIRPayloadWriteMode.INITIALIZE_REGION))
     return MIRFunction(body, INT32, (
-        MIRSlot(value, INT32, MIRSlotKind.PARAMETER), MIRSlot(flag, BOOL, MIRSlotKind.PARAMETER),
+        MIRSlot(value, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), MIRSlot(flag, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
         MIRSlot(local, OptionalType(INT32), MIRSlotKind.LOCAL, value_kind=MIRValueKind.OPTIONAL,
                 optional_layout=MIROptionalLayout(INT32), storage_duration=child, residence=child)), (
         MIRBlock(entry, (), MIRBranch(flag, iteration, after), root),

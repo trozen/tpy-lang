@@ -170,7 +170,7 @@ def test_retaining_a_real_for_argument_reports_its_body_end(artifacts: Artifacts
     seed = next(s for s in fn.slots if s.kind is MIRSlotKind.PARAMETER and s.name == "seed")
     backing, = storage(fn)
     holder, copied = (MIRSlotId(fn.id, len(fn.slots) + i) for i in range(2))
-    slots = fn.slots + tuple(replace(seed, id=sid, kind=MIRSlotKind.LOCAL, name=None,
+    slots = fn.slots + tuple(replace(seed, id=sid, kind=MIRSlotKind.LOCAL, name=None, passing=None,
                                     residence=MIRRegionId(fn.id, 0)) for sid in (holder, copied))
     blocks = []
     for block in fn.blocks:

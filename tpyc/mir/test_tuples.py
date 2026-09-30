@@ -9,6 +9,7 @@ from ..thir import nodes as th
 from ..parse import ParseError
 from ..thir.testutil import _compile, _entry, _strict_reject, _assert_rejects_at
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
+from ..type_def_registry import ParamPassing
 from ..typesys import INT32, TupleType
 from .definitions import MIRDefinitions
 from .dump import dump_function
@@ -256,7 +257,7 @@ def test_readonly_source_thir_boundary(artifacts: Artifacts) -> None:
     # Keep a mutable parameter for the write and capture a separate readonly one.
     init = replace(decl.init, elements=(th.THIRName(typ, "ro", form=th.Form.BORROW),),
                    tuple_layout=layout)
-    fn = replace(fn, params=(*fn.params, th.THIRParam("ro", typ, reference)),
+    fn = replace(fn, params=(*fn.params, th.THIRParam("ro", typ, reference, passing=ParamPassing.CONST_REF)),
                  resolved_callee=None,  # The synthetic signature is not the emitted declaration.
                  body=(replace(decl, init=init, tuple_layout=layout), *fn.body[1:]))
     validate_thir(fn)
@@ -320,7 +321,7 @@ def test_tuple_elements_cannot_write_existing_locals() -> None:
         th.THIRWalrus(INT32, "x", "x", th.THIRLiteral(INT32, 1)),
         th.THIRName(INT32, "x"),
     ), tuple_layout=layout)
-    fn = th.THIRFunction("effect", (th.THIRParam("x", INT32),), INT32,
+    fn = th.THIRFunction("effect", (th.THIRParam("x", INT32, passing=ParamPassing.VALUE),), INT32,
                          (th.THIRVarDecl("pair", typ, init=literal, tuple_layout=layout),
                           th.THIRReturn(th.THIRName(INT32, "x"))), th.THIRFunctionLayout())
     result = lower_function(fn, MIRBodyId("tuples", fn.name), kind=MIRBodyKind.FREE_FUNCTION)
@@ -334,7 +335,7 @@ def test_tuple_expression_temporary_projection() -> None:
     literal = th.THIRTupleLiteral(typ, (th.THIRName(INT32, "x"),),
                                  tuple_layout=th.THIRTupleLayout((INT32,)))
     index = th.THIRSubscript(INT32, literal, th.THIRLiteral(INT32, 0), tuple_index=0)
-    fn = th.THIRFunction("temporary", (th.THIRParam("x", INT32),), INT32,
+    fn = th.THIRFunction("temporary", (th.THIRParam("x", INT32, passing=ParamPassing.VALUE),), INT32,
                          (th.THIRReturn(index),), th.THIRFunctionLayout())
     validate_thir(fn)
     assert execute(lower(fn), 7) == 7

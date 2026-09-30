@@ -7,7 +7,8 @@ import pytest
 
 from ..parse import SourceLocation
 from ..thir import nodes as th
-from ..typesys import BOOL, INT32, INT64, STR, IntLiteralType, TpyType, TupleType
+from ..type_def_registry import ParamPassing
+from ..typesys import BIGINT, BOOL, INT32, STR, IntLiteralType, TpyType, TupleType
 from .lower import lower_function
 from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered
 
@@ -17,7 +18,7 @@ ONE = th.THIRLiteral(INT32, 1, loc=LOC)
 
 
 def function(body: Iterable[th.THIRStmt], return_type: TpyType = INT32) -> th.THIRFunction:
-    return th.THIRFunction("f", (th.THIRParam("x", INT32),), return_type,
+    return th.THIRFunction("f", (th.THIRParam("x", INT32, passing=ParamPassing.VALUE),), return_type,
                            tuple(body), th.THIRFunctionLayout())
 
 
@@ -33,7 +34,7 @@ def reject(fn: th.THIRFunction, reason: str, node_kind: str | None = None) -> MI
 
 @pytest.mark.parametrize("expr,reason", [
     (th.THIRCall(INT32, "g", (), loc=LOC), "call needs resolved ordinary callee"),
-    (th.THIRBinOp(INT32, X, "+", ONE, None, loc=LOC), "unsupported binary operation"),
+    (th.THIRBinOp(INT32, X, "+", ONE, None, loc=LOC), "uncertified binary operation"),
     (th.THIRName(INT32, "global", loc=LOC), "non-local name"),
     (replace(X, cpp="::other::x"), "unsupported metadata: cpp"),
     (replace(X, deref=True), "unsupported metadata: deref"),
@@ -46,7 +47,7 @@ def reject(fn: th.THIRFunction, reason: str, node_kind: str | None = None) -> MI
      "unsupported metadata: cpp_type"),
     (th.THIRLiteral(INT32, 2**31, loc=LOC), "unsupported literal value"),
     (th.THIRLiteral(IntLiteralType(2**31), 2**31, loc=LOC), "unsupported literal value"),
-    (th.THIRLiteral(INT64, 1, loc=LOC), "unsupported expression type"),
+    (th.THIRLiteral(BIGINT, 1, loc=LOC), "unsupported expression type"),
     (th.THIRLiteral(STR, "s", loc=LOC), "unsupported expression type"),
     (th.THIRLiteral(TupleType((INT32,)), (1,), loc=LOC), "unsupported expression type"),
 ])
@@ -114,7 +115,9 @@ def test_function_metadata_and_fallthrough() -> None:
     reject(replace(fn, error_return_cpp="Error"), "error-return")
     reject(replace(fn, layout=th.THIRFunctionLayout(hoisted_locals=frozenset({"y"}))), "hoisted")
     reject(replace(fn, return_type=STR), "return type")
-    reject(replace(fn, params=(th.THIRParam("x", INT64),)), "parameter type")
+    reject(replace(fn, params=(th.THIRParam("x", BIGINT, passing=ParamPassing.CONST_REF),)), "parameter type")
+    unpublished = reject(replace(fn, params=(th.THIRParam("x", INT32),)), "unpublished parameter passing")
+    assert unpublished.node_kind == "THIRParam"
     reject(replace(fn, body=()), "non-void fallthrough")
 
 

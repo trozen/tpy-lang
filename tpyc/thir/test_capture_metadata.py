@@ -8,7 +8,7 @@ import pytest
 from ..mir.lower import lower_function
 from ..mir.nodes import MIRBodyId, MIRBodyKind, MIRNotCovered
 from ..parse.nodes import TpyFunction, TpyIntLiteral, TpyLambda, TpyReturn
-from ..typesys import BOOL, INT32
+from ..typesys import BOOL, FLOAT, INT32, INT64
 from . import nodes as th
 from .lower.captures import CaptureSites
 from .testutil import _compile, _entry
@@ -30,7 +30,7 @@ def closures(fn: th.THIRFunction) -> list[th.THIRLambda | th.THIRNestedDef]:
 def functions() -> dict[str, th.THIRFunction]:
     source = """\
 from typing import Callable
-from tpy import int32, Fn, readonly, Own
+from tpy import int32, int64, Fn, readonly, Own
 def apply(f: Fn[[int32], int32], x: int32) -> int32:
     return f(x)
 class Cell:
@@ -124,6 +124,10 @@ def loop(x: int32) -> int32:
     return x
 def global_read(x: int32) -> int32:
     return apply(lambda z: z + global_value, x)
+def wide(x: float, n: int64) -> float:
+    def get() -> float:
+        return x + float(n)
+    return get()
 global_value = 3
 global_closure: Callable[[], int32] = lambda: 1
 """
@@ -155,6 +159,14 @@ def test_scalar_sources_and_selected_capture_modes(functions: dict[str, th.THIRF
     key_capture, = closures(functions["key_params"])[0].captures
     assert key_capture.relation is th.THIRCaptureRelation.SCALAR_BINDING
     assert not key_capture.readonly
+
+
+def test_float_and_int64_captures_are_scalar_bindings(functions: dict[str, th.THIRFunction]) -> None:
+    nested, = closures(functions["wide"])
+    facts = {fact.source_name: fact for fact in nested.captures}
+    assert {name: fact.type for name, fact in facts.items()} == {"x": FLOAT, "n": INT64}
+    assert all(f.relation is th.THIRCaptureRelation.SCALAR_BINDING
+               and f.source_kind is th.THIRCaptureSourceKind.PARAMETER for f in facts.values())
 
 
 @pytest.mark.parametrize("name,readonly", [("record_read", True), ("record_write", False),

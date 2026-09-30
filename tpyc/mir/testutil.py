@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 import operator
 
+from ..type_def_registry import int_traits_of
 from ..typesys import INT32_MIN, INT32_MAX
 
 from .nodes import (
@@ -14,7 +15,7 @@ from .nodes import (
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
-    MIRRangeAdvance,
+    MIRRangeAdvance, MIROp, MIRPrint,
 )
 from .region_flow import MIRRegionFlow
 from .validate import statement_reads
@@ -63,9 +64,19 @@ Value = int | bool | Reference | TupleValue | OptionalValue | UnionValue | Paylo
 Record = dict[MIRFieldId | MIRTupleIndex, 'int | bool | Record']
 Heap = dict[int, Record]
 
+# Source-level meaning of the primitive operations a test body runs; a
+# fixed-width result outside its type's range raises like a checked op.
+_OPERATIONS = {
+    "+": operator.add, "-": operator.sub, "*": operator.mul, "/": operator.truediv,
+    "//": operator.floordiv, "%": operator.mod, "**": operator.pow, "<<": operator.lshift,
+    ">>": operator.rshift, "&": operator.and_, "|": operator.or_, "^": operator.xor,
+    "__neg__": operator.neg, "__pos__": operator.pos, "__invert__": operator.invert,
+}
+
 
 def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
-            global_state: dict[MIRGlobalId, int | bool] | None = None) -> Value | None:
+            global_state: dict[MIRGlobalId, int | bool] | None = None,
+            output: list[tuple[Value, ...]] | None = None) -> Value | None:
     params = [s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER]
     assert len(params) == len(args)
     values = dict(zip(params, args))
@@ -140,6 +151,11 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
         for stmt in block.statements:
             if isinstance(stmt, MIRCallStmt):
                 raise AssertionError("calls require callee execution, not summary evaluation")
+            if isinstance(stmt, MIRPrint):
+                printed = tuple(values[sid] for sid in stmt.arguments)
+                if output is not None:
+                    output.append(printed)
+                continue
             if isinstance(stmt, MIRRecordStorageInit):
                 physical[stmt.target.root] = OptionalValue()
                 values.pop(stmt.target.root, None)
@@ -241,6 +257,11 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     value = comparisons[rhs.op](values[rhs.left], values[rhs.right])
                 case MIRNot():
                     value = not values[rhs.operand]
+                case MIROp():
+                    value = _OPERATIONS[rhs.op](*(values[sid] for sid in rhs.operands))
+                    traits = int_traits_of(slots[stmt.target.root].type)
+                    if traits is not None and not traits.min_value <= value <= traits.max_value:
+                        raise OverflowError(f"{rhs.op} overflows {slots[stmt.target.root].type}")
                 case _:
                     raise AssertionError(rhs)
             if isinstance(value, dict):

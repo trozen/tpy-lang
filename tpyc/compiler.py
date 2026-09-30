@@ -9,12 +9,13 @@ Orchestrates compilation of multiple modules, handling:
 """
 
 from __future__ import annotations
+import contextlib
 import os
 import shutil
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Iterable, NamedTuple, TYPE_CHECKING
+from typing import Any, Callable, Iterable, Iterator, NamedTuple, TYPE_CHECKING
 
 from .parse import Parser, ParseError, TpyModule, TpyImport, TpyVarDecl, RelativeImportKey, SourceLocation
 from .parse.imports import _IMPLICIT_MODULES, _PRIVATE_MODULE_PUBLIC_NAMES, route_stdlib_name
@@ -64,6 +65,9 @@ from .toolchain import (  # noqa: F401 -- re-exported: external callers import t
 from .symbol_binding import (
     BindingCell, SymbolKind, install_binding, protocol_kind_for,
 )
+from .mir.collect import call_definitions
+from .mir.definitions import MIRDefinitions
+from .mir_workspace import MIRProgram, analyze_call_workspace
 
 if TYPE_CHECKING:
     from .codegen_cpp.context import CodeGenContext
@@ -3821,6 +3825,23 @@ class Compiler:
                 self._thir_survey = False
                 self._thir_deferred_rejects = []
             return codegen.ctx
+
+    @contextlib.contextmanager
+    def mir_analysis(self, collected: Iterable[tuple[CompiledModule, 'CodeGenContext']]
+                     ) -> Iterator[MIRProgram]:
+        """Build the workspace-wide MIR inputs over `collect_thir` results.
+
+        The caller lowers and reads bodies inside the `with`: MIR reads this
+        compilation's TypeDefs (user enums and records are registered per
+        compiler), so every lowering must run while the compiler is active."""
+        collected = tuple(collected)
+        with activate_compiler(self):
+            definitions = MIRDefinitions(tuple(
+                ctor for _compiled, ctx in collected for ctor in ctx.thir_constructors.values()))
+            workspace = analyze_call_workspace(tuple(
+                item for compiled, ctx in collected for item in call_definitions(ctx, compiled.name)),
+                definitions)
+            yield MIRProgram(definitions, workspace)
 
     def _propagate_package_directives(self) -> None:
         """Reserved for future package-level directive propagation.

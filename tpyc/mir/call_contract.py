@@ -6,7 +6,11 @@ from enum import Enum, auto
 from ..thir.nodes import (
     THIRBorrowedRecord, THIRCallableSignature, THIRFieldIdentity, THIRFunctionIdentity, THIRResolvedCallee,
 )
-from ..typesys import BOOL, INT32, NominalType, ReadonlyType, RefType, TpyType, VoidType, unwrap_readonly, unwrap_ref_type
+from ..thir.scalar_leaves import record_type, storage_leaf
+from ..typesys import (
+    ReadonlyType, RefType, TpyType, VoidType, passing_representation, return_representation,
+    unwrap_readonly, unwrap_ref_type,
+)
 
 
 @dataclass(frozen=True)
@@ -34,11 +38,11 @@ class MIRCallSummary:
 
 def result_problem(typ: TpyType, ref: THIRBorrowedRecord | None) -> str | None:
     if ref is None:
-        return None if typ in (BOOL, INT32) or isinstance(typ, VoidType) else "unsupported return type"
+        return (None if storage_leaf(typ, return_representation(typ)) or isinstance(typ, VoidType)
+                else "unsupported return type")
     if (not isinstance(ref, THIRBorrowedRecord) or type(ref.readonly) is not bool
             or not isinstance(typ, (RefType, ReadonlyType))
-            or not isinstance(ref.type, NominalType) or ref.type in (BOOL, INT32)
-            or ref.type.type_args or ref.type.is_protocol
+            or not record_type(ref.type)
             or unwrap_readonly(unwrap_ref_type(typ)) != ref.type
             or isinstance(unwrap_ref_type(typ), ReadonlyType) and not ref.readonly):
         return "invalid borrowed result"
@@ -68,11 +72,10 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
     for typ, ref in zip(signature.param_types, summary.parameters):
         bare = unwrap_readonly(unwrap_ref_type(typ))
         if ref is None:
-            if typ not in (BOOL, INT32):
+            if not storage_leaf(typ, passing_representation(typ.param_passing())):
                 return "unsupported scalar call parameter"
         elif (not isinstance(ref, THIRBorrowedRecord) or ref.type != bare
-              or not isinstance(bare, NominalType) or bare in (BOOL, INT32)
-              or type(ref.readonly) is not bool):
+              or not record_type(bare) or type(ref.readonly) is not bool):
             return "unsupported record call parameter"
     result = signature.borrowed_result
     if (result is None and summary.returns or result is not None and not summary.returns):
@@ -91,7 +94,7 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
         ref = summary.parameters[write.parameter]
         field = write.path[0]
         if (ref is None or ref.readonly or not isinstance(field, THIRFieldIdentity)
-                or field.owner != ref.type or not field.name or field.type not in (BOOL, INT32)):
+                or field.owner != ref.type or not field.name or not storage_leaf(field.type)):
             return "unsupported call write field or access"
     return None
 
