@@ -49,8 +49,6 @@ release commit (annotated; the build hook bakes `git describe`), then
 - Safe integer widening: same sign, to a wider type; designed at the
   start -- TODO: "Sub-default-int arithmetic: promote, or keep
   width-preserving?"
-- Small: uv `cache-keys` naming `tpyc/__init__.py`, so an editable
-  install sees a version bump
 
 Queue (triage at 0.7 planning; not commitments):
 
