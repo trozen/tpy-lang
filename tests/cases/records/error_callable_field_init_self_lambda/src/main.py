@@ -1,5 +1,5 @@
-# A SELF-capturing lambda as a callable member-init source: the `this` receiver
-# spelling is not part of the routed slice.
+# A lambda capturing `self`, stored into a field in the constructor: a copy or
+# move of the object would leave the closure pointing at the original.
 from typing import Callable
 from tpy import int32
 
@@ -10,7 +10,7 @@ class Handler:
 
     def __init__(self) -> None:
         self.n = 1
-        self.action = lambda: print(self.n)  # tpyc: error(/ctor.mil_field.callable.lambda/)
+        self.action = lambda: print(self.n)  # tpyc: error(/A lambda stored in field 'action' cannot capture 'self'/)
 
 
 def main() -> None:

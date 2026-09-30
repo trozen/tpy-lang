@@ -1,2 +1,0 @@
-main.py:28: warning: copies Val into field; use copy() to make this explicit
-main.py:28: error: in function 'use': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)

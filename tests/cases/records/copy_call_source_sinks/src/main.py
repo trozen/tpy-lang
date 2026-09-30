@@ -49,8 +49,8 @@ class Sink:
     box: list[int32]
 
     def __init__(self, h: Holder) -> None:
-        # A ctor member-init write takes the NAME source only; the call
-        # source still rejects there (BUGS.md#copy-call-source-ctor-mil).
+        # The sources bound to locals first: these writes read body locals,
+        # so they are body assignments, not member-inits.
         p = h.brec()
         items = h.bctr()
         self.q = copy(p)  # tpyc: ok

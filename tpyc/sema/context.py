@@ -3769,6 +3769,16 @@ class SemanticContext:
         if name in self.func.current_param_names:
             self.func.current_consumed_own_params.add(name)
 
+    def is_last_use(self, expr: 'TpyExpr | None') -> bool:
+        """Sema's last-use verdict for one name read, as sema left it: the
+        liveness mark minus every retraction sema made -- at the use (a
+        hidden borrow demoting the move in `is_auto_move_use`, a live
+        closure capturing the source) or later in the body (a `finally`
+        that still reads a deferred return). The read lowering takes;
+        lowering never calls `is_auto_move_use`, which asks the borrow state
+        of the moment and retracts marks."""
+        return expr in self.all_last_uses
+
     # ------------------------------------------------------------------
     # View-type family generic accessors
     # ------------------------------------------------------------------

@@ -7,7 +7,7 @@ class Label:
     view: StrView
 
     def __init__(self, a: str) -> None:
-        self.view = a + "!"  # tpyc: error(/ctor.mil_field.nominal.binop/)
+        self.view = a + "!"  # tpyc: error(/Cannot bind StrView field 'view' to a temporary view source/)
 
 
 def main() -> None:

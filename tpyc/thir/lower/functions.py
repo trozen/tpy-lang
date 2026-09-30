@@ -14,40 +14,27 @@ from ...liveness import stmts_terminate
 from ...parse.nodes import (
     FunctionLinkage,
     SourceLocation,
-    TpyArrayLiteral,
     TpyAssign,
     TpyBinOp,
     TpyBoolLiteral,
     TpyCall,
     TpyCoerce,
-    TpyDictComprehension,
-    TpyDictLiteral,
     TpyExpr,
     TpyExprStmt,
     TpyFieldAccess,
     TpyFloatLiteral,
     TpyFString,
     TpyFunction,
-    TpyIfExpr,
     TpyImport,
     TpyIntLiteral,
-    TpyLambda,
-    TpyListComprehension,
-    TpyListRepeat,
     TpyMatch,
     TpyMethodCall,
     TpyModule,
     TpyName,
     TpyNestedDef,
     TpyNoneLiteral,
-    TpySetComprehension,
-    TpySetLiteral,
-    TpySlice,
     TpyStmt,
     TpyStrLiteral,
-    TpySubscript,
-    TpyTupleLiteral,
-    TupleElemCapture,
     collect_name_refs,
     collect_top_level_local_names,
     expr_reads_self_field,
@@ -59,10 +46,8 @@ from ...namespace import BindingKind
 from ...prescan import scan_reassigned_vars, scope_bound_names
 from ...sema.registration import receiver_self_type, skipped_base_inits
 from ...typesys import (
-    AnyType,
     IntLiteralType,
     RecordInfo,
-    RecursiveAliasInstanceType,
     is_dyn_protocol,
     is_fn_type,
     is_protocol_type,
@@ -70,13 +55,11 @@ from ...typesys import (
     NominalType,
     NoneType,
     OptionalType,
-    OwnType,
     UnionType,
     TpyType,
     TypeParamKind,
     TypeParamRef,
     VoidType,
-    contains_type_param,
     error_return_to_cpp,
     none_default_cpp_spelling,
     unwrap_optional_own,
@@ -102,33 +85,21 @@ from ...codegen_cpp.functions import (
 )
 from ...codegen_cpp.forms import LocalBinding
 from ...type_def_registry import (
-    is_array,
     record_base_cpp,
     view_to_owned_conv,
-    is_bytes_type,
-    is_bytes_view_type,
-    is_str_view_type,
-    is_dict,
-    is_list,
-    is_set,
 )
 from ..reject import ThirUnsupported, _walk as _fallback_walk, note
 from ..faces import witness as _witness
 from ..validate import _iter_children, validate_constructor, validate_function
 from ..nodes import (
-    THIRCall,
-    Form,
     THIRBaseInit,
     THIRConstructor,
-    THIRContainerLiteral,
     THIRExpr,
-    THIRFormConvert,
     THIRFunction,
     THIRFunctionLayout,
     THIRIf,
     THIRLiteral,
     THIRMilInit,
-    THIROptViewArg,
     THIRParam,
     THIRAssign,
     THIRName,
@@ -139,94 +110,47 @@ from ..nodes import (
     PtrSlotKind,
     THIROverloadDefault,
     THIRParamCopy,
-    THIRMove,
-    THIRRecordCopy,
-    THIRTupleLiteral,
 )
-from ...value_category import is_rvalue_source
 from .predicates import (
     _value_record_slot,
     _param_is_const,
-    copy_call_arg,
     _param_is_deep_const,
     _peel_coerce,
-    _str_literal_value_opt_arg,
     _IDENTITY_STR_COERCIONS,
-    _callable_value,
-    _ru_instance_literal_ok,
-    _span_value,
-    _coerce_disposition,
     _eligible_char,
-    _eligible_enum,
-    _eligible_ptr_union,
     _eligible_ptr_value,
     _eligible_scalar,
-    _eligible_value_union,
     _f1_container_ref,
     _f1_record,
-    record_like,
-    _method_rvalue_record_like,
-    _f1_tuple, _storage_tuple_global,
-    _mixed_own_storage_source,
-    _nested_storage_tuple,
-    _field_receiver_ok,
-    _is_borrow_ptr_local,
-    _is_borrow_tuple_source,
+    _storage_tuple_global,
     _is_string_owned,
     _is_type_param_slot,
-    _own_type_param_slot,
     _optional_ptr_borrow_name,
     _readonly_global_type,
     _pointer_slot_global_type,
-    _resolved_bytes_value,
     _resolved_str_value,
     _value_opt_scalar,
     _value_opt_view,
-    _opt_view_arg_shim,
-    _value_tuple,
 )
 from .context import (
     _LowerCtx,
-    _NO_FORMS,
-    _ONLY_BTUPLE_SLOT,
-    _ONLY_SELECT_PRVALUE,
-    SinkPos,
     ValueOptKind,
 )
 from .checks import (
-    _container_lit_elem_ok,
-    _container_storage_field,
-    _optional_container_storage_inner,
     _builtin_container_type,
-    _container_literal_shape_ok,
     _ctor_shape_ok,
-    _storage_form_tuple_return,
-    _lambda_routable,
-    _record_rvalue_source_shape,
     _stub_template_param,
     _nondef_ctor_field,
-    _ptr_union_source_ok,
-    _owned_viewfam_source_ok,
-    _keeps_str_view,
 )
 from .expressions import (
-    _ExprResultUse,
-    _ExprUse,
-    _is_move_source,
+    _declares_statement_temp,
     _lower_expr,
-    _lower_ru_literal,
-    _lower_tuple_literal,
-    _slot_literal_retype,
     _union_source_layout,
 )
+from .field_write import lower_member_init_value
 from .statements import (
     _lower_stmts,
 )
-
-# A member-init list writes a FIELD, which outlives every statement in the
-# constructor -- the MIL_INIT row, not the unnamed default a bare
-# `_lower_expr` would inherit.
-_MIL_USE = _ExprUse(pos=SinkPos.MIL_INIT, forms=_NO_FORMS)
 
 def _overload_reject_detail(func: TpyFunction, stubs, *,
                             allow_arity: bool = False,
@@ -1086,687 +1010,6 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         note(ex.reason, ex.loc)
         return None
 
-def _unwrap_copy(expr: TpyExpr, analyzer) -> TpyExpr:
-    """Peel a `copy(x)` / `tpy.copy(x)` (the explicit field-copy
-    acknowledgment) to `x`, so a `self.f = copy(p)` initializer lowers to the
-    same `f(p)` direct-init the bare `self.f = p` does (the MIL copies
-    implicitly)."""
-    if isinstance(expr, TpyCoerce):
-        inner = _unwrap_copy(expr.expr, analyzer)
-        return inner if inner is not expr.expr else expr
-    arg = copy_call_arg(expr, analyzer)
-    return arg if arg is not None else expr
-
-def _is_record_value_source(source: TpyExpr, declared: dict[str, TpyType],
-                            own_param_names: set[str], lc: _LowerCtx,
-                            ftype: TpyType) -> bool:
-    """A record-producing source that constructs an F1-record field (or its
-    pointer-repr `Optional`) *directly* via an implicit copy/construct -- as opposed
-    to a borrow `T*` that must lift through `ptr_to_optional`. Three shapes:
-
-      * a non-own **F1-record param name** (`other`) -- an implicit MIL copy;
-      * an **F1-record ctor-call rvalue** (`Inner(scalars)`) -- the F2d
-        `_record_rvalue_source_shape`, emitted as the bare `Name(args)` prvalue;
-      * an **F1-record field-read off a param** receiver (`other.g`) -- a field copy.
-
-    An own param at its LAST use moves and never reaches here; at a non-last
-    use it is a warned copy (sema's `copies ... field`) and takes the same
-    bare `field(param)` MIL as a plain record param -- admitted only when the
-    `Own[...]` payload is exactly `ftype`, so the pointer-repr `Optional`
-    field (where the payload is the Optional's inner) keeps rejecting.
-    `self.<field>` reads stay out: their pointee may be uninitialized at MIL
-    time, which is ordering-sensitive."""
-    analyzer = lc.analyzer
-    if isinstance(source, TpyName):
-        dt = declared.get(source.name)
-        if source.name in own_param_names:
-            # `ftype` is REQUIRED, not defaulted: a caller that omitted it
-            # would silently un-fire this arm rather than fail.
-            own = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-                   if dt is not None else None)
-            return (isinstance(own, OwnType) and own.wrapped == ftype
-                    and _f1_record(own.wrapped, analyzer)
-                    and _witness("mil.own_param_copy"))
-        return _f1_record(dt, analyzer)
-    if isinstance(source, TpyCall):
-        # The MIL is the second position-gated sink for a plain `@native`
-        # record ctor (`self._logger = LogHandle(name)` ->
-        # `_logger(::mylog::LogHandle(name))`): the field-type side already
-        # admits native records (`_f1_record`), only the source shape gated.
-        return (_record_rvalue_source_shape(source, analyzer)
-                or (_ctor_shape_ok(source, analyzer, native_ok=True)
-                    and _witness("mil.native_ctor")))
-    # An Own-returning METHOD-call rvalue (`self.shared = Rc.new(Val(0))` ->
-    # `shared(Rc<Val>::new_<Val>(Val(0)))`): the same direct construct; the
-    # method-call lowering validates callee/args recursively.
-    if _method_rvalue_record_like(source, analyzer):
-        return True
-    if isinstance(source, TpyFieldAccess):
-        return (isinstance(source.obj, TpyName)
-                and source.obj.name != lc.self_receiver
-                and _field_receiver_ok(source, declared, analyzer)
-                and _f1_record(analyzer.get_expr_type(source), analyzer))
-    return False
-
-def _ctor_viewfam_source_ok(value: TpyExpr, fam_t: TpyType,
-                            declared: dict[str, TpyType],
-                            lc: _LowerCtx) -> bool:
-    """A (str / String / StrView / bytes field, source) pair the tail emitter
-    can render into the MIL. The contract per field family:
-
-      * **owning str / String / bytes**: any non-name source of the slot's
-        family (`_owned_viewfam_source_ok`, the rule the field-write gate
-        shares) -- the direct-init builds the buffer from whatever the source
-        renders (`std::string`'s EXPLICIT string_view ctor fires in the MIL
-        direct-init; a bytes view takes the lowering's STORAGE convert).
-      * **StrView** (`std::string_view`): a str literal, possibly under the
-        identity `str_to_strview` coerce (static storage, lands bare), or a
-        call returning a view. A fresh value (concat, owned-str call,
-        `builds_fresh_value` coerce) rejects: the view would dangle.
-      * **names**, every family: a same-family param name, bare or under an
-        identity / materializing coerce (`std::string(name)`); for bytes the
-        `bytesview_to_bytes` coerce, whose codegen lambda IS the
-        `::tpy::Bytes(name)` copy.
-      * **BytesView fields** and `copy()`-wrapped sources reject.
-    """
-    analyzer = lc.analyzer
-    if is_bytes_view_type(fam_t):
-        return False
-    if _unwrap_copy(value, analyzer) is not value:
-        return False
-    if _owned_viewfam_source_ok(value, fam_t, analyzer):
-        return True
-    if is_bytes_type(fam_t):
-        src = value
-        if isinstance(src, TpyCoerce):
-            if src.coercion.name != "bytesview_to_bytes":
-                return False
-            src = src.expr
-        return (isinstance(src, TpyName)
-                and _resolved_bytes_value(declared.get(src.name),
-                                          analyzer) is not None)
-    view_slot = is_str_view_type(fam_t)
-    if view_slot and isinstance(value, TpyStrLiteral):
-        return True
-    src = value
-    if (view_slot and isinstance(src, (TpyCall, TpyMethodCall))
-            and is_rvalue_source(analyzer, src)
-            and _keeps_str_view(src, analyzer)):
-        return True
-    if isinstance(src, TpyCoerce):
-        if _coerce_disposition(src) not in ("identity", "materialize"):
-            return False
-        src = src.expr
-        # A StrView field's literal arrives under the identity str_to_strview
-        # coerce, which renders bare.
-        if view_slot and isinstance(src, TpyStrLiteral):
-            return True
-    return (isinstance(src, TpyName)
-            and _resolved_str_value(declared.get(src.name),
-                                    analyzer) is not None)
-
-def _mil_reject_detail(stmt: 'TpyAssign', analyzer) -> str:
-    """`ctor.mil_field.<field-fam>.<source-kind>` -- sizes the generics
-    frontier's ctor-MIL buckets; delete the split when the bucket empties."""
-    t = analyzer.get_expr_type(stmt.target)
-    if t is not None:
-        t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if isinstance(t, OwnType):
-        fam = "own"
-    elif isinstance(t, TypeParamRef):
-        fam = "tparam"
-    elif is_list(t) or is_dict(t) or is_set(t) or is_array(t):
-        fam = "container"
-    elif isinstance(t, NominalType) and t.type_args:
-        fam = "genrec_open" if contains_type_param(t) else "genrec_concrete"
-    elif isinstance(t, NominalType):
-        fam = "record" if t.is_user_record else "nominal"
-    elif isinstance(t, OptionalType):
-        fam = "optional"
-    elif isinstance(t, UnionType):
-        fam = "union"
-    else:
-        fam = type(t).__name__.removesuffix("Type").lower() if t is not None else "untyped"
-    src = stmt.value
-    while isinstance(src, TpyCoerce):
-        src = src.expr
-    if isinstance(src, TpyCall):
-        fi = src.resolved_function_info
-        kind = ("native_call" if fi is not None
-                and (fi.native_function or fi.native_name) else "call")
-    elif isinstance(src, TpyMethodCall):
-        kind = "method"
-    elif isinstance(src, TpyFieldAccess):
-        kind = "field"
-    elif isinstance(src, TpyName):
-        kind = "name"
-    else:
-        kind = type(src).__name__.removeprefix("Tpy").lower()
-    return f"ctor.mil_field.{fam}.{kind}"
-
-
-def _mil_ptr_tuple_elem_ok(elem: TpyExpr, slot: TpyType,
-                           declared: dict[str, TpyType], lc: _LowerCtx, *,
-                           own_params: 'set[str]' = frozenset()) -> bool:
-    """One pointer-repr-tuple-literal element the MIL cell admits, per SLOT
-    family (`_f1_tuple_element_ok` families):
-
-      * value-scalar slot <- a same-family scalar param name or an int/float/
-        bool literal (the shared `_slot_literal_retype` render);
-      * F1-record slot <- a same-typed record param name (capture VALUE, the
-        brace-init copies) or an explicit `copy(param)` (renders the copy-ctor
-        call `T(p)`);
-      * pointer-repr `Optional[F1-record]` slot <- a bare record param name of
-        the INNER type (the optional's converting ctor absorbs the lvalue).
-
-    A pointer-repr-optional param source (a `T*` binding) stays out of every
-    slot -- optional<T> takes no T* implicitly, and the per-element lift
-    logic that would be needed is not lowered here."""
-    analyzer = lc.analyzer
-    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
-
-    def _param_type(name: str) -> 'TpyType | None':
-        dt = declared.get(name)
-        if dt is None:
-            return None
-        return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-
-    if _eligible_scalar(bare) or _eligible_char(bare):
-        if isinstance(elem, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral)):
-            return True
-        if isinstance(elem, TpyName):
-            pt = _param_type(elem.name)
-            return pt is not None and (_eligible_scalar(pt)
-                                       or _eligible_char(pt)) and pt == bare
-        return False
-    if record_like(bare, analyzer):
-        src = _unwrap_copy(elem, analyzer)
-        if (src is elem and isinstance(src, TpyName)
-                and isinstance((_pt := _param_type(src.name)), OwnType)
-                and unwrap_readonly(_pt.wrapped) == bare
-                and _is_move_source(src, lc, own_params)):
-            # An Own[T] param at its LAST USE moves into the element slot
-            # (`{1, std::move(b)}` inside the tuple_to_storage wrap).
-            return True
-        if (_record_rvalue_source_shape(src, analyzer)
-                and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    analyzer.get_expr_type(src)))) == bare):
-            # A record ctor-call RVALUE (`Box(5)`) constructs straight into
-            # the element slot -- the spelled literal's brace-init absorbs
-            # the prvalue, no move and no lift.
-            return True
-        return (isinstance(src, TpyName)
-                and _param_type(src.name) == bare)
-    if (isinstance(bare, OptionalType) and bare.uses_pointer_repr()
-            and record_like(bare.inner, analyzer)):
-        # `None` stores the storage-form nullopt (`{std::nullopt, ..}` --
-        # the spelled literal is the STORAGE tuple, so the element is the
-        # optional's own empty value, not the borrow nullptr).
-        if isinstance(elem, TpyNoneLiteral):
-            return True
-        return (isinstance(elem, TpyName)
-                and _param_type(elem.name) == bare.inner)
-    return False
-
-
-def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
-                        own_param_names: set[str], declared: dict[str, TpyType],
-                        lc: _LowerCtx) -> bool:
-    """A hoistable own-field initializer the ctor MIL slice admits -- a
-    `self`-targeted own-field assign whose (field type, source) pair the tail
-    emitter reproduces byte-for-byte.
-
-    The `obj.name == "self"` guard is load-bearing -- `_field_receiver_ok` alone
-    would also admit `other_record.field = ...`, which is not a member init. The
-    own-field test is the same one the ctor driver applies. Routed shapes:
-
-      * **scalar** (M3a): an eligible-scalar or char value (`f(value)`).
-      * **own-param move** (M3b-move): an `Own[...]` source consumed at its last use
-        moves into a record / Optional[record] field (`f(std::move(p))`); checked
-        before the copy arms because the cascade applies the move first and never
-        also lifts via `ptr_to_optional`.
-      * **pointer-repr `Optional[F1-record]`** (M3b-copy / -rvalue): a `None`
-        (`f(std::nullopt)`), a non-own borrow source (`f(::tpy::ptr_to_optional(p))`),
-        or a record-value source that constructs the optional directly (`f(Inner(v))`
-        / `f(other.g)` / `f(other)`).
-      * **plain F1-record** (M3b-copy / -rvalue): a record-value source --
-        `copy()`-unwrapped param copy, ctor-call rvalue, or param field-read.
-
-      * **str / StrView / bytes** fields: the probed literal / param-name /
-        str-family-coerce / zero-arg-`bytes()` sources -- see
-        `_ctor_viewfam_source_ok` for the per-family contract.
-
-    `copy()` is unwrapped before the Optional check too (so `self.opt = copy(m)`
-    routes like the record arm). Further small value families:
-
-      * **Ptr[T]** -- a `None` source (`p(nullptr)`).
-      * **pointer-repr union** (F4 U2): the own-param move, `None`
-        (`u(std::monostate{})`), a borrow ptr-variant name
-        (`to_value_variant`), or a member-record ctor rvalue (`u(A(3))`).
-      * **value union** (F4 U1): `None`, a scalar literal, or an eligible name
-        -- all bare renders.
-      * **tuple**: a borrow pointer-repr tuple param (`tuple_to_storage`); a
-        value tuple's same-type name copy or spelled literal.
-      * **any Optional** -- a `None` source (`f(std::nullopt)`), inner- and
-        repr-independent; and for a POINTER-REPR Optional the own-param move
-        plus the borrow-`T*` `ptr_to_optional` lift, likewise inner-agnostic
-        (the lift keys on the field's repr, never on the inner).
-
-    Then a tail for families the cascade above claims for no arm: the
-    type-agnostic own-param move, an `Any` field's `into_any` coerce, and a
-    `bytearray` field's same-typed param copy. Field types beyond all of that
-    (BytesView; cross-module / native / generic records outside the move row)
-    reject the whole ctor."""
-    analyzer = lc.analyzer
-    if not (isinstance(stmt, TpyAssign)
-            and isinstance(stmt.target, TpyFieldAccess)
-            and isinstance(stmt.target.obj, TpyName)
-            and stmt.target.obj.name == "self"
-            and stmt.target.field in own_field_names
-            and _field_receiver_ok(stmt.target, declared, analyzer)):
-        return False
-    # A bare-name RHS that is not a param is DEMOTED to the ctor body -- a
-    # conservative "not in scope at MIL time" that covers read-only-seeded
-    # globals too -- so it must not hoist here. Returning False routes it to
-    # `_ast_demotes_init` in lower_constructor, which sends it to the body.
-    src_peeled = stmt.value
-    while isinstance(src_peeled, TpyCoerce):
-        src_peeled = src_peeled.expr
-    if (isinstance(src_peeled, TpyName)
-            and src_peeled.name not in lc.prescan.param_names):
-        return False
-    ftype = analyzer.get_expr_type(stmt.target)
-    if (_eligible_scalar(ftype) or _eligible_char(ftype)
-            or _eligible_enum(ftype, analyzer) is not None
-            or _eligible_ptr_value(ftype, analyzer)):
-        # A str-literal source into a char field is a sema type error; the
-        # reject is defensive (the target-typed `'x'` render would diverge).
-        if _eligible_char(ftype) and isinstance(stmt.value, TpyStrLiteral):
-            return False
-        # `self.p = None` into a Ptr[T] field renders `p(nullptr)` --
-        # pointee-independent.
-        if (_eligible_ptr_value(ftype, analyzer)
-                and isinstance(_unwrap_copy(stmt.value, analyzer),
-                               TpyNoneLiteral)):
-            return True
-        return True
-    if isinstance(unwrap_readonly(ftype), NoneType):
-        # `self.slot = None` on a NoneType field: `slot(std::monostate{})`.
-        # Literal source only -- the corpus has no name-source witness.
-        return isinstance(_unwrap_copy(stmt.value, analyzer), TpyNoneLiteral)
-    view_t = _resolved_str_value(ftype, analyzer)
-    if view_t is None:
-        view_t = _resolved_bytes_value(ftype, analyzer)
-    if view_t is not None:
-        # An `Own[str]` / `Own[bytes]` param consumed at its LAST USE moves
-        # into the owned field like any other own-param source -- the tail
-        # emitter runs that check ahead of its view arm, so admitting it here
-        # is the whole gap. Move sources only: at a NON-last use the
-        # family's copy renders (`::tpy::Bytes(name)`), which the
-        # view arm below does not spell for an Own-wrapped declaration.
-        if _is_move_source(_unwrap_copy(stmt.value, analyzer), lc,
-                           own_param_names):
-            return True
-        return _ctor_viewfam_source_ok(stmt.value, view_t, declared, lc)
-    if isinstance(ftype, TypeParamRef):
-        # Stage B: a generic record's `T` field. An `Own[T]` param moves; a bare
-        # `T` param copies (`first(a)`). The source renders by name only -- a
-        # TypeParamRef slot takes no borrow/storage lift -- so the MIL is
-        # that bare render. A non-param source
-        # (`self.<field>` read, ctor rvalue) rides a later cell.
-        source = _unwrap_copy(stmt.value, analyzer)
-        if _is_move_source(source, lc, own_param_names):
-            return True
-        if isinstance(source, TpyName):
-            # `Own[T]` at a NON-last use is a warned copy (sema's `may copy
-            # ... field`), and copies through the same bare `item(item)` slot
-            # as a plain `T` param -- the Own only ever selected the move.
-            dt = declared.get(source.name)
-            return _is_type_param_slot(dt) or _own_type_param_slot(dt)
-        return False
-    if _container_storage_field(ftype):
-        source = _unwrap_copy(stmt.value, analyzer)
-        if isinstance(source, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral,
-                               TpyListRepeat)):
-            # The MIL is a target-threaded position like a decl init (the field
-            # type is the render target), so the shared container-
-            # literal classifier applies verbatim. Admitted element rows are all
-            # temps_ok=False shapes, so the temps-rollback demote cannot
-            # fire on an admitted literal. `[e] * n` joins them: it
-            # materializes its own container off the threaded field type,
-            # the same value the field-write prvalue row assigns. A
-            # comprehension / coerce-wrapped source falls through to the
-            # reject.
-            return _container_literal_shape_ok(
-                source, ftype, analyzer, threaded=True)
-        if isinstance(source, (TpyListComprehension, TpySetComprehension,
-                               TpyDictComprehension)):
-            # A comprehension builds the field's container in place: its
-            # `({...})` statement-expression is self-describing and
-            # position-independent, so the member-init takes it verbatim.
-            # The comprehension's own route owns every shape reject; reads
-            # of a field the ctor BODY writes are already demoted by the
-            # caller's `expr_reads_self_field` check.
-            return True
-        if isinstance(source, TpyName):
-            # A container param copies bare into the field (`f(p)`); an Own
-            # container param at its last use moves (`f(std::move(p))`, the
-            # M3b-move arm; the param classifier admits any Own payload). Exact-shape
-            # pin: a family or element-type mismatch could carry a conversion
-            # the bare-name MIL render does not, so only a container param the
-            # resolver spells identically to the field is admitted.
-            pt = declared.get(source.name)
-            if not isinstance(pt, TpyType):
-                return False
-            pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
-            own = unwrap_optional_own(pt)
-            if own is not None:
-                pt = own.wrapped
-            return _container_storage_field(pt) and lc.render_type(pt) == lc.render_type(ftype)
-        if (isinstance(source, TpyCall) and len(source.args) <= 1
-                and not source.kwargs
-                and isinstance(source.func, TpyName)
-                and source.func.name in ("list", "dict", "set", "Array",
-                                         "bytearray")):
-            # The container ctor call (`self.items = list()` ->
-            # `items(std::vector<T>())`, `self.items = list(src)` ->
-            # `items(::tpy::construct<std::vector<T>>(src))`): the
-            # target-threaded render spells the FIELD's
-            # container type either way, so the element types come from the
-            # field, not from the call. `Array()` joins them:
-            # `data(std::array<T, N>())`. The single argument rides the
-            # ordinary call lowering, which raises on any arg shape it does
-            # not support.
-            return True
-        return False
-    pu = _eligible_ptr_union(ftype, analyzer)
-    if pu is not None:
-        # F4 U2: an `Own[A | B]` param moves into the value-variant field
-        # (`u(std::move(v))` -- the M3b-move arm verbatim, type-agnostic at
-        # lowering); a `None` stores the monostate member
-        # (`u(std::monostate{})`); a borrow ptr-variant param name lifts via
-        # `to_value_variant`; a member-record ctor rvalue constructs the
-        # variant directly (`u(A(3))`). Field / member-name sources ride
-        # later cells.
-        source = _unwrap_copy(stmt.value, analyzer)
-        if _is_move_source(source, lc, own_param_names):
-            return True
-        if isinstance(source, TpyNoneLiteral):
-            return True
-        if _ptr_union_source_ok(source, declared, analyzer, pu,
-                                allow_field=False):
-            return True
-        return (_record_rvalue_source_shape(source, analyzer)
-                and analyzer.get_expr_type(source) in pu.members)
-    if isinstance(ftype, RecursiveAliasInstanceType):
-        # A generic-instance wrapper field (`self.t = t` at `t:
-        # Own[Tree[int32]]`): the own-param move rides the type-agnostic
-        # M3b-move arm verbatim (`t(std::move(t))`); a container literal
-        # takes the ru-instance spelled render (the decl row's
-        # `_lower_ru_literal` twin). Other sources ride later cells.
-        source = _unwrap_copy(stmt.value, analyzer)
-        if _is_move_source(source, lc, own_param_names):
-            return True
-        return (isinstance(source, (TpyArrayLiteral, TpyDictLiteral))
-                and _ru_instance_literal_ok(source, analyzer))
-    if (isinstance(ftype, NominalType) and ftype.is_user_record
-            and ftype.type_args and not ftype.is_value_type()):
-        # A generic-record field whose instantiation `_f1_record` rejects
-        # (a genrec / open-T type arg -- `Box[Tree[T]]`): the Own-param
-        # move rides the same type-agnostic M3b-move arm
-        # (`data(std::move(data))`). Move sources ONLY -- call/literal
-        # sources keep their parked cells (the Rc MIL family), and the
-        # arm falls through so other generic-record shapes keep their
-        # own rows.
-        source = _unwrap_copy(stmt.value, analyzer)
-        if _is_move_source(source, lc, own_param_names):
-            _witness("mil.generic_record_move")
-            return True
-    vu = _eligible_value_union(ftype)
-    if vu is not None:
-        # F4 U1: bare renders only -- the variant converting ctor absorbs a
-        # same-union param name, a member-typed param name, a scalar literal
-        # (`u(u)` / `u(x)` / `u(5)`; lowering retypes a top-level literal to
-        # the union so the BigInt/float32 slot wraps never fire -- the union
-        # is the render target, which takes neither), and
-        # the monostate `None`. Classification peels sema coerces (a literal
-        # source arrives coerce-wrapped); eligibility checks the full expr.
-        peeled = _unwrap_copy(stmt.value, analyzer)
-        while isinstance(peeled, TpyCoerce):
-            peeled = peeled.expr
-        if isinstance(peeled, TpyNoneLiteral):
-            return True
-        return isinstance(peeled, (TpyIntLiteral, TpyFloatLiteral,
-                                   TpyBoolLiteral, TpyName))
-    ft_tuple = _f1_tuple(ftype, analyzer)
-    if ft_tuple is not None:
-        # A spelled tuple LITERAL builds the borrow-form brace-init and wraps
-        # it in `tuple_to_storage` (per-element admission in
-        # `_mil_ptr_tuple_elem_ok`; all-VALUE captures only -- a ref capture
-        # takes a slot_info path this cell does not render). Checked
-        # on the coerce-peeled RHS, NOT the copy-unwrapped one: a `copy()` of
-        # a WHOLE tuple takes the storage-form copy render.
-        lit = stmt.value
-        while isinstance(lit, TpyCoerce):
-            lit = lit.expr
-        if isinstance(lit, TpyTupleLiteral):
-            if (len(lit.elements) != len(ft_tuple.element_types)
-                    or (lit.elem_capture
-                        and any(c is not TupleElemCapture.VALUE
-                                for c in lit.elem_capture))):
-                return False
-            return all(
-                _mil_ptr_tuple_elem_ok(e, s, declared, lc,
-                                       own_params=own_param_names)
-                for e, s in zip(lit.elements, ft_tuple.element_types))
-        # A storage-form-tuple-returning CALL stores bare
-        # (`t(make_pair(5))` -- no tuple_to_storage lift, per the
-        # needs_tuple_storage_lift call verdict).
-        if (isinstance(stmt.value, (TpyCall, TpyMethodCall))
-                and _storage_form_tuple_return(
-                    stmt.value.resolved_function_info)):
-            return True
-        # A whole storage-tuple ELEMENT read stores bare too
-        # (`pair(::tpy::__getitem__(items, 0))` -- a subscript is a
-        # storage-form source, same needs_tuple_storage_lift verdict).
-        if (isinstance(stmt.value, TpySubscript)
-                and not isinstance(stmt.value.index, TpySlice)
-                and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    analyzer.get_expr_type(stmt.value)))) == ft_tuple):
-            return True
-        # A MIXED-own-tuple call stores via the NON-move tuple_to_storage
-        # (`t(::tpy::tuple_to_storage<S>(make_mixed(b)))`).
-        if _mixed_own_storage_source(stmt.value, ft_tuple, frozenset(),
-                                     analyzer) is not None:
-            return True
-        # F3: a borrow pointer-repr tuple param stores via `tuple_to_storage`
-        # (the body field-write arm's MIL sibling). No copy()-unwrap: a
-        # `copy()` of a pointer-repr tuple takes the storage-form copy
-        # render, which the MIL slice does not spell.
-        if _unwrap_copy(stmt.value, analyzer) is not stmt.value:
-            return False
-        return _is_borrow_tuple_source(stmt.value, declared, set(), analyzer)
-    vt = _value_tuple(ftype, analyzer)
-    if vt is not None:
-        # A value tuple copies bare (`t(t)` -- borrow and storage coincide;
-        # copy() unwraps to the same render) or spells its literal
-        # (`t(std::tuple<...>{...})`, the shared return/decl render). Exact
-        # type match keeps a convertible-but-differently-spelled tuple out.
-        source = _unwrap_copy(stmt.value, analyzer)
-        if isinstance(source, TpyName):
-            dt = declared.get(source.name)
-            dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-                  if dt is not None else None)
-            return dt == vt
-        if isinstance(source, TpyTupleLiteral):
-            return True
-        return False
-    nt = _nested_storage_tuple(ftype, analyzer)
-    if nt is not None:
-        # A NESTED-storage tuple literal stores its bare spelled brace-init
-        # (`q(std::tuple<...>{1, ::tpy::tuple_to_storage<S2>(..)})`); the
-        # nested members replay the wrap decision per level through the
-        # container-literal elem recursion.
-        lit = stmt.value
-        while isinstance(lit, TpyCoerce):
-            lit = lit.expr
-        return (isinstance(lit, TpyTupleLiteral)
-                and _container_lit_elem_ok(
-                    lit, ftype, declared, analyzer, threaded=True,
-                    forced=True, allow_record=True, allow_nested=True,
-                    allow_optional=True))
-    oc_inner = _optional_container_storage_inner(ftype)
-    if oc_inner is not None:
-        source = _unwrap_copy(stmt.value, analyzer)
-        if isinstance(source, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
-            # A container literal into an `Optional[container]` field. The
-            # field type is threaded and the literal render unwraps the
-            # Optional itself, so the literal is classified against the INNER
-            # -- element targets derived from the Optional would diverge.
-            # Other sources keep the Optional rows below.
-            return _container_literal_shape_ok(
-                source, oc_inner, analyzer, threaded=True)
-    if isinstance(ftype, OptionalType) and isinstance(
-            _unwrap_copy(stmt.value, analyzer), TpyNoneLiteral):
-        # `self.f = None` renders `f(std::nullopt)` for EVERY Optional field
-        # (pointer-repr or value-repr) -- inner-independent, so the F1-record
-        # inner classifier below does not apply.
-        return True
-    if isinstance(ftype, OptionalType) and not ftype.uses_pointer_repr():
-        # A value-repr Optional field (`std::optional<T>`) from an optional param
-        # name. Scalar inner: the bare same-typed copy (`f(value)`) -- param slot
-        # and field storage spell the same std::optional<T>. View inner
-        # (str/bytes): the arg-split shim (`_opt_view_arg_shim`) -- the param's
-        # borrow `optional<view>` -> the field's owned `optional<owned>`
-        # (`f(v ? std::make_optional(<conv>(*v)) : std::nullopt)`).
-        source = _unwrap_copy(stmt.value, analyzer)
-        if (_value_opt_scalar(ftype, analyzer) is not None
-                and isinstance(_peel_coerce(source),
-                               (TpyIntLiteral, TpyFloatLiteral,
-                                TpyBoolLiteral))):
-            # `self.slot = 1` on `int | None` -> `slot(1)`: the converting
-            # ctor absorbs the bare (target-retyped) literal.
-            return True
-        if _str_literal_value_opt_arg(_peel_coerce(source), ftype):
-            # `self.s = "xy"` on `str | None` -> `s("xy")`: the bare
-            # literal renders at a value-repr Optional[str] slot.
-            # str ONLY -- `_value_opt_view` also covers bytes, whose owned
-            # field needs the view->owned copy this bare render omits.
-            return True
-        if not isinstance(source, TpyName):
-            return False
-        dt = declared.get(source.name)
-        if dt is None:
-            return False
-        dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-        if _value_opt_scalar(ftype, analyzer) is not None:
-            # Either the same `std::optional<T>` (a plain copy) or the bare
-            # INNER scalar, which `std::optional<T>`'s converting ctor absorbs
-            # -- both render bare (`value(value)`), no wrap either
-            # way. The inner is a cheap scalar by `_value_opt_scalar`'s own
-            # verdict, so matching it is enough to stay in the routed family.
-            return dt == ftype or dt == unwrap_readonly(
-                unwrap_ref_type(unwrap_send_sync(ftype.inner)))
-        if _value_opt_view(ftype, analyzer) is not None:
-            return _opt_view_arg_shim(dt, ftype, analyzer)
-        if _value_tuple(unwrap_readonly(ftype.inner), analyzer) is not None:
-            # A value-TUPLE inner copies bare from the same-typed param
-            # (`tup(tup)`): borrow and storage coincide for a value tuple, so
-            # the param slot and the field spell the same
-            # `std::optional<std::tuple<...>>` and no lift renders.
-            return dt == ftype
-        return False
-    if _span_value(ftype):
-        # A `std::span<T>` field copies bare from a same-typed span param
-        # name (`items(items)`) -- a view, so borrow and storage coincide and
-        # no lift renders. Other sources (array locals taking the implicit
-        # span conversion, slices) keep their own renders.
-        source = _unwrap_copy(stmt.value, analyzer)
-        if not isinstance(source, TpyName):
-            return False
-        dt = declared.get(source.name)
-        if dt is None:
-            return False
-        dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-        return _span_value(dt) and dt == ftype
-    ft_bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ftype)))
-    if _callable_value(ft_bare):
-        # A `std::function<...>` field copies bare from a same-typed callable
-        # param name (`on_event(cb)`) or a routable LAMBDA literal
-        # (`self.action = lambda: print(0)` -> `action([]() { ... })` -- the
-        # closure converts implicitly in the member direct-init). A
-        # self-capturing lambda stays out (self_capturable defaults False:
-        # the MIL never confirmed a receiver handle to copy). The
-        # `Send[...]` wrapper is erased in storage form on BOTH sides, so it
-        # is peeled off the field type as well as the param's -- comparing a
-        # peeled param against an unpeeled field would reject a pair that
-        # spells identically (`std::function<void(int32_t)> cb : cb(cb)`).
-        source = _unwrap_copy(stmt.value, analyzer)
-        if isinstance(source, TpyLambda):
-            return _lambda_routable(source, analyzer)
-        if not isinstance(source, TpyName):
-            return False
-        dt = declared.get(source.name)
-        if dt is None:
-            return False
-        dt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-        return _callable_value(dt) and dt == ft_bare
-    if isinstance(ftype, OptionalType) and ftype.uses_pointer_repr():
-        # The move and the `ptr_to_optional` lift are both INNER-AGNOSTIC: the
-        # lift keys on the field's pointer repr alone, never on
-        # what is inside, so a record / container / bytearray / type-param
-        # inner all take the same wrap. An OWN param -- the same storage
-        # optional by rvalue-ref -- MOVES bare (`tag(std::move(tag))`, the
-        # type-agnostic M3b-move arm). Record inners additionally take the
-        # `None` and record-value sources below; literals keep their own
-        # renders unwitnessed.
-        source = _unwrap_copy(stmt.value, analyzer)
-        if (_is_move_source(source, lc, own_param_names)
-                or _is_borrow_ptr_local(source, declared, set())):
-            return True
-    is_opt = (isinstance(ftype, OptionalType) and ftype.uses_pointer_repr()
-              and _f1_record(ftype.inner, analyzer))
-    if not (is_opt or _f1_record(ftype, analyzer)):
-        # Tail rows for field families no arm of the cascade above claims.
-        # Each rides a render the tail emitter already spells type-agnostically,
-        # so admission is the only site that distinguishes them -- hence the
-        # classifier-row faces here rather than at the shared render.
-        tail_src = _unwrap_copy(stmt.value, analyzer)
-        if _is_move_source(tail_src, lc, own_param_names):
-            # The M3b-move arm is type-agnostic (`p(std::move(p))`); the
-            # cascade simply never reaches it for a tuple of type params or a
-            # cross-module recursive-alias union. Placed BELOW the cascade so
-            # a family with its own copy row keeps deciding for itself.
-            _witness("mil.unclaimed_family_move")
-            return True
-        if (isinstance(ftype, AnyType) and isinstance(tail_src, TpyCoerce)
-                and tail_src.coercion.name == "into_any"):
-            # An `Any` field from sema's into_any coerce: the coercion node
-            # carries its own `::tpy::make_any(...)` render, so the tail
-            # lowers the source bare.
-            _witness("mil.any_coerce")
-            return True
-        return False
-    source = _unwrap_copy(stmt.value, analyzer)
-    # M3b-move: an own-param at its last use moves into the field.
-    if _is_move_source(source, lc, own_param_names):
-        return True
-    if not is_opt and isinstance(stmt.value, TpyIfExpr):
-        # A record TERNARY of prvalue arms direct-initializes the field
-        # (`_ctx((c != nullptr) ? Ctx((*c)) : make_ctx())`); the arms gate
-        # themselves at lowering, so admission here only claims the slot.
-        return True
-    if is_opt:
-        # None / a non-own borrow `T*` (pointer-repr Optional param, lifts via
-        # ptr_to_optional) / a record-value source (constructs the optional directly).
-        # pointers empty: a ctor MIL has no locals.
-        return (isinstance(source, TpyNoneLiteral)
-                or _is_borrow_ptr_local(source, declared, set())
-                or _is_record_value_source(source, declared, own_param_names,
-                                           lc, ftype))
-    return _is_record_value_source(source, declared, own_param_names, lc,
-                                   ftype)
-
 def lower_constructor(record, init_method: TpyFunction, analyzer,
                       render_type=None,
                       self_type: 'TpyType | None' = None,
@@ -1845,17 +1088,11 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
             if i in mut and isinstance(ptype, TpyType) and _is_string_owned(ptype):
                 note("ctor.param_mutated_string")
                 return None
-    # Own[T] / Own[T]|None params: their MIL sources move (M3b-move), so M3b-copy
-    # rejects them as record-field sources.
-    own_param_names = {pname for pname, ptype in init_method.params
-                       if isinstance(ptype, TpyType)
-                       and unwrap_optional_own(unwrap_readonly(
-                           unwrap_send_sync(ptype))) is not None}
     declared: dict[str, TpyType] = {n: t for n, t in init_method.params}
     declared["self"] = self_type
     own_field_names = {f.name for f in record.fields}
     # lc is built before the lowering loop: the move check (`_is_move_source`) reads
-    # `analyzer.ctx.all_last_uses` through it.
+    # sema's last-use verdict (`analyzer.ctx.is_last_use`) through it.
     lc = _LowerCtx(init_method, analyzer, render_type, self_receiver="self",
                    record_name=record.name,
                    render_type_stored=render_type_stored,
@@ -1882,8 +1119,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         mil_done_fields: set[str] = set()  # own fields already hoisted
         body_done_fields: set[str] = set()  # own fields whose init went to the body
         # The EMITTED member order, which decides the order the member inits
-        # run in -- not the `__init__` assignment order they are written in.
-        # The two agree only where `reorder_fields_by_init` applied.
+        # run in; own fields take `__init__` assignment order
+        # (`reorder_fields_by_init`), so it is the order they are written in.
         field_index = {f.name: i for i, f in enumerate(record.fields)}
         message_init = _lower_message_init(init_method, ri, declared, lc)
         if message_init is not None:
@@ -1918,7 +1155,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                 body_stmts.append(stmt)
                 continue
             # An inherited-field write (`self.<base field> = expr`, M3d) goes to the body --
-            # the base ctor owns the MIL slot -- WITHOUT breaking the hoist chain. It is
+            # the base ctor owns the MIL slot -- WITHOUT breaking the hoist chain
+            # (BUGS.md#inherited-field-write-runs-after-member-inits). It is
             # tracked so a later own-field hoist that reads it demotes (below). A property
             # setter (also a non-own self field) lands here too and rejects via body
             # ineligibility (`_field_receiver_ok`). The tracking set matters only on a
@@ -1929,8 +1167,6 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                 body_stmts.append(stmt)
                 continue
             is_own_init = _is_self_own_field_assign(stmt, own_field_names)
-            ast_demotes = is_own_init and _ast_demotes_init(
-                stmt, lc.prescan.param_names, nested_def_names, body_local_names)
             # A second assignment to an already-hoisted field is a
             # re-assignment, not a member init: the list holds one entry per
             # member, so this one runs in the body over the value it set.
@@ -1947,42 +1183,38 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
             reads_default_only = (
                 is_own_init and not reads_inherited
                 and _reads_self_fields(stmt.value, nsdmi_only_fields))
-            reads_written_field = reads_inherited or reads_default_only
-            demotes = (chain_broken or ast_demotes or reassigns_hoisted
-                       or reads_written_field)
-            # Which own fields hold a value where this init will actually run.
-            # In the member init list that is the fields laid out BEFORE the
-            # target (C++ runs member inits in declaration order) that the
-            # chain has also already hoisted -- source order and layout order
-            # can disagree, since the assignment-order reorder does not reach a
-            # record with bases. In the body it is every field the list set,
-            # every class-level default (an NSDMI runs before the body), and
-            # every body init already emitted.
+            demote_reason = (
+                _member_init_demote_reason(
+                    stmt, chain_broken, nested_def_names, body_local_names,
+                    reads_default_only, reads_inherited)
+                if is_own_init else None)
+            demotes = (chain_broken or reassigns_hoisted
+                       or demote_reason is not None)
+            # Which own fields hold a value where this init will actually run:
+            # in the member init list, the fields the list already set (own
+            # fields are laid out in assignment order, so the list runs in
+            # source order); in the body, also every class-level default (an
+            # NSDMI runs before the body) and every body init already emitted.
             unready: set[str] = set()
             if is_own_init:
-                if demotes:
-                    readable = (mil_done_fields | nsdmi_only_fields
-                                | body_done_fields)
-                else:
-                    target_idx = field_index[stmt.target.field]
-                    readable = {f for f in mil_done_fields
-                                if field_index[f] < target_idx}
+                readable = (mil_done_fields | nsdmi_only_fields
+                            | body_done_fields if demotes
+                            else mil_done_fields)
                 unready = own_field_names - readable
             if is_own_init and _reads_self_fields(stmt.value, unready):
                 raise ThirUnsupported("ctor.mil_reads_unready_field", loc=stmt.loc)
-            if (not chain_broken and is_own_init and not reassigns_hoisted
-                    and not reads_written_field and not ast_demotes):
+            if is_own_init and not demotes:
                 mil_node = _attempt_ctor_mil_init(
-                    stmt, own_param_names, own_field_names, declared, lc)
+                    stmt, own_field_names, declared, lc)
                 if mil_node is not None:
                     mil_node = replace(mil_node, field_identity=identities.get(stmt.target.field))
                     field_inits.append(mil_node)
                     field_init_names.append(stmt.target.field)
                     mil_done_fields.add(stmt.target.field)
                     continue
-                # DYNAMIC demote (the probe-registers-a-temp trigger,
-                # e.g. a varargs std::array in the init): the init goes to
-                # the body like the static demotes below.
+                # The source needs a statement temporary (an argument temp,
+                # a `*args` array, an `and` / `or` operand held once): the
+                # init goes to the body like the readiness demotes below.
                 _reject_nondef_ctor_field(stmt, analyzer,
                                           emit_prims.CTOR_DEMOTE_NEEDS_TEMP)
                 _witness("mil.demote_probe")
@@ -1994,13 +1226,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                 # A re-assignment needs no default-construction check: the
                 # member initializer list already gave the field its value.
                 if not reassigns_hoisted:
-                    _reject_nondef_ctor_field(
-                        stmt, analyzer,
-                        _ctor_demote_reason(stmt, chain_broken, nested_def_names,
-                                            lc.prescan.param_names,
-                                            body_local_names,
-                                            reads_default_only))
-                if not chain_broken and ast_demotes:
+                    _reject_nondef_ctor_field(stmt, analyzer, demote_reason)
+                if not chain_broken and demote_reason is not None:
                     _witness("mil.demote_mirror")
                 body_done_fields.add(stmt.target.field)
             # Demote to the body. Demoting breaks the chain: the MIL runs
@@ -2009,7 +1236,6 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
             chain_broken = True
             body_stmts.append(stmt)
         if message_init is not None:
-            # Written in member order, which C++ runs the list in anyway.
             msg_idx = field_index[qnames.EXCEPTION_MESSAGE_FIELD]
             pos = sum(1 for n in field_init_names if field_index[n] < msg_idx)
             field_inits.insert(pos, replace(
@@ -2045,25 +1271,19 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         note(ex.reason, ex.loc)
         return None
 
-_MIL_DEMOTE_TAGS = frozenset({
-    # The probe-temp class ONLY: a reject at an init that belongs in the MIL
-    # must fail the whole ctor -- demoting one would emit body code where a
-    # MIL entry belongs. Extend this whitelist one witnessed shape at a time.
-    "call.vararg_pack_flush",
-})
-
-
-def _attempt_ctor_mil_init(stmt, own_param_names, own_field_names,
-                           declared: dict, lc) -> 'THIRExpr | None':
-    """Try one MIL field-init lowering; None = dynamically demote (the
-    whitelisted probe-temp rejects only -- every other ThirUnsupported
-    re-raises and rejects the whole ctor). The attempt's side effects
-    roll back locally: `declared` by copy, the branch-scoped lc name-sets
-    via branch_scope, the FUNCTION-scoped walrus sets by explicit copy
-    (branch_scope deliberately skips them, and a walrus ARG can lower
-    before the whitelisted reject fires -- `f(y := g(), *rest)`), and the
-    faces / move-verdict journals by delta subtraction (the flat
-    one-window journal design forbids a nested begin/rollback here)."""
+def _attempt_ctor_mil_init(stmt, own_field_names, declared: dict,
+                           lc) -> 'THIRMilInit | None':
+    """Lower one member-init; None = demote it to the body, because its
+    source needs a declaration hoisted before a statement and the list has
+    no statement to host one. The source is first lowered as the list takes
+    it; a reject there is probed once more with temporaries admitted, and a
+    source that lowers only with one demotes -- every other reject rejects
+    the whole ctor. Each attempt's side effects roll back: `declared` by
+    copy, the branch-scoped lc name-sets via branch_scope, the
+    FUNCTION-scoped walrus sets by explicit copy (branch_scope deliberately
+    skips them), and the faces / move-verdict journals by delta subtraction
+    (the flat one-window journal design forbids a nested begin/rollback
+    here)."""
     from ...compilation_context import get_current_compiler
     compiler = get_current_compiler()
     decl_snap = dict(declared)
@@ -2075,17 +1295,8 @@ def _attempt_ctor_mil_init(stmt, own_param_names, own_field_names,
     fj_snap = dict(fj) if fj is not None else None
     mj = getattr(compiler, "_move_verdict_journal", None)
     mj_snap = set(mj) if mj is not None else None
-    try:
-        with lc.branch_scope():
-            return _lower_ctor_mil_init(
-                stmt, own_param_names, own_field_names, declared, lc)
-    except ThirUnsupported as ex:
-        if ex.reason not in _MIL_DEMOTE_TAGS:
-            # A member-init never reaches the statement chokepoint, so this is
-            # the innermost frame that knows which source line rejected.
-            if ex.loc is None:
-                ex.loc = getattr(stmt, "loc", None)
-            raise
+
+    def rollback() -> None:
         declared.clear()
         declared.update(decl_snap)
         lc.walrus_predeclared.clear()
@@ -2093,14 +1304,71 @@ def _attempt_ctor_mil_init(stmt, own_param_names, own_field_names,
         lc.walrus_slot_locals.clear()
         lc.walrus_slot_locals.update(walrus_slot_snap)
         if compiler is not None:
-            compiler._thir_face_witnesses = fw_snap
+            compiler._thir_face_witnesses = dict(fw_snap)
             if fj is not None:
-                compiler._thir_face_journal = fj_snap
+                compiler._thir_face_journal = dict(fj_snap)
             if mj is not None:
-                for key in mj - mj_snap:
+                for key in compiler._move_verdict_journal - mj_snap:
                     compiler._move_verdict_thir.pop(key, None)
-                compiler._move_verdict_journal = mj_snap
-        return None
+                compiler._move_verdict_journal = set(mj_snap)
+
+    def attempt(probe: bool) -> THIRMilInit:
+        with lc.branch_scope(), lc.moves_only(lc.own_params):
+            return THIRMilInit(
+                field_cpp=escape_cpp_name(stmt.target.field),
+                value=lower_member_init_value(stmt, lc, declared,
+                                              temps_probe=probe))
+
+    try:
+        node = attempt(False)
+    except ThirUnsupported as first:
+        # A member-init never reaches the statement chokepoint, so this is
+        # the innermost frame that knows which source line rejected.
+        if first.loc is None:
+            first.loc = getattr(stmt, "loc", None)
+        rollback()
+        try:
+            node = attempt(True)
+        except ThirUnsupported:
+            rollback()
+            raise first
+    # Some sources hold an operand in a temporary whatever the slot allows
+    # (an `and` / `or` evaluates its left operand once), so the verdict is
+    # read off the lowered node, not off which attempt succeeded.
+    if not _declares_statement_temp(node.value):
+        return node
+    rollback()
+    return None
+
+
+def _member_init_demote_reason(stmt: TpyAssign, chain_broken: bool,
+                                nested_def_names: set[str],
+                                body_local_names: set[str],
+                                reads_default_only: bool,
+                                reads_inherited: bool) -> 'str | None':
+    """Why this own-field init cannot run in the member-init list, or None
+    when it can -- its READINESS, decided once, before lowering. The list
+    runs before the body, so an init that follows a demoted statement keeps
+    source order only in the body; a source that reads a name the body binds
+    (a local, a nested def, a walrus target) has nothing to read there; and
+    one that reads an inherited field the body writes, or a field with only a
+    class-level default, reads storage only the body has in place. The
+    reason is part of the user-visible sentence when the field cannot be
+    default-constructed, so the first trigger in this order names it."""
+    if chain_broken:
+        return emit_prims.CTOR_DEMOTE_PRIOR_STATEMENT
+    names = collect_name_refs(stmt.value)
+    if names & nested_def_names:
+        return emit_prims.CTOR_DEMOTE_NESTED_DEF
+    if names & body_local_names:
+        return emit_prims.CTOR_DEMOTE_BODY_LOCAL
+    if contains_named_expr(stmt.value):
+        return emit_prims.CTOR_DEMOTE_BINDS_LOCAL
+    if reads_default_only:
+        return emit_prims.CTOR_DEMOTE_READS_DEFAULT_ONLY
+    if reads_inherited:
+        return emit_prims.CTOR_DEMOTE_READS_INHERITED
+    return None
 
 
 def _is_self_nonown_field_assign(stmt: TpyStmt, own_field_names: set[str]) -> bool:
@@ -2112,60 +1380,6 @@ def _is_self_nonown_field_assign(stmt: TpyStmt, own_field_names: set[str]) -> bo
             and isinstance(stmt.target.obj, TpyName)
             and stmt.target.obj.name == "self"
             and stmt.target.field not in own_field_names)
-
-def _ast_demotes_init(stmt: TpyAssign, param_names: set[str],
-                      nested_def_names: set[str],
-                      body_local_names: set[str]) -> bool:
-    """Whether this own-field init demotes to the ctor body regardless
-    of the chain state -- the source triggers: a nested-def
-    name, a bare name that is not a param (not in scope at MIL time; covers
-    module globals and `self`), any body-local reference in the RHS, or a
-    walrus in the RHS (the local it binds is declared in the body, so the
-    list has nothing to assign it to).
-    Rejecting the ctor here would be safe but needlessly conservative;
-    hoisting one would spell a name not yet in scope. The temps trigger
-    (`temps.rollback` -> demote) is NOT handled here: lowering rejects
-    temp-registering sources instead."""
-    src = stmt.value
-    while isinstance(src, TpyCoerce):
-        src = src.expr
-    if isinstance(src, TpyName) and (src.name in nested_def_names
-                                     or src.name not in param_names):
-        return True
-    return bool((body_local_names
-                 and (collect_name_refs(stmt.value) & body_local_names))
-                or contains_named_expr(stmt.value))
-
-
-def _ctor_demote_reason(stmt: TpyAssign, chain_broken: bool,
-                        nested_def_names: set[str], param_names: set[str],
-                        body_local_names: set[str],
-                        reads_default_only: bool = False) -> str:
-    """Which demote trigger fired for this own-field init, in the order the
-    triggers are tested.
-
-    The trigger is part of the user-visible sentence, so a later one standing in
-    for an earlier one is a wrong message, not a differently-worded right one.
-    Reached only for an init that IS demoted, so the last arm needs no test of
-    its own -- nothing else can have sent it here."""
-    if chain_broken:
-        return emit_prims.CTOR_DEMOTE_PRIOR_STATEMENT
-    src = stmt.value
-    while isinstance(src, TpyCoerce):
-        src = src.expr
-    if isinstance(src, TpyName):
-        if src.name in nested_def_names:
-            return emit_prims.CTOR_DEMOTE_NESTED_DEF
-        if src.name not in param_names:
-            return emit_prims.CTOR_DEMOTE_BODY_LOCAL
-    if body_local_names and (collect_name_refs(stmt.value) & body_local_names):
-        return emit_prims.CTOR_DEMOTE_BODY_LOCAL
-    if contains_named_expr(stmt.value):
-        return emit_prims.CTOR_DEMOTE_BINDS_LOCAL
-    if reads_default_only:
-        return emit_prims.CTOR_DEMOTE_READS_DEFAULT_ONLY
-    return emit_prims.CTOR_DEMOTE_READS_INHERITED
-
 
 def _reject_nondef_ctor_field(stmt: TpyAssign, analyzer, reason: str) -> None:
     """Raise when a DEMOTED own-field init targets a field whose type has no
@@ -2487,438 +1701,6 @@ def _lower_base_init(stmt: TpyStmt, ri: RecordInfo, declared: dict[str, TpyType]
     return (THIRBaseInit(base_cpp=record_base_cpp(ri, base_type),
                          args=tuple(args)),
             base_type)
-
-def _lower_ctor_mil_init(
-        stmt: TpyAssign, own_param_names: set[str], own_field_names: set[str],
-        declared: dict[str, TpyType], lc: _LowerCtx) -> THIRMilInit:
-    """Lower one hoisted field initializer into a member-init-list entry.
-
-    The record/Optional arms:
-
-      * an **own-param at last use** moves (`move=True`, plain source -- never
-        `ptr_to_optional`, per the cascade) [M3b-move];
-      * a **scalar / char** -> the lowered value [M3a];
-      * a pointer-repr **Optional[F1-record]** -> a STORAGE `None` literal
-        (`std::nullopt`), a non-own borrow `T*` lifted via `ptr_to_optional` [M3b-copy],
-        or a record-value source (ctor-call / field-read / param copy) that constructs
-        the optional directly [M3b-rvalue];
-      * a plain **F1-record** -> the `copy()`-unwrapped record-value source [M3b-copy/-rvalue];
-      * an owned **bytes** field -> a view (span) source copies via the S6
-        STORAGE convert (`::tpy::Bytes(...)`, or the
-        `bytesview_to_bytes` coerce lambda);
-        an owned source (bytes literal / `bytes()` rvalue) lands bare;
-      * a **str / StrView** field -> the bare lowered source (std::string's
-        EXPLICIT string_view ctor fires in the MIL direct-init; a
-        `strview_to_str` coerce materializes itself);
-      * a builtin **container** (list / dict / set / Array) -> the shared
-        container-literal lowering (the MIL is target-threaded like a decl
-        init), a bare container-param copy, or the Own-param move above;
-      * the small value families: `Ptr[T]` `None` (`nullptr`), pointer-repr
-        union `None`/lift/rvalue (`std::monostate{}` / `to_value_variant` /
-        direct construct), value-union bare renders (a top literal retyped to
-        the union), pointer-repr tuple `tuple_to_storage`, value-tuple bare
-        copy / spelled literal, and `None` into any other Optional
-        (`std::nullopt`)."""
-    analyzer = lc.analyzer
-    if not _ctor_field_init_ok(
-            stmt, own_field_names, own_param_names, declared, lc):
-        raise ThirUnsupported(_mil_reject_detail(stmt, analyzer))
-    ftype = analyzer.get_expr_type(stmt.target)
-    loc = getattr(stmt, "loc", None)
-    field_cpp = escape_cpp_name(stmt.target.field)
-    source = _unwrap_copy(stmt.value, analyzer)
-    if (_container_storage_field(ftype) and isinstance(source, TpyCall)
-            and not source.args and not source.kwargs):
-        # `self.items = list()` -> `items(std::vector<T>())`: the FIELD type
-        # is the render target, so the spelling comes from the field
-        # and the call default-constructs it. Spelled here rather than lowered
-        # as a call -- the callee is a builtin type name, not a function.
-        _witness("mil.container_default")
-        return THIRMilInit(
-            field_cpp=field_cpp,
-            value=THIRCall(result_type=ftype, callee=source.func.name,
-                           args=(), cpp_template=f"{lc.render_type(ftype)}()",
-                           loc=loc))
-    if (_container_storage_field(ftype)
-            and isinstance(source, (TpyListComprehension, TpySetComprehension,
-                                    TpyDictComprehension))):
-        # The comprehension's stmt-expr goes straight into the member-init
-        # (`buffer(({ std::vector<V3> __result; ...; std::move(__result); }))`)
-        # -- the same render the decl-init position emits. Late import:
-        # comprehensions imports this module.
-        from .comprehensions import _lower_comprehension
-        _witness("mil.container_comp")
-        return THIRMilInit(
-            field_cpp=field_cpp,
-            value=_lower_comprehension(source, ftype, lc, declared,
-                                       lc.pointers))
-    if _container_storage_field(ftype):
-        if isinstance(source, TpyListRepeat):
-            _witness("mil.container_repeat")
-        else:
-            _witness("mil.container_literal"
-                     if isinstance(source, (TpyArrayLiteral, TpyDictLiteral,
-                                            TpySetLiteral))
-                     else "mil.container_name")
-    if _is_move_source(source, lc, own_param_names):
-        return THIRMilInit(
-            field_cpp=field_cpp,
-            value=_lower_expr(
-                source, lc, declared, allow_unrouted_name=True),
-            move=True)
-    if (isinstance(ftype, RecursiveAliasInstanceType)
-            and isinstance(source, (TpyArrayLiteral, TpyDictLiteral))):
-        # A container literal into a generic-instance wrapper field: the
-        # ru-instance spelled render, target-threaded like the decl init.
-        _witness("mil.genrec_literal")
-        return THIRMilInit(
-            field_cpp=field_cpp,
-            value=_lower_ru_literal(source, analyzer.get_expr_type(source),
-                                    lc, declared))
-    if (_eligible_ptr_value(ftype, analyzer)
-            and isinstance(source, TpyNoneLiteral)):
-        # None into a `Ptr[T]` cell: a non-STORAGE None renders `nullptr`.
-        _witness("mil.ptr_none")
-        return THIRMilInit(field_cpp=field_cpp,
-                           value=THIRLiteral(result_type=ftype, value=None,
-                                             form=Form.VALUE, loc=loc))
-    if (_eligible_ptr_value(ftype, analyzer)
-            and isinstance(source, TpyCall) and source.call_type is not None):
-        # `Ptr[T]()` into a `Ptr[T]` cell: the MIL direct-init IS a storage
-        # sink, so thread STORAGE use past the call-use gate; the render is
-        # the position-independent typed nullptr (ctor.ptr_null).
-        return THIRMilInit(
-            field_cpp=field_cpp,
-            value=_lower_expr(source, lc, declared,
-                              use=_ExprUse(result=_ExprResultUse.STORAGE)))
-    if (isinstance(unwrap_readonly(ftype), NoneType)
-            and isinstance(source, TpyNoneLiteral)):
-        # None into the NoneType cell: the STORAGE literal spells the
-        # `std::monostate{}` the MIL direct-init needs.
-        _witness("mil.none_unit")
-        return THIRMilInit(field_cpp=field_cpp,
-                           value=THIRLiteral(result_type=ftype, value=None,
-                                             form=Form.STORAGE, loc=loc))
-    if (_eligible_scalar(ftype) or _eligible_char(ftype)
-            or _eligible_enum(ftype, analyzer) is not None):
-        return THIRMilInit(field_cpp=field_cpp,
-                           value=_slot_literal_retype(
-                               _lower_expr(stmt.value, lc, declared), ftype,
-                               lc))
-    bytes_t = _resolved_bytes_value(ftype, analyzer)
-    if bytes_t is not None:
-        _witness("mil.bytes_field")
-        if (isinstance(source, TpyCoerce)
-                and source.coercion.name == "bytesview_to_bytes"):
-            # The coerce's codegen lambda IS the view->owned bytes copy;
-            # spell it through the S6 STORAGE convert (the identical
-            # `::tpy::Bytes(...)` render) over the inner name.
-            v = THIRFormConvert(result_type=bytes_t,
-                                value=_lower_expr(source.expr, lc, declared),
-                                form=Form.STORAGE, move=False, loc=loc)
-        else:
-            # The direct-init owns the value, so a field-read source (`o.data`)
-            # is the bare member read the sink copies from.
-            v = _lower_expr(source, lc, declared, use=_MIL_USE,
-                            field_owned_str_ok=True)
-            # A view (span) source into the owned vector field copies to
-            # owned -- vector has no span ctor; owned sources (literal /
-            # `bytes()` rvalue) land bare.
-            if v.form is Form.BORROW:
-                v = THIRFormConvert(result_type=bytes_t, value=v,
-                                    form=Form.STORAGE, move=False, loc=loc)
-        return THIRMilInit(field_cpp=field_cpp, value=v)
-    if _resolved_str_value(ftype, analyzer) is not None:
-        # str/StrView fields take the BARE render: std::string's EXPLICIT
-        # string_view ctor fires in the MIL direct-init (no wrap is added
-        # there); a sema `strview_to_str` coerce materializes itself. A
-        # field-read source (`o.name`) is the bare member read, as at the
-        # field-write sink.
-        _witness("mil.str_field")
-        return THIRMilInit(field_cpp=field_cpp,
-                           value=_lower_expr(source, lc, declared,
-                                             use=_MIL_USE,
-                                             field_owned_str_ok=True))
-    pu = _eligible_ptr_union(ftype, analyzer)
-    if pu is not None:
-        # F4 U2 cells: monostate `None`; a borrow ptr-variant name lifting via
-        # `to_value_variant` (STORAGE convert -- the body field-write arm's
-        # MIL sibling); a member-record ctor rvalue constructing the variant
-        # directly.
-        if isinstance(source, TpyNoneLiteral):
-            _witness("mil.union_none")
-            v: THIRExpr = THIRLiteral(result_type=pu, value=None,
-                                      form=Form.STORAGE, loc=loc)
-        elif isinstance(source, TpyName):
-            _witness("mil.union_lift")
-            v = THIRFormConvert(result_type=ftype, value=_lower_expr(source, lc, declared, use=_MIL_USE),
-                                form=Form.STORAGE, move=False, loc=loc)
-        else:
-            _witness("mil.union_rvalue")
-            v = _lower_expr(source, lc, declared, use=_MIL_USE)
-        return THIRMilInit(field_cpp=field_cpp, value=v)
-    vu = _eligible_value_union(ftype)
-    if vu is not None:
-        # F4 U1 cells render bare (the variant converting ctor does the work);
-        # `None` is the monostate member. A top-level int/float literal
-        # (possibly coerce-wrapped by sema) retypes to the union so the
-        # BigInt wrap / float32 suffix keyed on the literal's own scalar type
-        # never fires -- the union is the render target, which takes neither.
-        peeled = source
-        while isinstance(peeled, TpyCoerce):
-            peeled = peeled.expr
-        if isinstance(peeled, TpyNoneLiteral):
-            _witness("mil.union_none")
-            return THIRMilInit(field_cpp=field_cpp,
-                               value=THIRLiteral(result_type=vu, value=None,
-                                                 form=Form.STORAGE, loc=loc))
-        _witness("mil.value_union")
-        v = _lower_expr(source, lc, declared, use=_MIL_USE)
-        if isinstance(v, THIRLiteral) and isinstance(v.value, (int, float)):
-            v = replace(v, result_type=vu)
-        return THIRMilInit(field_cpp=field_cpp, value=v)
-    if _f1_tuple(ftype, analyzer) is not None:
-        lit = stmt.value
-        while isinstance(lit, TpyCoerce):
-            lit = lit.expr
-        if isinstance(lit, TpyTupleLiteral):
-            # The spelled borrow-form brace-init wrapped in `tuple_to_storage`
-            # (`t(::tpy::tuple_to_storage<S>(S{e1, e2}))`): the inner literal
-            # spells the SAME storage tuple type S (to_cpp of the field slot),
-            # elements per `_mil_ptr_tuple_elem_ok` -- a bare param name
-            # (brace-init copies / optional's converting ctor absorbs), an
-            # explicit `copy(p)` as the copy-ctor call `T(p)`, or a scalar.
-            _witness("mil.ptr_tuple_literal")
-            ft_tuple = _f1_tuple(ftype, analyzer)
-
-            def elem(i: int) -> THIRExpr:
-                e = lit.elements[i]
-                slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    ft_tuple.element_types[i])))
-                if isinstance(e, TpyNoneLiteral):
-                    # `std::nullopt` in the storage-spelled inner literal.
-                    return THIRLiteral(result_type=slot, value=None,
-                                       form=Form.STORAGE,
-                                       loc=getattr(e, "loc", None))
-                src = _unwrap_copy(e, analyzer)
-                if (src is e and isinstance(e, TpyName)
-                        and _is_move_source(e, lc, own_param_names)):
-                    # The Own-param element's last-use move
-                    # (`{1, std::move(b)}`).
-                    return THIRMove(
-                        result_type=slot,
-                        value=_lower_expr(e, lc, declared,
-                                          allow_unrouted_name=True),
-                        form=Form.STORAGE, loc=getattr(e, "loc", None))
-                if src is not e and isinstance(src, TpyName):
-                    st = declared.get(src.name)
-                    st = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
-                          if st is not None else slot)
-                    return THIRRecordCopy(
-                        result_type=slot, cpp_type=lc.render_type(st),
-                        value=_lower_expr(src, lc, declared),
-                        form=Form.STORAGE, loc=getattr(e, "loc", None))
-                el = _lower_expr(e, lc, declared)
-                if _eligible_scalar(slot) or _eligible_char(slot):
-                    el = _slot_literal_retype(el, slot, lc)
-                return el
-
-            inner = THIRTupleLiteral(
-                result_type=ftype,
-                elements=tuple(elem(i)
-                               for i in range(len(lit.elements))),
-                loc=loc)
-            return THIRMilInit(
-                field_cpp=field_cpp,
-                value=THIRFormConvert(result_type=ftype, value=inner,
-                                      form=Form.STORAGE, move=False, loc=loc))
-        if (isinstance(stmt.value, (TpyCall, TpyMethodCall))
-                and _storage_form_tuple_return(
-                    stmt.value.resolved_function_info)):
-            # The storage-form-tuple call stores bare (`t(make_pair(5))`).
-            _witness("mil.tuple_storage_call")
-            return THIRMilInit(
-                field_cpp=field_cpp,
-                value=_lower_expr(
-                    stmt.value, lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                 pos=SinkPos.MIL_INIT,
-                                 allow_temps=True)))
-        if isinstance(stmt.value, TpySubscript):
-            # The storage-tuple element read stores bare
-            # (`pair(::tpy::__getitem__(items, 0))`).
-            _witness("mil.tuple_storage_subscript")
-            return THIRMilInit(
-                field_cpp=field_cpp,
-                value=_lower_expr(
-                    stmt.value, lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                 pos=SinkPos.MIL_INIT)))
-        _mil_mixed = _mixed_own_storage_source(
-            stmt.value, _f1_tuple(ftype, analyzer), frozenset(), analyzer)
-        if _mil_mixed is not None:
-            # The MIXED-own-tuple call: the same NON-move materialization
-            # (`t(::tpy::tuple_to_storage<std::tuple<Box, Box>>(
-            # make_mixed(b)))`).
-            _witness("mil.tuple_storage_mixed_call")
-            return THIRMilInit(
-                field_cpp=field_cpp,
-                value=THIRFormConvert(
-                    result_type=ftype,
-                    value=_lower_expr(
-                        _mil_mixed, lc, declared,
-                        use=_ExprUse(result=_ExprResultUse.VALUE,
-                                     pos=SinkPos.MIL_INIT, forms=_ONLY_BTUPLE_SLOT)),
-                    form=Form.STORAGE, move=False, loc=loc))
-        # F3: the borrow pointer-repr tuple param stores via
-        # `tuple_to_storage` (a STORAGE convert; lowering admitted only the
-        # bare borrow-name source).
-        _witness("mil.tuple_storage")
-        return THIRMilInit(
-            field_cpp=field_cpp,
-            value=THIRFormConvert(result_type=ftype,
-                                  value=_lower_expr(stmt.value, lc, declared),
-                                  form=Form.STORAGE, move=False, loc=loc))
-    vt = _value_tuple(ftype, analyzer)
-    if vt is not None:
-        if isinstance(source, TpyTupleLiteral):
-            _witness("mil.value_tuple_literal")
-            try:
-                value = _lower_tuple_literal(source, vt, lc, declared)
-            except ThirUnsupported as ex:
-                raise ex.with_context(
-                    f"{_mil_reject_detail(stmt, analyzer)}:{ex.reason}"
-                ) from None
-            return THIRMilInit(field_cpp=field_cpp, value=value)
-        _witness("mil.value_tuple_name")
-        return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc, declared, use=_MIL_USE))
-    nt = _nested_storage_tuple(ftype, analyzer)
-    if nt is not None and isinstance(source, TpyTupleLiteral):
-        # The nested-storage tuple literal: the bare spelled brace-init,
-        # per-level lifts inside (the shared literal render).
-        _witness("mil.nested_tuple_literal")
-        try:
-            value = _lower_tuple_literal(source, nt, lc, declared)
-        except ThirUnsupported as ex:
-            raise ex.with_context(
-                f"{_mil_reject_detail(stmt, analyzer)}:{ex.reason}") from None
-        return THIRMilInit(field_cpp=field_cpp, value=value)
-    if isinstance(ftype, OptionalType):
-        oc_inner = _optional_container_storage_inner(ftype)
-        if isinstance(source, TpyNoneLiteral):
-            _witness("mil.optional_none")
-            v: THIRExpr = THIRLiteral(result_type=ftype, value=None,
-                                      form=Form.STORAGE, loc=loc)
-        elif oc_inner is not None and isinstance(
-                source, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
-            # A container literal into `std::optional<C>`: lowered against the
-            # INNER, since the container-literal render unwraps the Optional
-            # itself -- threading the Optional would derive the element
-            # targets from it. An ARRAY literal additionally self-describes
-            # (`lst(std::vector<int32_t>{1, 2, 3})`) via the type prefix on
-            # the same branch: a bare brace-init has no
-            # deducible type for the optional's ctor. Dict/set literals spell
-            # their own container type already.
-            _witness("mil.optional_container_literal")
-            v = _lower_expr(source, lc, declared,
-                            use=_ExprUse(slot_target=oc_inner))
-            if isinstance(source, TpyArrayLiteral):
-                v = _spell_mil_brace_literal(v, oc_inner, stmt, lc)
-        elif _str_literal_value_opt_arg(_peel_coerce(source), ftype):
-            # `s("xy")` -- the bare str literal at a value-repr Optional[str]
-            # slot; C++'s `const char*` -> `optional<string>` chain absorbs it.
-            _witness("mil.optional_str_literal")
-            v = _lower_expr(source, lc, declared, use=_MIL_USE)
-        elif not ftype.uses_pointer_repr() and _value_opt_view(
-                ftype, analyzer) is not None:
-            # A value-repr Optional[str/bytes] field <- a borrow
-            # `optional<view>` param: the arg-split shim, the same
-            # `view_to_owned_conv` render the call-arg THIROptViewArg emits.
-            # The shim names its source, so the render carries its own
-            # shape precondition rather than trusting the gate's.
-            if not isinstance(source, TpyName):
-                raise ThirUnsupported(_mil_reject_detail(stmt, analyzer))
-            _witness("mil.optview_shim")
-            v = THIROptViewArg(result_type=ftype, name=source.name,
-                               form=Form.VALUE, loc=loc)
-        elif not ftype.uses_pointer_repr():
-            # The gate admitted only a same-typed value-repr optional param
-            # name: the whole-optional bare copy (`f(value)`). The read is a
-            # deliberate whole-binding copy, not an unwrap -- hence the
-            # allow_whole_optional pass.
-            _witness("mil.optional_value_copy")
-            v = _lower_expr(source, lc, declared, allow_whole_optional=True)
-        elif _is_borrow_ptr_local(source, declared, set()):
-            v = THIRFormConvert(result_type=ftype, value=_lower_expr(source, lc, declared, use=_MIL_USE),
-                                form=Form.STORAGE, move=False, loc=loc)
-            _witness("mil.optional_ptr_lift")
-        else:
-            # A record-value source constructs the optional directly -- no
-            # ptr_to_optional (that lifts a borrow `T*`, not a record prvalue/copy).
-            v = _lower_expr(source, lc, declared, use=_MIL_USE)
-        return THIRMilInit(field_cpp=field_cpp, value=v)
-    if _span_value(ftype):
-        # Same-typed span param name: the bare view copy (`items(items)`) --
-        # borrow and storage coincide for a view, so no lift renders.
-        _witness("mil.span_copy")
-        return THIRMilInit(field_cpp=field_cpp,
-                           value=_lower_expr(source, lc, declared, use=_MIL_USE))
-    if _callable_value(unwrap_readonly(unwrap_ref_type(
-            unwrap_send_sync(ftype)))):
-        # Same-typed callable param name: the bare `std::function` copy
-        # (`on_event(cb)`), per the gate's exact-type pin. A routable LAMBDA
-        # literal renders its closure into the same direct-init slot.
-        _witness("mil.callable_lambda" if isinstance(source, TpyLambda)
-                 else "mil.callable_copy")
-        return THIRMilInit(field_cpp=field_cpp,
-                           value=_lower_expr(source, lc, declared, use=_MIL_USE))
-    if isinstance(stmt.value, TpyIfExpr) and _f1_record(ftype, analyzer):
-        # The prvalue record ternary: the MIL direct-init IS the value sink,
-        # so the arms lower as prvalues and the whole `?:` lands bare.
-        return THIRMilInit(
-            field_cpp=field_cpp,
-            value=_lower_expr(stmt.value, lc, declared,
-                              use=_ExprUse(
-                                  pos=SinkPos.MIL_INIT, forms=_ONLY_SELECT_PRVALUE)))
-    if _method_rvalue_record_like(source, analyzer):
-        # An Own-returning method-call rvalue constructs the field directly
-        # (`shared(Rc<Val>::new_<Val>(Val(0)))`): the MIL slot is a storage
-        # sink, so the method's record result rides the storage escape.
-        _witness("mil.record_method_rvalue")
-        return THIRMilInit(
-            field_cpp=field_cpp,
-            value=_lower_expr(
-                source, lc, declared,
-                use=_ExprUse(result=_ExprResultUse.STORAGE)))
-    value = _lower_expr(
-        source, lc, declared,
-        use=_ExprUse(slot_target=(ftype
-                                  if _container_storage_field(ftype)
-                                  else None)),
-        field_prechecked=isinstance(source, TpyFieldAccess))
-    if _container_storage_field(ftype) and isinstance(source, TpyArrayLiteral):
-        value = _spell_mil_brace_literal(value, ftype, stmt, lc)
-    return THIRMilInit(field_cpp=field_cpp, value=value)
-
-
-def _spell_mil_brace_literal(v: THIRExpr, slot: TpyType, stmt: TpyAssign,
-                             lc: '_LowerCtx') -> THIRExpr:
-    """Self-describe a list/Array literal at a member-init cell.
-
-    The cell is a paren direct-init of the field, so a bare brace there is an
-    ARGUMENT to the field type's constructor overload set, not a list-init of
-    the field: `xs({1})` into `std::vector<BigInt>` resolves to the size
-    constructor (int -> size_t is a standard conversion, int -> BigInt a
-    user-defined one) and builds one zero. Spelling the slot type
-    (`xs(std::vector<BigInt>{1})`) makes the literal a real list-init, the
-    same render the call-arg slot uses. A bracket literal at a container
-    cell lowers to a container literal or raises, so anything else here is
-    a lowering that lost the prefix's home: reject loudly rather than let
-    the bare brace (or a `replace` TypeError) through."""
-    if not isinstance(v, THIRContainerLiteral):
-        raise ThirUnsupported(_mil_reject_detail(stmt, lc.analyzer))
-    return replace(v, typed_brace_cpp=lc.render_type(slot))
-
 
 def _method_self_type(record, analyzer) -> 'TpyType | None':
     """The `self` receiver type for an M1 method / ctor feed. The qname is

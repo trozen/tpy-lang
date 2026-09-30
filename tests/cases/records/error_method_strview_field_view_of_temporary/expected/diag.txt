@@ -1,0 +1,1 @@
+main.py:18: error: Cannot bind StrView field 'view' to a temporary view source; the backing storage is destroyed at end-of-statement -- annotate 'view' as an owned str/bytes to keep a copy

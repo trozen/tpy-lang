@@ -5740,6 +5740,44 @@ _ELEMENT_FROM_FIRST_ARG_CATEGORIES = frozenset({
 # View-type family descriptors (must follow singleton definitions)
 from .type_def_registry import is_string_type as _is_string_type, is_bytearray_type as _is_bytearray_type, enum_info_of as _enum_info_of
 from .type_def_registry import is_borrowing_view_type as _is_borrowing_view_type
+
+
+def holds_borrowing_view(t: 'TpyType | None') -> bool:
+    """Whether a slot of type `t` keeps pointing into its source's buffer
+    past the statement: a borrowing view (the TypeDef fact -- `StrView`,
+    `BytesView`, `Span`, ...), or an Optional, tuple or union holding one."""
+    if t is None:
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, OwnType):
+        t = unwrap_readonly(t.wrapped)
+    if _is_borrowing_view_type(t):
+        return True
+    if isinstance(t, OptionalType):
+        return holds_borrowing_view(t.inner)
+    if isinstance(t, TupleType):
+        return any(holds_borrowing_view(e) for e in t.element_types)
+    if isinstance(t, UnionType):
+        return any(holds_borrowing_view(m) for m in t.members)
+    return False
+
+
+def lands_in_view_member(slot: 'TpyType', value_type: 'TpyType | None') -> bool:
+    """For a union slot holding a view, whether a value of `value_type`
+    lands in a view member: a view, or a str / bytes value the view member
+    takes -- a value of another type picks its own member, which holds none.
+    Any other slot that holds a view lands the value in it."""
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
+    if not isinstance(t, UnionType) or value_type is None:
+        return holds_borrowing_view(t)
+    if not holds_borrowing_view(t):
+        return False
+    v = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(value_type)))
+    if isinstance(v, OwnType):
+        v = unwrap_readonly(v.wrapped)
+    return (holds_borrowing_view(v) or is_any_str_type(v)
+            or is_any_bytes_type(v))
+
 STR_FAMILY = ViewTypeFamily(
     owned_type=STR, view_type=STRVIEW, promote_param_match=_is_string_type,
     is_any_member=is_any_str_type,

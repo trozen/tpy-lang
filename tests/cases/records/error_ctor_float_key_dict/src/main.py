@@ -7,7 +7,7 @@ class Table:
     m: dict[float, int32]
 
     def __init__(self) -> None:
-        self.m = {1.5: 2}  # tpyc: error(/ctor.mil_field.container/)
+        self.m = {1.5: 2}  # tpyc: error(/assign\.field_write_shape/)
 
 
 def main() -> None:

@@ -1,2 +1,0 @@
-main.py:26: warning: copies Alpha into field; use copy() to make this explicit
-main.py:26: error: in the constructor of 'Holder': this construct is not yet supported by C++ code generation (ctor.mil_field.union.name)

@@ -84,7 +84,7 @@ struct Holder {
     //     self.value = copy(v)      # tpyc: ok
     void set_value(::tpy::param_val_or_ref_t<T> v) {
         this->value = ::tpy::param_to_storage<T>(v);
-        this->value = ::tpy::param_to_storage<T>(T(v));
+        this->value = T(v);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };

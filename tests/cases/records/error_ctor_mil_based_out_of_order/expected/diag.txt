@@ -1,1 +1,0 @@
-main.py:23: error: in the constructor of 'Derived': this construct is not yet supported by C++ code generation (ctor.mil_reads_unready_field)

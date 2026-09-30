@@ -64,6 +64,7 @@ from ..prescan import (
     FactKills, collect_fact_kills, liveness_alias_sources, is_scan_rvalue,
 )
 from ..liveness import (analyze_last_uses, collect_finally_return_candidates,
+                        nested_def_free_names,
                         collect_deleted_names, collect_finally_rebound_returns,
                         collect_nested_def_nonlocal_rebinds,
                         stmts_terminate, tuple_literal_leaves,
@@ -123,6 +124,8 @@ from .expressions import (_nested_def_free_names, _find_list_member,
 from .slot_hint import SlotHint
 from .local_deduction import (
     collect_pending_source_types, mark_pending_list_mutated,
+    temporary_view_bind_message,
+    view_slot_source_is_temporary,
     view_source_is_temporary,
 )
 from .type_ops import signature_may_return_borrow as _signature_may_return_borrow
@@ -3964,7 +3967,9 @@ class StatementAnalyzer:
         self.ctx.func.own_ns = ns
         self._warn_scalar_type_shadows(func, param_names, scan)
         self.ctx.all_last_uses |= analyze_last_uses(
-            func.body, liveness_alias_sources(scan))
+            func.body, liveness_alias_sources(scan),
+            captured=(nested_def_free_names(func) if func.is_nested_def
+                      else frozenset()))
         self.ctx.finally_return_candidates |= collect_finally_return_candidates(func.body)
         self.ctx.finally_rebound_returns |= collect_finally_rebound_returns(func.body)
         self.ctx.func.current_reassigned_vars = scan.reassigned.copy()
@@ -6071,10 +6076,8 @@ class StatementAnalyzer:
                 if (not self.ctx.is_top_level and not stmt.is_final
                         and view_source_is_temporary(init_inner)):
                     raise self.ctx.error(
-                        f"Cannot bind {var_type} '{stmt.name}' to a temporary view "
-                        f"source; the backing storage is destroyed at "
-                        f"end-of-statement -- annotate '{stmt.name}' as an owned "
-                        f"str/bytes to keep a copy",
+                        temporary_view_bind_message(
+                            var_type, f"'{stmt.name}'", stmt.name),
                         stmt,
                     )
                 # A view from slicing a stable source borrows it: register the
@@ -6776,6 +6779,31 @@ class StatementAnalyzer:
             declared_target_type = self.narrowing.declared_type_for_expr(stmt.target)
             if declared_target_type is not None:
                 target_type = declared_target_type
+            # A view FIELD keeps pointing into its source after the statement:
+            # the local rule, at every position the field is written from.
+            if (isinstance(stmt.target, TpyFieldAccess)
+                    and target_type is not None
+                    and view_slot_source_is_temporary(
+                        unwrap_qualifiers(target_type), stmt.value,
+                        self.ctx.get_expr_type)):
+                raise self.ctx.error(
+                    temporary_view_bind_message(
+                        unwrap_qualifiers(target_type),
+                        f"field '{stmt.target.field}'", stmt.target.field),
+                    stmt,
+                )
+            # A closure capturing `self` holds this object's address, which a
+            # copy or move of the object leaves pointing at the original.
+            lam = stmt.value.expr if isinstance(stmt.value, TpyCoerce) else stmt.value
+            if (isinstance(stmt.target, TpyFieldAccess)
+                    and isinstance(lam, TpyLambda)
+                    and "self" in lam.captured_names):
+                raise self.ctx.error(
+                    f"A lambda stored in field '{stmt.target.field}' cannot "
+                    f"capture 'self': a copy or move of the object would leave "
+                    f"the closure pointing at the original",
+                    stmt,
+                )
             # Unified copy detection: Ref (borrowed), Own (owned at non-last-use),
             # or compound borrowed types (Optional/Union with pointer repr) on
             # the value expression type means storing it into a field/container
@@ -6785,8 +6813,9 @@ class StatementAnalyzer:
             # (T*, variant<A*,B*>) which is semantically borrowed -- copying into
             # storage (std::optional<T>, variant<A,B>) is a pointer-to-value copy.
             # Skip explicit copy() calls (caller acknowledged the copy) and
-            # OwnType from non-name sources (explicit Own return from function).
-            is_own_from_name = isinstance(value_type, OwnType) and isinstance(stmt.value, TpyName)
+            # an OwnType rvalue (an explicit Own return from a function).
+            is_own_lvalue = (isinstance(value_type, OwnType)
+                             and self.compat.is_lvalue(stmt.value))
             stripped_value = self.ctx.get_expr_type(stmt.value)
             is_compound_ref = (
                 (isinstance(stripped_value, OptionalType) and not stripped_value.inner.is_value_type())
@@ -6799,7 +6828,16 @@ class StatementAnalyzer:
             # warning for reference-type sources -- skip the generic
             # field/container warning here to avoid a double-fire.
             target_is_any = isinstance(unwrap_qualifiers(target_type), AnyType)
-            if ((isinstance(value_type, RefType) or is_own_from_name or is_compound_ref)
+            # Beyond the declared-type facts above, the shared owning-sink
+            # source rule: a select or walrus naming an existing object.
+            source_copies = (
+                not unwrap_qualifiers(target_type).is_value_type()
+                and stripped_value is not None
+                and not unwrap_qualifiers(stripped_value).is_value_type()
+                and self.compat.source_copies_into_storage(
+                    stmt.value, self.compat.is_auto_move_use(stmt.value)))
+            if ((isinstance(value_type, RefType) or is_own_lvalue
+                 or is_compound_ref or source_copies)
                     and stmt.loc is not None
                     and not target_is_ptr
                     and not target_is_any

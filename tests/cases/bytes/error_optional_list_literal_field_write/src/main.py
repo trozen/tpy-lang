@@ -1,7 +1,7 @@
-# The adjacent source shape that keeps rejecting at the same row: a local
-# seeded by a list LITERAL resolves to `Array[int32, 2]`, not `list`, so the
-# name does not spell the field's container and the write has no render. The
-# row keys on the SOURCE, not on which reference family the field is.
+# The adjacent source shape that keeps rejecting at a list field: a local
+# seeded by a list LITERAL resolves to `Array[int32, 2]`, not `list`, so its
+# storage is not the field's container and no storage conversion spells one
+# (BUGS.md#copy-array-literal-into-list-slot).
 from tpy import int32
 
 
@@ -13,7 +13,7 @@ class Slot:
 
     def put(self) -> None:
         v = [1, 2]
-        self.xs = v  # tpyc: error(/assign.field_write_shape/)
+        self.xs = v  # tpyc: error(/field_write\.lift/)
 
 
 def main() -> None:

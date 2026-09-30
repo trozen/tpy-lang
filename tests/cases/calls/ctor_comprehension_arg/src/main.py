@@ -5,10 +5,9 @@
 # stub's element slot) the stmt-expr prvalue moves in inline. Every Own
 # section grows the stored list afterwards so a silent copy would show. The
 # constructor call sits in each flushing position; the positions that hand
-# it no flush keep rejecting (BUGS.md#ctor-call-arg-temp-flush-positions,
-# one of them pinned as error_ctor_comprehension_arg_field_assign). Every
-# statement that hoists a temp drains it BEFORE its own write, the string
-# append included. The hoisted temp evaluates
+# it no flush keep rejecting (BUGS.md#ctor-call-arg-temp-flush-positions).
+# Every statement that hoists a temp drains it BEFORE its own write, the
+# string append included. The hoisted temp evaluates
 # before its sibling arguments, so no section mixes it with a side-effecting
 # one (BUGS.md#subexpression-right-to-left-eval).
 from tpy import int32, Own, ReturnException, error_return

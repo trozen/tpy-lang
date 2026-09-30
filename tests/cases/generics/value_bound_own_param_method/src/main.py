@@ -1,9 +1,5 @@
-# A value-bound generic (`T: ValueType`) whose ctor AND an ordinary method take
-# an `Own[T]` param and write it into a `T` field. For a value type this is a
-# COPY (intended: value types copy), and the AST method body emits a bare
-# `field = v` -- unlike the ctor member-init-list, which moves. This shape was a
-# THIR-path compiler crash (a move-free field write built a no-op form convert);
-# guards against that regression via the byte-diff.
+# A value-bound generic (`T: ValueType`) whose ctor and a method write an
+# `Own[T]` param into a `T` field: the member-init moves it, the method copies.
 from tpy import int32, Own, ValueType
 
 

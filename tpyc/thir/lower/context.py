@@ -27,6 +27,7 @@ from ...typesys import (
     unwrap_send_sync,
 )
 from ...codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
+from ...typesys import holds_borrowing_view
 from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf, THIRTupleLayout, THIRUnionExtraction, THIRUnionLayout
 from .captures import CaptureSites
 from .predicates import (
@@ -213,10 +214,12 @@ class SinkForm(Enum):
     # (`with open(path, mode) as f`), whatever native symbol the overload
     # resolves to.
     CTX_MANAGER = auto()
-    # A borrow-returning record source the sink's copy-assign absorbs
-    # (`h.p = identity(pt);`, and its container sibling
-    # `self.mirror = h.peek();`, whose copy sema warns). A decl binds
-    # REF_ALIAS off the same result, so decl sinks keep rejecting.
+    # A stored lvalue an owning sink's copy-assign takes whole: a
+    # borrow-returning record source (`h.p = identity(pt);`, and its
+    # container sibling `self.mirror = h.peek();`, whose copy sema warns),
+    # a field read and a container element of a record, Optional, union or
+    # tuple. A decl binds REF_ALIAS off the same result, so decl sinks keep
+    # rejecting.
     RECORD_COPY = auto()
     # A `T&`-returning call rendered BARE (`return get_first(items);`):
     # nothing binds off it, so the REF_ALIAS frontier does not arise.
@@ -528,6 +531,75 @@ def _recv_forms(opt_passthrough: bool, deref: bool) -> frozenset[SinkForm]:
     return base | _LEND_OK
 
 
+class SlotLifetime(Enum):
+    """What a slot obliges its source's storage to outlive -- the LIFETIME
+    part of the slot contract (`slot_lifetime` decides it)."""
+    # The slot owns what it is handed (builds, copies or moves it), or is
+    # done with it inside the statement.
+    NONE = auto()
+    # The slot keeps pointing into its source's buffer after the statement
+    # (a `StrView` / `BytesView` / `Span` field), so that buffer must outlive
+    # it. A source that only lives as long as the OBJECT holding the slot is
+    # a further obligation, the MIR's to track; it gets a member with its
+    # first reader.
+    OUTLIVES_STATEMENT = auto()
+
+
+class SlotConstruct(Enum):
+    """HOW the destination receives the value -- the construction mode.
+    The same source renders differently per mode: a paren direct-init
+    `f(v)` resolves the slot type's constructor overloads (an explicit
+    `std::string(string_view)` fires, a bare brace can pick the size
+    constructor), while an assignment `this->f = v` goes through
+    `operator=`."""
+    # A ctor member-init `f(v)`.
+    DIRECT_INIT = auto()
+    # `this->f = v` / `recv.f = v`.
+    ASSIGN = auto()
+    PASS = auto()
+    RETURN = auto()
+
+
+class SlotBorrow(Enum):
+    """Whether the destination holds a BORROW, and in which C++ shape: a
+    pointer (`T*`, reseatable, nullable) or a reference (`T&`, bound once).
+    A field or member-init slot holds storage, so it is NONE there; the
+    other members are the local / parameter / return destinations'."""
+    NONE = auto()
+    POINTER = auto()
+    REFERENCE = auto()
+
+
+class SlotPlacement(Enum):
+    """Where a temporary the source needs can live -- the PLACEMENT part of
+    the slot contract. The RIGHT to hoist one is `allow_temps`; this says
+    whether there is a statement to hoist it before at all."""
+    # The consumer sits in a statement: a hoisted decl lands before it.
+    STATEMENT = auto()
+    # A ctor member-init: no statement exists, so a source that needs a
+    # temporary demotes the init to the ctor body (where it can) instead.
+    NO_FLUSH_POINT = auto()
+
+
+@dataclass(frozen=True, slots=True)
+class SlotDest:
+    """The DESTINATION part of the slot contract: the declared slot the
+    value lands in, the borrow shape it holds, and how it receives the
+    value. Distinct from `_ExprUse.slot_target`, the type a LITERAL renders
+    against, which can be another type (an `Optional[C]` field's literal
+    renders against `C`) or none at all."""
+    type: TpyType
+    construct: SlotConstruct
+    borrow: SlotBorrow = SlotBorrow.NONE
+
+
+def slot_lifetime(slot: 'TpyType | None') -> SlotLifetime:
+    """The lifetime a slot of this type obliges its source to
+    (`holds_borrowing_view`)."""
+    return (SlotLifetime.OUTLIVES_STATEMENT if holds_borrowing_view(slot)
+            else SlotLifetime.NONE)
+
+
 @dataclass(frozen=True, slots=True)
 class _ExprUse:
     """How the immediate consumer will use one lowered expression result.
@@ -540,11 +612,23 @@ class _ExprUse:
     own slot type. A new sink is a new member with a default row, never a
     new boolean beside the pair.
 
-    `allow_temps` is not a sink but a RIGHT: whether this expression may
-    hoist a `__tmp_N` decl at the enclosing statement's flush point. It
-    applies only to the expression passed to `_lower_expr`; recursive
-    operands get the default value use unless their own consumer supplies
-    another.
+    Beside the pair, a use carries the SLOT CONTRACT -- what the slot
+    asks of its source, decided from the slot, never from the source's
+    spelling. Three separate parts:
+
+      * DESTINATION (`dest`): the declared slot type, the borrow shape it
+        holds and the construction mode (`SlotDest`). None where the site
+        has not stated it yet.
+      * LIFETIME (`lifetime`): what the source's storage must outlive
+        (`slot_lifetime`).
+      * PLACEMENT (`placement`, `allow_temps`): whether a statement exists
+        to hoist a temporary before, and whether this expression may use
+        it. `allow_temps` applies only to the expression passed to
+        `_lower_expr`; recursive operands get the default value use unless
+        their own consumer supplies another.
+
+    What the SOURCE brings (last use, movability, form) rides on the
+    lowered node, not here. `pos` stays the name diagnostics use.
     """
     result: _ExprResultUse = _ExprResultUse.VALUE
     allow_temps: bool = False
@@ -567,6 +651,9 @@ class _ExprUse:
     # though their own render is retyped afterwards. None is TARGET-LESS
     # (print args, compare operands, user-record method args).
     slot_target: 'TpyType | None' = None
+    dest: 'SlotDest | None' = None
+    lifetime: SlotLifetime = SlotLifetime.NONE
+    placement: SlotPlacement = SlotPlacement.STATEMENT
 
     def admits(self, form: SinkForm) -> bool:
         """Whether this sink admits `form`. The one spelling every
@@ -574,6 +661,19 @@ class _ExprUse:
         is stored -- nor re-derive it from the sink's shape."""
         forms = self.forms
         return form in (_POS_FORMS[self.pos] if forms is None else forms)
+
+
+def field_slot_use(slot: 'TpyType | None', construct: SlotConstruct, *,
+                   placement: SlotPlacement = SlotPlacement.STATEMENT
+                   ) -> _ExprUse:
+    """The slot contract a record FIELD hands its source, decided once per
+    statement from the declared slot -- a field write assigns, a member-init
+    direct-initializes. A field holds storage, so it borrows nothing; its
+    lifetime is the slot type's. Each site then names its sink and verdict
+    with `dataclasses.replace`, keeping the contract."""
+    return _ExprUse(
+        dest=(SlotDest(slot, construct) if slot is not None else None),
+        lifetime=slot_lifetime(slot), placement=placement)
 
 
 def narrow_alias_taken(bound_names, frame_field_names, *,
@@ -1129,7 +1229,8 @@ _FUNCTION_SCOPED_STATE = (
 # computed inside the scope while its computed-flag survives.
 _SHADOWED_LC_STATE = _BRANCH_SCOPED_SETS + (
     "nested_def_locals", "inline_narrowed",
-    "walrus_slot_locals", "sema_movable_locals", "deref_view_spelled",
+    "walrus_slot_locals", "sema_movable_locals", "own_params",
+    "deref_view_spelled",
     "forwarded_map", "literal_facts", "global_ptr_slots",
     "frame_local_types", "frame_field_names", "frame_own_tuple_types",
     "plain_frame_fields", "borrow_tuple_frame_locals", "coro_handle_slots",
@@ -1264,7 +1365,7 @@ class _LowerCtx:
                  "const_storage_opt_locals",
                  "deref_view_spelled", "forwarded_map",
                  "movable_locals",
-                 "sema_movable_locals",
+                 "sema_movable_locals", "own_params",
                  "params", "capture_funcs", "capture_sites",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals", "owned_tuple_layouts",
@@ -1795,10 +1896,11 @@ class _LowerCtx:
         # F2e: sema's RAW owned-locals fact, the mirror of codegen's
         # `ctx.sema_movable_locals`. It means "sema proved this local owned",
         # NOT "movable" -- a name becomes movable only by joining the working
-        # set below, at a decl arm that promotes. Read ONLY through
-        # `promote_movable`; a consumer reading it directly re-introduces the
-        # conflation that made a value-typed local (a view-promoted `str`, a
-        # BigInt) and a ptr-variant alias move where they must be copied.
+        # set below, at a decl arm that promotes. A MOVE reads it ONLY
+        # through `promote_movable`; a consumer moving off it directly
+        # re-introduces the conflation that made a value-typed local (a
+        # view-promoted `str`, a BigInt) and a ptr-variant alias move where
+        # they must be copied. A reject may ask it: "sema owns this name".
         self.sema_movable_locals: frozenset[str] = frozenset(
             analyzer.function_movable_locals.get(func, ()))
         # The WORKING set the move sites read -- codegen's `ctx.movable_locals`.
@@ -1806,6 +1908,14 @@ class _LowerCtx:
         # grows during the body walk at exactly the decl arms that promote a
         # local to movable (`promote_movable`).
         self.movable_locals: set[str] = set()
+        # The params the signature declares `Own[...]` (or `Own[T] | None`),
+        # whatever the payload: the caller handed over the value. A
+        # constructor member-init moves these (`moves_only`).
+        self.own_params: frozenset[str] = frozenset(
+            pname for pname, ptype in self.params
+            if isinstance(ptype, TpyType)
+            and unwrap_optional_own(unwrap_readonly(
+                unwrap_send_sync(ptype))) is not None)
         # Own[T] / Own[T]|None params of non-value payload are movable (the
         # caller gave up ownership) -- codegen seeds them at body-scope setup
         # (seed_param_locals), not via sema's per-function set, so lowering
@@ -2028,6 +2138,25 @@ class _LowerCtx:
                                 _param_facts(params, self.analyzer)):
                 setattr(prescan, f, getattr(prescan, f) | inner)
             yield
+
+    def movable_now(self, name: str) -> bool:
+        """Whether a sink here may move `name` at its last use -- the one
+        question every move site asks (`movable_locals`, narrowed by
+        `moves_only`)."""
+        return name in self.movable_locals
+
+    @contextmanager
+    def moves_only(self, names: AbstractSet[str]):
+        """Lower a region whose sinks may move only `names`: a constructor
+        member-init (its `Own` params -- the list runs before the body, so
+        no local exists yet) or a comprehension element (its loop variable
+        -- an outer name would be moved once per iteration)."""
+        saved = self.movable_locals
+        self.movable_locals = set(names)
+        try:
+            yield
+        finally:
+            self.movable_locals = saved
 
     @contextmanager
     def shadow_scope(self, names: AbstractSet[str],

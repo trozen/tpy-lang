@@ -51,9 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 // def __init__(self) -> None:
 //     self.x = G
-inline C::C() {
-    this->x = ::tpyapp::helper::G;
-}
+inline C::C() : x(::tpyapp::helper::G) {}
 
 // def m(self) -> int32:
 //     return G * 2

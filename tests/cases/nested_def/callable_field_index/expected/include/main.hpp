@@ -198,8 +198,8 @@ inline App::App()
       callbacks(std::vector<std::function<int32_t(int32_t)>>{inc}),
       groups(std::vector<std::vector<std::function<int32_t(int32_t)>>>{{inc}}),
       writers(::tpy::ordered_map<std::string, std::function<int32_t(std::vector<int32_t>&)>>({{"touch", touch}})),
-      notifications(::tpy::ordered_map<std::string, std::function<void(int32_t)>>({{"run", notify}})) {
-    this->direct_writer = touch;
+      notifications(::tpy::ordered_map<std::string, std::function<void(int32_t)>>({{"run", notify}})),
+      direct_writer(touch) {
     std::cout << "constructor" << " " << (::tpy::__getitem__(this->commands, "inc"))(1) << "\n";
 }
 

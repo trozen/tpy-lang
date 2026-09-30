@@ -1,6 +1,5 @@
-# The happy face of the based-record ordering rule: a record with bases keeps
-# its DECLARED field order, so a member init may read a field declared before
-# it -- here `a` is both declared and assigned first, so `b`'s init sees it.
+# A based record's member init reads a field an earlier init set: own fields
+# take `__init__` assignment order, so `a` is laid out, and set, before `b`.
 from tpy import int32
 
 

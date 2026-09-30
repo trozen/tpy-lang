@@ -277,7 +277,7 @@
  "array_i__ctor__closure_capture__field_write": [
   "ok",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
  ],
  "array_i__ctor__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -635,9 +635,9 @@
   ""
  ],
  "array_i__ctor__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies Array[int32, 2] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "array_i__ctor__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -702,7 +702,7 @@
  "array_i__fn__closure_capture__field_write": [
   "ok",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
  ],
  "array_i__fn__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -1095,9 +1095,9 @@
   ""
  ],
  "array_i__fn__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies Array[int32, 2] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "array_i__fn__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -1402,7 +1402,7 @@
  "array_i__meth__closure_capture__field_write": [
   "ok",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
  ],
  "array_i__meth__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -1795,9 +1795,9 @@
   ""
  ],
  "array_i__meth__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies Array[int32, 2] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "array_i__meth__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -2230,9 +2230,9 @@
   ""
  ],
  "array_i__nested__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies Array[int32, 2] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -2567,7 +2567,7 @@
  "bytearray__ctor__closure_capture__field_write": [
   "ok",
   "copies bytearray into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
  ],
  "bytearray__ctor__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -3045,9 +3045,9 @@
   ""
  ],
  "bytearray__ctor__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies bytearray into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "bytearray__ctor__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -3112,7 +3112,7 @@
  "bytearray__fn__closure_capture__field_write": [
   "ok",
   "copies bytearray into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
  ],
  "bytearray__fn__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -3640,9 +3640,9 @@
   ""
  ],
  "bytearray__fn__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies bytearray into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "bytearray__fn__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -3982,7 +3982,7 @@
  "bytearray__meth__closure_capture__field_write": [
   "ok",
   "copies bytearray into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
  ],
  "bytearray__meth__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -4510,9 +4510,9 @@
   ""
  ],
  "bytearray__meth__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies bytearray into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "bytearray__meth__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -5080,9 +5080,9 @@
   ""
  ],
  "bytearray__nested__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies bytearray into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -5115,9 +5115,9 @@
   ""
  ],
  "deref_list__async__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "[3] *%h.f = method_call(*%b, v_m, []) [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%h.f])]) [raw])"
  ],
  "deref_list__async__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -5385,9 +5385,9 @@
   ""
  ],
  "deref_list__ctor__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v_m, []) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw])"
  ],
  "deref_list__ctor__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -5417,7 +5417,7 @@
  "deref_list__ctor__closure_capture__field_write": [
   "ok",
   "copies DL into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw]) call(inner, [])"
+  "%h.f = %s0 print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw]) call(inner, [])"
  ],
  "deref_list__ctor__closure_capture__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -5625,9 +5625,9 @@
   ""
  ],
  "deref_list__ctor__narrowed_opt__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "",
-  ""
+  "%h.f = form_convert[storage](*%o0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw])"
  ],
  "deref_list__ctor__narrowed_opt__match_capture": [
   "reject:stmt.match",
@@ -5655,9 +5655,9 @@
   ""
  ],
  "deref_list__ctor__narrowed_opt_param__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f = *%pv print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw])"
  ],
  "deref_list__ctor__narrowed_opt_param__match_capture": [
   "reject:stmt.match",
@@ -5805,9 +5805,9 @@
   ""
  ],
  "deref_list__ctor__prop_ref__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v, []) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw])"
  ],
  "deref_list__ctor__prop_ref__match_capture": [
   "reject:stmt.match",
@@ -5895,9 +5895,9 @@
   ""
  ],
  "deref_list__ctor__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw])"
  ],
  "deref_list__ctor__temp_field__match_capture": [
   "reject:stmt.match",
@@ -5925,9 +5925,9 @@
   ""
  ],
  "deref_list__fn__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v_m, []) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw])"
  ],
  "deref_list__fn__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -5962,7 +5962,7 @@
  "deref_list__fn__closure_capture__field_write": [
   "ok",
   "copies DL into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw]) call(inner, [])"
+  "%h.f = %s0 print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw]) call(inner, [])"
  ],
  "deref_list__fn__closure_capture__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -6185,9 +6185,9 @@
   ""
  ],
  "deref_list__fn__narrowed_opt__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "",
-  ""
+  "%h.f = form_convert[storage](*%o0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw])"
  ],
  "deref_list__fn__narrowed_opt__match_capture": [
   "reject:stmt.match",
@@ -6215,9 +6215,9 @@
   ""
  ],
  "deref_list__fn__narrowed_opt_param__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f = *%pv print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw])"
  ],
  "deref_list__fn__narrowed_opt_param__match_capture": [
   "reject:stmt.match",
@@ -6385,9 +6385,9 @@
   ""
  ],
  "deref_list__fn__prop_ref__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v, []) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw])"
  ],
  "deref_list__fn__prop_ref__match_capture": [
   "reject:stmt.match",
@@ -6490,9 +6490,9 @@
   ""
  ],
  "deref_list__fn__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw])"
  ],
  "deref_list__fn__temp_field__match_capture": [
   "reject:stmt.match",
@@ -6525,9 +6525,9 @@
   ""
  ],
  "deref_list__gen__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "[3] *%h.f = method_call(*%b, v_m, []) [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%h.f])]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "deref_list__gen__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -6795,9 +6795,9 @@
   ""
  ],
  "deref_list__meth__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v_m, []) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw])"
  ],
  "deref_list__meth__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -6832,7 +6832,7 @@
  "deref_list__meth__closure_capture__field_write": [
   "ok",
   "copies DL into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw]) call(inner, [])"
+  "%h.f = %s0 print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw]) call(inner, [])"
  ],
  "deref_list__meth__closure_capture__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -7055,9 +7055,9 @@
   ""
  ],
  "deref_list__meth__narrowed_opt__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "",
-  ""
+  "%h.f = form_convert[storage](*%o0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw])"
  ],
  "deref_list__meth__narrowed_opt__match_capture": [
   "reject:stmt.match",
@@ -7085,9 +7085,9 @@
   ""
  ],
  "deref_list__meth__narrowed_opt_param__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f = *%pv print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw])"
  ],
  "deref_list__meth__narrowed_opt_param__match_capture": [
   "reject:stmt.match",
@@ -7255,9 +7255,9 @@
   ""
  ],
  "deref_list__meth__prop_ref__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v, []) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw])"
  ],
  "deref_list__meth__prop_ref__match_capture": [
   "reject:stmt.match",
@@ -7360,9 +7360,9 @@
   ""
  ],
  "deref_list__meth__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw])"
  ],
  "deref_list__meth__temp_field__match_capture": [
   "reject:stmt.match",
@@ -7395,9 +7395,9 @@
   ""
  ],
  "deref_list__nested__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v_m, []) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw]) call(nested_inner, [])"
  ],
  "deref_list__nested__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -7625,9 +7625,9 @@
   ""
  ],
  "deref_list__nested__narrowed_opt__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "",
-  ""
+  "%h.f = *%o0 print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw]) call(nested_inner, [])"
  ],
  "deref_list__nested__narrowed_opt__match_capture": [
   "reject:stmt.match",
@@ -7825,9 +7825,9 @@
   ""
  ],
  "deref_list__nested__prop_ref__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v, []) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw]) call(nested_inner, [])"
  ],
  "deref_list__nested__prop_ref__match_capture": [
   "reject:stmt.match",
@@ -7930,9 +7930,9 @@
   ""
  ],
  "deref_list__nested__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies DL into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f])]) [raw]) call(nested_inner, [])"
  ],
  "deref_list__nested__temp_field__match_capture": [
   "reject:stmt.match",
@@ -7965,9 +7965,9 @@
   ""
  ],
  "deref_rec__async__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "[3] *%h.f = method_call(*%b, v_m, []) [4] print(*%h.f.x [raw])"
  ],
  "deref_rec__async__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -8235,9 +8235,9 @@
   ""
  ],
  "deref_rec__ctor__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v_m, []) print(%h.f.x [raw])"
  ],
  "deref_rec__ctor__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -8267,7 +8267,7 @@
  "deref_rec__ctor__closure_capture__field_write": [
   "ok",
   "copies DR into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(%h.f.x [raw]) call(inner, [])"
+  "%h.f = %s0 print(%h.f.x [raw]) call(inner, [])"
  ],
  "deref_rec__ctor__closure_capture__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -8475,9 +8475,9 @@
   ""
  ],
  "deref_rec__ctor__narrowed_opt__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "",
-  ""
+  "%h.f = form_convert[storage](*%o0) print(%h.f.x [raw])"
  ],
  "deref_rec__ctor__narrowed_opt__match_capture": [
   "reject:stmt.match",
@@ -8505,9 +8505,9 @@
   ""
  ],
  "deref_rec__ctor__narrowed_opt_param__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f = *%pv print(%h.f.x [raw])"
  ],
  "deref_rec__ctor__narrowed_opt_param__match_capture": [
   "reject:stmt.match",
@@ -8655,9 +8655,9 @@
   ""
  ],
  "deref_rec__ctor__prop_ref__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v, []) print(%h.f.x [raw])"
  ],
  "deref_rec__ctor__prop_ref__match_capture": [
   "reject:stmt.match",
@@ -8745,9 +8745,9 @@
   ""
  ],
  "deref_rec__ctor__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(%h.f.x [raw])"
  ],
  "deref_rec__ctor__temp_field__match_capture": [
   "reject:stmt.match",
@@ -8775,9 +8775,9 @@
   ""
  ],
  "deref_rec__fn__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v_m, []) print(%h.f.x [raw])"
  ],
  "deref_rec__fn__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -8812,7 +8812,7 @@
  "deref_rec__fn__closure_capture__field_write": [
   "ok",
   "copies DR into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(%h.f.x [raw]) call(inner, [])"
+  "%h.f = %s0 print(%h.f.x [raw]) call(inner, [])"
  ],
  "deref_rec__fn__closure_capture__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -9035,9 +9035,9 @@
   ""
  ],
  "deref_rec__fn__narrowed_opt__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "",
-  ""
+  "%h.f = form_convert[storage](*%o0) print(%h.f.x [raw])"
  ],
  "deref_rec__fn__narrowed_opt__match_capture": [
   "reject:stmt.match",
@@ -9065,9 +9065,9 @@
   ""
  ],
  "deref_rec__fn__narrowed_opt_param__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f = *%pv print(%h.f.x [raw])"
  ],
  "deref_rec__fn__narrowed_opt_param__match_capture": [
   "reject:stmt.match",
@@ -9235,9 +9235,9 @@
   ""
  ],
  "deref_rec__fn__prop_ref__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v, []) print(%h.f.x [raw])"
  ],
  "deref_rec__fn__prop_ref__match_capture": [
   "reject:stmt.match",
@@ -9340,9 +9340,9 @@
   ""
  ],
  "deref_rec__fn__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(%h.f.x [raw])"
  ],
  "deref_rec__fn__temp_field__match_capture": [
   "reject:stmt.match",
@@ -9375,9 +9375,9 @@
   ""
  ],
  "deref_rec__gen__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "[3] *%h.f = method_call(*%b, v_m, []) [4] print(*%h.f.x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "deref_rec__gen__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -9645,9 +9645,9 @@
   ""
  ],
  "deref_rec__meth__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v_m, []) print(%h.f.x [raw])"
  ],
  "deref_rec__meth__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -9682,7 +9682,7 @@
  "deref_rec__meth__closure_capture__field_write": [
   "ok",
   "copies DR into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(%h.f.x [raw]) call(inner, [])"
+  "%h.f = %s0 print(%h.f.x [raw]) call(inner, [])"
  ],
  "deref_rec__meth__closure_capture__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -9905,9 +9905,9 @@
   ""
  ],
  "deref_rec__meth__narrowed_opt__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "",
-  ""
+  "%h.f = form_convert[storage](*%o0) print(%h.f.x [raw])"
  ],
  "deref_rec__meth__narrowed_opt__match_capture": [
   "reject:stmt.match",
@@ -9935,9 +9935,9 @@
   ""
  ],
  "deref_rec__meth__narrowed_opt_param__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f = *%pv print(%h.f.x [raw])"
  ],
  "deref_rec__meth__narrowed_opt_param__match_capture": [
   "reject:stmt.match",
@@ -10105,9 +10105,9 @@
   ""
  ],
  "deref_rec__meth__prop_ref__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v, []) print(%h.f.x [raw])"
  ],
  "deref_rec__meth__prop_ref__match_capture": [
   "reject:stmt.match",
@@ -10210,9 +10210,9 @@
   ""
  ],
  "deref_rec__meth__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(%h.f.x [raw])"
  ],
  "deref_rec__meth__temp_field__match_capture": [
   "reject:stmt.match",
@@ -10245,9 +10245,9 @@
   ""
  ],
  "deref_rec__nested__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v_m, []) print(%h.f.x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -10475,9 +10475,9 @@
   ""
  ],
  "deref_rec__nested__narrowed_opt__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "",
-  ""
+  "%h.f = *%o0 print(%h.f.x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__narrowed_opt__match_capture": [
   "reject:stmt.match",
@@ -10675,9 +10675,9 @@
   ""
  ],
  "deref_rec__nested__prop_ref__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v, []) print(%h.f.x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__prop_ref__match_capture": [
   "reject:stmt.match",
@@ -10780,9 +10780,9 @@
   ""
  ],
  "deref_rec__nested__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies DR into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(%h.f.x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__temp_field__match_capture": [
   "reject:stmt.match",
@@ -11050,9 +11050,9 @@
   "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] *%x[str('z')] = coerce(lit(9) -> int32) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tp"
  ],
  "dict_si__async__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  ""
+  "[3] *%h.f = *%xs[0] [borrow] [4] print(call(len [tpy::__len__], [*%h.f]) [raw])"
  ],
  "dict_si__async__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -11117,7 +11117,7 @@
  "dict_si__ctor__closure_capture__field_write": [
   "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
  ],
  "dict_si__ctor__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -11475,9 +11475,9 @@
   "ptr_decl[ptr_addr] %x: dict = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] "
  ],
  "dict_si__ctor__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "dict_si__ctor__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -11535,9 +11535,9 @@
   ""
  ],
  "dict_si__ctor__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "dict_si__ctor__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -11602,7 +11602,7 @@
  "dict_si__fn__closure_capture__field_write": [
   "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
  ],
  "dict_si__fn__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -11990,9 +11990,9 @@
   "ptr_decl[ptr_addr] %x: dict = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] "
  ],
  "dict_si__fn__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "dict_si__fn__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -12060,9 +12060,9 @@
   ""
  ],
  "dict_si__fn__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "dict_si__fn__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -12330,9 +12330,9 @@
   "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] *%x[str('z')] = coerce(lit(9) -> int32) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tp"
  ],
  "dict_si__gen__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  ""
+  "[3] *%h.f = *%xs[0] [borrow] [4] print(call(len [tpy::__len__], [*%h.f]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "dict_si__gen__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -12402,7 +12402,7 @@
  "dict_si__meth__closure_capture__field_write": [
   "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
  ],
  "dict_si__meth__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -12790,9 +12790,9 @@
   "ptr_decl[ptr_addr] %x: dict = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] "
  ],
  "dict_si__meth__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "dict_si__meth__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -12860,9 +12860,9 @@
   ""
  ],
  "dict_si__meth__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "dict_si__meth__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -13290,9 +13290,9 @@
   "ptr_decl[ptr_addr] %x: dict = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] "
  ],
  "dict_si__nested__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -13360,9 +13360,9 @@
   ""
  ],
  "dict_si__nested__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -14400,9 +14400,9 @@
   ""
  ],
  "gen_rec__fn__narrowed_opt__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "",
-  ""
+  "%h.f = form_convert[storage](*%o0) print(method_call(%h.f, get, []).x [raw])"
  ],
  "gen_rec__fn__narrowed_opt__match_capture": [
   "reject:stmt.match",
@@ -15235,9 +15235,9 @@
   ""
  ],
  "gen_rec__meth__narrowed_opt__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "",
-  ""
+  "%h.f = form_convert[storage](*%o0) print(method_call(%h.f, get, []).x [raw])"
  ],
  "gen_rec__meth__narrowed_opt__match_capture": [
   "reject:stmt.match",
@@ -15770,9 +15770,9 @@
   ""
  ],
  "gen_rec__nested__narrowed_opt__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "",
-  ""
+  "%h.f = *%o0 print(method_call(%h.f, get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__narrowed_opt__match_capture": [
   "reject:stmt.match",
@@ -16180,9 +16180,9 @@
   "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [lit(9)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tpy::__len__], "
  ],
  "list_i__async__local__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
-  "[3] *%h.f = *%s0 [4] print(call(len [tpy::__len__], [*%h.f]) [raw]) [5] print(call(len [tpy::__len__], [*%s0]) [raw])"
+  ""
  ],
  "list_i__async__local__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -16210,9 +16210,9 @@
   "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [lit(9)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw])"
  ],
  "list_i__async__local_last__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "",
-  "[3] *%h.f = form_convert[storage](*%s0) [4] print(call(len [tpy::__len__], [*%h.f]) [raw])"
+  ""
  ],
  "list_i__async__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -16345,7 +16345,7 @@
   "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [lit(9)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tpy"
  ],
  "list_i__async__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
   ""
  ],
@@ -16410,9 +16410,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw]) call(in"
  ],
  "list_i__ctor__closure_capture__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  ""
  ],
  "list_i__ctor__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -16440,7 +16440,7 @@
   "ptr_decl[ptr_addr] %x: list = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%d"
  ],
  "list_i__ctor__dict_subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
   ""
  ],
@@ -16500,9 +16500,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__ctor__local__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
-  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  ""
  ],
  "list_i__ctor__local__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -16530,9 +16530,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "list_i__ctor__local_last__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw])"
+  ""
  ],
  "list_i__ctor__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -16560,9 +16560,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__ctor__loop_var__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
-  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw])"
+  ""
  ],
  "list_i__ctor__loop_var__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -16800,7 +16800,7 @@
   "ptr_decl[ptr_addr] %x: list = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] ["
  ],
  "list_i__ctor__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
   ""
  ],
@@ -16860,9 +16860,9 @@
   ""
  ],
  "list_i__ctor__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "list_i__ctor__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -16925,9 +16925,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw]) call(in"
  ],
  "list_i__fn__closure_capture__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  ""
  ],
  "list_i__fn__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -16955,7 +16955,7 @@
   "ptr_decl[ptr_addr] %x: list = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%d"
  ],
  "list_i__fn__dict_subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
   ""
  ],
@@ -17025,9 +17025,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__fn__local__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
-  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  ""
  ],
  "list_i__fn__local__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -17055,9 +17055,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "list_i__fn__local_last__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw])"
+  ""
  ],
  "list_i__fn__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -17085,9 +17085,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__fn__loop_var__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
-  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw])"
+  ""
  ],
  "list_i__fn__loop_var__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -17350,7 +17350,7 @@
   "ptr_decl[ptr_addr] %x: list = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] ["
  ],
  "list_i__fn__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
   ""
  ],
@@ -17420,9 +17420,9 @@
   ""
  ],
  "list_i__fn__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "list_i__fn__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -17525,9 +17525,9 @@
   "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [lit(9)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tpy::__len__], "
  ],
  "list_i__gen__local__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
-  "[3] *%h.f = *%s0 [4] print(call(len [tpy::__len__], [*%h.f]) [raw]) [5] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  ""
  ],
  "list_i__gen__local__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -17555,9 +17555,9 @@
   "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [lit(9)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) yield_values: [0] coerce(lit(0) -> "
  ],
  "list_i__gen__local_last__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "",
-  "[3] *%h.f = form_convert[storage](*%s0) [4] print(call(len [tpy::__len__], [*%h.f]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  ""
  ],
  "list_i__gen__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -17690,7 +17690,7 @@
   "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [lit(9)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tpy"
  ],
  "list_i__gen__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
   ""
  ],
@@ -17760,9 +17760,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw]) call(in"
  ],
  "list_i__meth__closure_capture__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  ""
  ],
  "list_i__meth__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -17790,7 +17790,7 @@
   "ptr_decl[ptr_addr] %x: list = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%d"
  ],
  "list_i__meth__dict_subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
   ""
  ],
@@ -17860,9 +17860,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__meth__local__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
-  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  ""
  ],
  "list_i__meth__local__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -17890,9 +17890,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "list_i__meth__local_last__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw])"
+  ""
  ],
  "list_i__meth__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -17920,9 +17920,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__meth__loop_var__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
-  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw])"
+  ""
  ],
  "list_i__meth__loop_var__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -18185,7 +18185,7 @@
   "ptr_decl[ptr_addr] %x: list = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] ["
  ],
  "list_i__meth__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
   ""
  ],
@@ -18255,9 +18255,9 @@
   ""
  ],
  "list_i__meth__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "list_i__meth__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -18325,7 +18325,7 @@
   "ptr_decl[ptr_addr] %x: list = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%d"
  ],
  "list_i__nested__dict_subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
   ""
  ],
@@ -18395,9 +18395,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw]) call(ne"
  ],
  "list_i__nested__local__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
-  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  ""
  ],
  "list_i__nested__local__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -18425,9 +18425,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__local_last__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "",
-  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) call(nested_inner, [])"
+  ""
  ],
  "list_i__nested__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -18455,9 +18455,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw]) call(ne"
  ],
  "list_i__nested__loop_var__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
-  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) call(nested_inner, [])"
+  ""
  ],
  "list_i__nested__loop_var__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -18720,7 +18720,7 @@
   "ptr_decl[ptr_addr] %x: list = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] ["
  ],
  "list_i__nested__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[IntLiteral(1), 2]#N into field; use copy() to make this expli",
   ""
  ],
@@ -18790,9 +18790,9 @@
   ""
  ],
  "list_i__nested__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -18895,9 +18895,9 @@
   "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] pri"
  ],
  "list_r__async__local__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[R, 1]#N into field; use copy() to make this explicit",
-  "[3] *%h.f = *%s0 [4] print(call(len [tpy::__len__], [*%h.f]) [raw]) [5] print(call(len [tpy::__len__], [*%s0]) [raw])"
+  ""
  ],
  "list_r__async__local__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -18925,9 +18925,9 @@
   "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) [6] print(call(len [tpy::__len__], [*%s1]) [raw])"
  ],
  "list_r__async__local_last__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "",
-  "[3] *%h.f = form_convert[storage](*%s0) [4] print(call(len [tpy::__len__], [*%h.f]) [raw])"
+  ""
  ],
  "list_r__async__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -19090,9 +19090,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__l"
  ],
  "list_r__ctor__closure_capture__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[R, 1]#N into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  ""
  ],
  "list_r__ctor__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -19120,7 +19120,7 @@
   "ptr_decl[ptr_addr] %x: list = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%s1]) [raw]) print("
  ],
  "list_r__ctor__dict_subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[R, 1]#N into field; use copy() to make this explicit",
   ""
  ],
@@ -19180,9 +19180,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__l"
  ],
  "list_r__ctor__local__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[R, 1]#N into field; use copy() to make this explicit",
-  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  ""
  ],
  "list_r__ctor__local__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -19210,9 +19210,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "list_r__ctor__local_last__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw])"
+  ""
  ],
  "list_r__ctor__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -19480,9 +19480,9 @@
   ""
  ],
  "list_r__ctor__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies list[R] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "list_r__ctor__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -19545,9 +19545,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__l"
  ],
  "list_r__fn__closure_capture__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[R, 1]#N into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  ""
  ],
  "list_r__fn__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -19575,7 +19575,7 @@
   "ptr_decl[ptr_addr] %x: list = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%s1]) [raw]) print("
  ],
  "list_r__fn__dict_subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[R, 1]#N into field; use copy() to make this explicit",
   ""
  ],
@@ -19645,9 +19645,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__l"
  ],
  "list_r__fn__local__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[R, 1]#N into field; use copy() to make this explicit",
-  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  ""
  ],
  "list_r__fn__local__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -19675,9 +19675,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "list_r__fn__local_last__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw])"
+  ""
  ],
  "list_r__fn__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -19975,9 +19975,9 @@
   ""
  ],
  "list_r__fn__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies list[R] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "list_r__fn__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -20080,9 +20080,9 @@
   "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] pri"
  ],
  "list_r__gen__local__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[R, 1]#N into field; use copy() to make this explicit",
-  "[3] *%h.f = *%s0 [4] print(call(len [tpy::__len__], [*%h.f]) [raw]) [5] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  ""
  ],
  "list_r__gen__local__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -20110,9 +20110,9 @@
   "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) yield_v"
  ],
  "list_r__gen__local_last__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "",
-  "[3] *%h.f = form_convert[storage](*%s0) [4] print(call(len [tpy::__len__], [*%h.f]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  ""
  ],
  "list_r__gen__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -20280,9 +20280,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__l"
  ],
  "list_r__meth__closure_capture__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[R, 1]#N into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  ""
  ],
  "list_r__meth__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -20310,7 +20310,7 @@
   "ptr_decl[ptr_addr] %x: list = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%s1]) [raw]) print("
  ],
  "list_r__meth__dict_subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[R, 1]#N into field; use copy() to make this explicit",
   ""
  ],
@@ -20380,9 +20380,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__l"
  ],
  "list_r__meth__local__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[R, 1]#N into field; use copy() to make this explicit",
-  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  ""
  ],
  "list_r__meth__local__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -20410,9 +20410,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "list_r__meth__local_last__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw])"
+  ""
  ],
  "list_r__meth__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -20710,9 +20710,9 @@
   ""
  ],
  "list_r__meth__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies list[R] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "list_r__meth__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -20780,7 +20780,7 @@
   "ptr_decl[ptr_addr] %x: list = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%s1]) [raw]) print("
  ],
  "list_r__nested__dict_subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[R, 1]#N into field; use copy() to make this explicit",
   ""
  ],
@@ -20850,9 +20850,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__l"
  ],
  "list_r__nested__local__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "copies PendingList[R, 1]#N into field; use copy() to make this explicit",
-  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  ""
  ],
  "list_r__nested__local__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -20880,9 +20880,9 @@
   "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [ctor(R, [coerce(lit(9) -> int32)])]) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
  ],
  "list_r__nested__local_last__field_write": [
-  "ok",
+  "reject:stmt.assign:field_write.lift.borrow",
   "",
-  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) call(nested_inner, [])"
+  ""
  ],
  "list_r__nested__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -21180,9 +21180,9 @@
   ""
  ],
  "list_r__nested__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies list[R] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw]) call(nested_inner, [])"
  ],
  "list_r__nested__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -21215,9 +21215,9 @@
   ""
  ],
  "rec__async__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "[3] *%h.f = method_call(*%b, v_m, []) [4] print(*%h.f.x [raw])"
  ],
  "rec__async__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -21485,9 +21485,9 @@
   "ptr_decl[ptr_addr] %x: R = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) print(method_call(%b, v_m, []).x [raw])"
  ],
  "rec__ctor__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v_m, []) print(%h.f.x [raw])"
  ],
  "rec__ctor__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -21517,7 +21517,7 @@
  "rec__ctor__closure_capture__field_write": [
   "ok",
   "copies R into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(%h.f.x [raw]) call(inner, [])"
+  "%h.f = %s0 print(%h.f.x [raw]) call(inner, [])"
  ],
  "rec__ctor__closure_capture__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -21725,9 +21725,9 @@
   ""
  ],
  "rec__ctor__narrowed_opt__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "",
-  ""
+  "%h.f = form_convert[storage](*%o0) print(%h.f.x [raw])"
  ],
  "rec__ctor__narrowed_opt__match_capture": [
   "reject:stmt.match",
@@ -21755,9 +21755,9 @@
   ""
  ],
  "rec__ctor__narrowed_opt_param__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f = *%pv print(%h.f.x [raw])"
  ],
  "rec__ctor__narrowed_opt_param__match_capture": [
   "reject:stmt.match",
@@ -21905,9 +21905,9 @@
   ""
  ],
  "rec__ctor__prop_ref__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v, []) print(%h.f.x [raw])"
  ],
  "rec__ctor__prop_ref__match_capture": [
   "reject:stmt.match",
@@ -22025,9 +22025,9 @@
   ""
  ],
  "rec__ctor__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(%h.f.x [raw])"
  ],
  "rec__ctor__temp_field__match_capture": [
   "reject:stmt.match",
@@ -22055,9 +22055,9 @@
   "ptr_decl[ptr_addr] %x: R = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) print(method_call(%b, v_m, []).x [raw])"
  ],
  "rec__fn__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v_m, []) print(%h.f.x [raw])"
  ],
  "rec__fn__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -22092,7 +22092,7 @@
  "rec__fn__closure_capture__field_write": [
   "ok",
   "copies R into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(%h.f.x [raw]) call(inner, [])"
+  "%h.f = %s0 print(%h.f.x [raw]) call(inner, [])"
  ],
  "rec__fn__closure_capture__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -22315,9 +22315,9 @@
   ""
  ],
  "rec__fn__narrowed_opt__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "",
-  ""
+  "%h.f = form_convert[storage](*%o0) print(%h.f.x [raw])"
  ],
  "rec__fn__narrowed_opt__match_capture": [
   "reject:stmt.match",
@@ -22345,9 +22345,9 @@
   ""
  ],
  "rec__fn__narrowed_opt_param__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f = *%pv print(%h.f.x [raw])"
  ],
  "rec__fn__narrowed_opt_param__match_capture": [
   "reject:stmt.match",
@@ -22515,9 +22515,9 @@
   ""
  ],
  "rec__fn__prop_ref__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v, []) print(%h.f.x [raw])"
  ],
  "rec__fn__prop_ref__match_capture": [
   "reject:stmt.match",
@@ -22650,9 +22650,9 @@
   ""
  ],
  "rec__fn__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(%h.f.x [raw])"
  ],
  "rec__fn__temp_field__match_capture": [
   "reject:stmt.match",
@@ -22685,9 +22685,9 @@
   ""
  ],
  "rec__gen__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "[3] *%h.f = method_call(*%b, v_m, []) [4] print(*%h.f.x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "rec__gen__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -22955,9 +22955,9 @@
   "ptr_decl[ptr_addr] %x: R = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) print(method_call(%b, v_m, []).x [raw])"
  ],
  "rec__meth__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v_m, []) print(%h.f.x [raw])"
  ],
  "rec__meth__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -22992,7 +22992,7 @@
  "rec__meth__closure_capture__field_write": [
   "ok",
   "copies R into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(%h.f.x [raw]) call(inner, [])"
+  "%h.f = %s0 print(%h.f.x [raw]) call(inner, [])"
  ],
  "rec__meth__closure_capture__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -23215,9 +23215,9 @@
   ""
  ],
  "rec__meth__narrowed_opt__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "",
-  ""
+  "%h.f = form_convert[storage](*%o0) print(%h.f.x [raw])"
  ],
  "rec__meth__narrowed_opt__match_capture": [
   "reject:stmt.match",
@@ -23245,9 +23245,9 @@
   ""
  ],
  "rec__meth__narrowed_opt_param__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f = *%pv print(%h.f.x [raw])"
  ],
  "rec__meth__narrowed_opt_param__match_capture": [
   "reject:stmt.match",
@@ -23415,9 +23415,9 @@
   ""
  ],
  "rec__meth__prop_ref__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v, []) print(%h.f.x [raw])"
  ],
  "rec__meth__prop_ref__match_capture": [
   "reject:stmt.match",
@@ -23550,9 +23550,9 @@
   ""
  ],
  "rec__meth__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(%h.f.x [raw])"
  ],
  "rec__meth__temp_field__match_capture": [
   "reject:stmt.match",
@@ -23585,9 +23585,9 @@
   "ptr_decl[ptr_addr] %x: R = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) print(method_call(%b, v_m, []).x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__borrow_method__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v_m, []) print(%h.f.x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__borrow_method__match_capture": [
   "reject:stmt.match",
@@ -23815,9 +23815,9 @@
   ""
  ],
  "rec__nested__narrowed_opt__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "",
-  ""
+  "%h.f = *%o0 print(%h.f.x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__narrowed_opt__match_capture": [
   "reject:stmt.match",
@@ -24015,9 +24015,9 @@
   ""
  ],
  "rec__nested__prop_ref__field_write": [
-  "reject:expr.method_call:method.ret_type",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f = method_call(%b, v, []) print(%h.f.x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__prop_ref__match_capture": [
   "reject:stmt.match",
@@ -24150,9 +24150,9 @@
   ""
  ],
  "rec__nested__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies R into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(%h.f.x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__temp_field__match_capture": [
   "reject:stmt.match",
@@ -24640,9 +24640,9 @@
   "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->insert, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print"
  ],
  "set_i__async__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "[3] *%h.f = *%xs[0] [borrow] [4] print(call(len [tpy::__len__], [*%h.f]) [raw])"
  ],
  "set_i__async__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -24707,7 +24707,7 @@
  "set_i__ctor__closure_capture__field_write": [
   "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
  ],
  "set_i__ctor__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -24735,9 +24735,9 @@
   "ptr_decl[ptr_addr] %x: set = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::"
  ],
  "set_i__ctor__dict_subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = %d[str('k')] [borrow] print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "set_i__ctor__dict_subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -25095,9 +25095,9 @@
   "ptr_decl[ptr_addr] %x: set = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len_"
  ],
  "set_i__ctor__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "set_i__ctor__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -25155,9 +25155,9 @@
   ""
  ],
  "set_i__ctor__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "set_i__ctor__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -25222,7 +25222,7 @@
  "set_i__fn__closure_capture__field_write": [
   "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
  ],
  "set_i__fn__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -25250,9 +25250,9 @@
   "ptr_decl[ptr_addr] %x: set = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::"
  ],
  "set_i__fn__dict_subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = %d[str('k')] [borrow] print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "set_i__fn__dict_subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -25645,9 +25645,9 @@
   "ptr_decl[ptr_addr] %x: set = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len_"
  ],
  "set_i__fn__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "set_i__fn__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -25715,9 +25715,9 @@
   ""
  ],
  "set_i__fn__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "set_i__fn__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -25985,9 +25985,9 @@
   "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->insert, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print"
  ],
  "set_i__gen__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "[3] *%h.f = *%xs[0] [borrow] [4] print(call(len [tpy::__len__], [*%h.f]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "set_i__gen__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -26057,7 +26057,7 @@
  "set_i__meth__closure_capture__field_write": [
   "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  "%h.f = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
+  "%h.f = %s0 print(call(len [tpy::__len__], [%h.f]) [raw]) call(inner, [])"
  ],
  "set_i__meth__closure_capture__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -26085,9 +26085,9 @@
   "ptr_decl[ptr_addr] %x: set = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::"
  ],
  "set_i__meth__dict_subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = %d[str('k')] [borrow] print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "set_i__meth__dict_subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -26480,9 +26480,9 @@
   "ptr_decl[ptr_addr] %x: set = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len_"
  ],
  "set_i__meth__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "set_i__meth__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -26550,9 +26550,9 @@
   ""
  ],
  "set_i__meth__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw])"
  ],
  "set_i__meth__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -26620,9 +26620,9 @@
   "ptr_decl[ptr_addr] %x: set = %d[str('k')] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::"
  ],
  "set_i__nested__dict_subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = %d[str('k')] [borrow] print(call(len [tpy::__len__], [%h.f]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__dict_subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -27015,9 +27015,9 @@
   "ptr_decl[ptr_addr] %x: set = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len_"
  ],
  "set_i__nested__subscript__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -27085,9 +27085,9 @@
   ""
  ],
  "set_i__nested__temp_field__field_write": [
-  "reject:stmt.assign:assign.field_write_shape",
+  "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  ""
+  "%h.f = call(mk_b, [])._v print(call(len [tpy::__len__], [%h.f]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__temp_field__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",

@@ -96,7 +96,6 @@ from ...typesys import (
     make_list,
     resolve_int_literals,
     substitute_type_params_simple,
-    unwrap_optional_own,
     unwrap_own,
     unwrap_readonly,
     unwrap_ref_type,
@@ -499,6 +498,7 @@ from .predicates import (
     _value_opt_owned_view,
     _open_value_tuple,
     _value_tuple,
+    _storage_copy_value,
     _value_tuple_needle_ok,
     _eligible_value_union,
     _value_tuple_element_ok,
@@ -556,7 +556,7 @@ from .context import (_call_arg_forms, _ExprResultUse, _ExprUse, _LowerCtx,
                       _ONLY_PTR_OPT_PASSTHROUGH, _ONLY_SELECT_PRVALUE,
                       _ONLY_SELECT_FRESH_PRVALUE, _ONLY_SELECT_SLOT,
                       _ONLY_TUPLE_SOURCE, _RecordCtorUse, CallArgKind,
-                      SinkForm, SinkPos, ValueOptKind,
+                      SinkForm, SinkPos, SlotPlacement, ValueOptKind,
                       _POS_FORMS)
 from .generics import expand_fi_template
 
@@ -579,6 +579,7 @@ _MEMBERSHIP_RECV = _ExprUse(pos=SinkPos.RECEIVER,
 
 
 from .checks import (
+    _record_copy_borrow_ret,
     _btuple_pass_arg,
     _own_movable_tuple_pass_arg,
     _own_move_source_slice_facts,
@@ -965,15 +966,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               # the native helper's render carries the concrete C++ type;
               # the decl slot spells `auto`.
               or _protocol_auto_slot(record)
-              # A borrow-returning record call at the field-write COPY sink
-              # (`h.p = identity(pt);`): the copy-assign absorbs the `T&`,
-              # so the call renders bare -- sink-flagged, decls keep
-              # rejecting (they bind REF_ALIAS off the same result).
-              or (use.admits(SinkForm.RECORD_COPY)
-                  and fi is not None
-                  and call_returns_cpp_ref(analyzer, fi)
-                  and record_like(ret, analyzer)
-                  and _witness("call.field_copy_borrow_ret"))
+              or _record_copy_borrow_ret(use, analyzer, fi, ret)
               # A per-element-Own record tuple result (`make_pair()` ->
               # `std::tuple<Counter, Counter>`): borrow and storage
               # coincide, the call lands bare in its spelled slot.
@@ -2681,19 +2674,13 @@ def _field_is_arrow(e: TpyFieldAccess, lc: '_LowerCtx') -> bool:
 def _is_own_param(name: str, lc: '_LowerCtx') -> bool:
     """Whether `name` is an `Own[...]`-declared param of the function being
     lowered (incl. the own-optional shapes) -- the storage-owning binding."""
-    for n, t in lc.params:
-        if n == name:
-            return (isinstance(t, TpyType)
-                    and unwrap_optional_own(unwrap_readonly(t)) is not None)
-    return False
+    return name in lc.own_params
 
 
 def _own_param_names(lc: '_LowerCtx') -> 'frozenset[str]':
     """Every param `_is_own_param` answers True for, as the discrete fact the
     arg table reads."""
-    return frozenset(n for n, t in lc.params
-                     if isinstance(t, TpyType)
-                     and unwrap_optional_own(unwrap_readonly(t)) is not None)
+    return lc.own_params
 
 
 def _unproven_opt_scalar_inner(e: TpyExpr, lc: '_LowerCtx',
@@ -5523,6 +5510,15 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
             if layout is not None:
                 lowered = replace(lowered, union_read=layout)
     if (isinstance(e, TpyName) and isinstance(lowered, THIRName)
+            and lowered.name == e.name):
+        # The move facts a consuming sink reads off the node: sema's
+        # last-use verdict for THIS read, and whether the name is movable
+        # where the sink sits (`_LowerCtx.movable_now`).
+        last = lc.analyzer.ctx.is_last_use(e)
+        movable = lc.movable_now(e.name)
+        if last or movable:
+            lowered = replace(lowered, is_last_use=last, is_movable=movable)
+    if (isinstance(e, TpyName) and isinstance(lowered, THIRName)
             and lowered.cpp is None and not lowered.opt_deref_check):
         binding = declared.get(e.name)
         scalar = _value_opt_scalar_binding(e.name, lc)
@@ -6052,6 +6048,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     # assign copies).
                     or (use.admits(SinkForm.RECORD_COPY)
                         and record_like(rtype, analyzer))
+                    # ... and a union / tuple FIELD, whose bare member read
+                    # is the same self-contained storage the assign copies
+                    # (`h.u = h2.u;`).
+                    or (use.admits(SinkForm.RECORD_COPY)
+                        and _storage_copy_value(rtype, analyzer)
+                        and _witness("field.storage_copy"))
                     # A CONTAINER field in a for-head that reaches the generic
                     # iterable position -- the RESUMABLE frame's
                     # (`(__self.nodes).begin()`). The sync for-head has its
@@ -7189,6 +7191,20 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                      or _eligible_wrapper_union(rtype, analyzer) is not None)
                 and index_ok
                 and bool(_witness("subscript.record_elem_borrow")))
+            # The owning copy sink's other element families: an Optional,
+            # union or tuple element is stored self-contained in its
+            # container, so the checked element lvalue is storage the assign
+            # copies whole (`h.o = ::tpy::__getitem__(opts, 0);`).
+            _se_rb = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
+            storage_elem_copy_ok = (
+                use.admits(SinkForm.RECORD_COPY)
+                and recv_t is not None
+                and (is_list(recv_peeled) or is_array(recv_peeled)
+                     or is_dict(recv_peeled))
+                and (isinstance(_se_rb, OptionalType)
+                     or _storage_copy_value(_se_rb, analyzer))
+                and index_ok
+                and bool(_witness("subscript.storage_elem_copy")))
             # A VALUE-record element read copied into a by-value slot
             # (`w = self._waiters[fd]` at `dict[int32, Waker]`): a ValueType
             # record has no borrow form, so the checked element lvalue
@@ -7271,7 +7287,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     or tuple_elem_src_ok or tuple_elem_borrow_ok
                     or record_recv_ok or tuple_elem_recv or proto_ok
                     or varargs_ok or record_elem_ok
-                    or value_record_elem_ok):
+                    or value_record_elem_ok or storage_elem_copy_ok):
                 if recv_t is None:
                     detail = "subscript." + _subscript_recv_reject(
                         e.obj, declared, analyzer)
@@ -10866,7 +10882,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # adds only the family-internal type respelling (StrView -> str /
             # String), carried on result_type. The explicit materialize flag
             # is what admits the bytearray twin (a reference type, where the
-            # family does not determine the render).
+            # family does not determine the render). Sema types a coerce
+            # feeding an `Optional[str]` slot as the Optional; what is
+            # materialized is its owned inner, which the slot absorbs.
+            mat_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
+            if isinstance(mat_t, OptionalType):
+                rtype = unwrap_readonly(mat_t.inner)
             return THIRFormConvert(result_type=rtype, value=inner,
                                    form=Form.STORAGE, materialize=True,
                                    loc=loc)
@@ -12328,7 +12349,7 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
     # An element reads through a full deref and may move: an F2
     # pointer-local name derefs (`(*p)` -- indirect_read), and a movable
     # owned local at its last use moves into the element slot, off the
-    # `movable_locals` + `all_last_uses` facts.
+    # `movable_locals` + sema `is_last_use` facts.
     # A non-wrapper-union slot's admitted field read (the elem gate's
     # containerlit.union_field_elem row) renders the bare member the same
     # way an owned-str sink's does -- grant it the field admission here so
@@ -16589,26 +16610,53 @@ def _flush_witness(pos: str, value: THIRExpr) -> THIRExpr:
     return value
 
 
-def _hoists_arg_temp(node: THIRNode) -> bool:
-    """Whether a lowered expression holds an arg temp or a temp-bearing
-    union lift anywhere inside it: that object lives only as long as the
-    block the statement sits in. Other temp-declaring nodes (a `*args` pack,
-    a slot emplace) are not recognized:
-    BUGS.md#tuple-literal-arg-unpack-borrow-dangles."""
-    if isinstance(node, THIRArgTemp):
-        return True
-    if isinstance(node, THIRUnionArgLift) and node.temp_cpp is not None:
+def _holds_node(node: THIRNode, pred: Callable[[THIRNode], bool]) -> bool:
+    """Whether `pred` holds for `node` or any node inside it."""
+    if pred(node):
         return True
     for f in dataclass_fields(node):
         v = getattr(node, f.name)
         if isinstance(v, THIRNode):
-            if _hoists_arg_temp(v):
+            if _holds_node(v, pred):
                 return True
         elif isinstance(v, tuple):
-            if any(isinstance(item, THIRNode) and _hoists_arg_temp(item)
+            if any(isinstance(item, THIRNode) and _holds_node(item, pred)
                    for item in v):
                 return True
     return False
+
+
+def _block_scoped_temp(node: THIRNode) -> bool:
+    """An arg temp or a temp-bearing union lift: an object that lives only
+    as long as the block its statement sits in."""
+    return (isinstance(node, THIRArgTemp)
+            or (isinstance(node, THIRUnionArgLift)
+                and node.temp_cpp is not None))
+
+
+def _statement_temp(node: THIRNode) -> bool:
+    """A node whose render hoists a declaration before its statement: a
+    block-scoped temp, a slot emplace, a `*args` pack's element array, an
+    `and`/`or` operand held once, or a walrus target."""
+    return (_block_scoped_temp(node)
+            or isinstance(node, (THIRSlotEmplace, THIRWalrus))
+            or (isinstance(node, THIRValueSelect)
+                and node.lhs_temp_cpp is not None)
+            or (isinstance(node, THIRVarargPack) and bool(node.args)))
+
+
+def _hoists_arg_temp(node: THIRNode) -> bool:
+    """Whether a lowered expression holds a block-scoped temp anywhere
+    inside it. Other temp-declaring nodes (a `*args` pack, a slot emplace)
+    are not recognized: BUGS.md#tuple-literal-arg-unpack-borrow-dangles."""
+    return _holds_node(node, _block_scoped_temp)
+
+
+def _declares_statement_temp(node: THIRNode) -> bool:
+    """Whether a lowered expression needs a declaration hoisted before its
+    statement. A position with no statement (a ctor member-init) cannot host
+    one."""
+    return _holds_node(node, _statement_temp)
 
 
 def _constructs_value(value: THIRExpr) -> bool:
@@ -17920,11 +17968,12 @@ def _select_slot_ok(use: _ExprUse, lc: '_LowerCtx') -> bool:
     its scope -- the sink's own flush right
     (`use.allow_temps`, which every flushing position already carries), or
     a statement whose emitter declares pending slots before its first line
-    (`lc.slot_hoist_ok`, set per statement kind) -- and never in a lambda's
-    expression body, which has no statement of its own. Anything
-    unclassified rejects."""
+    (`lc.slot_hoist_ok`, set per statement kind) -- and never where there
+    is no statement at all: a lambda's expression body, or a member-init
+    (`SlotPlacement.NO_FLUSH_POINT`). Anything unclassified rejects."""
     if (not (use.allow_temps or lc.slot_hoist_ok) or lc.in_lambda_body
-            or use.pos in (SinkPos.MIL_INIT, SinkPos.COERCE_INNER)):
+            or use.placement is SlotPlacement.NO_FLUSH_POINT
+            or use.pos is SinkPos.COERCE_INNER):
         return False
     return (use.admits(SinkForm.SELECT_SLOT)
             or use.admits(SinkForm.DYING_SOURCE_LEND))
@@ -18669,19 +18718,22 @@ def _lower_subscript_source(e: TpySubscript, lc: '_LowerCtx',
         # (see _str_aug_append_ok).
 
 
-def _is_move_source(value: TpyExpr, lc: _LowerCtx,
-                    movable_names: 'set[str] | None' = None) -> bool:
-    """Whether a write / return / MIL source moves rather than copies: the last use
-    of a movable (owned) name -- peel `TpyCoerce`, then a `TpyName` in the
-    movable set whose node is a last use.
-    `movable_names` defaults to the function's `movable_locals` (the
-    F2b/F2e write/return case -- only an F2d REBIND_SLOT local is owned there); the
-    ctor MIL passes `own_param_names` instead (M3b-move), since no locals exist yet at
-    MIL time (the MIL runs before the body) and its movable sources are the Own params."""
-    if movable_names is None:
-        return _is_move_source_facts(value, lc.movable_locals, lc.analyzer,
-                                     getattr(lc.func, "name", None))
-    inner = _peel_coerce(value)
-    return (isinstance(inner, TpyName)
-            and inner.name in movable_names
-            and inner in lc.analyzer.ctx.all_last_uses)
+def _is_move_source(value: TpyExpr, lc: _LowerCtx) -> bool:
+    """Whether a write / return source moves rather than copies, asked BEFORE
+    lowering: the last use of a name movable here (`movable_locals`, as
+    `moves_only` narrows it) -- peel `TpyCoerce`, then a `TpyName` whose
+    node is a last use. A sink that decides after lowering reads the node
+    instead (`_node_moves`)."""
+    return _is_move_source_facts(value, lc.movable_locals, lc.analyzer,
+                                 getattr(lc.func, "name", None))
+
+
+def _node_moves(value: THIRExpr) -> bool:
+    """`_is_move_source` asked of the LOWERED source, for a sink that
+    decides move-vs-copy after lowering: a name `_lower_expr` stamped as
+    movable at sema's last use, read through the passthrough coercions it
+    may arrive under."""
+    while isinstance(value, THIRCoerce):
+        value = value.expr
+    return (isinstance(value, THIRName) and value.is_last_use
+            and value.is_movable)

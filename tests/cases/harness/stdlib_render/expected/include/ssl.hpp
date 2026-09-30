@@ -360,15 +360,14 @@ inline void _SslSession::setblocking(bool flag) {
 //     # client path never consults it.
 //     self._certfile = ""
 //     self._keyfile = ""
-inline SSLContext::SSLContext() {
-    this->verify_mode = CERT_REQUIRED;
-    this->check_hostname = true;
-    this->_cafile = "";
-    this->_use_bundled_ca = false;
-    this->_system_cafile = "";
-    this->_certfile = "";
-    this->_keyfile = "";
-}
+inline SSLContext::SSLContext()
+    : verify_mode(CERT_REQUIRED),
+      check_hostname(true),
+      _cafile(""),
+      _use_bundled_ca(false),
+      _system_cafile(""),
+      _certfile(""),
+      _keyfile("") {}
 
 // def load_verify_locations(self, cafile: str) -> None:
 //     """Trust the CA certificates in `cafile` (PEM or DER). Additive to the

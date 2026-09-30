@@ -1,1 +1,1 @@
-main.py:16: error: in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)
+main.py:16: error: in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:field_write.lift.borrow)

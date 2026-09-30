@@ -1,8 +1,8 @@
 # Ctor member-init-list small value families: None into pointer-repr / value
 # Optional, Ptr and union fields; value- and pointer-variant union sources;
-# tuple param and literal sources; and a bare-global-name init the compiler
-# demotes to the ctor body (chain-breaking every later init). Union and tuple
-# fields store copies by design (value-variant / storage-form semantics).
+# tuple param and literal sources; and a bare-global-name init, which reads a
+# name bound at member-init time and stays in the list. Union and tuple fields
+# store copies by design (value-variant / storage-form semantics).
 from tpy import int32, float64, Ptr
 
 
@@ -61,7 +61,7 @@ class D:
     strict: bool
 
     def __init__(self) -> None:
-        self.n = G  # bare global name: demoted to the ctor body
+        self.n = G  # bare global name: a member-init like a param read
         self.strict = True
 
 

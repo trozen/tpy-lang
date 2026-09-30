@@ -596,7 +596,7 @@
   ""
  ],
  "ctor_body__name__meth__temp": [
-  "ok",
+  "Cannot bind StrView field 'v' to a temporary view source; the backing storage is",
   ""
  ],
  "ctor_body__name__prop__named": [
@@ -604,7 +604,7 @@
   ""
  ],
  "ctor_body__name__prop__temp": [
-  "expr.method_call:mil_init.lends_from_temporary",
+  "Cannot bind StrView field 'v' to a temporary view source; the backing storage is",
   ""
  ],
  "ctor_body__text__meth__named": [

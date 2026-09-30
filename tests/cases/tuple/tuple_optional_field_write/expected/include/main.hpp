@@ -123,9 +123,7 @@ inline void Holder::copy_from_field(const Holder& other) {
 // def __init__(self) -> None:
 //     # Source is a value global -- already storage-form, direct copy.
 //     self.pair = g_pair  # tpyc: warning(/copies/) warning(/copies/)
-inline GlobalCopier::GlobalCopier() {
-    this->pair = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(g_pair);
-}
+inline GlobalCopier::GlobalCopier() : pair(::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(g_pair)) {}
 
 // def __init__(self, items: list[tuple[T | None, T | None]]) -> None:
 //     # Constructor MIL path: subscript source is already storage-form,

@@ -33,7 +33,7 @@ class Keeper:
         self.n = 0
 
     def take(self) -> None:
-        self.v = mk().view  # tpyc: error(/assign.field_write_lends_from_temporary/)
+        self.v = mk().view  # tpyc: error(/Cannot bind StrView field 'v' to a temporary view source/)
 
 
 def main() -> None:
