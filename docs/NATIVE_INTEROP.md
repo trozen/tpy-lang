@@ -302,7 +302,7 @@ rejected on a reference type (a class without the `ValueType` marker, which is
 borrow-checked as a reference already) and on a function-level `@native`.
 
 A TPy record that merely HOLDS a view field declares nothing and is not
-checked (`BUGS.md#record-view-field-return-dangles`).
+checked (`BUGS.md#record-view-field-escapes-local-buffer`).
 
 The fact also decides how a generic handle spells a `readonly[T]` type
 argument: a `borrowing_view` template gets `const T` (a handle over readonly

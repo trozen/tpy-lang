@@ -12,7 +12,7 @@
 | THIR form fact (Open Q 9/11/12) | **Rungs F1-F3 landed as tabulated below; unions/generics/views route in practice, so the F4-F6 rows are stale as a status view -- read them as scope, not as remaining work. F-final (RefType removal + AST form-codegen retirement) has NOT happened: `RefType` is still live in `typesys.py`.** The per-increment history has been distilled into "Migration findings (distilled)" under the Rollout Plan; the dated blow-by-blow log was dropped |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Scalar CFG, borrowed/owned record storage, alias operations, nested field places and selected tuple/Optional/union payloads, validation and internal dump implemented |
 | Semantic callable metadata | M2.11 carries selected resolved free-function identities/signatures on THIR calls and definitions; M2.12 carries complete bounded closure capture inventories and body-local occurrence identities. General MIR calls and closure execution remain uncovered; see [call/capture plan](MIR_CALL_CAPTURE_PLAN.md) |
-| THIR -> MIR lowering (`tpyc/mir/lower.py`) | M1 and M2.1-M2.10 bounded coverage in free functions, ordinary instance methods and fully initialized scalar constructors, including qualified scalar globals; explicit whole-body MIRNotCovered, no compilation hook. Exact shapes and exclusions: [MIR analysis plan](MIR_ANALYSIS_PLAN.md) |
+| THIR -> MIR lowering (`tpyc/mir/lower.py`) | M1 and M2.1-M2.10 bounded coverage in free functions, ordinary instance methods and fully initialized scalar constructors, including qualified scalar globals; explicit whole-body MIRNotCovered, no compilation hook. Exact shapes and exclusions: [MIR analysis plan](MIR_ANALYSIS_PLAN.md). Lowers 0.9% of loan-active test bodies at release 0.6.1; widening follows the [breadth-first order](MIR_ANALYSIS_PLAN.md#breadth-first-order) |
 | `--dump-mir` debug output | Implemented for the bounded MIR subset; uncovered/unavailable bodies are reported explicitly |
 | MIR liveness pass | M3.1 backward may-liveness implemented for validated bounded MIR; debug output only, no move decisions |
 | MIR dependency pass | M3.2 per-payload referents and live dependencies implemented with explicit backing duration; debug output only, no lifetime-safety verdict |
@@ -25,18 +25,24 @@
 | Inline-record tuple backing | M3.16 models flat owned/mixed payload identities and normal lifetimes; M3.17 connects bounded local constructor literals ([tuple-storage plan](MIR_M3_TUPLE_STORAGE_PLAN.md)) |
 | Immutable whole-tuple aliases | M3.18 normalizes fixed body-local aliases and chains to existing constructor-tuple backing ([alias plan](MIR_M3_TUPLE_ALIAS_PLAN.md)); no copying, reseating or new storage |
 | Ordinary iteration | M3.19 models native iterator identities and dependencies; M3.20 connects unit-step int32 range CFG; M3.21 connects fixed borrowed native scalar/record sources, readonly and retained aliases ([iteration plan](MIR_M3_ORDINARY_FOR_PLAN.md)); protocol iteration and other shapes remain open |
-| Remaining M3 scope | [Completion checklist](MIR_M3_COMPLETION_PLAN.md): storage lifecycle, additional CFG positions, cleanup, suspension and complete holder propagation |
+| Remaining M3 scope | [Completion checklist](MIR_M3_COMPLETION_PLAN.md): storage lifecycle, additional CFG positions, cleanup, suspension and complete holder propagation; each open item is scheduled under a breadth-first B-step |
 | MIR move/copy lowering and move optimization | Explicit bounded record copy/move operations implemented; move optimization not started |
-| MIR advisory loan checker (default mode) | Not started |
+| MIR advisory loan checker (default mode) | Not started; step B6 of the [breadth-first order](MIR_ANALYSIS_PLAN.md#breadth-first-order), which also decides per-family vs single authority transition |
 | MIR safe opt-in enforcement mode | Not started |
 | MIR-backed codegen | Not started |
 | Retirement of old sema/codegen ownership logic | Not started |
 
-**Active MIR sequence (approved 2026-09-17):** analysis-only MIR precedes the
-coupled callable contract. `MIR_ANALYSIS_PLAN.md` records the approved and
-implemented M1 and M2.1-M2.10 increments and the later coverage gates. The
-historical phase lists below are not an instruction to implement move
-optimization or switch emission before the callable analysis consumer.
+**Active MIR sequence:** analysis-only MIR precedes the coupled callable
+contract (approved 2026-09-17) and grows breadth-first (approved 2026-09-29):
+B1 loan classification of representations, B2 views as places, B3 containers
+and iterators, then cleanup, B4 generator/async frames, with B5 call summaries
+alongside and B6 the advisory checker and authority transition
+([breadth-first order](MIR_ANALYSIS_PLAN.md#breadth-first-order)). Lifetime and
+loan defects are routed to MIR, not patched in sema (`BUGS.md` entries tagged
+`deferred: MIR`). The landed M1-M4.6 increments stay recorded in
+`MIR_ANALYSIS_PLAN.md`. The historical phase lists below are not an
+instruction to implement move optimization or switch emission before the
+callable analysis consumer.
 
 A throwaway Phase-1 spike (2026-06) validated the THIR boundary -- byte-identical
 codegen from THIR with no analyzer reference, on an arithmetic slice; see Rollout

@@ -325,8 +325,7 @@ std::string in_with(int32_t v) {
     return out;
 }
 
-// # @error_return body -- an int32 result, not a str: an unwrapped `str` result
-// # binds a view into the try temp and dangles (BUGS.md#error-return-str-unwrap-dangles).
+// # @error_return body -- an int32 result.
 // @error_return(Missing)
 // def checked(v: float) -> int32:
 //     match v:
