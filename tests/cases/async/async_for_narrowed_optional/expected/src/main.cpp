@@ -87,7 +87,7 @@ __coro_count_chars count_chars(std::optional<std::string_view> s) {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-                total = ::tpy::add_check<int32_t>(total, (v).to_fixed_check<int32_t>());
+                total = (total) + (v);
             }
         }
         std::cout << total << "\n";

@@ -1,9 +1,6 @@
-# Module-level globals don't participate in `literal_default_vars` (which
-# is per-function state in FunctionTrackingState), so a global initialized
-# from an integer literal does NOT retro-widen at a typed-slot use. This
-# is the documented gap covered by the TODO.md "polymorphic integer
-# literals" entry; the test pins the current bare type-mismatch error so a
-# future C-style fix can update the snapshot in a single place.
+# A module global initialized from an integer literal has the default int
+# type, and a use never decides a type: passing it to a uint64 parameter
+# is a type mismatch (TODO.md "Polymorphic integer literals").
 from tpy import uint64
 
 

@@ -818,14 +818,14 @@ struct _GatherSettledFuture {
     //     # bubbling it out (CPython's return_exceptions semantics).
     //     was_canceling = self._cancel_pending
     //     self._cancel_pending = False
+    //     i: int32 = 0
     //     if was_canceling:
-    //         i: int32 = 0
     //         while i < n:
     //             if not self._settled[i]:
     //                 self._tasks[i].cancel()
     //             i += 1
     //
-    //     i: int32 = 0
+    //     i = 0
     //     while i < n:
     //         if not self._settled[i]:
     //             try:
@@ -890,8 +890,8 @@ struct _GatherSettledFuture {
         }
         bool was_canceling = this->_cancel_pending;
         this->_cancel_pending = false;
+        int32_t i = 0;
         if (was_canceling) {
-            int32_t i = 0;
             while ((i < n)) {
                 if ((!(::tpy::__getitem__(this->_settled, i)))) {
                     ::tpy::__getitem__(this->_tasks, i).cancel();
@@ -899,7 +899,7 @@ struct _GatherSettledFuture {
                 i = ::tpy::add_check<int32_t>(i, 1);
             }
         }
-        int32_t i = 0;
+        i = 0;
         while ((i < n)) {
             if ((!(::tpy::__getitem__(this->_settled, i)))) {
                 {

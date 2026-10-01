@@ -39,6 +39,38 @@ BytesView = bytes
 # Fixed-width integer types
 # ---------------------------------------------------------------------------
 
+def _fixed_widens(a, b):
+    """Whether fixed-int class `a` widens into `b`: same sign to more bits,
+    or unsigned to a strictly wider signed type -- the compiler's relation."""
+    if a._TPY_SIGNED == b._TPY_SIGNED or (not a._TPY_SIGNED and b._TPY_SIGNED):
+        return a._TPY_BITS < b._TPY_BITS
+    return False
+
+
+def _fixed_result_class(cls, other):
+    """The fixed-int class of `cls OP other`.
+
+    Mirrors the compiler: a mixed pair computes in the operand type the other
+    one widens into (same sign to more bits, or unsigned to a strictly wider
+    signed type). A plain Python int keeps the fixed class: the stub cannot
+    tell a literal (`u8 + 1`, which the compiler computes in uint8) from an
+    `int` variable (`i32 + n`, which it computes in `int`), and the literal
+    is the everyday case. The same limit holds for a literal-seeded local
+    that stored a fixed-width value: it is a runtime value of that class
+    here, of the settled type in the compiler."""
+    other_base = getattr(type(other), "_TPY_BASE", None)
+    if other_base is None:
+        return cls
+    if other_base is cls:
+        return cls
+    if _fixed_widens(other_base, cls):
+        return cls
+    if _fixed_widens(cls, other_base):
+        return other_base
+    # A pair with no common type is a compile error in TPy.
+    return cls
+
+
 def _make_fixed_int_type(name: str, bits: int, signed: bool):
     """Factory for fixed-width integer types with overflow wrapping."""
     if signed:
@@ -52,6 +84,11 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
 
     def _wrap(value):
         return value if value is NotImplemented else FixedInt(value)
+
+    def _arith(value, other):
+        if value is NotImplemented:
+            return value
+        return _fixed_result_class(FixedInt, other)(value)
 
     class FixedInt(int):
         MIN = min_val
@@ -67,22 +104,22 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
                     value = value % mod
             return super().__new__(cls, value)
 
-        # Use FixedInt (not type(self)) so that subclass arithmetic
-        # (e.g. IntEnum + int8) returns the base fixed-int type. _wrap
-        # propagates NotImplemented so mixed-type ops (e.g. int8 + float)
-        # fall back to the other operand's reflected dunder rather than
-        # crashing on FixedInt(NotImplemented).
-        def __add__(self, other): return _wrap(int.__add__(self, other))
-        def __radd__(self, other): return _wrap(int.__radd__(self, other))
-        def __sub__(self, other): return _wrap(int.__sub__(self, other))
-        def __rsub__(self, other): return _wrap(int.__rsub__(self, other))
-        def __mul__(self, other): return _wrap(int.__mul__(self, other))
-        def __rmul__(self, other): return _wrap(int.__rmul__(self, other))
-        def __floordiv__(self, other): return _wrap(int.__floordiv__(self, other))
-        def __mod__(self, other): return _wrap(int.__mod__(self, other))
-        def __and__(self, other): return _wrap(int.__and__(self, other))
-        def __or__(self, other): return _wrap(int.__or__(self, other))
-        def __xor__(self, other): return _wrap(int.__xor__(self, other))
+        # Results are built from the base fixed-int class (not type(self))
+        # so that subclass arithmetic (e.g. IntEnum + int8) returns the base
+        # fixed-int type. NotImplemented propagates so mixed-type ops (e.g.
+        # int8 + float) fall back to the other operand's reflected dunder.
+        def __add__(self, other): return _arith(int.__add__(self, other), other)
+        def __radd__(self, other): return _arith(int.__radd__(self, other), other)
+        def __sub__(self, other): return _arith(int.__sub__(self, other), other)
+        def __rsub__(self, other): return _arith(int.__rsub__(self, other), other)
+        def __mul__(self, other): return _arith(int.__mul__(self, other), other)
+        def __rmul__(self, other): return _arith(int.__rmul__(self, other), other)
+        def __floordiv__(self, other): return _arith(int.__floordiv__(self, other), other)
+        def __mod__(self, other): return _arith(int.__mod__(self, other), other)
+        def __and__(self, other): return _arith(int.__and__(self, other), other)
+        def __or__(self, other): return _arith(int.__or__(self, other), other)
+        def __xor__(self, other): return _arith(int.__xor__(self, other), other)
+        # A shift's result has the left operand's type whatever the count's.
         def __lshift__(self, other): return _wrap(int.__lshift__(self, other))
         def __rshift__(self, other): return _wrap(int.__rshift__(self, other))
         def __invert__(self): return FixedInt(int.__invert__(self))
@@ -128,6 +165,9 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
         def __neg__(self): return FixedInt(int.__neg__(self))
         FixedInt.__neg__ = __neg__
 
+    FixedInt._TPY_BASE = FixedInt
+    FixedInt._TPY_BITS = bits
+    FixedInt._TPY_SIGNED = signed
     FixedInt.__name__ = name
     FixedInt.__qualname__ = name
     return FixedInt
@@ -701,6 +741,12 @@ def _type_matches(func, args: tuple) -> bool:
                 if not (ann.MIN <= arg <= ann.MAX):
                     return False
                 continue
+            # A fixed int also binds a fixed-int slot it widens into, as a
+            # compiler argument conversion does.
+            arg_base = getattr(type(arg), "_TPY_BASE", None)
+            if (arg_base is not None and hasattr(ann, "_TPY_BASE")
+                    and _fixed_widens(arg_base, ann)):
+                continue
             if not isinstance(arg, ann):
                 return False
             continue
@@ -723,7 +769,12 @@ def dispatch(func):
     The compiler resolves a @dispatch set statically; here the variants are
     accumulated by qualified name and each call tries them in declaration
     order, arity match first, then isinstance on the annotated parameter
-    types. `typing.overload` is left untouched: its stubs-plus-implementation
+    types. A concrete variant that matches is taken before a generic one,
+    wherever each is declared, as the compiler's tie rule prefers it. A
+    generic variant's value is not joined: `T` bound by an `int32` and an
+    `int64` argument keeps each argument's own class here, where the
+    compiler converts both to `int64`.
+    `typing.overload` is left untouched: its stubs-plus-implementation
     form already runs under stock CPython.
     """
     # Keyed by module too: two modules' same-named sets must not merge.
@@ -735,8 +786,10 @@ def dispatch(func):
 
     def dispatcher(*args, **kwargs):
         n = len(args) + len(kwargs)
-        # Pass 1: arity + type match
-        for variant in variants:
+        # Pass 1: arity + type match, concrete variants first
+        ordered = sorted(variants,
+                         key=lambda v: bool(getattr(v, "__type_params__", ())))
+        for variant in ordered:
             lo, hi = _arity_of(variant)
             if lo <= n <= hi and _type_matches(variant, args):
                 return variant(*args, **kwargs)

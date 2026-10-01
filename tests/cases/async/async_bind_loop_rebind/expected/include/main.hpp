@@ -49,7 +49,7 @@ struct __coro_add_one {
 struct __coro_main_coro {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    int32_t total;
+    ::tpy::BigInt total;
     int32_t i;
     ::tpy::BigInt __await_lift_0;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;

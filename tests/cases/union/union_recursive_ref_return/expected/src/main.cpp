@@ -20,15 +20,15 @@ Expr g;
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto& branches = __case_0;
-        int32_t total = 0;
+        ::tpy::BigInt total = ::tpy::BigInt(0);
         auto& __obj_0 = branches;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& child = *__beg_0;
-            total = ::tpy::add_check<int32_t>(total, (::tpyapp::main::leaf_count(child)).to_fixed_check<int32_t>());
+            total = (total) + (::tpyapp::main::leaf_count(child));
         }
-        return ::tpy::BigInt(total);
+        return total;
     }
     default: {
         return ::tpy::BigInt(1);

@@ -244,7 +244,7 @@ class Random:
     def _genrand_top_bits(self, k: int32) -> uint32:
         # k in [1, 32]. Avoids the BigInt promotion that public
         # getrandbits does, so _randbelow's rejection loop stays uint32.
-        return self._genrand_uint32() >> uint32(32 - k)
+        return self._genrand_uint32() >> (32 - k)
 
     def getrandbits(self, k: int32) -> int:
         # CPython-compatible: returns an int (BigInt) of k random bits.
@@ -261,7 +261,7 @@ class Random:
             result = result | (int(self._genrand_uint32()) << (32 * i))
             i += 1
         last_k: int32 = k - 32 * i
-        last_word: uint32 = self._genrand_uint32() >> uint32(32 - last_k)
+        last_word: uint32 = self._genrand_uint32() >> (32 - last_k)
         result = result | (int(last_word) << (32 * i))
         return result
 
@@ -349,7 +349,7 @@ class Random:
             shift_base: int32 = 32 - rem * 8
             j: int32 = 0
             while j < rem:
-                out.append(uint8((w >> uint32(shift_base + j * 8)) & 0xFF))
+                out.append(uint8((w >> (shift_base + j * 8)) & 0xFF))
                 j += 1
         return bytes(out)
 

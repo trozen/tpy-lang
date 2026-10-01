@@ -28,7 +28,7 @@ void main() {
             const auto& __tup_1 = __for_tup_0;
             const ::tpy::BigInt& i = std::get<0>(__tup_1);
             const std::tuple<::tpy::BigInt, Box>& pair = std::get<1>(__tup_1);
-            total = ((::tpy::BigInt(total)) + (std::get<1>(pair).val));
+            total = ((total) + (std::get<1>(pair).val));
         }
     }
     std::cout << total << "\n";

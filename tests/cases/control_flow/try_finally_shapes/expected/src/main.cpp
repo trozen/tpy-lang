@@ -146,7 +146,7 @@ void bare_ret(const ::tpy::BigInt& n) {
                     total = ((total) + (::tpy::BigInt(100)));
                     break;
                 }
-                total = ((::tpy::BigInt(total)) + (i));
+                total = ((total) + (i));
             } catch (...) {
                 if (!__fin_ran_5) {
                     total = ((total) + (::tpy::BigInt(100)));

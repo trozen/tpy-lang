@@ -30,6 +30,7 @@ from ..namespace import Namespace
 from ..typesys import (INT32, FunctionInfo, MutationCallEdge,
                        PendingGenericInstanceInfo, RecordInfo, TpyType)
 from .alias_rebind import BindKind
+from .pending_num import DeferredIntOp
 from .context import (BorrowTracker, FunctionTrackingState, PendingLocal,
                       LIVE_HANDLE_FIELDS)
 
@@ -70,6 +71,7 @@ def _populated() -> FunctionTrackingState:
         pending_view_storage_checks=[(expr, INT32, loc, INT32, False)],
         unread_coro_locals={'c': stmt},
         var_decl_by_name={'x': N.TpyVarDecl("x", None, None)},
+        first_bindings={'w': (N.TpyVarDecl("w", None, None),)},
         pending_return_borrows=[
             {'b': ("return b", [(N.TpyReturn(N.TpyName("b")), None)])}],
         # Fields whose annotation says nothing about what they hold.
@@ -81,6 +83,9 @@ def _populated() -> FunctionTrackingState:
         pass_scoped_frames={'g': N.TpyPassStmt()},
         pending_elem_type_fields=[(N.TpyName("comp"), 'result_elem_type')],
         pending_composite_exprs=[N.TpyName("z")],
+        pending_num_deferred=[DeferredIntOp(N.TpyName("p"), (INT32,),
+                                            lambda _types: None)],
+        pending_num_splices=[N.TpyName("q")],
         arm_decl_sites=[(N.TpyIf(N.TpyName("c"), [], []), "r",
                          N.TpyVarDecl("r", None, N.TpyName("c")))],
         borrow_tracker=tracker,
@@ -117,10 +122,12 @@ _FIXTURE_FIELDS = {
     'super_del_call', 'pending_loop_vars', 'write_history', 'nested_def_nodes',
     'nested_def_block_defs', 'pending_yield_root_checks',
     'pending_generic_yield_sources', 'pending_view_storage_checks',
-    'unread_coro_locals', 'var_decl_by_name', 'pending_return_borrows',
+    'unread_coro_locals', 'var_decl_by_name', 'first_bindings',
+    'pending_return_borrows',
     'pre_analyzed_method_args', 'bind_kinds', 'gate_sites',
     'frame_rebind_sites', 'frame_binding_nodes', 'pass_scoped_frames',
     'pending_elem_type_fields', 'pending_composite_exprs', 'arm_decl_sites',
+    'pending_num_deferred', 'pending_num_splices',
     'borrow_tracker',
     'current_call_edges', 'current_awaited_subframes',
     'pending_generic_instances', 'current_ns', 'own_ns', 'current_scope',

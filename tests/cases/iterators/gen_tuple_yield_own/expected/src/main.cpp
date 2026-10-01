@@ -28,7 +28,7 @@ void main() {
             auto __tup_1 = __for_tup_0;
             const ::tpy::BigInt& i = std::get<0>(__tup_1);
             Box b = std::move(std::get<1>(__tup_1));
-            total = ((((::tpy::BigInt(total)) + (i))) + (b.val));
+            total = ((((total) + (i))) + (b.val));
         }
     }
     std::cout << total << "\n";

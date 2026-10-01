@@ -797,6 +797,27 @@ class IntLiteralType(TpyType):
         return True
 
 
+@dataclass(frozen=True)
+class PendingNumType(TpyType):
+    """The numeric type of a value over literal-seeded function locals whose
+    type is decided when their function body has been analyzed: the join of
+    the settled types of the locals `cells` names (`tpyc/sema/pending_num.py`)
+    and of `floor`, a concrete type or None. `is_float` says which family
+    the locals are, the integers or the floats. Never reaches codegen."""
+    cells: frozenset[int] = frozenset()
+    floor: 'TpyType | None' = None
+    is_float: bool = False
+
+    def to_cpp(self) -> str:
+        raise RuntimeError("PendingNumType should be settled before codegen")
+
+    def __str__(self) -> str:
+        return "float" if self.is_float else "int"
+
+    def is_value_type(self) -> bool:
+        return True
+
+
 class LiteralTag(Enum):
     """Type-tag for a `Literal[...]` member. Disambiguates True from 1 and
     similar bool-vs-int collisions that compare equal in Python."""
@@ -3007,8 +3028,10 @@ def is_integer_type(t: 'TpyType | None') -> bool:
 
 
 def is_any_int_type(t: 'TpyType | None') -> bool:
-    """True for any integer-family type including IntLiteralType (unresolved literals)."""
-    return is_integer_type(t) or isinstance(t, IntLiteralType)
+    """True for any integer-family type including the unresolved ones
+    (IntLiteralType, an integer PendingNumType)."""
+    return (is_integer_type(t) or isinstance(t, IntLiteralType)
+            or (isinstance(t, PendingNumType) and not t.is_float))
 
 
 def is_float_type(t: 'TpyType | None') -> bool:
@@ -3020,8 +3043,10 @@ def is_float_type(t: 'TpyType | None') -> bool:
 
 
 def is_any_float_type(t: 'TpyType | None') -> bool:
-    """True for any float-family type including FloatLiteralType (unresolved literals)."""
-    return is_float_type(t) or isinstance(t, FloatLiteralType)
+    """True for any float-family type including the unresolved ones
+    (FloatLiteralType, a float PendingNumType)."""
+    return (is_float_type(t) or isinstance(t, FloatLiteralType)
+            or (isinstance(t, PendingNumType) and t.is_float))
 
 
 def is_numeric_type(t: 'TpyType | None') -> bool:
@@ -5583,12 +5608,14 @@ _PENDING_WRAPPER_QNAMES = frozenset({"builtins.list", "builtins.dict", "builtins
 
 
 def contains_pending_leaf(typ: 'TpyType') -> bool:
-    """True if typ is, or nests, a Pending* container type.
+    """True if typ is, or nests, a Pending* container type or a pending
+    integer.
 
     Type-structural, so it lives with the types: the deferred-resolution
     machinery (cached snapshots, the peer-unify traversal below) uses it to tell
     a fully-concrete type from one that still has a pending leaf to resolve."""
-    if isinstance(typ, (PendingListType, PendingDictType, PendingSetType)):
+    if isinstance(typ, (PendingListType, PendingDictType, PendingSetType,
+                        PendingNumType)):
         return True
     return any(contains_pending_leaf(t) for t in typ.inner_types())
 
@@ -7369,6 +7396,22 @@ class ResolvedBinop:
     # when resolution promoted it -- decided here, since an untemplated
     # promotion renders the same wrapper as no conversion at all.
     promotion: 'FunctionInfo | None' = None
+    # A wrapper casts a narrower fixed-int operand up to the other's width
+    # (the mixed-width step of the resolution); a promotion is certified
+    # separately, by the `__int__` it names.
+    widens_operand: bool = False
+
+    @property
+    def result_ignores_operand(self) -> bool:
+        """The result's type does not depend on the operand's ({0}): the
+        parameter is a type param of the method's own that its return does
+        not name (a shift count)."""
+        fi = self.method.root
+        if len(fi.params) != 1:
+            return False
+        param = unwrap_ref_type(fi.params[0].type)
+        return (isinstance(param, TypeParamRef) and param.name in fi.type_params
+                and not contains_type_param(fi.return_type, {param.name}))
 
 
 @dataclass

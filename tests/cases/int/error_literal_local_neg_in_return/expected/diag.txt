@@ -1,1 +1,0 @@
-main.py:9: error: Integer literal -1 assigned to 'a' is outside uint64 range [0, 18446744073709551615] in return value

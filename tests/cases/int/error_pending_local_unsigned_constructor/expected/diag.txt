@@ -1,0 +1,1 @@
+main.py:12: error: 'x' holds int32 values and this value is uint32, which have no common type; annotate its first binding: x: uint32 = 0

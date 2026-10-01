@@ -1,0 +1,1 @@
+main.py:10: error: Float literal -1e+39 is outside float32 range [-3.4028235e+38, 3.4028235e+38] in reassignment to 'f'

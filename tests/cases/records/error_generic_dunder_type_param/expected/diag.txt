@@ -1,0 +1,1 @@
+main.py:14: error: operator method '__lshift__' cannot have its own type parameters yet; give the parameter a concrete type or make the class generic

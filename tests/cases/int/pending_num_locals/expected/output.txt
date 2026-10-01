@@ -1,0 +1,77 @@
+free 2
+free 6000000000
+ctor 2
+ctor 6000000000
+first_ctor 300 3
+method 2
+method 6000000000
+first_method 300 3
+gen [2, 6000000000]
+async 6000000002
+comp [5000000001, 5000000002]
+closure 4 3 3 5000000000 5000000000
+closure 14
+cm 2
+cm 6000000000
+try 2
+try 6000000000
+finally 3000000000
+er 2
+er 6000000000
+er 3000000000
+match 2
+match 6000000000
+acc 100000000000000000003
+derived 3000000000 1
+uint8 250
+negative -2
+negative -5000000000
+wide 1
+wide 12000000000
+wide_operand 3000000001 -2999999999 1500000000
+wide_operand 3000000002 -2999999998 750000000
+overload_trial 1 1 3000000001
+overload_trial 2
+param 1
+fstring 0
+index 10
+sum 5 100000000000000000005
+uses 100000000000000000000
+declared_aug 8
+declared_aug 100000000000000000000
+literal_family 500 25 1.5 0.15000000596046448 75000 750
+first_declares 10 3 0.5
+first_use_before 300
+first_use_before 3
+first_value 3
+arm_join 3000000000 3000000000 0 100000000000000000000 3 4 1.5 1
+arm_join 3000000000 7000000000 100000000000000000000 0 4 3 0.5 2
+arm_method 3000000000
+arm_method 7000000000
+arm_gen [7000000000] [3000000000]
+arm_match 3
+arm_match 7000000000
+arm_match 3000000000
+arm_try 4
+arm_try 3
+first_accum 3
+first_annotation 3
+first_unchanged 300 7 6
+first_float_explicit 2.5
+first_gen [300, 3]
+first_async 3
+first_async 300
+first_comp [100, 200]
+first_comp 3
+first_closure 300
+first_closure 9
+first_with 300 3
+first_try 300
+first_finally 3
+first_er 3
+first_er 300
+first_match 300 3
+gen_yield [0, 9000000000]
+literal 6
+mixed 1500000000.0 3000000001 2
+slice [1, 0] 100000000000000000001

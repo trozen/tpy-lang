@@ -20890,9 +20890,9 @@
   "method_call(%g, CALLEE, [%s0])"
  ],
  "open_t__ro__loop_var__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), coerce(%s0 -> int32)])"
  ],
  "open_t__ro__loop_var__genrec": [
   "ok",

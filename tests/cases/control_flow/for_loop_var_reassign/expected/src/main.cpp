@@ -1076,7 +1076,7 @@ void main() {
     std::cout << "parameter target" << " " << ::tpyapp::main::parameter_target(7) << "\n";
     ::tpyapp::main::bound_order(::tpy::BigInt(1));
     int32_t count = 0;
-    int32_t total = 0;
+    ::tpy::BigInt total = ::tpy::BigInt(0);
     {
         auto __src_0 = ::tpyapp::main::generator();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -1085,7 +1085,7 @@ void main() {
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& value = ::tpy::unwrap_ref(*__r_1);
             count = ::tpy::add_check<int32_t>(count, 1);
-            total = ::tpy::add_check<int32_t>(total, (value).to_fixed_check<int32_t>());
+            total = (total) + (value);
         }
     }
     std::cout << "generator" << " " << count << " " << total << "\n";

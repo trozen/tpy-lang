@@ -1,1 +1,1 @@
-main.py:18: error: Type mismatch in argument 'x': expected uint64, got int32
+main.py:15: error: Type mismatch in argument 'x': expected uint64, got int32

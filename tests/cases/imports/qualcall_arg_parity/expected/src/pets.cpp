@@ -54,15 +54,15 @@ void bump(::tpy::Union<Cat*, Dog*> pet) {
 //         n += x
 //     return n
 ::tpy::BigInt total(const std::vector<::tpy::BigInt>& xs) {
-    int32_t n = 0;
+    ::tpy::BigInt n = ::tpy::BigInt(0);
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const ::tpy::BigInt& x = *__beg_0;
-        n = ::tpy::add_check<int32_t>(n, (x).to_fixed_check<int32_t>());
+        n = (n) + (x);
     }
-    return ::tpy::BigInt(n);
+    return n;
 }
 
 // def request(url: str, auth: tuple[str, str] | None = None) -> int:

@@ -78,6 +78,7 @@ if TYPE_CHECKING:
     from .local_deduction import LocalTypeDeduction
     from .expressions import ExpressionAnalyzer
     from .methods import MethodAnalyzer
+    from .pending_num import PendingNums
     from ..parse.nodes import SourceLocation
 
 from tpyc import modules as builtin_modules
@@ -687,6 +688,7 @@ class CallAnalyzer:
         # Set after construction to break circular deps (expr <-> calls <-> methods)
         self.expr: ExpressionAnalyzer
         self.methods: MethodAnalyzer
+        self.pend: PendingNums
         # Pending borrow checks deferred until Phase 2 resolves mutated_params
         self.pending_borrow_checks: list[tuple[FunctionInfo, int, str, SourceLocation | None]] = []
         # Deferred match-arm subject-mutation checks: a method call on the
@@ -1679,7 +1681,10 @@ class CallAnalyzer:
                     f"(write(str) -> int32, flush() -> None); got '{actual}'",
                     expr)
         for arg in expr.args:
-            self.expr.analyze_expr(arg)
+            # Any int prints the same; its width is decided when the
+            # function settles.
+            with self.pend.sink(arg):
+                self.expr.analyze_expr(arg)
         expr.resolved_function_info = FunctionInfo(
             name="print",
             params=[],
@@ -5245,7 +5250,7 @@ class CallAnalyzer:
                 raise self.ctx.error(
                     f"Cannot use *unpacking: '{func.name}' does not accept *args", arg)
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
-            arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
+            arg_type = self.expr.analyze_arg_at_param(arg, ptype, ptype)
             self._maybe_coerce_empty_list_to_protocol(arg_type, ptype)
             arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 
@@ -5273,7 +5278,7 @@ class CallAnalyzer:
         branches of `_analyze_and_pack_varargs` and by callable-value calls.
         Returns the (possibly rewrapped) expression to store back into the
         args list."""
-        arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
+        arg_type = self.expr.analyze_arg_at_param(arg, ptype, ptype)
         arg_type = self._restore_readonly_arg(arg, arg_type, func_is_readonly)
         if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType):
             self._reject_coro_handle_borrow(arg, arg_type, pname)
@@ -5837,7 +5842,7 @@ class CallAnalyzer:
                     )
                 for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
                     resolved_ptype = self.type_ops.substitute_param_type(ptype, type_subst) if type_subst else ptype
-                    arg_type = self.expr.analyze_expr_with_hint(arg, resolved_ptype)
+                    arg_type = self.expr.analyze_arg_at_param(arg, resolved_ptype, ptype)
                     arg_type = self._restore_readonly_arg(arg, arg_type)
                     self.check_own_param(arg, arg_type, pname, resolved_ptype)
                     self.mark_pending_arg_context(arg, arg_type, resolved_ptype)
@@ -6016,7 +6021,7 @@ class CallAnalyzer:
                     expr
                 )
             for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
-                arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
+                arg_type = self.expr.analyze_arg_at_param(arg, ptype, ptype)
                 arg_type = self._restore_readonly_arg(arg, arg_type)
                 self.check_own_param(arg, arg_type, pname, ptype)
                 self.mark_pending_arg_context(arg, arg_type, ptype)

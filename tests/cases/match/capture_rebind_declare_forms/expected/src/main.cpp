@@ -58,7 +58,7 @@ namespace tpyapp::main {
         v = __match_subject_1.lives;
         ::tpy::BigInt total = ::tpy::BigInt(0);
         while (((v = ((v) - (::tpy::BigInt(1)))) > 0)) {
-            total = ((::tpy::BigInt(total)) + (v));
+            total = ((total) + (v));
         }
         return total;
     }

@@ -27,6 +27,7 @@ from ..type_def_registry import (
     int_traits_of,
 )
 from ..coercions import resolve_coercion, CoercionContext
+from ..identity_map import IdentityMap
 from .protocols import ProtocolConformanceKind
 
 if TYPE_CHECKING:
@@ -630,9 +631,12 @@ def _classify_overload(
     default_int_type: TpyType | None,
     type_ops: 'TypeOperations | None',
     kwarg_types: dict[str, TpyType] | None = None,
+    joined_out: 'IdentityMap[FunctionInfo, dict[str, TpyType]] | None' = None,
 ) -> tuple[tuple[MatchTier, int], ...] | None:
     """Classify every arg against ``overload``'s params, returning a
-    per-arg tier vector on match or ``None`` if any arg rejects.
+    per-arg tier vector on match or ``None`` if any arg rejects. A generic
+    overload refused for a joined fixed-int binding leaves its bindings in
+    ``joined_out`` for the second pass.
 
     For generic overloads (``TypeParamRef`` in params), inference runs first
     (using ``protocol_checker`` to validate type-parameter bounds) and
@@ -652,10 +656,16 @@ def _classify_overload(
     if has_tpr:
         if type_ops is None:
             return None
+        joined: set[str] = set()
         inferred = type_ops.infer_type_params_for_function(
             overload, arg_types, protocol_checker or _always_false_checker,
+            joined=joined,
         )
-        if inferred is None:
+        # A joined fixed-int binding converts an argument, so it is no
+        # strict match; the second pass ranks it with the other conversions.
+        if inferred is not None and joined and joined_out is not None:
+            joined_out[overload] = inferred
+        if inferred is None or joined:
             return None
     per_arg: list[tuple[MatchTier, int]] = []
     for arg_t, (_, ptype) in zip(arg_types, overload.params):
@@ -727,6 +737,7 @@ def resolve_overload(
     classifier = protocol_classifier or _bool_checker_to_classifier(protocol_checker)
 
     first_generic_match_fallback: FunctionInfo | None = None
+    joined_bindings: IdentityMap[FunctionInfo, dict[str, TpyType]] = IdentityMap()
     scored_candidates: list[tuple[tuple[tuple[int, ...], int], FunctionInfo]] = []
     for overload in overloads:
         if type_ops is None and overload.is_generic() and any(
@@ -746,7 +757,7 @@ def resolve_overload(
             continue
         per_arg = _classify_overload(
             overload, arg_types, protocol_checker, classifier, default_int_type, type_ops,
-            kwarg_types=kwarg_types,
+            kwarg_types=kwarg_types, joined_out=joined_bindings,
         )
         if per_arg is not None:
             scored_candidates.append((_score(per_arg), overload))
@@ -778,7 +789,7 @@ def resolve_overload(
 
     # Second pass: allow coercions, prefer overload with most non-coercion
     # matches and fewest narrowing conversions (BigInt->int32 is lossy).
-    candidates: list[tuple[int, int, FunctionInfo, list[TpyType]]] = []
+    candidates: list[tuple[int, int, FunctionInfo, list[TpyType], list[TpyType]]] = []
     for overload in overloads:
         effective_args = arg_types
         if kwarg_types:
@@ -788,13 +799,19 @@ def resolve_overload(
             effective_args = expanded
         if len(effective_args) < overload.min_args or len(effective_args) > overload.max_args:
             continue
+        params = [p.type for p in overload.params]
+        # A joined fixed-int binding is the generic match the strict pass
+        # refused; here it is ranked at its instantiation.
+        if type_ops is not None and overload in joined_bindings:
+            params = [p.type for p in type_ops.substitute_method_type_params(
+                overload, joined_bindings[overload]).params]
         if all(type_matches_with_coercion(arg_t, ptype, protocol_checker, deref_checker, subclass_checker)
-               for arg_t, (_, ptype) in zip(effective_args, overload.params)):
-            score = sum(1 for arg_t, (_, ptype) in zip(effective_args, overload.params)
+               for arg_t, ptype in zip(effective_args, params)):
+            score = sum(1 for arg_t, ptype in zip(effective_args, params)
                         if type_matches_numeric(arg_t, ptype))
-            narrowing = sum(1 for arg_t, (_, ptype) in zip(effective_args, overload.params)
+            narrowing = sum(1 for arg_t, ptype in zip(effective_args, params)
                            if is_big_int_type(arg_t) and is_fixed_int_type(unwrap_ref_type(ptype)))
-            candidates.append((score, narrowing, overload, effective_args))
+            candidates.append((score, narrowing, overload, effective_args, params))
 
     if candidates:
         if default_int_type is None:
@@ -826,14 +843,15 @@ def resolve_overload(
         # Covers both same-return (e.g. range(IntLiteral) over many fixed-int
         # overloads) and different-return cases (IntLiteral->FixedInt narrowing).
         if len(candidates) > 1:
-            for i, (score, narrowing, overload, effective_args) in enumerate(candidates):
+            for i, (score, narrowing, overload, effective_args, params) in enumerate(candidates):
                 extra = sum(
                     _int_literal_penalty(arg_t, ptype)
-                    for arg_t, (_, ptype) in zip(effective_args, overload.params)
+                    for arg_t, ptype in zip(effective_args, params)
                 )
-                candidates[i] = (score, narrowing + extra, overload, effective_args)
-        # Best: most numeric matches, then fewest narrowing conversions
-        candidates.sort(key=lambda x: (-x[0], x[1]))
+                candidates[i] = (score, narrowing + extra, overload, effective_args, params)
+        # Best: most numeric matches, then fewest narrowing conversions, then
+        # a concrete signature over a generic instantiation of the same score.
+        candidates.sort(key=lambda x: (-x[0], x[1], x[2].is_generic()))
         return candidates[0][2]
 
     return None

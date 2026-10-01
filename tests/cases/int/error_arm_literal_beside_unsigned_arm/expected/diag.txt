@@ -1,0 +1,1 @@
+main.py:14: error: 'x' is uint32 in one arm (line 11) and a bare literal in the other (line 14), so its type depends on which arm is read first; write uint32(0), or annotate x: uint32 at line 11

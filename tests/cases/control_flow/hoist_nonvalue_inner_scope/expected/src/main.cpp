@@ -329,7 +329,8 @@ void optional_list_init() {
     }
 }
 
-// # ... and the same name declared again after the loop, reseated once more.
+// # ... and the same name bound again after the loop, reseated once more (the
+// # loop's annotation is its first binding; a second one is refused).
 // def optional_redecl_post_loop() -> None:
 //     for i in range(2):
 //         p: Optional[Pic] = None  # tpyc: ok
@@ -337,7 +338,7 @@ void optional_list_init() {
 //             p = Pic(i)
 //         if p is not None:
 //             print("optional_redecl_post_loop", p.n)
-//     p: Optional[Pic] = Pic(9)
+//     p = Pic(9)
 //     p = Pic(10)
 //     if p is not None:
 //         p.n += 1
@@ -566,14 +567,14 @@ void with_optional(int32_t k) {
     }
 }
 
-// # Try body, the same Optional hoist with the handler's sibling decl.
+// # Try body, the same Optional hoist with the handler binding the name again.
 // def try_optional(k: int32) -> None:
 //     try:
 //         p: Optional[Pic] = Pic(k)  # tpyc: ok
 //         if k == 1:
 //             p = None
 //     except ValueError:
-//         p: Optional[Pic] = None
+//         p = None
 //     if p is not None:
 //         p.n += 1
 //         print("try_optional", p.n)

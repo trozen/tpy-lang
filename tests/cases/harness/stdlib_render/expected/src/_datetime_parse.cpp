@@ -890,7 +890,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
             if (((::tpy::add_check<int32_t>(i, 1)) >= n)) {
                 throw ::tpy::ValueError(std::format("stray % in format '{}'", fmt));
             }
-            p = ::tpystd::_datetime_parse::_apply_directive(::tpy::__getitem__(scan, (::tpy::add_check<int32_t>(i, 1))), data, ::tpy::BigInt(p), st, fmt);
+            p = ::tpystd::_datetime_parse::_apply_directive(::tpy::__getitem__(scan, (::tpy::add_check<int32_t>(i, 1))), data, p, st, fmt);
             i = (::tpy::add_check<int32_t>(i, 2));
         } else if (::tpystd::_datetime_parse::_is_space_char(ch)) {
             while (((i < n) && ::tpystd::_datetime_parse::_is_space_char(::tpy::__getitem__(scan, i)))) {

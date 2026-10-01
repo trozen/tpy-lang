@@ -53,7 +53,7 @@ void main() {
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, xs, 0) << "\n";
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, xs, 100) << "\n";
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::mul_check<int32_t>(a, b)); }, xs, 1) << "\n";
-    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>([](int32_t a, int32_t b) -> int32_t { return ::std::max(a, b); }, xs, 0) << "\n";
+    std::cout << ::tpystd::functools::reduce<int32_t, int32_t>([](int32_t a, int32_t b) -> int32_t { return ::std::max<int32_t>(a, b); }, xs, 0) << "\n";
     std::vector<int32_t> empty = std::vector<int32_t>{};
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, empty, 42) << "\n";
     std::vector<std::string> words = {"hi", "hello", "world"};

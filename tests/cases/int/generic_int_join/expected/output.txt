@@ -1,0 +1,17 @@
+free pick 100000 5 50000000000
+free last3 300 200
+free which concrete
+free which_g concrete
+free max/min 1000000000000000 50000000000 3
+free max3 50000000000
+free same-width uint8 55 int8 120 int64
+free no-common 2
+free range 8000840042000784
+literals [5, 50000000000] [5, 100000] 2 50000000000 [5, 100000, 7]
+annotated [125, 50000000000] 50000000000
+method 50000000000
+generic method 50000000000
+generator [500000, 5]
+async 50000000000
+comprehension [25, 50, 450000000000]
+pending 5 50000000000

@@ -20,12 +20,12 @@ from .parse import (
     TpyFStringValue, TpyComprehensionGenerator,
     TpyTupleLiteral, TpyFString,
     TpyDelVar, TpyDelAttr, TpyDelItem, TpyNonlocal, TpyGlobal, TpyTry,
-    TpyLambda, TpyMatch, TpyWhile, TpyAwait,
+    TpyLambda, TpyMatch, TpyWhile, TpyAwait, TpyIf,
 )
 from .parse.nodes import (SourceLocation, is_property_getter_read,
                           iter_capture_bindings,
                           stmts_have_any_suspension, walk_body_stmts,
-                          written_names)
+                          walrus_bindings, written_names)
 from .identity_map import IdentityMap
 from .value_category import CONTAINER_LITERAL_NODES, peel_coerce
 
@@ -63,6 +63,11 @@ class ScanResult:
     # before it walks the body; a read of one before anything binds it is
     # CPython's UnboundLocalError.
     nested_def_bind_loc: dict[str, SourceLocation | None] = field(default_factory=dict)
+    # Per local, the statements that are together its first binding
+    # (`scan_first_bindings`), and the literal-seeded locals among them
+    # (`scan_pending_num_locals`); both filled only on request.
+    first_bindings: dict[str, tuple[TpyStmt, ...]] = field(default_factory=dict)
+    literal_locals: LiteralLocals | None = None
 
     def bound_names(self) -> set[str]:
         """Every name the body binds, wherever it binds it: locals declared
@@ -85,8 +90,269 @@ def _declare(name: str, loc: SourceLocation | None, declared: set[str],
     result.first_bind_loc.setdefault(name, loc)
 
 
+@dataclass(frozen=True)
+class LiteralConstant:
+    """A constant over numeric literals only (`15`, `-3`, `10 + 5`,
+    `1 << 40`, `0.1 * 1`): a value with no width of its own. `value` is the
+    folded integer, None when not folded (a float, or an operation the
+    fold refuses)."""
+    is_float: bool
+    value: int | None
+
+
+_CONST_OPS = frozenset(("+", "-", "*", "//", "%", "**", "<<", ">>", "&",
+                        "|", "^", "div"))
+
+
+def literal_constant(expr: TpyExpr | None) -> LiteralConstant | None:
+    """`expr` as a constant over numeric literals only, else None -- the
+    one test of a literal store, in the prescan and in sema alike."""
+    if isinstance(expr, TpyIntLiteral):
+        return LiteralConstant(False, expr.value)
+    if isinstance(expr, TpyFloatLiteral):
+        return LiteralConstant(True, None)
+    if isinstance(expr, TpyUnaryOp) and expr.op in ("-", "+", "~"):
+        inner = literal_constant(expr.operand)
+        if inner is None or inner.value is None:
+            return inner
+        value = {"-": -inner.value, "+": inner.value, "~": ~inner.value}[expr.op]
+        return LiteralConstant(False, value)
+    if isinstance(expr, TpyBinOp) and expr.op in _CONST_OPS:
+        left, right = literal_constant(expr.left), literal_constant(expr.right)
+        if left is None or right is None:
+            return None
+        if left.is_float or right.is_float or expr.op == "div":
+            return LiteralConstant(True, None)
+        return LiteralConstant(False, fold_int_constant(expr.op, left.value, right.value))
+    return None
+
+
+# Past this many bits a constant is left to run time rather than folded:
+# a chain of powers or shifts would otherwise exhaust memory at compile time.
+_FOLD_MAX_BITS = 4096
+
+
+def int_constant_too_wide(op: str, a: int | None, b: int | None) -> bool:
+    """Whether `a op b` is left unfolded for its width alone: a known,
+    valid operation whose value is past `_FOLD_MAX_BITS` (so an `int`)."""
+    if a is None or b is None:
+        return False
+    if a.bit_length() > _FOLD_MAX_BITS or b.bit_length() > _FOLD_MAX_BITS:
+        return True
+    if op == "**" and b >= 0:
+        return a.bit_length() * b > _FOLD_MAX_BITS
+    if op == "<<" and b >= 0:
+        return a.bit_length() + b > _FOLD_MAX_BITS
+    return op == "*" and a.bit_length() + b.bit_length() > _FOLD_MAX_BITS
+
+
+def fold_int_constant(op: str, a: int | None, b: int | None) -> int | None:
+    """An integer constant `a op b` folded, None where it is not (unknown
+    operands, a zero divisor, a negative power or shift, or a value wider
+    than `_FOLD_MAX_BITS`). The one folder of the prescan and sema."""
+    if a is None or b is None:
+        return None
+    if a.bit_length() > _FOLD_MAX_BITS or b.bit_length() > _FOLD_MAX_BITS:
+        return None
+    if op in ("//", "%") and b == 0:
+        return None
+    if op in ("**", "<<", ">>") and b < 0:
+        return None
+    if op == "**" and a.bit_length() * b > _FOLD_MAX_BITS:
+        return None
+    if op == "<<" and a.bit_length() + b > _FOLD_MAX_BITS:
+        return None
+    folders = {"+": lambda: a + b, "-": lambda: a - b, "*": lambda: a * b,
+               "//": lambda: a // b, "%": lambda: a % b, "**": lambda: a ** b,
+               "<<": lambda: a << b, ">>": lambda: a >> b, "&": lambda: a & b,
+               "|": lambda: a | b, "^": lambda: a ^ b}
+    fold = folders.get(op)
+    if fold is None:
+        return None
+    value = fold()
+    return value if value.bit_length() <= _FOLD_MAX_BITS else None
+
+
+def _nested_nonlocal_names(stmts: list[TpyStmt], out: set[str]) -> None:
+    """Every name a nested def at any depth below `stmts` declares
+    `nonlocal`: its stores are not this body's statements."""
+    for s in stmts:
+        if isinstance(s, TpyNestedDef):
+            collect_nonlocals(s.func.body, out)
+            continue
+        for body in s.sub_bodies():
+            _nested_nonlocal_names(body, out)
+
+
+def collect_nonlocals(stmts: list[TpyStmt], out: set[str]) -> None:
+    """Every name a `nonlocal` statement in `stmts` (nested defs included)
+    names."""
+    for s in stmts:
+        if isinstance(s, TpyNonlocal):
+            out.update(s.names)
+        if isinstance(s, TpyNestedDef):
+            collect_nonlocals(s.func.body, out)
+            continue
+        for body in s.sub_bodies():
+            collect_nonlocals(body, out)
+
+
+_INT32_MIN, _INT32_MAX = -2**31, 2**31 - 1
+
+
+@dataclass(frozen=True)
+class LiteralLocals:
+    """The unannotated locals of a function body whose first binding is a
+    bare literal, the pending ones among them (`pending`), and the integer
+    literals each is assigned (`literals`)."""
+    pending: frozenset[str] = frozenset()
+    literals: dict[str, tuple[int, ...]] = field(default_factory=dict)
+    # Names also bound through a form a pending local may not be (a loop
+    # target, an unpack, a `nonlocal` store...): none of them gets a cell.
+    excluded: frozenset[str] = frozenset()
+
+
+def _store_value(s: TpyStmt) -> tuple[str, TpyExpr | None] | None:
+    """The name and value of a plain unannotated store into a name."""
+    if isinstance(s, TpyVarDecl) and s.type is None:
+        return s.name, s.init
+    if isinstance(s, TpyAssign) and isinstance(s.target, TpyName):
+        return s.target.name, s.value
+    return None
+
+
+def scan_first_bindings(stmts: list[TpyStmt], params: Iterable[str] = (),
+                        ) -> dict[str, tuple[TpyStmt, ...]]:
+    """Per local of a function body, the statements that are together its
+    first binding: the first one in source order, except that the sibling
+    arms of one `if` / `elif` / `else` or `match`, and the `except`
+    handlers and `else` of one `try`, each binding a name the statement
+    did not see bound, are together its first binding. A `try` body binds
+    before its handlers; a loop, `with` or `finally` body is read in source
+    order; a nested def's body is its own scope. Parameters are bound on
+    entry, so they have none."""
+
+    def walk(body: list[TpyStmt], bound: set[str]) -> dict[str, list[TpyStmt]]:
+        # The first bindings `body` makes of names not in `bound`, which it
+        # extends with them.
+        out: dict[str, list[TpyStmt]] = {}
+
+        def note(name: str, s: TpyStmt) -> None:
+            if name not in bound:
+                bound.add(name)
+                out[name] = [s]
+
+        def sequential(sub: list[TpyStmt]) -> None:
+            out.update(walk(sub, bound))
+
+        def arms(bodies: list[list[TpyStmt]]) -> None:
+            # Each arm starts from what the statement saw bound; the names
+            # an arm binds are taken back out rather than copying the set
+            # per arm, which would be quadratic in a long body.
+            joined: dict[str, list[TpyStmt]] = {}
+            for arm in bodies:
+                sub = walk(arm, bound)
+                bound.difference_update(sub)
+                for name, sites in sub.items():
+                    joined.setdefault(name, []).extend(sites)
+            bound.update(joined)
+            out.update(joined)
+
+        for s in body:
+            if not isinstance(s, TpyDelVar):
+                for name in sorted(written_names(s)):
+                    note(name, s)
+            if isinstance(s, TpyNestedDef):
+                continue
+            if isinstance(s, TpyIf):
+                arms([s.then_body, s.else_body])
+            elif isinstance(s, TpyMatch):
+                arms([case.body for case in s.cases])
+            elif isinstance(s, TpyTry):
+                sequential(s.try_body)
+                arms([h.body for h in s.handlers] + [s.else_body])
+                sequential(s.finally_body)
+            else:
+                for sub in s.sub_bodies():
+                    sequential(sub)
+        return out
+
+    found = walk(stmts, set(params))
+    return {name: tuple(sites) for name, sites in found.items()}
+
+
+def scan_pending_num_locals(
+    stmts: list[TpyStmt], params: Iterable[str],
+    first: dict[str, tuple[TpyStmt, ...]],
+) -> LiteralLocals:
+    """The unannotated locals of a function body whose first binding
+    (`first`, from `scan_first_bindings`) is a bare integer or float literal and some
+    other statement assigns a value that is not one (or an integer literal
+    no 32-bit default int holds). Their type is their literal family's
+    default widened by what is stored in them, decided once the whole body
+    has been analyzed. A local whose first binding is a value has that
+    value's type instead, whatever is stored later. An augmented assignment
+    stores the value of an operation, which is no literal whatever its
+    operand: with a literal operand the value has the local's type, so it
+    is no store that widens -- unless the literal is an integer no 32-bit
+    default holds, which makes the value an `int`. A local every store of
+    which is a literal the default holds is plainly the default type and is
+    left out, as is a name also bound through a form whose stores are not
+    plain assignments (a loop target, an unpack, a walrus, `with` /
+    `except` / `match` bindings, a nested `def`, `nonlocal` / `global`),
+    and a parameter."""
+    literal: dict[str, list[int]] = {}
+    widening: set[str] = set()
+    excluded: set[str] = set(params)
+
+    def store(name: str, value: TpyExpr | None, stmt: TpyStmt,
+              aug: bool = False) -> None:
+        excluded.update(ne.target for ne in walrus_bindings(stmt))
+        lit = literal_constant(value)
+        if lit is None:
+            widening.add(name)
+            return
+        # An integer constant no 32-bit default holds (or one not folded
+        # here) makes an `int`, stored as such or as an operation's operand.
+        wide = (not lit.is_float
+                and (lit.value is None
+                     or not _INT32_MIN <= lit.value <= _INT32_MAX))
+        if wide:
+            widening.add(name)
+        if not aug and not lit.is_float and lit.value is not None:
+            literal.setdefault(name, []).append(lit.value)
+
+    def on_stmt(s: TpyStmt) -> None:
+        if isinstance(s, TpyVarDecl):
+            if s.type is not None:
+                excluded.add(s.name)
+            elif s.init is not None:
+                store(s.name, s.init, s)
+        elif (isinstance(s, TpyAssign) and isinstance(s.target, TpyName)):
+            store(s.target.name, s.value, s)
+        elif (isinstance(s, TpyAugAssign) and isinstance(s.target, TpyName)):
+            store(s.target.name, s.value, s, aug=True)
+        elif isinstance(s, (TpyGlobal, TpyNonlocal)):
+            excluded.update(s.names)
+        elif not isinstance(s, TpyDelVar):
+            excluded.update(written_names(s))
+
+    walk_body_stmts(stmts, lambda e: None, on_stmt)
+    _nested_nonlocal_names(stmts, excluded)
+    # Seeded: some statement of the first binding stores a literal.
+    seeded = {name for name, sites in first.items()
+              if any((sv := _store_value(s)) is not None
+                     and literal_constant(sv[1]) is not None for s in sites)}
+    seeded -= excluded
+    return LiteralLocals(
+        frozenset(seeded & widening),
+        {n: tuple(vs) for n, vs in literal.items() if n in seeded},
+        frozenset(excluded))
+
+
 def scan_reassigned_vars(stmts: list[TpyStmt],
-                         pre_declared: set[str] | None = None) -> ScanResult:
+                         pre_declared: set[str] | None = None, *,
+                         pending_nums: bool = False) -> ScanResult:
     """Pre-scan a function body to find variables that are reassigned after first declaration.
 
     Args:
@@ -99,9 +365,16 @@ def scan_reassigned_vars(stmts: list[TpyStmt],
     - rvalue_reassigned: subset of reassigned with at least one rvalue reassignment
     - lvalue_reassigned: subset of reassigned with at least one lvalue reassignment
     - aug_assigned: variables targeted by augmented assignment (+=, -=, etc.)
+    - first_bindings, literal_locals: with `pending_nums`,
+      `scan_first_bindings` and `scan_pending_num_locals`
     """
     declared: set[str] = set(pre_declared) if pre_declared else set()
     result = ScanResult()
+    if pending_nums:
+        params = pre_declared or ()
+        result.first_bindings = scan_first_bindings(stmts, params)
+        result.literal_locals = scan_pending_num_locals(
+            stmts, params, result.first_bindings)
     _scan_stmts(stmts, declared, result)
     result.initial_alias_names = set(result.alias_sources.keys())
     # Reassigned vars become T* pointers, not T& refs -- remove from alias map

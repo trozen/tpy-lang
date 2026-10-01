@@ -37,15 +37,15 @@ __gen_nodes nodes(::tpy::BigInt n) {
         }
         std::move(__result);
     });
-    int32_t total = 0;
+    ::tpy::BigInt total = ::tpy::BigInt(0);
     auto& __obj_1 = d;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const ::tpy::BigInt& k = *__beg_1;
-        total = ::tpy::add_check<int32_t>(total, (::tpy::__getitem__(d, k).tag).to_fixed_check<int32_t>());
+        total = (total) + (::tpy::__getitem__(d, k).tag);
     }
-    return ::tpy::BigInt(total);
+    return total;
 }
 
 // def value_only() -> int:
@@ -90,15 +90,15 @@ __gen_nodes nodes(::tpy::BigInt n) {
         }
         std::move(__result);
     });
-    int32_t total = 0;
+    ::tpy::BigInt total = ::tpy::BigInt(0);
     auto& __obj_1 = d;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& n = *__beg_1;
-        total = ::tpy::add_check<int32_t>(total, (::tpy::__getitem__(d, n)).to_fixed_check<int32_t>());
+        total = (total) + (::tpy::__getitem__(d, n));
     }
-    return ::tpy::BigInt(total);
+    return total;
 }
 
 // def filtered_value_moves() -> int:
@@ -123,15 +123,15 @@ __gen_nodes nodes(::tpy::BigInt n) {
         }
         std::move(__result);
     });
-    int32_t total = 0;
+    ::tpy::BigInt total = ::tpy::BigInt(0);
     auto& __obj_1 = d;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const ::tpy::BigInt& k = *__beg_1;
-        total = ::tpy::add_check<int32_t>(total, (::tpy::__getitem__(d, k).tag).to_fixed_check<int32_t>());
+        total = (total) + (::tpy::__getitem__(d, k).tag);
     }
-    return ::tpy::BigInt(total);
+    return total;
 }
 
 // def same_var_key_and_value() -> int:

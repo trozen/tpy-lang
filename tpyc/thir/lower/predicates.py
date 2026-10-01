@@ -2460,43 +2460,10 @@ def _runtime_bigint(t: TpyType | None, analyzer) -> bool:
 
 _BIGINT_NARROW = BIGINT_NARROW.name
 
-# The narrow-key answer for a shape this slice has no render for.
-_NARROW_UNMIRRORED = object()
-
-
-def _has_widened_int_name(e: TpyExpr, declared: dict[str, TpyType],
-                          analyzer) -> bool:
-    """True when a NAME whose declared type is a runtime BigInt but whose
-    per-occurrence type is not sits inside `e` where codegen's
-    `get_resolved_type` would recompute the result from it (the arithmetic
-    binop and ternary arms recurse into operands; comparisons and coercions
-    stop at sema's type). Such a composite would emit ill-formed C++ --
-    `p + 1` on a retro-widened `p` renders `add_check<int32_t>(p, 1)`
-    against a `BigInt p` -- so the slice rejects it."""
-    if isinstance(e, TpyName):
-        d = declared.get(e.name)
-        return (d is not None and _runtime_bigint(d, analyzer)
-                and not _runtime_bigint(analyzer.get_expr_type(e), analyzer))
-    if isinstance(e, TpyBinOp):
-        if e.op in COMPARISON_OPS:
-            return False
-        return (_has_widened_int_name(e.left, declared, analyzer)
-                or _has_widened_int_name(e.right, declared, analyzer))
-    if isinstance(e, TpyIfExpr):
-        return (_has_widened_int_name(e.then_expr, declared, analyzer)
-                or _has_widened_int_name(e.else_expr, declared, analyzer))
-    return False
-
-
 def _narrow_key_type(e: TpyExpr, declared: dict[str, TpyType],
-                     analyzer) -> 'TpyType | None | object':
+                     analyzer) -> TpyType | None:
     """The type `is_runtime_bigint` keys on at a checked-narrow position --
-    `get_resolved_type`, which reads a NAME's DECLARED type. Only the name arm
-    is covered: a COMPOSITE over a retro-widened local returns
-    `_NARROW_UNMIRRORED` and the caller must reject."""
-    if not isinstance(e, TpyName) and _has_widened_int_name(e, declared,
-                                                            analyzer):
-        return _NARROW_UNMIRRORED
+    `get_resolved_type`, which reads a NAME's DECLARED type."""
     t = _declared_type(e, declared, analyzer)
     # `get_resolved_type` strips readonly at every arm, and the consumers here
     # test the bare int type.
@@ -2532,11 +2499,8 @@ def _bigint_index_disposition(index: TpyExpr, obj_type: 'TpyType | None',
         does not render.
 
     The type half keys on the DECLARED type (`_declared_type`), as
-    `is_runtime_bigint` does -- a literal-seeded local widened to BigInt by a later
-    assignment still types int32 at this occurrence."""
+    `is_runtime_bigint` does."""
     key = _narrow_key_type(index, declared, analyzer)
-    if key is _NARROW_UNMIRRORED:
-        return "reject"
     if not _runtime_bigint(key, analyzer):
         return "bare"
     narrow = (INT32 if obj_type is None
@@ -6392,9 +6356,7 @@ def _record_getitem_idx_recv_ok(sub: 'TpySubscript',
         idx_type = resolve_int_literals(idx_type,
                                         analyzer.ctx.default_int_for_literal)
     # The disposition runs UNCONDITIONALLY: it keys the BigInt half on the
-    # DECLARED type, so a per-occurrence pre-test here would short-circuit
-    # past it for a composite over a retro-widened local and admit a shape
-    # whose narrow this slice does not render.
+    # DECLARED type, which a per-occurrence pre-test here would not read.
     idx_ok = ((_resolved_scalar(idx_type, analyzer)
                and _bigint_index_disposition(
                        sub.index, analyzer.get_expr_type(sub.obj),
@@ -8545,14 +8507,9 @@ def _walrus_src_is_const(src: TpyExpr, lc) -> bool:
     return _f1_const_rooted_source(src, lc)
 
 def _declared_type(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> TpyType | None:
-    # Codegen's `get_resolved_type` for a NAME: the tracked DECLARED type, not
-    # sema's per-occurrence cache. ctx.var_types holds a retro-widened
-    # literal-seeded local's FINAL type (a later `p = <int>` widens `p = 0` to
-    # BigInt), whereas analyzer.get_expr_type returns the pre-widen seed
-    # (int32). Every render keyed on the declared type must read this: the
-    # mixed-sign comparison gate would over-exclude same-sign-after-widen
-    # loops, and the checked-narrow family (`.to_fixed_check<T>()`) would DROP
-    # a required narrow -- ill-formed C++ at a BigInt subscript index.
+    # Codegen's `get_resolved_type` for a NAME: the tracked DECLARED type of
+    # its one C++ slot, not sema's per-occurrence cache, which flow facts
+    # may have refined at this read.
     if isinstance(e, TpyName):
         t = locals_.get(e.name)
         if t is not None:
@@ -11921,8 +11878,8 @@ def _is_bytes_family(t: TpyType | None) -> bool:
 
 def _var_decl_type(stmt: TpyVarDecl, analyzer) -> TpyType | None:
     # The decl target type (value-scalar subset): the binding
-    # type captures sema's local deduction -- e.g. a literal-seeded local that
-    # retro-widens to uint64 from later usage -- which the init's type alone
+    # type captures sema's local deduction -- e.g. a literal-seeded local
+    # that later stores widen -- which the init's type alone
     # (IntLiteralType) does not. Fall back to the init type, then resolve any
     # remaining int literal to the module default int.
     target = resolve_stmt_binding_type(stmt, analyzer, include_global_binding=False)

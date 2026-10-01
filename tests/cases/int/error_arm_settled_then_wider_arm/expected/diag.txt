@@ -1,0 +1,1 @@
+main.py:15: error: 'x' was used as int32 at line 11 (a list element), and this value is int64; annotate its first binding: x: int64 = 1

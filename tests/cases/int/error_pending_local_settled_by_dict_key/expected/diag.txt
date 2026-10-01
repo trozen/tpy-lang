@@ -1,0 +1,1 @@
+main.py:11: error: 'p' was used as int32 at line 9 (a subscript key), and this value is int; annotate its first binding: p: int = 0

@@ -1,1 +1,1 @@
-main.py:13: error: Integer literal -1 assigned to 'a' is outside uint64 range [0, 18446744073709551615] in argument 'x'
+main.py:13: error: Type mismatch in argument 'x': expected uint64, got int32

@@ -1,8 +1,8 @@
 # A resolved binop's fixed-int PARAM slot takes the same checked narrow as any
-# call argument, and it keys on the operand's DECLARED type: a literal-seeded
-# local retro-widened to BigInt by a later assignment must narrow at the
-# forward operand, the reflected operand and the `__contains__` needle even
-# though sema types each occurrence int32.
+# call argument: a literal-seeded local a later assignment makes an `int` is
+# an `int` at the forward operand, the reflected operand and a composite
+# operand over it, each narrowed into the dunder's int32 parameter. (An `in`
+# operand is not deferred: int/error_pending_local_settled_by_membership.)
 from tpy import int32
 
 
@@ -11,9 +11,6 @@ class Bag:
 
     def __init__(self) -> None:
         self.xs = [1, 2, 3]
-
-    def __contains__(self, k: int32) -> bool:
-        return k == 1
 
     def __add__(self, k: int32) -> int32:
         return k + 1
@@ -24,13 +21,6 @@ class Bag:
 
 def widen() -> int:
     return 4
-
-
-def needle(b: Bag) -> None:
-    p = 1
-    print(p in b)        # __contains__ needle
-    p = widen()          # the assignment that retro-widens `p` to BigInt
-    print(p)
 
 
 def forward(b: Bag) -> None:
@@ -47,9 +37,16 @@ def reflected(b: Bag) -> None:
     print(p)
 
 
+def composite(b: Bag) -> None:
+    p = 0
+    print(b + (p + 1))   # __add__ argument slot, over an operation on `p`
+    p = widen()
+    print(p)
+
+
 def main() -> None:
-    needle(Bag())
     forward(Bag())
+    composite(Bag())
     reflected(Bag())
 
 

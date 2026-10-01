@@ -27,7 +27,7 @@ struct __coro_roundtrip {
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::tpy::channel::Sender<::tpy::BigInt>> tx;
     ::tpy::frame_slot<::tpystd::tpy::channel::Receiver<::tpy::BigInt>> rx;
-    int32_t total;
+    ::tpy::BigInt total;
     ::tpy::BigInt __await_lift_0;
     std::optional<::tpystd::tpy::channel::_Send<::tpy::BigInt>> __sub_0;
     std::optional<::tpystd::tpy::channel::_Send<::tpy::BigInt>> __sub_1;

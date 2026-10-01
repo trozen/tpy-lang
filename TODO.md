@@ -135,7 +135,6 @@
   **Drift found (25 divergent shapes; 20 are deliberate modifier classes).** D-1 RESOLVED 2026-09-05 by the method-arg union, and it was NOT a drift: the two halves' `Own[T]` slots are different C++, so the cell now carries `_x_own_lvalue_flush` (`temps_ok or overload is None`). A stub's Own slot is a container insert whose const-ref overload binds an lvalue with no temp (`xs.append(b)` stops compiling with the flush gate on); a record method's is a by-value `T&&` param whose copy temp needs a flush position (`print(str(s.take(b)))` emitted an lvalue into a `Point&&` slot with the gate off, cased as `calls/error_method_own_arg_no_flush`). Both probed by hand -- the whole-corpus sweep sees neither. Eleven sibling cells needed the same fact spelled as `_x_insert_own_slot` (a stub `Own[T]` slot is a container insert; a record method's is a by-value `T&&` param), found by the THIR boundary pins rather than by any case. D-2 `_str_literal_value_opt_arg`: the plain ladder peels the coerce, method and ctor do not -- accidental, under-admission. D-3 `_ru_wrapper_name_arg` omits `analyzer` at the ctor, so `_resolve_plain_alias` no-ops and an alias-placeholder binding silently rejects there -- accidental, under-admission. D-5 `_protocol_union_arg` is a FALSE divergence: three spellings of a provably identical set. **D-4 is a POLICY DECISION, USER-ANSWERED "refuse everywhere" (2026-08-25):** only the ctor consults `mutated_params` and declines a mutated `String&` param rather than mirroring the known AST miscompile; the method/container/view families mirror it byte-identically, so no gate catches the inconsistency. Set `mutated_slots` on ALL families -- but **as its own commit AFTER the fold**, since it moves the numbers (some bodies that route today will fall back) and the fold's whole proof is that they do not. Do NOT flatten two deliberate splits: `_union_member_lift_arg`'s `TpyNoneLiteral` restriction at the method ladder (witness-driven conservatism) and `_protocol_slot_arg`'s extra ctor guard (a structural rvalue is ctor-inline on the AST path).
   **The `(bool, verdict_token)` payoff is NOT a small change -- an earlier draft of this entry said it was.** Producing the token from `_walk` is trivial (the row name is known at the match point), but `_lower_call_arg`'s ~1600-line render cascade independently re-invokes at least 8 of the same predicates the gate already ran (47 distinct `*_arg(` call sites in total) to decide HOW to render, rather than consuming any verdict the gate produced. This entry previously named only two such instances. Making the token useful means restructuring the renderer to dispatch off it -- **a second migration of comparable size to this fold**, and it is sized nowhere in these docs. Do not start it as a follow-up commit. The TODO already records two cases of the gate admitting a shape and `_lower_call_arg` re-deriving the same fact by shape inspection -- the literal "tag where DECIDED, not where CONSUMED" anti-pattern -- and the token is a THIR node field candidate.
   **Out of scope:** lowering/render (admission only); the result gates (`_call_use_supported`, `_record_method_call_supported`'s 12 boolean flags -- a sibling debt, its own entry); hole-filling and D-2/D-3.
-- **[thir] The `_NARROW_UNMIRRORED` rejects are over-broad at three sites (land with its own verification).** The checked-narrow arms reject a composite over a retro-widened local because the AST's own render for that shape is ill-formed (see the retro-widen parent entry in BUGS.md). Three of the sites reject more than they need to: `tpyc/thir/lower/statements.py:10848` (aug-assign) and `tpyc/thir/lower/expressions.py:3616` (membership needle) order the reject AHEAD of the `is_fixed_int_type` slot test, so a composite RHS de-migrates a body even when the target is BigInt and no narrow could ever apply -- the newer `narrow.binop_param` arm (`expressions.py:3993`) nests the reject inside the slot test correctly and is the shape to copy; and `_has_widened_int_name` (`predicates.py:2162`) recurses into `&&`/`||` operands, which parser lowers to `TpyBinOp` and which the comparison exclusion does not cover, so a widened name under a bool-result logical op trips the same needless reject at the f-string sink. **Zero corpus cost today** (dial full, markers 0), which is why this is not urgent -- but note the fix direction WIDENS routing, unlike the gate fixes that shipped with it, so it needs its own byte-diff verification rather than riding another change's. Fixing the BUGS.md retro-widen parent may moot the whole item by removing the need to reject at all. Surfaced by the /tpy-review + meta round on the stdlib-routing work.
 - **[thir] Harden the UNAUDITED arg-temp guess (measure first).** `THIRArgTemp.would_defer`'s unaudited branch proxies the AST creator's SITE-SPECIFIC slot formula with `result_type.is_movable()`; an unaudited legacy row whose result_type reads non-movable while the AST's slot type is movable+spellable would hoist eagerly where the AST defers -- validator-invisible, byte-diff-caught only when witnessed. Candidate hardening: unaudited AND spellable => reject (audit-or-fence, no guess). Measure the flip/fallback cost first (a corpus run with the hardened gate); if free, take it. Also fold the ~10 spelled `movable=unwrap_ref_type(X).is_movable()` audits into one shared mirror-helper so future rows cannot drift from `TempState._register`. Surfaced by the /tpy-ready retrospective second opinion (2026-08-21).
 - **[thir] Conditional-operand temp PERIPHERY -- DONE 2026-08-21 (same day, user called it back in).** Both cases flipped (short_circuit_brace_arg, short_circuit_comp_arg_temp). The residue map held but each arm was admission work over the landed deferral machinery: the list-repeat ref-param temp row (argtemp.list_repeat); the MUTATED-slot ctor container-literal hoist (const slots keep the inline brace -- a unit fixture caught THIR hoisting where the AST inlines, the corpus case being mutated-only was blind to it); the value-select RHS grant (threading temps_ok into _lower_value_select); the for-head iterator TERNARY route+lowering (rvalue call arms only; lvalue arms pinned rejecting); the comprehension-as-ternary-arm rung (ifexpr.container_comp_arm, all-rvalue arms; the comp's per-iteration element flush_since IS the degrade relocation); comp element temps as a flushable position (list/set elements only; dict key/value sinks stay ungranted); the Sized slot joining Iterable/Sequence in _native_iterable_comp_arg (plus resolve_pending_container and the Array-comp demote-to-list at native slots); and the coerce arm riding allow_temps through (expression nesting keeps the flush right, like the AST). The owned-element-stays-fenced premise dissolved (owned-element comps now route byte-identically) -- re-pinned routed.
   1. **A DOCSTRING dropped its leading comment trivia -- 382 of the 436, and the site was NOT `lower_top_level`.** `_lower_stmt_dispatch` (`thir/lower/statements.py`) lowered a docstring to a payload-free `THIRNoOpStmt`, but the AST's `gen_stmt` emits inline comments for EVERY statement BEFORE the None-code suppression -- so a module whose docstring is preceded by `# tpy: <directive>` lost the `// # tpy: ...` line from `__tpy_init`. `trivia_loc=loc` already existed for exactly this. **Landed on master as `39a80d242` from the interop-overlay session, which reached the same one-liner from the interop side while this session reached it from the stdlib side** -- two independent instruments converging on one arm. **No user case has a comment before a bare string-literal statement**, which is why 3615 byte-diffed cases never saw it. What this branch adds on top: the module-init pin for the `# tpy:`-directive shape (since went with the THIR unit suite) and a `comments` switch on `_assert_byte_identical` -- with the echo OFF (its default, and every existing THIR unit's setting) this entire divergence class is INVISIBLE, so any future trivia arm needs `comments=True` to be pinned at all.
@@ -1310,7 +1309,7 @@ Existing defects remain in BUGS.md; this section groups the architectural work.
 - **[THIR migration] F5 generic-record follow-ups (from /tpy-review of the F5 branch).** Three deferred items: **(1)** the "bodyless binding" predicate (`fn.native_function or fn.native_name is not None or fn.cpp_template is not None`) is now spelled in `generator.py`'s `_is_bodyless_binding` AND inline 3x in `codegen_cpp/builtins.py:135,143,152` -- hoist to one shared helper / `TpyFunction` property per [[feedback_prefer_full_unification]] (touches builtins.py, out of the F5 branch's scope). **(2)** scaffold test: a generic derived record inheriting a generic base parameterized by the derived's own type param (`class Derived[T](Base[T])`) -- exercises a `TypeParamRef` base arg, distinct from the concrete/non-slice base args already tested. **(3)** scaffold test: a negative guard for the `T`-field-init reject (`self.value = self.other` where `other: T`) covering the fall-through `return False` in `_ctor_field_init_ok`'s TypeParamRef branch. All low-risk, byte-diff-gated. **Not yet routed generic-record cells** (deferred, byte-identical fallback): a `T` LOCAL decl (`x = self.value`) and `Own[T]` METHOD params (not in `_f1_param_eligible`, so an `Own[T]`-param move-write falls back). Surfaced by /tpy-review (architecture-fit + test-coverage) of F5.
 - **[THIR migration] Extract the repeated type-unwrap prologue in `lower.py` (all sites or none).** `tpyc/thir/lower.py` repeats the `unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))` + `if t is None` + `OwnType` reject + `getattr(t, "type_args", None)` prologue inline ~12x across the `_container_*` / `_f1_*` type predicates (e.g. `_container_scalar_read`, `_container_record_iter`). A prior /tpy-review flagged the 2-predicate duplication; the decision (correct) was NOT to extract 2-of-12 against the uniform inline convention. The clean move per [[feedback_prefer_full_unification]] is to extract a single `_unwrap_container_type(t) -> (bare_type, args) | None` helper and route ALL sites through it in one pass -- so a future change to the unwrap/Own-reject chain can't drift between copies. Low-risk (byte-diff-gated, no emit change). Surfaced by /tpy-review + /tpy-ready retrospective of the record-for-each + print cells.
 - **[THIR migration] Audit the remaining `_eligible_scalar(analyzer.get_expr_type(...))` gate sites toward `_resolved_scalar`.** Increment 34 added `_resolved_scalar` (`tpyc/thir/lower.py`: readonly/ref unwrap + `resolve_int_literals`) and migrated the ~7 sites the container-literal cell provably needed (method ret/args/slots, subscript results, print args, binop result, for-each elem); ~14 other `_eligible_scalar(get_expr_type(...))` sites remain (return values, assign RHS checks, condition operands, ...) that could equally see an unresolved `IntLiteralType` from a literal-seeded container's use sites. Safe today -- a stale site just returns False and the function conservatively stays on the AST path -- but it drifts: a future gate reaching for `_eligible_scalar` out of habit silently under-routes. NOT a mechanical rename: each conversion WIDENS what routes and needs its own byte-diff scrutiny (the increment-34 no-paren literal-operand binop reject is exactly the kind of emit fork such widening surfaces), so do it as a deliberate audit pass -- classify each site (needs resolution / genuinely literal-free), migrate the needed ones in one batch under the whole-corpus byte-diff. **Trigger: run the audit before opening the F3 form-ladder resumption** so drift doesn't accumulate across more statement-shape cells. Deeper framing (retrospective second opinion): `_resolved_scalar` and `resolve_pending_container` are consumer-side re-derivations of facts sema already decided -- per CLAUDE.md's "prefer first-class type/AST facts over consumer-side dispatch", the audit should also weigh having sema materialize resolved types at use sites (one write in `_resolve_pending_list_types`/finalize) so every future THIR gate stops paying the re-derivation tax. Surfaced by /tpy-review (architecture-fit) of the container-literal-locals cell. NB: THIR deferral notes of this kind belong in `docs/THIR_COMPLETION_LEDGER.md`'s deferred-cell registry -- migrate the THIR paragraph-entries there when next touching them, keeping TODO.md a priorities list.
-- **[THIR migration] `THIRName.result_type` carries the analyzer seed type, not the resolved type.** `nodes.py` documents `THIRExpr.result_type` as "the fully-resolved type", but `_lower_expr` sets a name's `result_type = analyzer.get_expr_type(e)`, which for a retro-widened literal-seeded local (`offset = 0` later used as `uint64`) is the pre-widen seed (`int32`). Harmless today -- `emit.py` never reads `result_type` on a `THIRName`, and the mixed-sign comparison gate (increment 5) resolves operand types from the lowering `declared` map instead. Fix when name nodes need accurate types (MIR / the form design): thread the `declared` (name -> resolved type) map into `_lower_expr` so a `THIRName` gets `declared.get(name)`. Surfaced by /tpy-review (architecture-fit) of the THIR scalar-breadth batch.
+- **[THIR migration] `THIRName.result_type` carries the analyzer seed type, not the resolved type.** `nodes.py` documents `THIRExpr.result_type` as "the fully-resolved type", but `_lower_expr` sets a name's `result_type = analyzer.get_expr_type(e)`, which can differ from the name's declared type where a flow fact refines the read (a narrowed Optional). Harmless today -- `emit.py` never reads `result_type` on a `THIRName`, and the mixed-sign comparison gate (increment 5) resolves operand types from the lowering `declared` map instead. Fix when name nodes need accurate types (MIR / the form design): thread the `declared` (name -> resolved type) map into `_lower_expr` so a `THIRName` gets `declared.get(name)`. Surfaced by /tpy-review (architecture-fit) of the THIR scalar-breadth batch.
 - **[THIR migration] truediv (`/`) eligibility decision -- the `/` in `_ARITH_OPS` is dead.** The parser emits true-division as `TpyBinOp` op `div`, not `/`, so the `/` token in `tpyc/thir/lower.py`'s `_ARITH_OPS` never matches; `_binop_eligible` rejects truediv via the op-name miss, NOT a missing cpp_template (float and int truediv both carry `::tpy::truediv({self}, {0})`). Float increment 3 exposed this: pre-float, truediv's float result was rejected by `_eligible_scalar`; now only the op miss keeps it out. Decide: (a) **enable** truediv -- replace `/` with `div` in `_ARITH_OPS`, byte-verify via the net (float `a / b` emits `(::tpy::truediv(a,b))` identically per probe; ALSO verify int `a / b` -> float and any div-by-zero handling), or (b) **drop** the dead `/` token. Surfaced by /tpy-ready retrospective (the float-`/` exclusion comment had the wrong reason).
 - **[THIR migration] Unify the mixed-sign comparison predicate.** `tpyc/thir/lower.py`'s `_mixed_sign_compare` reproduces `tpyc/codegen_cpp/expressions.py`'s `_mixed_sign_fixed_int` (both over the shared `int_traits_of`). They reach the same verdict by different literal-handling -- codegen has an `IntLiteralType` skip clause (`expressions.py` ~2131), while the THIR side resolves operand types first (`_operand_type`), so literals never reach the predicate. Net-gated today, but the divergent reasoning bites if either side's literal handling shifts. Hoist one predicate into the type layer (`type_def_registry`, where `int_traits_of` already lives) and have both phases call it. Surfaced by /tpy-review meta + /tpy-ready retrospective.
 - **[THIR migration] The fallback-purity invariant is load-bearing and unguarded.** Generate-and-assert rests on lowering being side-effect-free w.r.t. shared analyzer/codegen state: when a body raises `ThirUnsupported` partway through, the partial attempt is discarded and the AST path re-emits that body. This holds today (`_LowerCtx`/`declared` are per-attempt; `movable_locals` is copied at `tpyc/thir/lower/context.py`; lowering only reads analyzer state), but nothing enforces it -- a future lowering arm that writes back into an analyzer set would corrupt the AST oracle on every fallback, with no test to catch it (fallback emits byte-identical AST, so the corruption surfaces as an unrelated miscompile elsewhere). Add an explicit invariant note at the four `except ThirUnsupported` boundaries (`lower_function` / `lower_constructor` / `lower_resumable` / `lower_top_level`) and a guard test that lowers a body which rejects mid-way and asserts the analyzer state is unchanged. Surfaced by /tpy-ready retrospective second-opinion of the gate removal.
@@ -1547,7 +1546,7 @@ Existing defects remain in BUGS.md; this section groups the architectural work.
 - Strict-warning hardening follow-ups (the test suite already runs under the downstream-mirroring flag set; see `STRICT_WARN_FLAGS` in `tpyc/compiler.py`):
   - `-Wshadow` not in the strict set. Record/dataclass constructors emit the idiomatic `T(P p) : p(p) {}` pattern which always shadows. Either rename the ctor parameter (e.g. `T(P p_) : p(p_) {}`, snapshot churn across every record) or document `-Wno-shadow` for downstream tpy-gen TUs (current state -- documented next to STRICT_WARN_FLAGS).
   - **Low-prio:** TPy-level diagnostic for unread local variables. `-Wno-unused-variable` is in the strict set because user TPy code can legitimately write `x = compute()` with no read (Python idiom), and per the "users never see C++ errors" invariant we can't let that surface as a C++ `-Werror`. Adding a sema-level info/warning diagnostic would let the user learn about unused locals in TPy terms while the C++ side stays silent (so the suppression stays). Convention to consider: skip the diagnostic when the var name starts with `_`.
-  - Sign-mixed comparison handling: codegen routes `int32 < uint32` and friends through `std::cmp_*` (`expressions.py:_gen_binop`) so the result is mathematically correct without the "promote signed to unsigned" reinterpretation; sema additionally emits a warning so the user knows they're hitting that path (skip-list: literal-seeded locals still pending retro-widen, since the compare may resolve to same-sign once the seed is widened). Future tightening: extend the "literal seed" gate so retro-widening of *both* operands together (rare today) doesn't false-positive either. Lower priority since false-positives currently surface only for user code that intentionally compares mixed-sign.
+  - Sign-mixed comparison handling: codegen routes `int32 < uint32` and friends through `std::cmp_*` (`expressions.py:_gen_binop`) so the result is mathematically correct without the "promote signed to unsigned" reinterpretation; sema additionally emits a warning so the user knows they're hitting that path; a comparison over a literal-seeded local is judged at the type the local settles to, once its function has been analyzed.
   - **Consolidate async-for `_build_async_for` loop-stack lifetime.** `_build_async_for` (`tpyc/codegen_cpp/resumable_cfg.py:740`) appends to `_loop_stack` before one try/finally pair (which only pops `_region_stack`) and pops in a separate try/finally pair around the body build. A `CodeGenError` thrown from the handler-body build between the two would leak the loop ctx for subsequent compilation in the same session. Currently unreachable in practice (the synthesized handler body is a single `TpyBreak` that can't fail given the just-pushed loop ctx), but fragile. Mirror the sync `_build_for`'s single-try pair around the loop stack. Surfaced by /tpy-review of M6.
   - **Elide async-return copy for lvalue sources.** Async-def returns lower uniformly as `T __tpy_async_ret = <expr>; return Poll<T>::ready(std::move(__tpy_async_ret));` (e.g. `tests/cases/async/async_for_break/expected/src/main.cpp:38`, `await_in_for_range`, `asyncio_run_returns_value`). For value types this is free, but for owning non-value return types like `BigInt`, `std::string`, `list[T]`, etc., the assignment from a named source (frame field / local / param) is a real copy at every async return. The temporary local exists so the `std::move` into `Poll::ready` is unconditional. **Fix:** when the return expression is an lvalue at last use (frame field, local, or param), `std::move` directly into `Poll::ready` instead of going through the materialized local; when it's an rvalue (literal, call result), pass it through without the intermediate. Mirrors the sync-return value-categorization that codegen already does. Pre-existing async codegen pattern -- broader than M6 -- but worth tracking since it touches every async function returning a non-value type. Surfaced while reviewing M6 snapshots.
 - **Bidir-hint inference follow-ups (post `feat-bidir-hint-inference`).** Surfaced by /tpy-review and /code-review of the shipped feature; none blocking, none worth shipping alone, but worth tracking so they don't rot:
@@ -1565,7 +1564,7 @@ Existing defects remain in BUGS.md; this section groups the architectural work.
   - **Probe / `_infer_pending_container_element` interaction** (`tpyc/sema/calls.py:_probe_candidate_args`, for a method call). `_infer_pending_container_element` pre-analyzes args into the `pre_analyzed_method_args[id(expr)]` side table; the new overload probe then re-analyzes the same args. For inner generic-ctor/call args, the cache short-circuit at `_analyze_record_constructor` / `_analyze_generic_function_call` returns the previously-cached type. `_check_and_coerce_args` pops the pre-analyzed cache but uses probe's `arg_types`, so the element-type inference work done in the pending path is duplicated and the ordering of `info.coerced_element_type` updates becomes path-dependent. Worth a focused reproducer.
   - **Direction-swap admits LHS=Optional[T] vs return=T** (`tpyc/sema/type_ops.py:candidate_arg_hints` non-generic gate). The current swap (LHS-side as param) correctly rejects `return=Optional[Foo]` vs `lhs=Foo`, but symmetrically accepts `lhs=Optional[Foo]` vs `return=Foo` -- a bare-T-returning candidate matches against an Optional-annotated LHS via the matcher's param-side Optional unwrap. Likely intentional (T flows into Optional[T] slot via narrowing), but undocumented. Either tighten (direction-symmetric structural match) or add a code comment.
   - **Routing divergence: calls.py vs methods.py probe inputs** (`_probe_candidate_args`, tpyc/sema/calls.py). The function-call path passes it UNSUBSTITUTED `func_infos`; the method-call path (tpyc/sema/methods.py) passes SUBSTITUTED `resolved_overloads`. `candidate_arg_hints` routes generic-vs-non-generic on `func.type_params`, so a class-generic-only method (e.g. `class Box[T]: def push(self, x: T)`) post-substitution goes through the non-generic branch in methods.py, while the equivalent free function in calls.py would go through the generic branch. Branches are independently correct but the asymmetry isn't documented.
-  - **Audit `substitute_method_type_params`'s dropped FunctionInfo fields** (`tpyc/sema/type_ops.py:1554`). The constructor explicitly passes ~24 fields; the FunctionInfo dataclass has ~46. Dropped fields include `is_pure`, `is_inline`, `is_property_getter` / `is_property_setter` / `property_name`, `native_cpp_return_type`, `type_param_defaults`, `is_constructor`, `special_handling`, `builtin_decorator_key`, `owning_type_qname`, `addr_escapes_params`, `direct_mutated_params`, `direct_structural_mutated_params`, `call_edges`, `direct_self_mutated`, `self_mutated`, `is_auto_readonly_mutable_clone`, `inline_body`, `originating_module`, `const_borrow_params`, `deep_const_borrow_params`, `returns_self_borrow`. That last one is VERIFIED to bite, which lifts this from hygiene: a GENERIC context manager's `__enter__` reverts to the default `True`, so `class Wrapper[T]` gets a `__with_ctx_0` manager field its non-generic twin does not, and the manager's `__del__` then runs at enclosing-scope end rather than block end -- a silent CPython divergence (safe direction, no UAF). Some are presumably defaulted on purpose (mutation-tracking state that's per-original-function), but others (`is_pure`, `is_inline`, `inline_body`, `originating_module`) look call-site-relevant. `kwarg_name` was confirmed-and-fixed in `bidir-hint-quick-wins`; the same shape may bite for other fields when a future caller consults them on a substituted method. Audit each field: should it propagate, or is the default correct? Add a comment block explaining the per-field policy so future maintenance doesn't accidentally drop more without justification. RESOLVED for `const_borrow_params` / `deep_const_borrow_params`: never propagate -- they are populated post-sema on the raw fi only; consumers read via `fi.root` (documented at the `typesys.py` field declaration; call sites fixed in `fix-gen-async-dcbp`).
+  - **Audit `substitute_method_type_params`'s dropped FunctionInfo fields** (`tpyc/sema/type_ops.py:1554`). The constructor explicitly passes ~24 fields; the FunctionInfo dataclass has ~46. Dropped fields include `is_pure`, `is_inline`, `is_property_getter` / `is_property_setter` / `property_name`, `native_cpp_return_type`, `type_param_defaults`, `is_constructor`, `special_handling`, `builtin_decorator_key`, `owning_type_qname`, `addr_escapes_params`, `direct_mutated_params`, `direct_structural_mutated_params`, `call_edges`, `direct_self_mutated`, `self_mutated`, `is_auto_readonly_mutable_clone`, `inline_body`, `originating_module`, `const_borrow_params`, `deep_const_borrow_params`, `returns_self_borrow`. That last one is VERIFIED to bite, which lifts this from hygiene: a GENERIC context manager's `__enter__` reverts to the default `True`, so `class Wrapper[T]` gets a `__with_ctx_0` manager field its non-generic twin does not, and the manager's `__del__` then runs at enclosing-scope end rather than block end -- a silent CPython divergence (safe direction, no UAF). Some are presumably defaulted on purpose (mutation-tracking state that's per-original-function), but others (`is_pure`, `is_inline`, `inline_body`, `originating_module`) look call-site-relevant. `kwarg_name` was confirmed-and-fixed in `bidir-hint-quick-wins`; the same shape may bite for other fields when a future caller consults them on a substituted method. Audit each field: should it propagate, or is the default correct? Add a comment block explaining the per-field policy so future maintenance doesn't accidentally drop more without justification -- or build the copy as a `dc_replace` of the substituted fields, so a new field propagates unless reset on purpose. RESOLVED for `const_borrow_params` / `deep_const_borrow_params`: never propagate -- they are populated post-sema on the raw fi only; consumers read via `fi.root` (documented at the `typesys.py` field declaration; call sites fixed in `fix-gen-async-dcbp`).
   - **Chokepoint the `fi.root` const-verdict reads -- DONE** (`refactor-dcbp-root-property`, 2026-07-24): `const_borrow_params`/`deep_const_borrow_params` are properties forwarding through `root` over private storage, written via `set_const_borrow_verdict` -- a forgotten `.root` is structurally impossible now. The explicit `.root.`/raw-registry spellings left at existing read sites are harmless no-ops; simplify them opportunistically (e.g. at cutover).
   - **`addr_escapes_params` has no root-reading accessor, unlike its sibling `return_borrows_from`.** The provenance readers of the borrow fact all go through `recorded_return_borrow_sources` (`tpyc/typesys.py`), which reads `fi.root` so two readers of one call site cannot disagree when a synthesized specialization carries a stale copy. `addr_escapes_params` has the same hazard and no accessor: `arg_lend_ok` (`tpyc/thir/lower/expressions.py`) spells `root.addr_escapes_params` by hand, while the const-ABI readers (`tpyc/codegen_cpp/param_const.py`, `tpyc/codegen_cpp/functions.py`, `tpyc/thir/lower/predicates.py`) read the RAW field. Not a one-liner: adopting a root-reading accessor at the const-ABI sites is an ABI-affecting widening (a substituted fi's empty set would start reading the root's non-empty one), so it needs its own byte-diff rather than riding a refactor. Raised as S13 by the property-read normalization review round 5, 2026-09-18.
   - **Per-candidate trial-and-rollback at the overload probe** (`tpyc/sema/calls.py:_probe_candidate_args`). The current single-LHS-matching gate over-rejects calls where 2+ candidates LHS-match and all of them would accept the user's args via per-candidate hint propagation. Concrete shape: overloads `f(Own[Box[Pet]], str)` and `f(Own[Box[Pet]], Own[Box[Pet]])`, called as `f(Box(Dog()), Box(Dog()))` under `r: Result = ...`. Both returns match; pre-fix B-first ordering succeeded via Adapter wrap, A-first failed -- a real declaration-order-dependent bug. Post-fix consistent rejection (see `error_overload_cross_candidate_hint`). Principled fix is regime-C-style per-candidate trial: each LHS-matching candidate gets a scratch-space analysis under its own hints; the candidate whose scratch result type-checks wins. Today's regime-C path already handles this for Fn-bearing args (2+ Fn-bearing-supplied candidates -> per-candidate trial). Extend to non-Fn LHS-matching candidates. ~100+ lines + analysis-state save/restore.
@@ -2181,6 +2180,7 @@ second concrete plugin lands.
 
 ## Open feature gaps
 
+- **[codegen] A user operator method with a type parameter of its own.** `def __lshift__[C: AnyFixedInt](self, k: C) -> Own[V]` on a user record is refused at its definition (*operator method '__lshift__' cannot have its own type parameters yet*, `OPERATOR_DUNDERS` in `tpyc/sema/operators.py`, checked in the method loop of `tpyc/sema/registration.py`; pinned by `records/error_generic_dunder_type_param`), because the C++ it would take does not build: the member renders as `template<::tpy::AnyFixedInt C> V __lshift__(::tpy::readonly_form_t<C> k) const` and its friend `operator<<` (`_gen_binary_operators`, `tpyc/codegen_cpp/records.py`) has no template header, and adding one is not enough since `readonly_form_t<C>` is a non-deduced context. Sema already resolves such a use (operator resolution binds a dunder's own type parameters since the shift-count unit, for the fixed-int shift stubs). To lift the refusal: the friend shim of a member template takes the operand by a deducible parameter (`template<AnyFixedInt C> friend V operator<<(const V& lhs, C k)`) and calls the member with its template argument spelled (`lhs.template __lshift__<C>(k)`), for forward and reflected dunders alike. The direct-call renders need the same spelled argument: `v += int32(2)` over `__iadd__[C]` renders `v.__iadd__(2)` and `v // int32(2)` renders `v.__floordiv__(2)`, and both fail to deduce `C` (probed 2026-09-30); `DUNDER_CPP_TEMPLATES` has no slot for it, so the resolved binop has to carry the bound type arguments to the render. A unary dunder has no operand to bind a type parameter from and stays refused. The same shim shape serves `__getitem__` / `__call__` / `__contains__` (BUGS.md#generic-user-nonop-dunder-type-param-ill-formed).
 - **[thir] Widen the remaining flag-keyed rejects over an UNPROVEN `Optional` container receiver to the checked render.** Reads through such a receiver now render the runtime check sema's warning promises (`::tpy::deref_check(d)` / `::tpy::deref_optional_check(h.d)`, one site: `_lower_optional_container_recv` in `tpyc/thir/lower/expressions.py`), but every sink with its own `needs_optional_runtime_check` gate still rejects, located: `r = d[0]` / `p = d[0]` with a record element (`decl.slot_type`), `d[0].x += 1` and `d[0] += 1` (`stmt.aug_assign`), `d[0].m()` (`method.recv.subscript`), `d[0].rows.append(4)` (`method.recv.field_chain`), `len(d[0].rows)` (`call.native_arg.container`), `print(d[0].rows)` (`print.arg.container_field_access`), `d[0].x = 1` (`assign.field_write_shape`), `d[0].rows[0] = 5` / `d[0].kids[k] = 3` (`setitem.recv.field_chain`), `for v in d[0].rows` (`foreach.iter_borrow_unplaceable`), `(q := d[0])` / `(r := xs[0])` (`expr.walrus`), `take_p(d[0])` (`call.arg_shape.record_f1`), `take_opt(xs[0])` (`call.arg_shape.optional`), the record-`__getitem__` read in a value position (`subscript.record_getitem`), and the element writes `d[0] = x` (sema's "read-only" text, BUGS.md#optional-container-setitem-says-read-only). Each is the same receiver wrap at its own sink; the write sinks also need the checked receiver in `THIRSetItem` (its emit reads `target.receiver` directly). Measured by the 292-probe sink sweep `/tmp/agents/bundle3/row2/sweep/` (`gen_sweep.py` / `run_sweep.py`).
 - **[thir][design] One checked-unwrap mechanism for an unproven `Optional` receiver.** A subscript receiver is wrapped by the node `THIROptionalRecvCheck` (PTR / OPTIONAL spelling, one site: `_lower_optional_container_recv`), while member access and method calls still carry their own `deref_check` / `opt_deref_check` flags on `THIRFieldAccess` / `THIRMethodCall` (and `opt_deref_check` on `THIRName`), each re-deciding the PTR-vs-OPTIONAL choice through `_optional_ptr_borrow_name` / `reads_storage_form_optional`. Fold the flags onto `THIROptionalRecvCheck` so one node owns the check and its spelling. The fact it keys on is inverted too: `needs_optional_runtime_check` defaults to False, so a node sema never analyzed (or a trial left stale) renders UNCHECKED; replace it with a positive proven-non-None fact, so an un-analyzed receiver rejects instead. A `str` / `bytes` element bound off such a receiver owns a copy (BUGS.md#checked-optional-elem-decl-copies-str); its view form waits on the subscript view-root rule being fixed for short-lived roots, not on this fold. The three `opt_recv is not None` rejects at the slice / tuple / record-getitem arms of the subscript lowering (`subscript.optional_check`, `tpyc/thir/lower/expressions.py`) are a deny-list; one check after arm dispatch that the checked receiver was consumed would replace them.
 - **[parse][sema] One import-name validator.** A `from tpy|typing|builtins import X` is validated by the parser (`_check_implicit_module_names`, `tpyc/parse/imports.py`) and every other module's names by sema (`_register_user_module_import`, `tpyc/sema/analyzer.py`): two validators in two phases for one question.
@@ -2465,7 +2465,7 @@ Goal: speed up test runs (currently ~3 min parallel, ~6 min single-threaded for 
 
 ## Investigate
 - Unify the two inherited-subst composition copies into one shared helper (e.g. `type_ops.compose_type_substs`): `tpyc/sema/methods.py` `_analyze_instance_method` composes inherited x instance substs one level (with an `isinstance(v, TpyType)` guard for `N: int` bindings), while `tpyc/sema/protocols.py:740-758` has a more complete twin that also transitively resolves `TypeParamRef` chains. Hand-converged duplicates drift. While unifying, verify multi-hop generic-through-generic chains with a test (`class Mid[V](Bag[V, 8]); class Leaf[W](Mid[W])` -- the flat merge in `lookup_record_method_overloads` plus one-level composition may leave the declaring param bound to the intermediate one; unverified, surfaced by /tpy-review of the subclass-receiver bound fix).
-- Polymorphic integer literals (Rust-style). Today `IntLiteralType` is resolved at the assignment site to `default_int_type` (int32 by default), so `a = 0; f(a)` for `f(x: uint64)` requires either `a: uint64 = 0` or a cast. The current `literal_default_vars` retro-widening covers function-local cases that re-fit a fixed-int target on first typed-slot use, but module-level constants (`CONST = 5`), collection-element literals (`weights = [10, 20, 30]; send_byte(weights[0])`), and locals reassigned from a non-literal expression don't benefit. The full alternative would be to keep `IntLiteralType` polymorphic *everywhere* until first use that demands a concrete type -- the consistent mental model is "literals adapt to context anywhere", but the cost surface is wide: comparisons, prints, `for x in xs:` iter element types, generic inference, container element-type unification, and ~all sema sites that read `var_types[id(decl)]` mid-flow would need to handle "still IntLit" or trigger resolution. Also requires a deliberate generic-inference policy (do unbound `T` resolve to default_int from a literal arg, or look ahead at constraints?). Defer until the retro-widen cliff (function-local mutation drops the seed; conflicting demands lock to first usage) starts producing user complaints in real code.
+- Polymorphic integer literals (Rust-style). A function local whose first binding is a bare literal is now typed by the values stored in it ("Pending integer locals" below); uses never decide a type, so `a = 0; f(a)` for `f(x: uint64)` still needs `a: uint64 = 0` or a cast (the mismatch names the annotation). Not covered: module-level constants (`CONST = 5`) and collection-element literals (`weights = [10, 20, 30]; send_byte(weights[0])`). Letting a literal adapt to a typed USE everywhere would reopen the order question the pending locals settled (every sema site reading a local's type mid-flow would have to handle "still a literal"), and needs a generic-inference policy for a literal argument binding `T`. Defer until real code asks for it.
 - CPython native (C) module for tpy stubs: the `lib/cpy/tpy/` stubs are pure Python. A C extension module could improve CPython performance for programs that use tpy types (int32, Array, Span, etc.) heavily.
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
 - zig language: what it is, how is it different from C, what useful patterns can we learn
@@ -2531,6 +2531,47 @@ Goal: speed up test runs (currently ~3 min parallel, ~6 min single-threaded for 
 - **[design][ANALYSIS DONE 2026-09-16; implementation is its own branch] A branch-first local is a DECLARATION WITHOUT AN INITIALIZER: one slot verdict per binding, read by every hoist site and the straight-line decl.** Today a local first bound inside a compound statement and read after it is predeclared by a hoist that exists once per statement kind (`if` via `_lower_if_hoist_predecls`, and `while`/`for`/`try`/`with`/`match` through five `_lower_hoist_predecls` call sites in `tpyc/thir/lower/statements.py` and `match.py`), and each hoist consults its own type ladder (`_try_hoist_type_ok`, `_nonvalue_hoist_flavor`, the optional-storage flavours) that enumerates the slot spellings it knows how to predeclare. Every type not on a ladder is a located reject, and because the ladders are six independent enumerations the verdict differs BY POSITION for the eleven cells the analysis below measures -- a reference alias compiles at `while`/`for`/`with` and then fails the C++ build, `Rec | None` compiles straight-line and rejects at every hoist, a record alias in a generator rejects straight-line and compiles branch-first. The batch-5 review filed that branch-first/straight-line split as its own family; the `str | None` half of it is already closed, the straight-line decl having been admitted with the copy the branch-first hoist already took (`tests/cases/optional/view_at_owned_opt_decl`). Two more of the same shape are filed: a union-typed local is on no ladder at all (`BUGS.md#union-local-hoist-unclassified`, every position in a PLAIN body rejecting together since they share the classifier), and the match ladder still refuses reassigned non-value locals and pattern captures in a plain body (`BUGS.md#match-nonvalue-hoist-unadmitted`); ordinary single-binding moves/copies now use the shared storage flavors. The rule: the slot form of a local is decided ONCE per binding, where declarations are decided (the slot-derived-verdicts model already merged for sync declarations), and a hoist is that declaration rendered without an initializer, the arm's assignment then taking the ordinary rebind/reseat path. That deletes the hoist ladders and the per-statement flavour rows, makes every hoist site a reader of one verdict, and closes the position-split entries (`BUGS.md#branch-first-alias-drops-const` at the const cell; the move cell is resolved by `docs/LOCAL_BINDING_LOWERING_PLAN.md`). Snapshot-visible (predecl spellings may change), so it needs the position-by-shape matrix and its own review; the natural continuation of the slot-derived verdicts work. Raised by the user reviewing batch 5 ("why do we have to spell every possible option? this should be generic code"). ANALYSIS (batch 6, measured on 9813ac2a26: 17 type families x 9 positions, 153 probes, both with differing and identical arm sources): `s: StrView | None = a`, the shape this entry was first raised on, now rejects at BOTH positions (`decl.slot_type` straight-line, `if.hoist_type` branch-first, pinned by `tests/cases/optional/error_branch_first_opt_view_inner`), so it is a missing spelling rather than a split. The debt is eleven cells whose verdict differs by position: a reference ALIAS at while/for/with/try-finally compiles and then FAILS THE C++ BUILD (`Rec* v;` against `const Rec&`, `BUGS.md#branch-first-alias-drops-const`, HIGH; the if/try-except twins are well-formed only because two arms binding marks the source parameter mutated, so the ABI depends on arm count); a list alias rejects `decl.reseat_source` at while/for/with where if/try/decl compile; the borrow-tuple rung is wired into if/for/try but not while/with/match; a value union rejects at the isinstance READ straight-line and with but narrows when hoisted; `Rec | None` compiles straight-line and rejects at every hoist (`decl.reseat_param_source`); `list[int32] | None` rejects everywhere under two tags; a record/list alias in a GENERATOR rejects straight-line (`res.alias_bind`) and compiles branch-first; `str | None` in a frame rejects at both (`res.local_storage`, re-verified 2026-09-20); at that baseline every non-value `match` hoist rejected in a PLAIN body (ordinary single-binding moves/copies were subsequently admitted; reassigned/capture forms still reject), while in a resumable one the frame member is the declaration and the same hoist compiles (re-verified 2026-09-20; the other resumable cells above -- the generator alias split, the value-union isinstance read -- are unverified since the 2026-09-16 measurement); `v = Rec()` renders THREE ways across five positions (bare slot / two `__slot_N` optionals + pointer / one optional); `StrView | None` rejects under five tags. Inventory: SIX independent ladders (`_try_hoist_type_ok` 12 predicates; `_nonvalue_hoist_flavor` 7 verdicts; `_lower_if_hoist_predecls` 8 rungs + 6 tags; `match.py:_route_hoists` 7 string kinds + 9 whole-statement rejects; `gen_async._frame_layout` 11 kinds; four partial per-construct rung lists at while/for/try/with), 10 sync predecl spellings + 11 frame kinds, 10 reject tags, ~556 ladder lines; the fact `if_branch_decls` is recorded at SEVEN sites that disagree (`while` records `Ref[list]` where `try` records `list`). THE HOME: `analyzer.function_local_slots[func] = {name: LocalSlot(form, const, render_type, needs_rebind_slot)}`, computed in the block that already snapshots `function_stmt_borrow_decls` / `function_movable_locals` / `function_ever_owned_locals` (`tpyc/sema/analyzer.py` ~1689-1701, exactly the inputs the ladders read), the sync sibling of `FrameLocalKind` whose docstring already states the contract; forms VALUE / OPT_VALUE / OPT_STORAGE / PTR / OPT_PTR / PTR_NULL / BORROW_TUPLE / OPT_BORROW_TUPLE / DYN_PTR / REF (decl-only; the hoist reads REF as PTR with the same const bit, which is the `const Rec& v = r;` vs `const Rec* v;` relationship). The const bit is decided in `run_phase2_fixpoint` after `_sync_inferred_const` by closing `BorrowTracker.loans` (snapshotted per function, since `reset()` clears it) from the Phase-2 parameter verdict -- the closure `ResumableFuncState.const_frame_bindings` / `_close_frame_const` already runs for frames, lifted to sema and read by both; a Phase-1 read of `.const` is the F1 bug re-made. Rejected homes: a field on `TpyVarDecl` (a name bound in several arms has several nodes and one slot), the lowering context at scope entry (consumer, not decider; the const input is a fixpoint), widening `if_branch_decls` (keyed by statement). The OPT_STORAGE-vs-PTR+`__slot_N` choice is `own_rebind_names` (`RebindStorage.OWN`), not a new judgement. STEPS: 1 introduce the verdict from today's inputs and make the five hoist sites, the match route and the no-init decl arm read it, deleting the ladders -- ZERO snapshot churn is the acceptance test; 2 move the const bit to Phase 2 (fixes the HIGH; new condensed case `control_flow/branch_first_const_alias`, sections per position, each mutating through the owner after the borrow; bounded by the 46 snapshot files with a bare `T* name;` predecl); 3 one rung list for every position (borrow tuple, dyn protocol, ptr-null; match rejects become located at the binding); 4 the missing spellings (view-inner Optional at every position with a located reject for a temporary source; the value-union binding registered straight-line) -- `optional/error_branch_first_opt_view_inner` becomes a section of `optional/view_at_owned_opt_decl`; 5 `_frame_layout` becomes a reader (keeps its five frame-only kinds as refinements; snapshot-visible across the generator corpus, own review); 6 the rebind half (the moved-name source, the param source at a pointer-repr Optional, the container literal at an Optional slot). One invariant to make explicit while doing it: a promoted name can be registered at TWO anchors (a read inside the binding arm and a later read after the enclosing statement), and correctness rests today on the outer predecl lowering first so the inner one hits the already-declared skip -- with one verdict per binding, dedupe across anchors becomes a stated rule rather than an ordering accident. Fences that must survive: the const-rebound reject becomes one rule on `LocalSlot(PTR, const=True)` + rvalue reseat; the temporary-receiver borrow (`BUGS.md#readonly-borrow-of-temporary-receiver`) is decided at neither position by this work; `tuple/error_readonly_element_tuple_hoist` is a candidate to flip in step 3. Population: 257 of 6130 cases (4.2%) read a branch-first binding after its statement; 184 snapshot .cpp files carry a predecl render. Recommendation from the analysis: steps 1+2 (+3 if cheap) as ONE branch; 4-6 as follow-on rows with this entry as their analysis. The probe generators and dumps that produced this matrix are session scratch and were not kept; the per-cell verdicts above are the record. A nested `def` bound inside a block is the same cell for a CALLABLE: its lambda is declared in the block, so nothing after it can name the binding (`BUGS.md#nested-def-block-scoped-lambda-read-after-block`, a located reject since batch 6) -- and because each arm's lambda has a closure type of its own, that slot has to hold an erased callable, which is the same question as what a `Callable` local costs.
 - **[design] Revisit the `str` / `bytes` local view-vs-owned rule for predictability.** A `str` local is a `std::string_view` when the compiler proves its source outlives it and is not written while it is live, and silently becomes an owned `std::string` (an allocation plus a copy) otherwise (`docs/LANGUAGE_FEATURES.md`, String Type Semantics). The rule is semantics-preserving -- `str` is a value type, so the copy is what CPython does -- but the storage a user gets depends on facts they cannot easily see: a later `append` / `clear` / field write on the source, a rebind (`v = xs[0]; v = ys[0]; ys.clear()` demotes since the int/float arm-join branch), an alias, a loop, a callee's signature. The user (2026-09-28) is not comfortable with the allocation being invisible: it is hard to judge from the source when a local is a view and when it owns. Options to weigh: (a) an allocation diagnostic, opt-in (a flag or a directive), reporting each local demoted to owned and why; (b) inside `@noalloc` the demotion is an error naming the write that caused it; (c) a rule the user can predict locally -- e.g. a local is owned unless declared `StrView`, or a view only when its source is a parameter / literal / `Final`, with any other source owned -- trading some zero-copy locals for a rule readable from the binding line alone; (d) keep the inference and surface it in tooling (`--dump-thir` / hover). Needs `/tpy-add-feature`: it changes generated code corpus-wide under (c), and adds diagnostics under (a)/(b).
 - **[design] Whole-function slot and element facts: solve a local's slot type and its containers' element evidence over ALL its bindings before checking any use.** Consumer (backed out of the admission-by-form unit 2026-09-29): one movable rule for member-inits and bodies -- a value-typed `Own` param moving in a method body, a by-value param and a value-typed frame local moving at a field sink -- which wants the same whole-function view of a name's reads. Sema types a local flow-ordered: the first binding fixes the slot, each later binding joins into it, and each use is checked against the type at that point. Three facts need the whole function instead, and the review of the int/float hint/arm-join branch (2026-09-26) found new defects in all three after each of three rounds, so the parts built for them were backed out and only the flow-ordered parts landed. (A) Whether a container's element position is DECLARED (converts an int into its floats) or INFERRED (refuses the mix): it is decided per type-argument position by every binding of the local and of everything aliasing it -- an element, a field, a closure, a walrus target, a generic or operator result -- which a store earlier in the body must already know (`BUGS.md#inferred-container-store-converts`); the same evidence types the methods of a dict still pending from `c = {}; c[k] = v` (`BUGS.md#pending-dict-method-unknown-type-param`). Prior art: per-type-argument evidence (`Evidence`, the sets of type-argument index paths a local's bindings inferred), bound at every binding site and read by ONE store check keyed on the method parameters that carry the receiver's type parameters (setitem, slice, `+=` / `|=` through the in-place dunder, every storing method); each round found a binding site or alias path it had not bound. (B) Whether a view local's binding can be read after a write to its source: in a loop the back edge carries a rebind late in the body to a read ahead of the next write (the filed loop shapes now own the view). Prior art: a back-edge replay of the body's writes on views bound before the loop, narrowed by a per-statement liveness set (`live_names_before`); the sound home is a loan on the view's Place, the same machinery as `BUGS.md#field-view-escape-needs-place` (Place/MIR), so this one waits for MIR rather than a sema pre-pass. (C) Widening a slot after uses typed it at the narrower type: tuple elements (`BUGS.md#tuple-element-int-widening-refused`; prior art: a structural join through same-length tuples and `T | None` with a narrower tuple-literal ternary arm retyped, which left every earlier typed use of the element behind), a container element type rebound to a wider literal (`BUGS.md#container-rebind-wider-literal-truncates`), a None-seeded local's inner int type (`BUGS.md#optional-int-widening-refused`; prior art: joining the inner type like a plain local's, which truncated across a loop back edge), and a local a nested def, lambda or generator expression already read or a `nonlocal` binding writes (refused today, `refuse_captured_retype`). The unit: a pass over each function body (or the Phase-2 fixpoint) that collects every binding of each local, joins them into the slot type once and settles each container position's evidence, so the flow-ordered checks read a finished fact -- the TPy-type half of the one-verdict-per-binding home in the entry above, whose C++ slot form it would feed. Unblocks: the container-store int/float rule with per-type-argument evidence, the methods of a pending dict, tuple-element, container-element and Optional-inner widening, and widening after a closure capture or across a loop back edge. It also retires, rather than patches, the flow-order artifacts the user rejected as rules a user must learn (2026-09-28: "the language should be simple"): the captured-local refusal and its None-seed exemption, the dependence of `if` / `match` / `except` arm joins on arm order (`BUGS.md#optional-int-widening-refused`, `BUGS.md#carried-arm-name-loop-binding-unassigned`), and the sibling-arm binding forms that do not join yet (`BUGS.md#sibling-arm-loop-target-not-joined`, `BUGS.md#walrus-rebind-never-widens`, `BUGS.md#match-capture-wider-than-arm-binding-truncates`) -- all are one local's bindings joined in source order. PRIORITY: do this unit before any further per-shape fix in these entries; the int/float hint/arm-join branch spent five review rounds patching symptoms of this missing fact. The language rule it implements is stated once in docs/LANGUAGE_FEATURES.md ("Numeric widening across reassignments"), whose "Current limitations" list it deletes.
+  **Spike, 2026-09-29 (branch `spike-whole-function-types`, commit
+  `e9dc616908`, never to be merged): re-analysis to a fixed point WORKS for
+  the numeric slot type.** Shape: analyze the body; when a numeric slot type
+  changed after a read of the local was typed (the one reassignment entry
+  `resolve_reassignment_target_type`, plus the retro-widen at a typed slot;
+  a read through a nested def, lambda or genexpr counts), throw the pass
+  away, take a fresh copy of the body and analyze it again with the local
+  SEEDED at the joined type; repeat until no seed changes. A seeded local
+  stays inferred, it only starts at the join. Measured: 23 of 23 stale-width
+  shapes and 15 of 15 positions (method, constructor, generator, async,
+  `try`/`finally`, `with`, `match` arm, genexpr, lambda, nested def,
+  comprehension, a chain of two locals, `@error_return`, a literal seed
+  retyped at an unsigned slot) behave exactly as the annotated twin; the
+  captured-local refusal is no longer reached for a numeric widening. Full
+  suite WITH exec: 11324 pass, 7 fail, all accounted for -- five `error_`
+  cases that pin workarounds for the stale type
+  (`int/error_aug_value_over_widened_local`,
+  `list/error_slice_assign_widened_bound`,
+  `records/error_dunder_{binop,contains,setitem_key}_over_widened_local`;
+  four now compile, the binop one reports *Invalid operand types*), one
+  passing case now refused (`operators/widened_local_dunder_arg_narrow`: a
+  `BigInt` operand against a dunder taking `int32` -- its annotated twin is
+  refused on master too, so the inferred form compiled by accident; a
+  decision), and the state-field fixture test. Render churn: 18 lines in 18
+  files, each dropping a `::tpy::BigInt(x)` copy of a local that already is
+  one (`total = ((::tpy::BigInt(total)) + (v))` -> `total = ((total) + (v))`),
+  one paren-only. Cost on the whole stdlib (95 modules, 2028 bodies, 4.3s
+  of analysis): 202 bodies rebind a local and are copied up front, 2 are
+  analyzed again; body copies 0.2-0.3s, state copies 0.18s, context
+  snapshot 0.007s -- about 10%, nearly all of it copies that are never
+  used. **What the spike does not settle:** (1) its rollback trims each
+  context list, dict and identity map back to its length at entry, which
+  assumes analysis only APPENDS -- a value overwritten in place is not
+  restored; the real unit needs a journal, held to completeness the way
+  `tpyc/sema/test_tracking_state_copy.py` already holds the per-function
+  state; (2) widenings through tuple unpack, walrus, loop targets and arm
+  joins are not hooked; (3) an error raised BEFORE the widening binding is
+  reached is reported from the unseeded pass and names the narrow type;
+  (4) module-level statements are not covered; (5) the up-front body copy
+  should go -- create the state afresh at the driver instead of copying it,
+  and obtain the pristine body only for the rare body that needs it.
 - **[hygiene] One loop-anchor save/restore is ad hoc.** The short-circuit save/restore of `definitely_assigned` in `_analyze_binop` (`tpyc/sema/expressions.py`, the `&&`/`||` arm) is ad hoc: `loop_bound_assigned` is its twin lattice -- a name a loop body bound counts as assigned through the same merges -- and is not saved or restored beside it, so a walrus under a short-circuit inside a loop keeps a fact the rollback drops for its sibling. Make it a stated invariant: one save/restore that carries the assignment lattice as a unit. Surfaced by the round-3 review of the loop-anchor branch.
 - **[hygiene] A per-function state snapshot still deep-clones the scope and namespace graph, which is not state either.** `FunctionTrackingState.__deepcopy__` seeds its memo so no parse node and no registry `FunctionInfo` is cloned -- the rule being that a snapshot owns the facts, not the structures the whole compilation shares. The same argument covers the `Namespace` chain, `Scope` and the `RecordInfo`s reached through them. The four handles the enclosing analysis keeps using are already carried over as themselves (`LIVE_HANDLE_FIELDS`), but that is a hand-kept field list, and every OTHER reference into the same graph is still cloned on every nested def and every overload trial. Deciding the boundary once (which of these the snapshot owns) turns the explicit list into a consequence of the rule and drops the per-save cost of rebuilding the builtins namespace. Surfaced by the round-2 review of the nested-def snapshot identity fix.
 - **[feature][POSTPONED -- large] `print` is a library stub, not a compiler statement.** There is no `def print` under `lib/tpy`: `print` is hardcoded in sema, in the lowering (`_lower_print_arg`, the sink and kwarg gates, the argument-order guard) and in the emitter (`_emit_print`, an ostream chain), which is what the no-hardcoding rule (stage 5) forbids for builtin methods and tolerates here only because it predates the rule. Every `print` row closed or filed in batches 4-5 is a consequence (`sep=<expr>` needing a temp and an order rule, `file=<subscript>`, a call-valued argument beside a computed separator, `print(1, 2, **kw)` pinned by `tests/cases/kwargs/error_kwargs_print_double_star`): each kwarg shape needs its own row because the general call path never sees the call. Target: `def print(*args: object, sep: str = " ", end: str = "\n", file: TextIO | None = None) -> None` as a stub resolved by the normal call machinery, the render coming from the stub (a variadic native, or a call-site macro expanding to the stream chain), so `sep`/`end`/`file` are ordinary keyword arguments with ordinary evaluation order and `**kw` behaves as it does for any call; the `print.*` faces and the emitter's print code go away. A feature unit (`/tpy-add-feature`): the whole corpus prints, so the render must stay byte-identical for the plain forms. Postponed by the user 2026-09-16 as a big task; close no more `print` rows piecemeal before it.
@@ -2545,6 +2586,428 @@ Goal: speed up test runs (currently ~3 min parallel, ~6 min single-threaded for 
 - **[examples] The tpy-examples Doom port rebinds int locals to floats 11 times; the int/float rebind rule refuses it.** `../tpy-examples/shedskin/doom/engine.py` lines ~860-874 (else-arm `= 0` seeds over float locals), ~938-946, ~974-979, ~1020-1025 and ~1090-1096 (int values rebound to floats) need `0.0` / `float(...)` spellings or annotations before the next pinned-compiler bump there. No other tpy-examples program hits the rule.
 - **[sema] A tuple-unpack rebind should go through the one reassignment entry point.** `x, y = g()` over an existing local checks each element with `check_type_compatible` against the local's type (tpyc/sema/statements.py, the `TpyTupleUnpack` arm), treating an inferred local as a declared slot, where a scalar rebind goes through `coerce_reassignment` / `resolve_reassignment_target_type` and widens (`int32` then `int64`). The int/float refusal is called there directly so the rule holds; routing the arm through `coerce_reassignment` would remove that second call and give unpack the scalar widening, which changes which programs compile (an `int32` local unpacked from an `int64` element is refused today).
 - **[design] Sub-default-int arithmetic: promote, or keep width-preserving?** Today fixed-int arithmetic is width-preserving and checked: `int8 + int8 -> int8` via `add_check<int8_t>` (panics on overflow), with explicit `add_wrap`/`shl_wrap`/... statics as the deliberate-wraparound escape hatch (`lib/tpy/tpy/_core/_types.py` stub dunders). That is Rust's model; C++ instead promotes anything narrower than `int` to `int` before arithmetic, so C++ never computes in int8. The user-visible consequence: narrow-typed values are hostile to ordinary arithmetic (`dt.hour * 3600` in int8 needs explicit `int(...)` widening), which blocks packing value-type fields (datetime/time could shrink 28->12 / 16->8 bytes with int8/int16 fields, like CPython's C datetime does internally -- the motivating case; boundaries/ctor args stay `int` regardless, the validate-in-BigInt-then-store contract is orthogonal). Three candidate shapes: (a) full C++-style promotion of sub-default-int operands to the default int -- but C++'s own experience says this is hated in byte-manipulation code (`b[i] & 0x0F` promoting forces casts back into byte buffers; TPy's stdlib -- base64/hashlib/struct/socket -- is full of width-preserving uint8 ops), and bitwise-vs-arithmetic split rules would be a third rulebook; (b) promote only MIXED-width operands (`int8 + int32 -> int32`), keeping same-width ops closed and byte code cast-free; (c) status quo plus range-proven implicit narrowing on assignment (value_range), which fixes the packed-field read ergonomics without touching arithmetic rules. Churn if (a): retypes stub dunders -> stdlib emitted C++ changes (whole-suite exec re-key), ~42 test cases + 13 stdlib files use sub-int32 types, dozens-100+ snapshots, plus a rejects-valid ripple (`c: int8 = a + b` needs a narrowing story, aug-assign too). THIR: not structurally blocked (typing is sema-side, upstream of both codegen paths; the byte-diff gate moves in lockstep) but THIR unit tests pin current `add_check<intN_t>` emits and the value-scalar slice is under active development -- sequence this after the current THIR increments settle. Needs `/tpy-add-feature` (typing-rule change across all fixed-int code). Surfaced by the datetime v2 field-packing question. **Widening evidence from the tpy-examples port of shedskin's collatz (2026-09-29; the user wants "some widening" allowed, and rejected `--default-int=int64` because a default switch changes what the same source means):** the port needs `N: int64`, `K: int64` and three `int64(...)` conversions, each forced by one rule -- (1) mixed fixed-width arithmetic and aug-assign refuse the lossless `int32 -> int64` widening (`K - c` with `K: int64, c: int32`; `steps = 0; steps += <int64 expr>`), although literal-seeded locals already retro-widen at call args, returns and container elements; (2) the RIGHT operand of `>>`, `<<` and `**` must match the left (`n >> K` with `n: int64, K: int32` is *Invalid operand types for '>>': int64 and int32*; `int64(2) ** K` likewise), though a shift count or exponent never decides the result type; (3) `range(int64(0), 2 ** K)` with an `int32` bound unifies to `Range<::tpy::BigInt>` -- correct but silently slow (probe `/tmp/agents/rel06/ex2/gap_b2.py`, render confirmed 2026-09-29). **Direction (user, 2026-09-29): allow widening where it is safe -- same signedness, to a wider type -- so users are not forced into conversions everywhere; a signedness change (e.g. `uint32 -> int64`, lossless in range) is doubtful and should be weighed against keeping unsigned types to their narrow uses (native interop and the like). The exact rule -- which positions widen (binary ops, aug-assign, inferred locals, `range` bounds), free-width shift counts and exponents, whether BigInt is an implicit target -- is designed when this is started, not before.**
+- **[design] Operand widening: design presented 2026-09-29, ALL FOUR decisions taken; unit 1 (mixed-width operators, aug-assign widening into a declared slot, an inferred local refused with the annotation to write) built on branch `int-operand-widening`; shift counts BUILT on branch `shift-counts` (2026-09-30); decision (3) -- the generic join, `max`/`min` generic, mixed-width container literals -- BUILT on branch `generic-int-join` (2026-09-30); all merged into `pending-int-locals`.**
+  Measured on master `d89b60ab95` (112 probes, `a: int64`, `b: int32`): every
+  value-into-slot position already widens (`x: int64 = b`, argument, return,
+  field write, `xs.append(b)`, an inferred local's rebind, `a if c else b`,
+  `a or b`, `pow(a, b)`, `divmod(a, b)`), while every binary operator, every
+  aug-assign (a declared `x: int64` and `self.n64 += b` included), a
+  literal-seeded local as an operand (`k = 3; a + k`), `a + len(xs)` and the
+  `[a, b]` / `{a, b}` / `{1: a, 2: b}` literals reject; `max(a, b)`,
+  `min(a, b)` and `range(b, a)` compile but compute in `BigInt`. `a ** b`
+  rejects where `pow(a, b)` compiles.
+  **Decided (user, 2026-09-29): slots and operators use ONE relation, and it
+  is the one slots use today** (`fixed_int_widening`, `tpyc/coercions.py`):
+  same sign to a wider type, or unsigned to a strictly wider signed type. A
+  mixed operation's result is always one of its two operand types, so
+  `int32 + uint32`, `int64 + uint64` and `int8 + uint8` stay errors. The
+  unsigned-to-signed arm was kept because it moves a value OUT of the unsigned
+  type, and because `bytes` elements are `uint8` (see the next entry);
+  signed-to-unsigned stays explicit. `int8 + int8` stays `int8` (option (b) of
+  the entry above).
+  **Mechanism:** `OperatorResolver.resolve_binop` (`tpyc/sema/operators.py`)
+  already promotes a fixed int to `BigInt` through `__int__` and carries the
+  conversion on `ResolvedBinop.left_wrapper` / `right_wrapper`; the promotion
+  asks the coercion table instead. Aug-assign needs no rule of its own: it
+  resolves the operator first, and the existing write-back decides (a declared
+  slot keeps its type, an inferred local joins). The relation is encoded twice
+  (`_is_safe_widening`, and `widen_numeric_types` in
+  `tpyc/sema/numeric_lattice.py`); derive one from the other. Generic
+  type-parameter binding (`types_match_for_inference`, `tpyc/sema/type_ops.py`)
+  and literal element peers (`unify_literal_types`, `tpyc/typesys.py`) ask
+  neither today.
+  **Decided (user, 2026-09-29), the other three:** (1) a SHIFT count takes
+  any fixed-int type of either sign and the result has the LEFT operand's
+  type (`b >> a` with `b: int32, a: int64` is `int32`; `w >> (32 - k)` with
+  `w: uint32, k: int32` compiles) -- the stub parameter becomes the
+  `AnyFixedInt` marker and the runtime helper takes the count in its own type,
+  never cast to the left type first (`int8(1) << int64(256)` would become a
+  shift by 0) -- BUILT on branch `shift-counts` 2026-09-30: the count is a
+  method type parameter `[C: AnyFixedInt]` per condition (d), bound by
+  operator resolution through the ordinary call inference; an int literal
+  operand beside a fixed int it fits takes that type, which keeps (f);
+  `lshift_check` / `rshift_check` take `C` and check it in its own type (e);
+  a too-large `<<` count keeps today's *overflow in left shift* panic text; `**` is ordinary arithmetic and widens like `+`, so it agrees
+  with `pow()` as it answers today (`b ** a` is `int64`). (2) `x += e` means
+  `x = x + e`: an inferred local takes the join of its bindings as it does
+  under a rebind, a declared slot (annotated local, parameter, field) keeps
+  its type and refuses a wider right side. This removes the documented refusal
+  `i = int16(2); i += int64(3)`; `float/error_aug_assign_fixed_int_cross` is
+  retargeted to the declared-slot case. AMENDED the same day by the
+  pending-integer-locals entry below: only a local whose first binding is a
+  bare literal joins (the 2026-10-01 decision there); one with typed assignments only keeps the type of
+  its first and refuses a wider value. (3) A generic TYPE PARAMETER bound
+  directly by two scalar arguments of different fixed widths binds to the
+  wider one, as a GENERAL rule -- user generics included
+  (`pick[T](x: T, y: T)` called `pick(a64, b32)` is `T = int64`, today
+  *Cannot infer type arguments*); a binding through a container
+  (`list[int32]` against `list[int64]`) stays a mismatch. `max` / `min`
+  become generic over `AnyFixedInt` in the stub, as `range` already is, so
+  the compiler knows nothing about them (user: "compiler should not know about
+  min/max; range is obviously different" -- the `for` lowering recognising
+  `range` by name for the counter loop stays). This is the one part that
+  changes a RUNNING program: `m = max(int32(100000), int64(5)); m * m * m * m`
+  prints 10**20 today and would panic at `int64`; `max(a, a)` over `int64`
+  leaves `BigInt` too. Measured over every committed snapshot: no test has
+  `max` / `min` over fixed ints falling to `BigInt`, and the three cases with
+  a `range` bound wrapped into `BigInt` (`control_flow/for_loop_var_reassign`,
+  `iterators/for_range_bigint`, `iterators/for_range_mixed`) mix in a real
+  `BigInt` and stay; tpy-examples (18 `max` / `min` calls) not checked. A pair
+  with no common fixed type (`max(i32, u32)`) keeps falling to `BigInt` as
+  today -- an inconsistency with the operators, which reject it; file it when
+  the branch starts.
+  **Conditions from the read-only second opinion (Codex, 2026-09-29), each
+  checked against the tree:** (a) PREREQUISITE --
+  the stale-width entry (closed by pending integer locals, below): a local
+  widened after a use was read at the old width, silently through a loop back edge (-48 for 2000
+  on master). Decision (2) and every `x = x + <wider>` rebind the operators
+  make newly legal lean on the whole-function join, so the slot-type fix
+  comes first. (b) The generic join is computed over ALL scalar bindings of
+  the type parameter, not pairwise in argument order: `(int8, uint8, int16)`
+  and `(int16, int8, uint8)` must both answer `int16`. (c) A joined generic
+  match is a CONVERSION match: it ranks in the second resolution pass, by
+  most exact arguments, a concrete overload winning a tie -- today
+  `f(int32(1), int64(2))` picks `f(x: int64, y: int64)` over
+  `f[T](x: T, y: T)` (probed), and must keep doing so. (d) A marker-only
+  count parameter would stop `a >> 1` resolving: an int literal conforms to a
+  protocol as `BigInt` (`tpyc/sema/protocols.py`) and `type_matches_numeric`
+  has no marker arm, so the count is a type parameter bound like `range`'s,
+  a literal count taking the default int. (e) The count's range check uses
+  the COUNT's signedness. (f) A literal LEFT operand keeps taking the other
+  operand's type (`1 << int64(40)` is `int64` today). (g) Open, to put to the
+  user when decision (2) is built: `s = int32(1); s += big` (`big: int`)
+  narrows the right side today and keeps `s` at `int32`, where the rule would
+  make `s` a `BigInt` as the rebind `s = big` does; the docs already claim
+  the latter.
+  **The design must also:** make the `lib/cpy/tpy` fixed-int stub promote
+  mixed widths (it wraps the result into the LEFT operand's class, so
+  `int32(5) + int64(2**40)` answers 5 and `int8(100) * int32(100)` answers 16
+  under the cpy phase); document that `int64(-1) >> int64(100)` panics where
+  CPython prints -1 (pre-existing, undocumented). Left out, to file when the
+  branch starts: mixed widths inside a generic body over `T: AnyFixedInt`, a
+  tuple-element join in a ternary, a `match` capture retype. Adjacent: `abs`
+  has only `int32` and `BigInt` overloads, so `abs(a)` over `int64` computes
+  in `BigInt`.
+  **Built with decision (3) (branch `generic-int-join`):** the join lives in
+  `TypeOperations._bind_direct_fixed_ints` (`tpyc/sema/type_ops.py`) over
+  `join_numeric` (`tpyc/sema/numeric_lattice.py`); the overload second
+  pass ranks a joined generic at its instantiation and a concrete signature
+  wins a tie there; list / set / dict literal peers join through the same
+  helper (an annotated `set[int64]` / `dict[..., int64]` literal with a
+  narrower peer, refused before, now compiles too). Still open: `max(i32,
+  u32)` takes the `int` overload where the operator `i32 + u32` is refused
+  (an inconsistency the decision kept); the CPython `dispatch` stub takes a
+  matching concrete variant before a generic one, as the compiler's tie
+  rule does, but a generic variant's value is not joined there: a `T`
+  bound by `int32` and `int64` arguments keeps each argument's own class
+  under CPython (noted in the stub); `max` / `min` under
+  CPython return the picked argument with its own fixed class, so an
+  arithmetic on the result can wrap in the stub where TPy computes in the
+  joined type.
+- **[design] Pending integer locals: a local whose first binding is a bare literal is the default int widened by the typed values stored in it -- DESIGNED 2026-09-29, BUILT on branch `pending-int-locals` 2026-09-30.**
+  The candidate replacement for the join-at-rebind rule and for the
+  re-analysis spike (the user: multi-pass analysis makes the compiler "more
+  complex: more time and more prone to bugs"). Rule: a bare integer literal
+  has no width of its own; a local first bound to one is PENDING and takes
+  its type from the typed values later bound to it, or the default int when
+  there are none; a local first bound to a TYPED value has that type and a
+  wider binding is an error naming the annotation to write. It is Rust's
+  integer-literal inference and `docs/INTEGER_INFERENCE_DESIGN.md` "Phase 2b";
+  the compiler stays single-pass, and today's scheme -- type the literal at
+  the default int at once, retype the slot later, which is what leaves reads
+  stale (the stale-width and stale-occurrence-type entries, closed by this
+  unit) -- goes away.
+  **Measured, a temporary instrument on every site where an unannotated int
+  local changes type (a rebind through `resolve_reassignment_target_type`, or
+  a retype at a typed slot), compile-only run of the suite:** stdlib 17
+  sites, all literal-first; example programs 8, all literal-first (7 of them
+  one argparse builder default); tests 84 sites in 57 cases, 77
+  literal-first, 6 typed-first, 1 neither -- the typed-first ones sit in
+  three cases (`inference/reassign_numeric_widen`, which pins the join rule,
+  `inference/error_widen_nonlocal_local`,
+  `control_flow/hoist_nonvalue_read_after_loop`). So the pending rule covers
+  102 of 109 sites and no program outside the suite would need an
+  annotation. A retype at a typed slot (`off = 0; f(off)` with a `uint64`
+  parameter) occurs at 13 sites in five cases written for it and nowhere
+  else.
+  **How such locals are read** (syntactic count over the same three
+  corpora; population = literal-first locals later bound to a non-literal,
+  447 locals, 715 reads): `return` 254, a binary operator 184 (80 of them
+  against a literal, 2 against another pending local), a call argument 122
+  (`print` 103; the rest are user functions and constructors with declared
+  parameters, `int32(...)`, `float(...)`, one `.append`), a comparison 64, a
+  subscript index or slice bound 44, `yield` 20, a tuple or list element 7,
+  an f-string 6, a copy to another local 4, a field store 4, a method
+  receiver 1, a `match` subject 1. No read is an argument to a callee
+  overloaded on integer width (`abs`, `min`, `max`, `range`), the case the
+  design doc feared. 94 of the 715 reads come before the first typed
+  binding in source order (comparisons 40, operators 21, index or slice 21,
+  call arguments 6, six others).
+  The count does not see reads inside a nested def or lambda, loop targets,
+  tuple unpack or walrus.
+  **The rule as decided (user, 2026-09-29):** an unannotated local that is
+  EVER assigned a bare integer literal (negated included) starts as the
+  default int and is widened by the typed values stored in it, by plain and
+  augmented assignment; every use in the function, earlier ones included, is
+  compiled at that final type. (1) ONLY such locals are pending: a local
+  with no literal among its assignments has the type of its first
+  assignment, a narrower value converts into it and a wider one is an error
+  naming the annotation (`x = a32; x = b64` -> *annotate x: int64*), which
+  takes back widening decision (3) of the operand-widening entry for those
+  locals. The test is "any assignment is a literal", not "the first one",
+  so `if c: x = int8(1) else: x = 0` and its swapped twin agree. (2) USES
+  never decide a type, only stored values do: `off = 0; f(off)` with a
+  `uint64` or `int8` parameter is an error naming the annotation, and the
+  retype at a typed slot (`docs/INTEGER_INFERENCE_DESIGN.md` "Phase 2a") is
+  removed -- 13 sites in five cases written for it, none in the stdlib or
+  the examples. (3) A use that needs a type on the spot -- a method
+  receiver, a `match` subject, an argument to an overloaded or generic
+  callee, a container-literal element, a capture by a lambda, nested def or
+  generator expression -- SETTLES the local from the evidence so far
+  (default int if none); a later wider value is an error naming the use and
+  the annotation. That is order-dependent and goes in the docs' "current
+  limitations", never into the rule.
+  **From the parity review, folded in:** a pending local never becomes
+  UNSIGNED -- the literal counts as the default int, so unsigned evidence of
+  the same or greater width has no common type and is an error (settling
+  unsigned would change `~x` and `x - 10` on earlier lines silently); the
+  literals stored are range-checked against the settled type, and a literal
+  beyond the default int's range keeps making the local `int` as today;
+  `del x` starts no new variable and a store in an `except` handler is a
+  store like any other (the set of stores is flow-insensitive).
+  **Mechanism:** NOTHING is analyzed twice. A pending local's reads carry a
+  pending type; an operation over one is left unresolved and resolved once,
+  when the function ends -- the operator through the ordinary
+  `resolve_binop` over the settled types; an expression over a pending
+  local and a typed value has the wider of the two, so its type is pending
+  too (`p + a` with `a: int32` is `int` when `p` settles to `int`;
+  `lib/tpy/_datetime_parse.py` has the shape); locals bound from such
+  expressions (`j = steps + 1`) settle together, a fixed point over the
+  pending locals of ONE function. INVARIANT: once a function is analyzed no
+  pending integer type remains in any table -- the settle step rewrites the
+  recorded type of every node that held one, so lowering (783
+  `get_expr_type` reads in `tpyc/thir/lower`) never sees one; guard it the
+  way `_assert_no_pending_locals` guards frames. Precedent: the pending
+  containers' registry and `LocalTypeDeduction.resolve_all` with its call
+  sites in functions, methods, nested defs and module code. New, without
+  precedent: choosing an operator after the fact, a pending RESULT type,
+  the solve over dependent locals. Deleted: `literal_default_vars` /
+  `literal_values`, the literal-seed arm of the reassignment resolver,
+  `merge_literal_seed_target`, `literal_retro_candidate`,
+  `try_retro_widen_literal_arg`, `_maybe_raise_literal_local_range`, the
+  stale-type refresh in the var-decl path, and THIR's `_NARROW_UNMIRRORED` /
+  `_declared_type` workarounds -- about 250 lines; closes
+  the stale-width entry, the stale-occurrence-type entry and its three
+  consumer entries.
+  **Current limitations the design accepts:** decision (3) above; a local
+  also assigned through a form the settle step does not see yet (a loop
+  target, a tuple unpack, a walrus, a `nonlocal` store from a nested def) is
+  not pending and behaves as a typed local; module-level variables.
+  **Spike, 2026-09-29 (branch `spike-pending-int`, commit `cd9b6801c9`, never to be
+  merged; 883 lines over 9 files, most of it `tpyc/sema/pending_int.py`):
+  the three new mechanisms WORK, single-pass.** The design's example emits
+  `int64_t steps = 0;`, `::tpy::BigInt p = ::tpy::BigInt(0);`,
+  `::tpy::add_check<int64_t>(steps, 1)` and `((p) + (::tpy::BigInt(a)))`.
+  Against the annotated twin: 17 of 23 shapes and 11 of 15 positions behave
+  the same, every other one is REJECTED LOUDLY by decision (3) (a list or
+  tuple element, `abs`, a ternary arm, a walrus, a comprehension element, a
+  capture by lambda, nested def or generator expression, each followed by a
+  wider value) -- none is silently wrong. The whole stdlib compiles. Full
+  suite WITH exec: 11315 pass, 16 fail, all accounted for -- nine cases
+  that pin what the decisions remove (the `*_over_widened_local` family,
+  `int/literal_local_widened_to_bigint_narrows`,
+  `operators/widened_local_dunder_arg_narrow`, `int/literal_local_to_unsigned`,
+  `int/warn_mixed_sign_compare`, `inference/error_widen_captured_local`);
+  five spike shortcuts (three int/float cases get the spike's wording
+  instead of the existing diagnostic, `inference/inferred_hint_keeps_uses`
+  loses the inferred-local hint at a rebind of a pending local,
+  `control_flow/sibling_arm_join` reads the test-only type mirror); one
+  interop snapshot not regenerated; the state-field fixture test. Analysis
+  time on the whole stdlib is unchanged within noise (3.8s either way).
+  Render churn: 48 files, 86 lines, of two kinds -- a redundant
+  `::tpy::BigInt(x)` copy dropped, and an ACCUMULATOR OVER `int` VALUES
+  becoming `int` (about 27 cases; the decision below). How the spike does
+  it, to keep or replace: a read of a pending local reaches only a consumer
+  that asked for it, keyed on the NODE being analyzed (operator operands, a
+  store, a return, a yield, `print`, an f-string, a subscript index, an
+  argument to a declared numeric parameter of a non-generic callee); any
+  other consumer gets the local settled first -- one chokepoint at the two
+  expression entry points. A conversion whose ends are not known yet is a
+  placeholder node filled at the settle step, and spliced OUT of the tree
+  when it turns out to be none, so the tree is the one the annotated twin
+  produces. **What the spike does not settle:** (1) it keeps today's join
+  for locals with typed assignments only -- decision (1)'s refusal is not
+  built; (2) the inferred-local hint (`SlotHint.inferred_local`) at a rebind
+  of a pending local is dropped, not given the type so far; (3) a settle
+  inside an overload TRIAL that is then rejected would leak (not observed,
+  not excluded); (4) facts decided from a type before the settle -- macro
+  expansion, `isinstance`, cast elision -- are forced, by the chokepoint,
+  but not audited one by one; (5) the operand-widening core the late
+  operator resolution needs is inlined in the spike and belongs to the
+  operators unit, which therefore lands FIRST (Codex, agreed).
+  **BUILT on branch `pending-int-locals` (2026-09-30)** as production code
+  after the spike's shape (`tpyc/sema/pending_num.py`; the spike's five
+  unsettled points closed: the typed-first refusal, the inferred hint at a
+  rebind, trials -- the cells live on the context, so a settle inside a
+  rolled-back trial stays made --, the forced facts go through the one
+  chokepoint, and the operators unit landed first). Remains open: (1) the
+  order dependence of a use that settles on the spot (a documented
+  limitation in `docs/LANGUAGE_FEATURES.md`, not a rule; the whole-function
+  facts entry above is what would remove it); (2) the excluded binding
+  forms -- a loop target, a tuple unpack, a walrus, `with` / `except` /
+  `match` bindings, a nested `def` name, `nonlocal` / `global` -- keep the
+  first binding's type (`BUGS.md#unpack-reused-int-targets-bigint-elements`
+  is one face); (3) module-level variables still join their bindings.
+  Open items, none a defect today: `resolve_ready`
+  rescans the whole deferred list per settle (quadratic in function size in
+  the worst case; index the deferred operations by cell when it shows); the
+  fixed-int widening relation is encoded twice (`widen_numeric_types` in
+  `tpyc/sema/numeric_lattice.py` and the coercion table's
+  `fixed_int_widening` / `_is_safe_widening`); the subscript-index deferral
+  keys on the receiver's kind (`builtin_sequence` in `_analyze_subscript`)
+  where the `__getitem__` parameter slot should decide, as it does for an
+  argument; the settle-on-the-spot triggers a method receiver, a `match`
+  subject, `abs`, a lambda and a generator expression have no pinned case,
+  and no case covers a module-level section; `int/error_pending_local_nested_def_capture`
+  and `inference/error_widen_captured_local` pin the same refusal from two
+  seeds (a typed store before the reader, a literal only), kept as two
+  because an error case holds one error. The CPython fixed-int stub cannot
+  tell `fixed OP literal` from `fixed OP int-variable`, so it keeps the
+  fixed class for both: it disagrees with the compiler for a literal-seeded
+  local that stored a narrower fixed value (`h = 10; h = a16; h * 3000`
+  computes in int32 in TPy and wraps in int16 under the stub, probe
+  `/tmp/agents/review2-parity/s6.py`), and it wraps where TPy panics on an
+  overflow (`/tmp/agents/review2-parity/s4.py`).
+  Further open items, one line each: a record with several operator
+  overloads is picked from the pending operand's type known so far, and a
+  later store cannot change the pick (loud today: the conversion check
+  fails). No test pins a joined value at its overflow boundary (`int8 +
+  int16` overflowing int8), because the CPython stub cannot follow the join;
+  one exec-only `no_cpython` case is the followup. Hygiene: `assert_settled`'s
+  `surviving_placeholder` walks the whole body again right after
+  `_splice_out` walked it (one walk could do both, the splice reporting
+  what it left). The prescan enumerates a body's bindings twice --
+  `_scan_stmts` / `_declare` fill `first_bind_loc` and
+  `scan_first_bindings` walks `written_names` -- and the two can drift;
+  derive `first_bind_loc` from each group's first site. An arm store is
+  recorded twice (`arm_stores` and the cell's evidence), and
+  `check_arm_group` joins the typed arms apart from the settle's join and
+  runs in both `settle` and `settle_all`: keep one record and one join,
+  and give the early-settled cell's wider-arm refusal the arm wording
+  (`int/error_arm_settled_then_wider_arm` pins the use wording today);
+  the `test_arm_group_*` unit tests pin the current call protocol and are
+  replaced with it. The aug-assign refusal ORs a fixed-int clause with
+  `narrows_into` (`_apply_aug_assign_writeback`); merge them once the
+  float32 parameter / field decision lands.
+  **DECIDED (user, 2026-10-01), REPLACING "writing the width declares"
+  the same day: a local's first binding declares its type** (Codex second
+  opinion agreed, its conditions folded in). R1: the first binding is an
+  annotation or the type of the value stored; a numeric type constructor
+  call is just a value of its type (`x = int8(3); x = 100` is int8,
+  `x = 1; x = int8(3)` int32). R2: a literal-seeded first binding is
+  pending as before; a value-seeded local keeps its type and a wider value
+  is an error; `x = 0; x = uint32(1)` is refused again. R3: an annotation
+  past the first binding is an error (it was silently ignored). R4: the
+  sibling arms of one if/elif/else, match, or a try's handlers and else
+  bind together -- typed arms join by the widening relation, a bare literal
+  beside them must widen into their join or is refused (the arm read first
+  would decide), the try body binds before its handlers, loop/with bodies
+  and sequential code are lexical. BUILT:
+  the prescan records the first-binding groups once per function
+  (`scan_first_bindings`, `FunctionTrackingState.first_bindings`); a group
+  shares one cell (typed arms a derived cell) and
+  `PendingNums.check_arm_group` is its verdict. Removed:
+  `PendingNums.declare_widths` / `written_width`, `is_numeric_width`,
+  `SemanticContext.type_named_by`, `FunctionTrackingState.width_declared`,
+  `declared_width_note`, the prescan width candidates and the "two widths
+  declared" error. Kept from the width branch: a float literal converts
+  into a float32 local, the float32 literal fit check, the wider-float
+  refusal (annotated and value-seeded float32 locals alike).
+  **DECIDED (user, 2026-10-01): a wider value never converts into a
+  declared local, ints and floats alike** (`x = float32(1.5); x = wide` and
+  `x *= wide` are refused; `float32(wide)` narrows; parameters, fields and
+  an annotated initializer are unchanged, `BUGS.md#float32-aug-float-value-implicit-narrow`).
+  **DECIDED (user, 2026-09-30): an accumulator over `int` values follows the
+  rule.** `s = 0; for x in xs: s += x` with `x: int` is `int32_t s` today,
+  each value narrowed by a checked `to_fixed_check<int32_t>` (the
+  `FixedInt += BigInt` special case of `_analyze_aug_assign`), and panics
+  where CPython grows; it becomes `int`
+  (`::tpy::BigInt s = ::tpy::BigInt(0); s = (s) + (x);`), about 27 cases.
+  **GO given 2026-09-30 for the whole plan, in this order:** (1) operators
+  accept mixed widths, branch `int-operand-widening`; (2) pending integer
+  locals, branch `pending-int-locals`; (3) shift counts and exponents;
+  (4) the generic join with `max` / `min` and container literals.
+  **Size and confidence:** at least the size of operand widening; Medium
+  after the spike. About 22 existing cases pin today's behaviour
+  (`int/*literal_local*`, `inference/reassign_literal_*`,
+  `inference/reassign_numeric_*`, the `*_over_widened_local` cases). The
+  `lib/cpy/tpy` stubs wrap a mixed-width result into the left operand's
+  class (`int + int32` answers an `int32`), so the cpy phase disagrees with
+  the designed result until they promote. DECIDED (user, 2026-09-29): an
+  operator treats its operand as a call treats its argument, so an `int`
+  operand meets a fixed-width dunder parameter exactly as an `int`
+  argument meets a fixed-width parameter -- today a checked narrow
+  (`operators/widened_local_dunder_arg_narrow` keeps compiling); whether
+  that narrow should exist at all is the next entry. ORDER OF WORK: this unit,
+  then operand widening. Needs a go before any code; proposed branch
+  `pending-int-locals`.
+- **[design] Should an `int` narrow into a fixed-width slot implicitly? -- OPEN, raised by the user 2026-09-29, not to be discussed yet.**
+  Today a `BigInt` value flows into a fixed-width slot with no conversion
+  written, through a run-time range check that panics (`to_fixed_check`):
+  at an annotated assignment, a call argument, a return, a `list` / `tuple`
+  literal element and a subscript key or index
+  (`docs/LANGUAGE_FEATURES.md` "Implicit `int` (BigInt) -> fixed-width
+  narrowing"; the `bigint_to_fixed_int` row of `tpyc/coercions.py`, every
+  context). The user: "not sure if narrowing in a call is a good idea". It
+  is a hidden check and a hidden panic, the kind of cost the user objects
+  to elsewhere (the `bytes` element entry below, the `str` view-versus-owned
+  rule). Whatever is decided for calls holds for operators too (the
+  pending-integer-locals entry above). To weigh when it is taken up: how
+  many sites rely on it (the stdlib validates in `int` and stores in a
+  fixed width on purpose -- `datetime`), what the explicit spelling would
+  be (`int32(v)` already exists and panics the same way), and whether a
+  subscript index is a different case from a value slot. Needs
+  `/tpy-add-feature`.
+- **[design] What a `bytes` element is in code -- OPEN, to be revisited (user, 2026-09-29).**
+  `bytes` / `bytearray` / `BytesView` read and iterate as `uint8`, and the
+  scalar writes (`__setitem__`, `append`, `insert`) take `uint8`, so ordinary
+  Python byte arithmetic panics or rejects. Measured on master `d89b60ab95`
+  against CPython (`data = b"\xf0\x10ab"`, `off: int32 = 5`): `data[0] + 100`,
+  `data[1] - data[0]`, `(data[0] << 8) | data[1]` and `sum(data)` PANIC with a
+  uint8 overflow (CPython: 340, -224, 61456, 451); `data[0] * 256 + data[1]`
+  and `ba[0] = (ba[0] + 200) % 256` reject (*uint8 and IntLiteral(256)*);
+  `ba[0] = off` and `ba.append((off * 50) & 0xFF)` reject
+  (*expected uint8, got int32*), and so does `off in ba`; `xs = [b for b in ba]; xs.append(1000)`
+  rejects. Mixed shapes (`x = data[0]; x + off`, `len(data) - data[1]`,
+  `for b in data: t += b`) are fixed by operand widening (the entry above);
+  the ones that stay inside `uint8` are not. The user does not expect the
+  panic. Precedents already in the stubs: `ord()` returns `int32`;
+  `bytes(Iterable[int32])` and `bytearray.extend(Iterable[int32])` take
+  `int32` and raise CPython's `ValueError` outside `range(0, 256)`;
+  `lib/tpy/base64.py` converts every read by hand (`b0: int32 = int32(data[i])`).
+  **Options on the table:** (1) reads and iteration yield `int32`, storage
+  stays `uint8_t`, `uint8` stays what the user spells (`list[uint8]`,
+  `Span[uint8]`); then the WRITE of an `int32` is either (1a) always accepted
+  and range-checked at run time, with `uint8.trunc(v)` as the free spelling,
+  or (1b) accepted only where the range is visible (a byte read, a literal,
+  `& 0xFF`, `% 256`) and otherwise spelled `uint8(v)` / `uint8.trunc(v)`;
+  (2) keep `uint8` and promote narrow arithmetic to `int32`, option (a) of the
+  sub-default-int entry, which changes explicit narrow types too and still
+  needs the write story; (3) keep `uint8` everywhere and only improve the
+  diagnostics. **User's position: no hidden costs -- a user must be able to
+  write efficient code -- so (1a) is doubtful and staying at `uint8` is on the
+  table; undecided.** Measured cost of the write check (C++ `-O3`, 16K-element
+  buffers in cache, ns per byte, g++-14 / clang-19): a pure copy from an
+  `int32` source 0.079 / 0.110 unchecked against 0.223 / 0.235 checked (the
+  compare stops vectorization); a loop that already does one checked add
+  0.333 / 0.360 against 0.448 / 0.443. Throwing and panicking cost the same;
+  a masked value or a byte-to-byte copy costs nothing, because the C++
+  optimizer removes the check. TPy's own range analysis removes none today
+  (`uint8(x & 0xFF)` still emits `int_cast_check<uint8_t>`), so (1b) needs
+  `tpyc/sema/value_range.py` to learn `&`, `%`, `>>` and byte reads, since it
+  would decide acceptance. Not measured: how many of the 61 test cases and 24
+  stdlib files that mention `uint8` break when the stub types flip (run that
+  in a throwaway checkout first). Needs `/tpy-add-feature`.
 - **[feature] Class type-param defaults with an arbitrary default type** -- support `@type_param_default(C=int) class Counter[T: Hashable, C: AnyInt]: ...` (or the PEP 696 native `class Counter[T: Hashable, C: AnyInt = int]`). Two gaps today: (1) `@type_param_default` is FUNCTION-only -- on a class it errors `Unknown macro 'type_param_default'` (the `RecordInfo.type_param_defaults` field exists but isn't wired through class registration/resolution); (2) the default can only be the `DefaultInt` sentinel -> the *configured* default int (int32), since `type_ops.py` (~1385) handles only `qnames.DEFAULT_INT` and raises on anything else -- so it cannot default to a concrete type like `int`/BigInt. The PEP 696 native syntax `[T, C = int]` is a Python 3.13 feature (env is 3.12 -> parse error), so it's blocked until the min-Python bump. Motivating use: a parametric *count type* for `collections.Counter` (`Counter[Object, int32]` for cheap fixed-width histograms) while `Counter[T]` keeps `C` defaulting to `int` (arbitrary precision, CPython-matching -- defaulting to int32 would silently change overflow behavior). Needs the `AnyInt` protocol (above) for the `C` bound. Benefits any generic container wanting a defaulted param (`Box`, `ArrayList`, future `defaultdict`), not just Counter. Surfaced by the Counter parametric-count-type question. Needs `/tpy-add-feature`.
 - **[design] Should a NAMED union alias become its own struct?** `type Shape = int32 | float64` renders `using Shape = ::tpy::Union<int32_t, double>;` -- a transparent alias, so `Shape` has no identity of its own in C++. Making a named alias a struct instead would give it a place for `__repr__`, `__str__` and any future `Equatable` / `Hashable` conformance (the missing conformance is `BUGS.md#value-union-no-equatable-conformance`), at the cost of a much larger change: the alias stops converting implicitly to and from its members' variant, every use site re-keys, and the recursive-alias wrapper (which already IS such a struct) would want to merge with it rather than sit beside it. Not proposed, but it is the question `::tpy::Union` invites next, and the answer decides whether `Union` should have been a struct at all or could have been an alias template. Surfaced by the `::tpy::Union` redesign.
 - `is_trivially_destructible()`: current approximation uses `is_value_type() and not is_expensive_copy()`, which is conservative for non-value types (e.g. Span, SpanIter are trivially destructible but return False). Proper implementation: primitives/views/pointers always trivial; records trivial if no `__del__` and all fields/bases are trivially destructible; tuples/optionals trivial if elements are. Used by `del` codegen to elide move-sink.
@@ -2608,7 +3071,7 @@ Goal: speed up test runs (currently ~3 min parallel, ~6 min single-threaded for 
 - **Sema/codegen static-protocol predicate mirror.** `tpyc/sema/analyzer.py::_is_static_protocol_type` is a phase-appropriate mirror of `tpyc/codegen_cpp/protocols.py::is_static_protocol_param` (both: bare protocol / `Optional[proto]` / protocol-union, excluding `@dynamic`). The codegen version interleaves `resolve_type_for_codegen` per sub-type (union members, optional inner) for nominals not yet marked `is_protocol` at parse time; the sema version omits it because sema types are already alias-resolved. They will silently diverge if a new protocol shape is added to one. Not a clean lift (the per-member resolve interleaving means a shared helper needs a resolver callback or restructuring codegen's loop), so scope it separately: extract an `is_static_protocol_type(typ, resolve=identity)` core into `typesys.py` (next to `is_protocol_union`) that both call, codegen passing its resolver. Surfaced by /tpy-review (architecture-fit) of the proto-param-alias feature.
 - Consolidate the two hand-rolled brace-init prefixes onto `TypeResolver.typed_brace_init`. `_gen_slice_assign` (`tpyc/codegen_cpp/statements.py:~1227`) and the `+=` list-extend aug-assign path (`statements.py:~2596`) each hand-roll `f"std::vector<{elem_cpp}>{value}"` to give a collection-literal value a deducible C++ type -- the same brace-init-deduction problem the shared helper `TypeResolver.typed_brace_init` centralizes (used by the subscript-set and dict-comp-value paths). Route both through the helper to drop the parallel hand-written prefixes. The aug-assign site guards on `isinstance(..., TpyArrayLiteral)` (narrower than the helper's `startswith("{")`) -- confirm that guard is still correct (or that `startswith("{")` is safe there) before routing. Verify byte-identical output first (the helper uses `type_to_cpp(target)` = `std::vector<int32_t>` vs the hand-rolled `std::vector<{elem}>`; confirm no snapshot churn before/after). Pre-existing; surfaced by /tpy-review (architecture-fit) of the subscript-set collection-literal fix + the dict-comp-value fix. Effort: XS.
 - **[LOW] Let the tuple borrow/storage conversion helpers take element types as a parameter pack instead of the full `std::tuple<...>`.** `tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair)` spells `std::tuple` in the explicit template arg; a variadic form (`template<typename... Es, typename FromTuple> std::tuple<Es...> tuple_to_pointer(FromTuple&&)`) lets codegen emit `tuple_to_pointer<int32_t, Box*>(h.pair)` -- the pack is supplied explicitly, `FromTuple` still deduces from the arg. Purely cosmetic; same instantiation. Two reasons it's the full-tuple form today: (1) codegen builds the destination once via `tuple_borrow_cpp(...)` and reuses that one string for both the local's decl (`std::tuple<int32_t, Box*> t = ...`) and the conversion target, so the pack form needs codegen to emit the bare element list separately (or strip the `std::tuple<>` wrapper); (2) the siblings `tuple_to_storage`, `tuple_value_to_borrow`, and the storage helpers all use the full-tuple form, so a clean change converts all of them together for symmetry. Same "wrap/relax the spelled-out C++ type" family as the `box_dyn` and brace-init-helper items. Surfaced reviewing the per-element-Own rebind generated code.
-- **Dual local-type binding tables (`current_scope` + `current_ns`) are hand-synced at every late-resolution sink.** Deduced local types live in two parallel tables: `func.current_scope` (a `Scope`, flow analysis) and `func.current_ns` (a `Namespace`, read by the resumable-frame local hoist `generator_locals`). The deferred `Pending*` resolution sinks in `tpyc/sema/local_deduction.py` (`_apply_container_resolution`, `_update_resolved_binding`, `_resolve_pending_view_types`) must each remember to write BOTH -- the `_sync_resolved_to_ns` helper closes the ns leg today, and `_assert_no_pending_locals` (`tpyc/sema/analyzer.py`) guards against a future sink forgetting it, but the design is still "update one, must remember the other." The same split is why `try_retro_widen_literal_arg` writes `var_types` + `declared_var_types` + scope + ns by hand. Proper fix: a single source of truth for a local's resolved type so resolution writes once. Sema-internal cleanup -- NOT auto-dissolved by the THIR/MIR migration (orthogonal to lowering); scope it as its own branch. Surfaced by the retrospective on `fix-pending-collection-in-coro`.
+- **Dual local-type binding tables (`current_scope` + `current_ns`) are hand-synced at every late-resolution sink.** Deduced local types live in two parallel tables: `func.current_scope` (a `Scope`, flow analysis) and `func.current_ns` (a `Namespace`, read by the resumable-frame local hoist `generator_locals`). The deferred `Pending*` resolution sinks in `tpyc/sema/local_deduction.py` (`_apply_container_resolution`, `_update_resolved_binding`, `_resolve_pending_view_types`) must each remember to write BOTH -- the `_sync_resolved_to_ns` helper closes the ns leg today, and `_assert_no_pending_locals` (`tpyc/sema/analyzer.py`) guards against a future sink forgetting it, but the design is still "update one, must remember the other." The same split is why the pending numeric locals publish a settled type to both scope and ns (`PendingNums._publish`) and finalize `var_types` / `declared_var_types` by hand. Proper fix: a single source of truth for a local's resolved type so resolution writes once. Sema-internal cleanup -- NOT auto-dissolved by the THIR/MIR migration (orthogonal to lowering); scope it as its own branch. Surfaced by the retrospective on `fix-pending-collection-in-coro`.
 - **[LOW] Consolidate the `Pending*`-leaf type set across the two recursors.** `_find_pending_leaf` (`tpyc/sema/analyzer.py`, returns the leaf, checks `_PENDING_LOCAL_TYPES` incl. `PendingViewType`) and `contains_pending_leaf` (`tpyc/typesys.py`, re-exported via `tpyc/sema/context.py`; returns bool, checks `PENDING_CONTAINER_TYPES` -- NO `PendingViewType`) share the same recurse-over-`inner_types()` shape but **already disagree on which types count as a pending leaf**. The risk is divergence, not the duplication itself: a new `Pending*` subtype learned by one predicate and not the other silently changes which leaves get caught (the frame assert) vs finalized (the bindings pass). Fix by backing both with one `_first_pending_leaf(typ, types)` core AND reconciling the type set (decide whether view pendings belong in the finalize path; they currently can't reach a stored composite, so the divergence is latent). Surfaced by /tpy-review (architecture-fit, convention-compliance) + /tpy-ready retrospective of `fix-comp-pending-elem-type`.
 - **[LOW] `_deep_resolve_pending` and `resolve_int_literals` are the same leaf-replace-via-`map_inner_types` shape.** `_deep_resolve_pending` (`tpyc/sema/local_deduction.py`) intercepts Pending* container leaves; `resolve_int_literals` (`tpyc/typesys.py`) intercepts IntLiteral leaves -- both recurse identically. A shared `map_leaf_types(typ, predicate, resolver)` in `typesys.py` would unify them. Speculative scope; do as its own cleanup. Surfaced by /tpy-review (architecture-fit) of `fix-comp-pending-elem-type`.
 - **[LOW] No machine-check that the two loop-var resolved-type stores agree.** After `_finalize_pending_in_bindings`, `pending_loop_vars[name][0]` (bare element type, feeds the frame hoist) and the `current_ns` binding for the same loop var (`make_ref(elem_type)`) are resolved by separate paths with no cross-check; a divergence would mismatch a frame field against the borrow-form emission. Not shown to occur (the alias-propagation pass runs before both records), so low priority: add a post-finalization assert `unwrap_ref_type(binding.type) == pending_loop_vars[name][0]`. Surfaced by /tpy-review (safety-model) of `fix-comp-pending-elem-type`.

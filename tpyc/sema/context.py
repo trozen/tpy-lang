@@ -20,6 +20,7 @@ from .value_range import ValueRange
 
 if TYPE_CHECKING:
     from ..parse import TpyGeneratorExpression
+    from .pending_num import DeferredIntOp, PendingNumCell
     from ..parse.type_resolver import TypeResolver
     from .loop_frames import PendingLoopFrameCall, WithExitCheck
     from .scope_tracker import DeferredEscape
@@ -2038,20 +2039,33 @@ class FunctionTrackingState:
     narrowed_types: dict[str, TpyType] = field(default_factory=dict)
 
     # --- Reassignment inference tracking ---
-    literal_default_vars: set[str] = field(default_factory=set)
-    literal_values: dict[str, list[int]] = field(default_factory=dict)
     unresolved_none_vars: set[str] = field(default_factory=set)
     write_history: dict[str, list[tuple[TpyType, TpyExpr]]] = field(default_factory=dict)
     authoritative_types: dict[str, TpyType] = field(default_factory=dict)
     authoritative_type_lines: dict[str, int] = field(default_factory=dict)
-    # Locals whose type was retroactively promoted from the literal-seeded
-    # default to a fixed-int target by a typed-slot use (ARG, RETURN, INIT,
-    # ASSIGN, SETITEM, FIELD, dict-key). Maps name to the loc of the use
-    # that triggered the promotion -- surfaced in later type-mismatch
-    # errors when a subsequent use disagrees with the locked type, and
-    # consulted by _analyze_assign to refresh stale existing_type when
-    # the RHS triggered the promotion of the LHS.
-    retro_widened_locs: dict[str, 'SourceLocation | None'] = field(default_factory=dict)
+
+    # --- Pending numeric locals (tpyc/sema/pending_num.py) ---
+    # The prescan's literal-seeded locals; each gets a cell at its first
+    # binding. The cells themselves live on the context, not here: a
+    # settle inside a rolled-back trial must stay settled, as the scope it
+    # publishes to does.
+    pending_num_names: frozenset[str] = frozenset()
+    # The prescan's excluded names: a local bound through one of those forms
+    # is never pending, derived included.
+    pending_num_excluded: frozenset[str] = frozenset()
+    # Every literal-seeded local's literal values, pending or not: what an
+    # annotation of it must hold.
+    int_literal_values: dict[str, tuple[int, ...]] = field(default_factory=dict)
+    # The prescan's first bindings (`scan_first_bindings`): per local, the
+    # statements -- one, or the sibling arms that bind it together -- whose
+    # values declare its type. Read when an arm joins a group's cell and
+    # when an annotation stands past the first binding.
+    first_bindings: dict[str, tuple[TpyStmt, ...]] = field(default_factory=dict)
+    pending_cell_of: dict[str, int] = field(default_factory=dict)
+    # Operations and conversions over pending values, resolved at settle.
+    pending_num_deferred: list['DeferredIntOp'] = field(default_factory=list)
+    # Conversion placeholders that settled to none, spliced out at the end.
+    pending_num_splices: list[TpyExpr] = field(default_factory=list)
 
     # --- Global declaration tracking ---
     global_declarations: set[str] = field(default_factory=set)
@@ -2078,14 +2092,15 @@ class FunctionTrackingState:
     # parameter): a `nonlocal` write into one converts into its type instead
     # of joining inferred bindings.
     enclosing_declared_names: set[str] = field(default_factory=set)
+    # The annotated ones among them, with the annotation's line: a
+    # `nonlocal` store into one is refused when it narrows, as a store in
+    # the enclosing function is.
+    enclosing_annotation_lines: dict[str, int | None] = field(
+        default_factory=dict)
     # Union of nonlocal targets across all nested defs analyzed so far in
     # this function: any later call may invoke such a closure and rebind
     # these names, so check-elision facts for them die at every call site.
     closure_written_names: set[str] = field(default_factory=set)
-    # Captured name -> (line, phrase naming the reader) of the first nested
-    # def, lambda or generator expression that reads it. That body was
-    # analyzed at the name's type then, so no later binding may change it.
-    capture_sites: dict[str, tuple[int | None, str]] = field(default_factory=dict)
     nested_def_names: set[str] = field(default_factory=set)
     nested_def_escapes: set[str] = field(default_factory=set)
     nested_def_nodes: dict[str, 'TpyNestedDef'] = field(default_factory=dict)
@@ -2446,6 +2461,18 @@ class SemanticContext:
     str_vars: dict[int, ViewVarInfo] = field(default_factory=dict)
     bytes_var_counter: int = 0
     bytes_vars: dict[int, ViewVarInfo] = field(default_factory=dict)
+    # Pending numeric locals (tpyc/sema/pending_num.py). The cells are not
+    # function state: a trial rolls that back, and a settle made in one
+    # must stay made, as the scope it publishes to stays updated.
+    pending_num_cells: dict[int, PendingNumCell] = field(default_factory=dict)
+    pending_num_counter: int = 0
+    # How many `trial_scope`s are open. The deferred operations over pending
+    # numbers are function state a trial rolls back, so they resolve only
+    # outside one: a resolution inside would be replayed after the rollback.
+    trial_depth: int = 0
+    # The one expression now being analyzed as a consumer a pending number
+    # may reach; any other gets the local settled first.
+    pending_ok_node: TpyExpr | None = None
 
     # --- Test annotation facts (persist across functions) ---
     declared_var_types: dict[tuple[int, str], TpyType] = field(default_factory=dict)
@@ -3322,8 +3349,11 @@ class SemanticContext:
         self,
         typ: TpyType,
         warn_node: TpyExpr | TpyStmt | None = None,
+        rebinding: bool = False,
     ) -> TpyType:
-        """Resolve configured default-int, with range-safe fallback for literals."""
+        """Resolve configured default-int, with range-safe fallback for
+        literals; the warning says whether the literal gives a variable its
+        first type or promotes one (`rebinding`)."""
         if not isinstance(typ, IntLiteralType):
             return self.default_int_type
         default_tr = int_traits_of(self.default_int_type)
@@ -3333,9 +3363,11 @@ class SemanticContext:
             and not (default_tr.min_value <= typ.value <= default_tr.max_value)
         ):
             if warn_node is not None:
+                what = ("promoting variable to int (BigInt)" if rebinding
+                        else "inferring int (BigInt)")
                 self.warning(
-                    f"Integer literal {typ.value} is outside default {self.default_int_type} range; "
-                    "inferring int (BigInt).",
+                    f"Integer literal {typ.value} is outside default "
+                    f"{self.default_int_type} range; {what}.",
                     warn_node,
                 )
             return BIGINT
@@ -3439,9 +3471,11 @@ class SemanticContext:
         saved_bytes_vars = dict(self.bytes_vars)
         saved_diagnostics_len = len(self.diagnostics)
         saved_lambda_checks_len = len(self.pending_lambda_borrow_checks)
+        self.trial_depth += 1
         try:
             yield
         finally:
+            self.trial_depth -= 1
             del self.pending_lambda_borrow_checks[saved_lambda_checks_len:]
             self.restore_function_state(saved_func)
             self.expr_types.clear()

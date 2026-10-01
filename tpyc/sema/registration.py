@@ -79,7 +79,7 @@ from .method_expansion import expand_methods_for_record
 from .type_ops import signature_may_return_borrow
 from ..value_category import iterator_source_callee
 from .macros import run_macro_phase_for_record
-from .operators import DUNDER_CPP_TEMPLATES
+from .operators import DUNDER_CPP_TEMPLATES, OPERATOR_DUNDERS
 from ..macro_api import expr_to_cpp_default
 from .literal_utils import const_expr_type, is_char_literal_init
 from ..symbol_binding import (
@@ -1449,6 +1449,17 @@ class TypeRegistrar:
         for method in record.methods:
             method_has_type_params = bool(method.type_params)
             allow_tpref = is_generic or method_has_type_params
+            if (method.name in OPERATOR_DUNDERS
+                    and not (method.cpp_template or method.native_name
+                             or method.native_function)
+                    and any(tp not in (record.type_params or ())
+                            for tp in method.type_params)):
+                raise SemanticError(
+                    f"operator method '{method.name}' cannot have its own type "
+                    f"parameters yet; give the parameter a concrete type or make "
+                    f"the class generic",
+                    method.loc or record.loc,
+                )
 
             # Validate Self usage: not allowed in @staticmethod. A @classmethod
             # is exempt -- `cls` binds it to the defining record, which the

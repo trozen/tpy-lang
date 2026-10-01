@@ -95,7 +95,7 @@ struct __coro_sum_squares {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     const Pairs& p;
-    int32_t total;
+    ::tpy::BigInt total;
     ::tpy::BigInt k;
     ::tpy::BigInt sq;
     std::tuple<::tpy::BigInt, ::tpy::BigInt> __for_tup_0;

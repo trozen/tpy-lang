@@ -25,7 +25,7 @@ from ..typesys import (
     is_polymorphic_class_type, is_exception_type, SendType, SyncType, unwrap_send_sync, FrameType,
     unwrap_qualifiers,
     disambiguated_pair, ConcreteCoroType, recorded_return_borrow_sources,
-    GenExprType, is_open_type_param_return)
+    GenExprType, is_open_type_param_return, PendingNumType)
 from .. import qnames
 from ..value_category import (
     CONTAINER_LITERAL_NODES, async_result_aliases, call_returns_cpp_ref,
@@ -45,7 +45,7 @@ from ..parse import (
     TpyAwait, TpyGeneratorExpression, SourceLocation
 )
 from .literal_utils import literal_value_from_expr
-from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY
+from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error
 from ..modules import get_span_return_type
 from .context import OwnSlot, addr_taken_roots, _storage_root, BorrowKind, BorrowTracker, CallOperands, LendSource, call_borrow_operands, call_lend_sources, tuple_borrow_escape_roots
 from .numeric_lattice import fixed_int_range_contains, numeric_info
@@ -61,6 +61,7 @@ from ..type_def_registry import (
     is_dict_view,
 )
 from .overloads import type_matches_numeric
+from .pending_num import is_numeric_slot, is_pending_num, strip_int
 from .iter_loans import iteration_copies_lent_reference, iteration_lend_pending
 
 
@@ -304,6 +305,7 @@ if TYPE_CHECKING:
     from .protocols import ProtocolChecker
     from .methods import MethodAnalyzer
     from .local_deduction import LocalTypeDeduction
+    from .pending_num import PendingNums
 
 
 class PendingIterCopyCheck(NamedTuple):
@@ -350,6 +352,7 @@ class TypeCompatibility:
         self.protocols: ProtocolChecker
         self.methods: MethodAnalyzer
         self.deduction: 'LocalTypeDeduction'
+        self.pend: 'PendingNums'
         self.pending_iter_copy_checks: list[PendingIterCopyCheck] = []
 
     def resolve_pending_iter_copy_checks(self) -> None:
@@ -556,33 +559,41 @@ class TypeCompatibility:
         # user sees a targeted "use Box[Throwable]" diagnostic rather than
         # a generic type mismatch.
         self._check_polymorphic_slicing(actual, expected, source_expr, context, loc)
-        # check_type_compatible raises on failure, so all callers are
-        # commit points -- safe to apply the retro-widen side effect here
-        # without leaking it into overload probes (which use _check_compat
-        # / is_type_compatible directly).
-        if isinstance(source_expr, TpyName):
-            new_actual = self.deduction.try_retro_widen_literal_arg(
-                source_expr.name, actual, expected,
-                getattr(source_expr, "loc", None) or loc,
-            )
-            if new_actual is not None:
-                actual = new_actual
-                self.ctx.set_expr_type(source_expr, new_actual)
-            else:
-                self._maybe_raise_literal_local_range(source_expr, actual, expected, context)
+        pending = self._pending_num_ends(actual, expected, source_expr, context)
+        if pending is not None:
+            if pending:
+                self.pend.check(strip_int(actual), strip_int(expected), context,
+                                coercion_ctx, source_expr)
+            return None
+        if is_pending_num(actual):
+            actual = self.pend.current(actual)
         result = self._check_compat(actual, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
         if isinstance(result, CompatError):
-            # Surface where a previously retro-widened local's type got
-            # pinned, so the user sees why a non-default type appears in
-            # the message even though they wrote `a = 0`.
-            prior_loc = (self.ctx.func.retro_widened_locs.get(source_expr.name)
-                         if isinstance(source_expr, TpyName) else None)
-            if prior_loc is not None:
-                hint = (f" ('{source_expr.name}' was promoted to '{actual}' by "
-                        f"earlier use at line {prior_loc.line})")
-                raise SemanticError(result.message + hint, result.loc)
-            raise SemanticError(result.message, result.loc)
+            # A literal-seeded local takes its type from what is stored in
+            # it, never from a use: say what declares the type the use wants.
+            hint = (self.pend.annotation_hint(source_expr.name, expected)
+                    if isinstance(source_expr, TpyName) else "")
+            raise SemanticError(result.message + hint, result.loc)
         return result
+
+    def _pending_num_ends(self, actual: TpyType, expected: TpyType,
+                          source_expr: TpyExpr | None,
+                          context: str) -> bool | None:
+        """How a check or conversion with a pending number at one end goes:
+        None when neither end is pending (the ordinary way); True when it
+        waits for the function to settle (a numeric slot); False when there
+        is nothing to convert (a literal stored into a pending local). A
+        pending value at any other slot is settled here, and the check goes
+        the ordinary way."""
+        a, e = strip_int(actual), strip_int(expected)
+        if not (isinstance(a, PendingNumType) or isinstance(e, PendingNumType)):
+            return None
+        if isinstance(e, PendingNumType):
+            return not isinstance(a, (IntLiteralType, FloatLiteralType))
+        if is_numeric_slot(e):
+            return True
+        self.pend.force(source_expr, a, what=context)
+        return None
 
     def _value_frame_traits(self, source_expr: TpyExpr | None) -> tuple[bool, bool] | None:
         """(is_send, is_sync) of the concrete captured-state frame behind a
@@ -1425,9 +1436,15 @@ class TypeCompatibility:
             if is_big_int_type(expected) or isinstance(expected, IntLiteralType):
                 return None
 
-        # FloatLiteral can coerce to float/float32 or stay unresolved
+        # FloatLiteral can coerce to float/float32 or stay unresolved; a
+        # value the float type cannot hold is refused as its row says.
         if isinstance(actual, FloatLiteralType):
             if is_any_float_type(expected):
+                row = resolve_coercion(actual, expected, coercion_ctx)
+                if (row is not None and row.check_range
+                        and not row.check_range(actual, expected)):
+                    return CompatError(
+                        f"{literal_range_error(actual, expected)} in {context}", loc)
                 return None
 
         # Allow Array element type coercion if sizes match
@@ -1768,12 +1785,8 @@ class TypeCompatibility:
                 info.passed_to_span_param = True
 
         if coercion.check_range and not coercion.check_range(actual, expected):
-            tr = int_traits_of(expected)
             return CompatError(
-                f"Integer literal {actual.value} is outside {expected} range "
-                f"[{tr.min_value}, {tr.max_value}] in {context}",
-                loc
-            )
+                f"{literal_range_error(actual, expected)} in {context}", loc)
 
         if coercion.requires_mutable_lvalue:
             if source_expr is None or not self.is_mutable_lvalue(source_expr):
@@ -1871,6 +1884,13 @@ class TypeCompatibility:
         # The slot receives the callable a class-name factory stands for, so
         # the node the caller stores back is that lambda.
         expr = lambda_of(expr)
+        pending = self._pending_num_ends(actual, expected, expr, context)
+        if pending is not None:
+            return (self.pend.coerce(expr, strip_int(actual),
+                                     strip_int(expected), context, coercion_ctx)
+                    if pending else expr)
+        if is_pending_num(actual):
+            actual = self.pend.current(actual)
         # A bound coroutine handle (owned-erased Own[Cancellable[T]]) is
         # single-use and consume-only: borrowing it into a bare-protocol
         # slot (protocol-annotated local, borrow param) has no supported
@@ -2025,6 +2045,15 @@ class TypeCompatibility:
         # owned storage.
         var_type = self.deduction.resolve_reassignment_target_type(
             name, inner_existing, inner_value, init_expr=value_expr)
+        if is_pending_num(inner_value) and is_numeric_slot(var_type):
+            # Whether the value is wider than the local's first type is known
+            # once the function settles.
+            typed_local = (self.deduction.declared_slot_type(name, inner_existing)
+                           is None)
+            return var_type, self.pend.coerce(
+                value_expr, strip_int(inner_value), var_type, ctx,
+                CoercionContext.ASSIGN,
+                rebind_of=name if typed_local else None)
         coerced = value_expr
         if not (isinstance(inner_existing, IntLiteralType) and is_integer_type(var_type)):
             coerced = self.coerce_expr(
@@ -2081,7 +2110,7 @@ class TypeCompatibility:
             return None
         # source_expr=None: these probe the *element* types, so the list RHS
         # node must not drive _check_compat's expr-identity side effects
-        # (retro-widen / set_expr_type / mutable-lvalue marking).
+        # (set_expr_type / mutable-lvalue marking).
         fwd = self._check_compat(new_elem, existing_elem, context, loc, None,
                                  False, CoercionContext.ASSIGN,
                                  target_is_storage_form=True)
@@ -2102,28 +2131,6 @@ class TypeCompatibility:
         if is_list(t) or is_array(t):
             return t.type_args[0]
         return None
-
-    def _maybe_raise_literal_local_range(
-        self, expr: TpyName, actual: TpyType, expected: TpyType, context: str,
-    ) -> None:
-        """Raise a range error when a literal-seeded local would have
-        retro-widened to `expected` except a recorded literal value falls
-        outside the target's range. Surfaces the literal value (e.g. -1,
-        or 300 against uint8) instead of the bare "got int32" mismatch.
-        """
-        cand = self.deduction.literal_retro_candidate(expr.name, actual, expected)
-        if cand is None:
-            return
-        target, values = cand
-        bad = [v for v in values if not fixed_int_range_contains(target, v)]
-        if not bad:
-            return
-        tr = int_traits_of(target)
-        raise self.ctx.error(
-            f"Integer literal {bad[0]} assigned to '{expr.name}' is outside "
-            f"{target} range [{tr.min_value}, {tr.max_value}] in {context}",
-            expr,
-        )
 
     def _pending_list_is_list(self, p: PendingListType) -> bool:
         """Whether a pending list is already forced to `list` (e.g. internally

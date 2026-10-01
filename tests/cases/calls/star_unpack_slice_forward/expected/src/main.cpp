@@ -12,15 +12,15 @@ namespace tpyapp::main {
 //         t += n
 //     return t
 ::tpy::BigInt g(::tpy::varargs<const ::tpy::BigInt> nums) {
-    int32_t t = 0;
+    ::tpy::BigInt t = ::tpy::BigInt(0);
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const ::tpy::BigInt& n = *__beg_0;
-        t = ::tpy::add_check<int32_t>(t, (n).to_fixed_check<int32_t>());
+        t = (t) + (n);
     }
-    return ::tpy::BigInt(t);
+    return t;
 }
 
 // def f(*items: int) -> int:

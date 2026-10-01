@@ -1,3 +1,7 @@
+# An annotation on a local the function already bound is refused: it goes on
+# the first binding (mypy: Name "x" already defined).
+# (A documented restriction: docs/LANGUAGE_FEATURES.md, "Numeric widening
+# across reassignments".)
 from tpy import int32
 
 
@@ -9,8 +13,9 @@ class Point:
 
 
 def bad() -> None:
-    x = None  # tpyc: error(/incompatible with later annotation 'Point' at line 13/)
-    x: Point = Point(1)
+    x = None
+    # an annotation past the first binding
+    x: Point = Point(1)  # tpyc: error(/'x' is already bound at line 16; an annotation goes on the first binding/)
 
 
 bad()

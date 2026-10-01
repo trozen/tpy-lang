@@ -267,7 +267,7 @@ class MethodAnalyzer:
             elif pre is not None and i < len(pre):
                 at = pre[i]
             else:
-                at = self.expr.analyze_expr_with_hint(arg, ptype)
+                at = self.expr.analyze_arg_at_param(arg, ptype, ptype)
             self.calls._maybe_coerce_empty_list_to_protocol(at, ptype)
             at = self.calls._restore_readonly_arg(arg, at, target_is_readonly)
             self.calls.check_own_param(arg, at, pname, ptype)

@@ -1,0 +1,4 @@
+declared 0.30000001192092896
+declared 1.5
+nonlocal 0.5
+infinite inf

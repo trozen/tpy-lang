@@ -29,7 +29,7 @@ struct __coro_total {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     T_items items;
-    int32_t s;
+    ::tpy::BigInt s;
     ::tpy::BigInt x;
 
     enum : int32_t {
@@ -67,10 +67,10 @@ template <::tpystd::typing::Iterable<::tpy::BigInt> T_items>
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-            s = ::tpy::add_check<int32_t>(s, (x).to_fixed_check<int32_t>());
+            s = (s) + (x);
         }
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(s);
+        ::tpy::BigInt __tpy_async_ret = std::move(s);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

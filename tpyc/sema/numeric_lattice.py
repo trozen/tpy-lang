@@ -7,18 +7,23 @@ inference so future numeric types can be added in one place.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
+from typing import Iterable
 
 from ..typesys import (
-    TpyType, IntLiteralType, FloatLiteralType,
-    BIGINT,
-    is_float_type,
+    TpyType, IntLiteralType, FloatLiteralType, ALL_FIXED_INTS, BIGINT, FLOAT,
+    is_float_type, is_integer_type,
 )
 from ..type_def_registry import (
     is_fixed_int_type, is_big_int_type, is_bool_type,
     is_float32_type, is_float64_type,
     int_traits_of,
 )
+
+
+# The largest finite float32 magnitude.
+_FLOAT32_MAX = 3.4028234663852886e38
 
 
 @dataclass(frozen=True)
@@ -56,35 +61,6 @@ def fixed_int_range_contains(typ: TpyType, value: int) -> bool:
     return tr.min_value <= value <= tr.max_value
 
 
-def merge_literal_seed_target(
-    existing_type: TpyType,
-    init_type: TpyType,
-    literal_values: list[int],
-) -> TpyType | None:
-    """Infer target type for a literal-seeded variable.
-
-    A literal-seeded variable starts as ctx.default_int_type (`x = 0`) and may
-    be refined by later writes if safe.
-    """
-    if isinstance(init_type, IntLiteralType):
-        if (
-            is_fixed_int_type(existing_type)
-            and init_type.value is not None
-            and not fixed_int_range_contains(existing_type, init_type.value)
-        ):
-            return BIGINT
-        return existing_type
-    if is_fixed_int_type(init_type):
-        if all(fixed_int_range_contains(init_type, v) for v in literal_values):
-            return init_type
-        return existing_type
-    if is_big_int_type(init_type):
-        return BIGINT
-    # A float never refines an int seed: the caller refuses the int/float
-    # rebind first. bool is separate and never merges with numeric literals.
-    return None
-
-
 def widen_numeric_types(a: TpyType, b: TpyType) -> TpyType | None:
     """Return the widened type for two concrete numeric types, or None.
 
@@ -105,8 +81,7 @@ def widen_numeric_types(a: TpyType, b: TpyType) -> TpyType | None:
     if info_a.family == "bool" or info_b.family == "bool":
         return None
 
-    # Literal families are handled by merge_literal_seed_target, not here.
-    # Defensive: callers (local_deduction, _select_join) already
+    # Literal families have no width to join. Defensive: callers (local_deduction, _select_join) already
     # resolve literals to concrete types before delegating; this guards
     # against future callers that forget.
     if info_a.family in ("int_literal", "float_literal"):
@@ -157,3 +132,74 @@ def widen_numeric_types(a: TpyType, b: TpyType) -> TpyType | None:
 
     # Same width mixed sign (e.g. int32 + uint32) -> refuse
     return None
+
+
+def narrows_into(slot: TpyType, value: TpyType) -> bool:
+    """Whether storing `value` into a declared `slot` of its own family
+    would narrow it: the value is wider under the widening relation, ints
+    and floats alike. An `int` into a fixed width is exempt -- that
+    conversion checks the range at run time -- while a float into
+    `float32` would lose precision silently. An int meeting a float is no
+    narrowing but a change of family, which the numeric tower rules."""
+    if is_float_type(slot) != is_float_type(value):
+        return False
+    widened = widen_numeric_types(slot, value)
+    if widened is None or widened == slot:
+        return False
+    return not (is_big_int_type(value) and is_fixed_int_type(slot))
+
+
+def join_numeric(types: Iterable[TpyType]) -> TpyType | None:
+    """The one of `types` (numbers: fixed ints, `int`, floats) that every
+    other widens into by the slot relation, or None when no such member
+    exists. Asked over the whole set at once, never pairwise in order:
+    `(int8, uint8, int16)` joins to int16 although int8 and uint8 alone have
+    no common type. The member is unique: two that held each other would
+    widen both ways, which the relation never does for distinct types."""
+    distinct = list(dict.fromkeys(types))
+    for cand in distinct:
+        if all(t == cand or widen_numeric_types(cand, t) == cand
+               for t in distinct):
+            return cand
+    return None
+
+
+def smallest_type_holding(t: TpyType, literals: Iterable[TpyType]) -> TpyType:
+    """The narrowest type of `t`'s family that `t` widens into and that
+    holds the value of every literal in `literals`: `t` itself when they
+    all fit it, `float` for a float literal past `float32`'s range, `int`
+    when no fixed width holds them. A literal of unknown value fits."""
+    values = [lit.value for lit in literals
+              if isinstance(lit, (IntLiteralType, FloatLiteralType))
+              and lit.value is not None]
+    if is_float_type(t):
+        if is_float64_type(t) or all(
+                math.isinf(v) or math.isnan(v) or abs(v) <= _FLOAT32_MAX
+                for v in values):
+            return t
+        return FLOAT
+    if not is_fixed_int_type(t):
+        return t
+    signed = int_traits_of(t).signed
+    # Same-width candidates of the join's own signedness come first.
+    by_width = sorted(ALL_FIXED_INTS, key=lambda c: (
+        int_traits_of(c).bits, int_traits_of(c).signed != signed))
+    for c in by_width:
+        tr = int_traits_of(c)
+        if (join_numeric((t, c)) == c
+                and all(tr.min_value <= v <= tr.max_value for v in values)):
+            return c
+    return BIGINT
+
+
+def smallest_common_int(a: TpyType, b: TpyType) -> TpyType | None:
+    """The narrowest integer type both `a` and `b` widen into by the slot
+    relation (`int32` and `uint32` -> `int64`; `int` when no fixed type
+    holds both), for a conversion hint; None unless both are integers."""
+    if not (is_integer_type(a) and is_integer_type(b)):
+        return None
+    if not (is_fixed_int_type(a) and is_fixed_int_type(b)):
+        return BIGINT
+    by_width = sorted(ALL_FIXED_INTS, key=lambda t: int_traits_of(t).bits)
+    return next((c for c in by_width if join_numeric((a, b, c)) == c),
+                BIGINT)

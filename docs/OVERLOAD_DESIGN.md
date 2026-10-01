@@ -307,7 +307,16 @@ Runs only when the first pass produced zero candidates. Accepts implicit
 coercions (narrowing conversions, `Callable` -> `Fn`, `Deref[T]`, subclass
 upcasts) and ranks by count of non-coercion matches first, then by number of
 narrowing conversions, with an `IntLiteralType` penalty derived from
-`default_int_type` to break ties deterministically.
+`default_int_type` to break ties deterministically; a concrete signature
+wins a remaining tie against a generic instantiation.
+
+A generic whose type parameter was bound by the JOIN of scalar fixed ints of
+different widths (`f[T](x: T, y: T)` at `(int32, int64)` binds `T = int64`)
+converts an argument, so it is never a first-pass match: it ranks here, at
+its instantiation, like any conversion. `max(a64, b32)` picks
+`max[T: AnyFixedInt]` (one exact argument) over `max(int, int)` (none), and
+`f(int32(1), int64(2))` picks a concrete `f(x: int64, y: int64)` over the
+joined generic (a tie).
 
 #### Worked example: `sum([])`
 

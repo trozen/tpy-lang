@@ -29,12 +29,14 @@ from ..type_def_registry import (
     is_copy_iter, is_own_iter, is_array, is_span, is_varargs, is_list, is_dict, is_set,
     is_enum_type, is_str_type, is_borrowing_view_type,
     get_type_def, find_factory_by_simple_name, protocol_info_of, is_subtype,
+    is_fixed_int_type,
 )
 from ..parse import TpyFunction
 from tpyc import modules as builtin_modules
 from .overloads import resolve_overload
 from .slot_hint import SlotHint, params_at_inferred
 from .type_join import NumKind, numeric_kind
+from .numeric_lattice import join_numeric
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
@@ -265,6 +267,24 @@ def _is_useful_seed_binding(t: object) -> bool:
         (NoneType, VoidType, UnknownElementType, PendingViewType, PendingListType,
          TypeParamRef, IntLiteralType, FloatLiteralType),
     )
+
+
+def _direct_fixed_int_binding(
+        ptype: TpyType, arg_t: TpyType) -> tuple[str, TpyType] | None:
+    """(type param, fixed-int type) when `arg_t` is a scalar fixed int bound
+    straight to a bare type param -- the one binding the fixed-int join
+    applies to. A param reached through a container, Optional or tuple is
+    not direct: those are invariant, so a wider element never joins in."""
+    while isinstance(ptype, (RefType, ReadonlyType, OwnType, SendType, SyncType)):
+        ptype = ptype.wrapped
+    if not isinstance(ptype, TypeParamRef):
+        return None
+    arg = unwrap_send_sync(arg_t)
+    if isinstance(arg, OwnType):
+        arg = arg.wrapped
+    if not is_fixed_int_type(arg):
+        return None
+    return ptype.name, arg
 
 
 class TypeOperations:
@@ -1392,6 +1412,29 @@ class TypeOperations:
                 return False
         return True
 
+    def _bind_direct_fixed_ints(
+        self, name: str, bindings: list[tuple[TpyType, TpyType]],
+        inferred: dict[str, TpyType], joined: set[str] | None,
+    ) -> bool:
+        """Bind type param `name` from the scalar fixed ints bound to it
+        directly: their join under the one widening relation, the narrower
+        arguments then converting like any argument. A binding the param
+        already has from elsewhere (a container element, an explicit type
+        argument) is invariant, so the scalars are matched against it one by
+        one as before."""
+        existing = inferred.get(name)
+        if existing is not None and not isinstance(
+                existing, (IntLiteralType, UnknownElementType)):
+            return all(self.match_type_with_inference(ptype, arg, inferred)
+                       for ptype, arg in bindings)
+        join = join_numeric(arg for _, arg in bindings)
+        if join is None:
+            return False
+        if joined is not None and any(arg != join for _, arg in bindings):
+            joined.add(name)
+        ptype = next(ptype for ptype, arg in bindings if arg == join)
+        return self.match_type_with_inference(ptype, join, inferred)
+
     def types_match_for_inference(self, type_a: TpyType, type_b: TpyType) -> bool:
         """Check if two types match for inference consistency.
 
@@ -1440,6 +1483,7 @@ class TypeOperations:
         type_conforms_to_protocol: callable,
         expected_return_type: SlotHint | TpyType | None = None,
         explicit_type_args: 'tuple[TpyType | None, ...] | None' = None,
+        joined: set[str] | None = None,
     ) -> dict[str, TpyType] | None:
         """Infer type parameters from function arguments.
 
@@ -1448,6 +1492,9 @@ class TypeOperations:
         (a `SlotHint` also says which of its positions an inferred local decides,
         and a fill-only one binds only what nothing else does -- `result_bindings`).
         If explicit_type_args is provided, pre-populates inferred with those (positional).
+        A type param bound directly by scalar fixed ints of different widths
+        binds to their join (`_bind_direct_fixed_ints`); its name is added to
+        `joined`, when given, since the call then converts an argument.
         """
         return_hint = SlotHint.of(expected_return_type)
         # A fill-only hint prefers no protocol form for the result.
@@ -1463,6 +1510,17 @@ class TypeOperations:
             for tp, arg in zip(func.type_params, explicit_type_args):
                 if arg is not None:  # None = _ wildcard, skip
                     inferred[tp] = arg
+        # Scalar fixed-int bindings of a bare type param are joined after
+        # every argument is seen, so the verdict cannot depend on their order.
+        direct_ints: dict[str, list[tuple[TpyType, TpyType]]] = {}
+
+        def match_arg(ptype: TpyType, arg_t: TpyType) -> bool:
+            direct = _direct_fixed_int_binding(ptype, arg_t)
+            if direct is not None:
+                direct_ints.setdefault(direct[0], []).append((ptype, direct[1]))
+                return True
+            return self.match_type_with_inference(ptype, arg_t, inferred)
+
         arg_idx = 0
         for p in func.params:
             if arg_idx >= len(arg_types):
@@ -1477,7 +1535,7 @@ class TypeOperations:
                 elem_type = unwrap_readonly(unwrap_ref_type(ptype).type_args[0])
                 while arg_idx < len(arg_types):
                     arg_t = to_bare_slot_form(arg_types[arg_idx])
-                    if not self.match_type_with_inference(elem_type, arg_t, inferred):
+                    if not match_arg(elem_type, arg_t):
                         return None
                     arg_idx += 1
                 continue
@@ -1496,9 +1554,13 @@ class TypeOperations:
                 # contributes the storage it decided on -- never the
                 # "undecided" binding type, whose display is the owned name.
                 arg_t = self.ctx.view_storage_verdict(arg_t) or arg_t
-            if not self.match_type_with_inference(match_type, arg_t, inferred):
+            if not match_arg(match_type, arg_t):
                 return None
             arg_idx += 1
+
+        for name, bindings in direct_ints.items():
+            if not self._bind_direct_fixed_ints(name, bindings, inferred, joined):
+                return None
 
         # Fallback: infer remaining params from expected return type
         if return_hint is not None and func.return_type is not None:
@@ -2128,6 +2190,12 @@ class TypeOperations:
             return_type=substituted_return,
             is_noalloc=method.is_noalloc,
             is_readonly=method.is_readonly,
+            # The stub's effect contract (`@pure` / `@transient`) is what MIR
+            # admits a call on; a generic `min`/`max` instantiation without
+            # it is "no contract", not pure.
+            is_pure=method.is_pure,
+            is_transient=method.is_transient,
+            is_inline=method.is_inline,
             is_consuming=method.is_consuming,
             # Accessor identity is invariant under substitution; dropping
             # it left an inherited generic property's resolved fi

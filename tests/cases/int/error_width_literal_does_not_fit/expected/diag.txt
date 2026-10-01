@@ -1,0 +1,1 @@
+main.py:10: error: Integer literal 200 is outside int8 range [-128, 127] in reassignment to 'x'

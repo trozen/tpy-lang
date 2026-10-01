@@ -5,8 +5,8 @@
 | Phase | Scope | Status |
 |-------|-------|--------|
 | **Phase 1** | Global `--default-int` CLI flag, configurable default (int32/int64/BigInt), explicit `int` stays BigInt | Done |
-| **Phase 2a** | Retro-widening of literal-seeded function locals at typed-slot uses (cross-sign int32→uint64 etc., the standard widening rules can't reach), with range diagnostics | Done |
-| **Phase 2b** | Full deferred `IntLiteralType` resolution (carry the literal type through arbitrary use chains, including module globals and collection elements, with multi-constraint reconciliation) | Planned |
+| **Phase 2a** | Retro-widening of literal-seeded function locals at typed-slot uses | Replaced by Phase 2b (uses never decide a type) |
+| **Phase 2b** | Pending integer locals: a literal-seeded function local is typed by the values stored in it, decided once the function is analyzed | Done (function locals; module globals and collection elements not covered) |
 | **Future** | Per-module/per-function overrides (`# tpy:` directives, `@tpy.config`), constant folding | Planned |
 
 Decision date: 2026-02-16
@@ -162,87 +162,60 @@ Mitigation path:
 3. Optional per-module/per-function policy override (`# tpy:` / decorators).
 4. Policy interaction with future profiles (`@noalloc`, backend profiles).
 
-## Phase 2a: Literal-Seeded Local Retro-Widening (Shipped)
+## Phase 2a: Literal-Seeded Local Retro-Widening (Replaced)
 
-A narrow slice of the original deferred-resolution proposal landed: a
-function-local initialized from a non-negative integer literal (`offset = 0`)
-takes the configured default at the assignment as before, but the
-`literal_default_vars` scaffold (already used for BigInt/int64/Float
-anchors set by *later assigns*) was extended with one additional edge --
-retroactive promotion to a fixed-int target on the first typed-slot use
-that the standard widening rules can't reach (cross-sign int32→uint64
-etc.).
+A local seeded by a literal took the default int at once and was re-typed
+to a fixed-int target at its first typed-slot use (`offset = 0; f(offset)`
+with a `uint64` parameter). Its earlier reads stayed typed at the old
+width, which miscompiled every operation over them, and the use deciding
+the type made the verdict order-dependent. Phase 2b replaced it: uses never
+decide a type.
 
-Triggers: ARG, RETURN, INIT to annotated local, ASSIGN to existing typed
-local, SETITEM into typed container, FIELD assign, dict-key in
-subscript-assign. The hook lives in `TypeCompatibility.check_type_compatible`
-(the canonical commit boundary; probes use `_check_compat` /
-`is_type_compatible` / `type_matches_*` directly so they don't fire).
+## Phase 2b: Pending Integer Locals (Done)
 
-Diagnostics: when retro-widening would have fired except a recorded
-literal value falls outside the target's range (`a = -1; f(a)` for
-`uint64`, `a = 300; f(a)` for `uint8`), the error names the literal
-value and target range instead of the bare "got int32" mismatch. When a
-retro-widened local later fails compat at a different typed slot
-(`a = 0; fu(a) /* uint64 */; fi(a) /* int32 */`), the type-mismatch
-message gets a "promoted to T by earlier use at line N" suffix pointing
-at the locking site.
+An unannotated function local whose first binding is a bare integer
+literal (`scan_pending_num_locals`, `tpyc/prescan.py`) is PENDING: it is
+the default int widened by the typed values stored in it -- plain and
+augmented assignments, joined over the whole set of stores by the slot
+widening relation -- and every use, earlier ones included, is compiled at
+that type. It never becomes unsigned (a literal counts as the default
+int), and a literal the default does not hold makes it `int`. A local
+whose first binding is a typed value -- a numeric type constructor call
+(`x = int8(3)`) included -- keeps that type and refuses a wider value.
+The sibling arms of one `if` / `match` / `try` that each bind a local are
+together its first binding (`scan_first_bindings`): typed arms join, and
+beside a bare-literal arm the family DEFAULT must widen into the typed
+arms' join (and the literal must fit it), else it is an error.
 
-The lock is one-shot per local. Reassigning from a non-literal source
-drops the seed (existing `record_write` behavior). Module-level globals
-(`literal_default_vars` is per-function) and collection-element literals
-are not covered by retro-widening -- see Phase 2b below. (Orthogonal: a
-direct `BigInt` *value* at a list/tuple element is separately coerced to a
-fixed-width target via the runtime-checked `bigint_to_fixed_int` rule, not
-retro-widening.)
+The same machinery serves float locals, with `float` as the float
+literal's default. Nothing is analyzed twice (`tpyc/sema/pending_num.py`):
 
-## Phase 2b Proposal: Full Deferred IntLiteralType Resolution
+- one cell per pending local on the context, holding the types stored in
+  it; a local first bound from a pending value (`j = steps + 1`) gets a
+  derived cell typed by its first store;
+- a read of a pending local is typed `PendingNumType` (the join of cells
+  and a concrete floor), and only a consumer that asked for one -- keyed
+  on the node it analyzes at the two expression entry points -- receives
+  it: an operator operand, a store, a return, a yield, `print`, an
+  f-string value, a builtin-sequence index or slice bound, an argument to a
+  declared numeric parameter of a non-generic, non-overloaded callee, a
+  field write, an annotated initializer, `+=` on a declared slot;
+- any other consumer SETTLES the local from the stores seen so far and
+  freezes it; a later wider store is refused naming that use (the
+  documented order dependence);
+- an operator over a pending operand is typed at once (arithmetic and
+  bitwise: the wider operand, itself pending; `/`: float; comparisons:
+  bool; shifts: the left operand) and resolved through the ordinary
+  `OperatorResolver` once its operands settle; a conversion whose ends are
+  not known yet is a `TpyCoerce` placeholder, filled then or spliced out of
+  the tree;
+- a lambda, nested def or generator expression settles the locals it reads
+  in the owning function before its body is analyzed;
+- at the end of the function body (`LocalTypeDeduction.resolve_all`) every
+  cell settles (a fixed point over locals stored from one another), every
+  deferred operation resolves, and no pending type remains in any table.
 
-This section preserves the earlier design direction for a later phase.
-
-### Goal
-
-Keep integer-literal-seeded locals as `IntLiteralType(value)` longer, then
-resolve based on usage context instead of committing immediately.
-
-Example intent:
-
-```python
-n = 4                    # IntLiteralType(4), not immediately concrete
-for i in range(n):       # choose int32/int64 fast range path when safe
-    ...
-x = n + m                # may choose BigInt if arithmetic domain is ambiguous
-```
-
-### Proposed Mechanics
-
-1. Keep `IntLiteralType` on eligible local variables (non-reassigned literal
-   seeds) during semantic analysis.
-2. Let usage sites constrain candidate concrete types:
-   - `range(n)` can request fixed-width integer domain
-   - explicit annotation/parameter type (`f(x: int32)`) can request `int32`
-   - unconstrained arithmetic can force `BigInt` fallback for safety
-3. Run a post-analysis resolution pass for remaining `IntLiteralType` vars.
-4. Write resolved concrete types back into sema state used by codegen.
-
-### Resolution Rules (Proposed)
-
-1. If all usage constraints agree, choose that type.
-2. If constraints disagree, fall back to `BigInt`.
-3. If variable is unused, resolve to configured default type.
-4. If variable is reassigned from non-literal/unknown source, resolve to
-   configured default type (or `BigInt` in strict-safe mode).
-
-Note: rule 3/4 should be aligned with whatever Phase 1 policy is active.
-
-### Why Deferred (Not Phase 1)
-
-- Adds context-sensitive typing behavior that is harder to reason about.
-- Requires additional tracking of usage constraints and conflict diagnostics.
-- Interacts with generic inference and overload selection in non-trivial ways.
-
-Given current priorities, a global configurable default provides most of the
-performance value with simpler and more predictable semantics.
+Module globals and collection-element literals keep the Phase 1 policy.
 
 ### Interaction with Constant Folding
 

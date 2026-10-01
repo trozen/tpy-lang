@@ -64,7 +64,7 @@ __coro_doubled doubled(::tpy::BigInt n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         __await_lift_0 = std::move(__r1).value();
         __sub_1.reset();
-        s = ::tpy::add_check<int32_t>(s, (__await_lift_0).to_fixed_check<int32_t>());
+        s = (s) + (__await_lift_0);
         __state = S_JOIN_0;
         continue;
     }
@@ -87,7 +87,7 @@ __coro_doubled doubled(::tpy::BigInt n) {
     }
     case S_JOIN_2: {
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(s);
+        ::tpy::BigInt __tpy_async_ret = std::move(s);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

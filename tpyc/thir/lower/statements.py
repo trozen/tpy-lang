@@ -443,7 +443,6 @@ from .predicates import (
     _is_range_call,
     _runtime_bigint,
     _narrow_key_type,
-    _NARROW_UNMIRRORED,
     _range_object_value,
     _slice_object_type,
     _nested_owned_tuple_call_ret,
@@ -13150,13 +13149,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         _, aug_rslot = _rb_operand_slots(stmt.resolved_binop)
         # FixedInt += BigInt: the value wraps in `({0}).to_fixed_check<T>()`
         # BEFORE the binop substitution (sema resolved the binop over the
-        # target width), carried as the per-side operand cast. The value's
-        # BigInt-ness keys on the DECLARED type, so a retro-widened
-        # literal-seeded local narrows here too; a composite over one is not
-        # lowered and rejects.
+        # target width), carried as the per-side operand cast.
         aug_value_key = _narrow_key_type(stmt.value, declared, analyzer)
-        if aug_value_key is _NARROW_UNMIRRORED:
-            raise ThirUnsupported("stmt.aug_assign:widened_value")
         right_cast = None
         if (is_fixed_int_type(cast_t)
                 and is_big_int_type(aug_value_key)):

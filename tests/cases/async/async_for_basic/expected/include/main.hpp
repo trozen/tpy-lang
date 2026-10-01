@@ -93,7 +93,7 @@ struct __coro_total {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     const Counts& c;
-    int32_t s;
+    ::tpy::BigInt s;
     ::tpy::BigInt x;
     ::tpy::frame_loop_slot<::tpy::aiter_type_t<Counts>> __for_itr_0;
     std::optional<__coro_Counter___anext__> __sub_0;

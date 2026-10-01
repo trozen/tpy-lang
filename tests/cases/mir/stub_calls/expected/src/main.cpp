@@ -62,7 +62,7 @@ bool smaller_is(const ::tpy::BigInt& a, const ::tpy::BigInt& b) {
 // def overloads(a: int, b: int, i: int32, j: int32) -> bool:  # tpyc: mir(covered) mir_summary(known)
 //     return min(i, j) == 1 and min(a, b) == a
 bool overloads(const ::tpy::BigInt& a, const ::tpy::BigInt& b, int32_t i, int32_t j) {
-    return ((::std::min(i, j) == 1) && (::std::min(a, b) == a));
+    return ((::std::min<int32_t>(i, j) == 1) && (::std::min(a, b) == a));
 }
 
 // # free function: two calls of one stub share one summary

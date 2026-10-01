@@ -1,0 +1,1 @@
+main.py:14: error: Type mismatch in '+=' to 'self.n32': expected int32, got int64

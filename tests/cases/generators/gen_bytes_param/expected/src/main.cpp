@@ -17,7 +17,7 @@ __gen_byte_vals byte_vals(::tpy::BytesView data) {
 //         total += v
 //     print(total)
 void main() {
-    int32_t total = 0;
+    ::tpy::BigInt total = ::tpy::BigInt(0);
     {
         auto __src_0 = ::tpyapp::main::byte_vals(::tpy::bytes_literal("ABC", 3));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -25,7 +25,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-            total = ::tpy::add_check<int32_t>(total, (v).to_fixed_check<int32_t>());
+            total = (total) + (v);
         }
     }
     std::cout << total << "\n";

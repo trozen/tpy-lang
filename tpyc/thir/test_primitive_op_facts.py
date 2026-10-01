@@ -68,6 +68,13 @@ def mixed(big: int, x: float) -> bool:
 def negated(big: int) -> int:
     return -big
 
+def mixed_width(a: int32, b: int64) -> int64:
+    # `int32 + int64` widens the int32 operand into int64's operator.
+    return a + b
+
+def same_width(b: int64, c: int64) -> int64:
+    return b + c
+
 def literals(a: int32, b: int64, x: float) -> bool:
     # A literal operand converts to the typed operand's primitive.
     return a == 1 and 2 <= a and b < 5 and x * 2.0 > 1.5
@@ -181,6 +188,14 @@ def test_a_primitive_promotion_is_a_certified_conversion():
     assert reverse[0].promoted_operand == 1 and reverse[0].certified_op
     compare, = _nodes(_lower("promoted_compare"), th.THIRBinOp)
     assert compare.resolved.promotion is not None and compare.promoted_operand == 0 and compare.certified_op
+
+
+def test_a_mixed_width_operand_cast_refuses_certification():
+    mixed, = _nodes(_lower("mixed_width"), th.THIRBinOp)
+    assert mixed.resolved.widens_operand and mixed.resolved.promotion is None
+    assert not mixed.certified_op
+    same, = _nodes(_lower("same_width"), th.THIRBinOp)
+    assert not same.resolved.widens_operand and same.certified_op
 
 
 def test_other_promotions_refuse_certification():

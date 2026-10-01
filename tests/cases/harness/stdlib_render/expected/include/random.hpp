@@ -275,9 +275,9 @@ inline double Random::random() {
 // def _genrand_top_bits(self, k: int32) -> uint32:
 //     # k in [1, 32]. Avoids the BigInt promotion that public
 //     # getrandbits does, so _randbelow's rejection loop stays uint32.
-//     return self._genrand_uint32() >> uint32(32 - k)
+//     return self._genrand_uint32() >> (32 - k)
 inline uint32_t Random::_genrand_top_bits(int32_t k) {
-    return (::tpy::rshift_check<uint32_t>(this->_genrand_uint32(), ::tpy::int_cast_check<uint32_t>((::tpy::sub_check<int32_t>(32, k)))));
+    return (::tpy::rshift_check<uint32_t>(this->_genrand_uint32(), (::tpy::sub_check<int32_t>(32, k))));
 }
 
 // def randint(self, a: int32, b: int32) -> int32:

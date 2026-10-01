@@ -61,14 +61,14 @@ void __tpy_init() {
 
     a = 10;
     b = 20;
-    std::cout << ::std::min(a, b) << "\n";
-    std::cout << ::std::max(a, b) << "\n";
-    std::cout << ::std::min(b, a) << "\n";
-    std::cout << ::std::max(b, a) << "\n";
+    std::cout << ::std::min<int32_t>(a, b) << "\n";
+    std::cout << ::std::max<int32_t>(a, b) << "\n";
+    std::cout << ::std::min<int32_t>(b, a) << "\n";
+    std::cout << ::std::max<int32_t>(b, a) << "\n";
     x = 100;
     y = -50;
-    std::cout << ::std::min(x, y) << "\n";
-    std::cout << ::std::max(x, y) << "\n";
+    std::cout << ::std::min<int32_t>(x, y) << "\n";
+    std::cout << ::std::max<int32_t>(x, y) << "\n";
     big1 = ::tpy::BigInt(-1000000);
     big2 = ::tpy::BigInt(1000000);
     std::cout << ::std::min(big1, big2) << "\n";
@@ -78,11 +78,11 @@ void __tpy_init() {
     std::cout << ::tpy::print_float(::std::fmin(f1, f2)) << "\n";
     std::cout << ::tpy::print_float(::std::fmax(f1, f2)) << "\n";
     c = 5;
-    std::cout << ::tpy::min3(a, b, c) << "\n";
-    std::cout << ::tpy::max3(a, b, c) << "\n";
+    std::cout << ::tpy::min3<int32_t>(a, b, c) << "\n";
+    std::cout << ::tpy::max3<int32_t>(a, b, c) << "\n";
     z = 200;
-    std::cout << ::tpy::min3(x, y, z) << "\n";
-    std::cout << ::tpy::max3(x, y, z) << "\n";
+    std::cout << ::tpy::min3<int32_t>(x, y, z) << "\n";
+    std::cout << ::tpy::max3<int32_t>(x, y, z) << "\n";
     f3 = 1.0;
     std::cout << ::tpy::print_float(std::fmin(std::fmin(f1, f2), f3)) << "\n";
     std::cout << ::tpy::print_float(std::fmax(std::fmax(f1, f2), f3)) << "\n";

@@ -15,6 +15,8 @@ fields (`is_send: bool | Callable[[type_args], bool]`).
 
 from __future__ import annotations
 
+import math
+import struct
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union
@@ -118,6 +120,34 @@ class FloatTraits:
         """IEEE 754 binary32 / binary64 precision: every integer of at most
         this many bits converts to the type exactly."""
         return 24 if self.bits == 32 else 53
+
+    @property
+    def max_finite(self) -> float:
+        """The largest finite value of the type."""
+        max_exp = 127 if self.bits == 32 else 1023
+        return (2.0 - 2.0 ** (1 - self.significand_bits)) * 2.0 ** max_exp
+
+    def rounded(self, v: float) -> float:
+        """`v` rounded to the type (an infinity when it is past the largest
+        finite value by half a unit or more), as a Python float."""
+        if self.bits == 64:
+            return v
+        try:
+            return struct.unpack("f", struct.pack("f", v))[0]
+        except OverflowError:
+            return math.copysign(math.inf, v)
+
+    def spell(self, v: float) -> str:
+        """`v` as the shortest decimal that reads back as the same value of
+        the type."""
+        if self.bits == 64:
+            return repr(v)
+        target = self.rounded(v)
+        for digits in range(1, 17):
+            text = f"{v:.{digits}g}"
+            if self.rounded(float(text)) == target:
+                return text
+        return repr(v)
 
 
 @dataclass(frozen=True)

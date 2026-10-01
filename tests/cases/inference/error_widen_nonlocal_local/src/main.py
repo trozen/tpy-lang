@@ -8,7 +8,7 @@ def widen(big: int64) -> None:
     def g() -> None:
         nonlocal x
         # the wider binding reaches the enclosing int32 local
-        x = big  # tpyc: error(/'x' has type int32 in the enclosing function, and this 'nonlocal' binding would make it int64; annotate its first binding there: x: int64/)
+        x = big  # tpyc: error(/'x' is int32 in the enclosing function and this value is int64; annotate its first binding there: x: int64 = .../)
     g()
     print(x)
 

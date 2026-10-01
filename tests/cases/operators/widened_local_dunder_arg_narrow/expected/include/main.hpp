@@ -13,12 +13,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def widen() -> int:
 ::tpy::BigInt widen();
-// def needle(b: Bag) -> None:
-void needle(const Bag& b);
 // def forward(b: Bag) -> None:
 void forward(const Bag& b);
 // def reflected(b: Bag) -> None:
 void reflected(const Bag& b);
+// def composite(b: Bag) -> None:
+void composite(const Bag& b);
 // def main() -> None:
 void main();
 
@@ -29,9 +29,6 @@ struct Bag {
 
     // def __init__(self) -> None:
     Bag();
-
-    // def __contains__(self, k: int32) -> bool:
-    bool __contains__(int32_t k) const;
 
     // def __add__(self, k: int32) -> int32:
     int32_t __add__(int32_t k) const;
@@ -58,12 +55,6 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 // def __init__(self) -> None:
 //     self.xs = [1, 2, 3]
 inline Bag::Bag() : xs(std::vector<int32_t>{1, 2, 3}) {}
-
-// def __contains__(self, k: int32) -> bool:
-//     return k == 1
-inline bool Bag::__contains__(int32_t k) const {
-    return (k == 1);
-}
 
 // def __add__(self, k: int32) -> int32:
 //     return k + 1

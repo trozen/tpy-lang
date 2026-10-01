@@ -28,7 +28,7 @@ int32_t add(int32_t a, int32_t b) {
 void main() {
     std::vector<int32_t> xs = {1, 2, 3, 4, 5};
     std::cout << ::tpystd::functools::reduce<int32_t>(add, xs) << "\n";
-    std::cout << ::tpystd::functools::reduce<int32_t>([](int32_t a, int32_t b) -> int32_t { return ::std::max(a, b); }, xs) << "\n";
+    std::cout << ::tpystd::functools::reduce<int32_t>([](int32_t a, int32_t b) -> int32_t { return ::std::max<int32_t>(a, b); }, xs) << "\n";
     std::cout << ::tpystd::functools::reduce<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::mul_check<int32_t>(a, b)); }, xs) << "\n";
     std::vector<int32_t> one = {42};
     std::cout << ::tpystd::functools::reduce<int32_t>(add, one) << "\n";

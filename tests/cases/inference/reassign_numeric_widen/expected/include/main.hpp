@@ -10,20 +10,18 @@ namespace tpyapp::main {
 extern double G;
 inline constexpr std::string_view __name__ = "__main__";
 
-// def test_int_widen() -> None:
-void test_int_widen();
-// def test_float_widen() -> None:
-void test_float_widen();
-// def test_float_stays_float() -> None:
-void test_float_stays_float();
+// def test_int_widen(a64: int64) -> None:
+void test_int_widen(int64_t a64);
+// def test_float_stays_float(f32: float32) -> None:
+void test_float_stays_float(float f32);
 // def test_bigint_absorbs_fixedint() -> None:
 void test_bigint_absorbs_fixedint();
-// def test_unsigned_to_wider_signed() -> None:
-void test_unsigned_to_wider_signed();
-// def test_uint32_to_int64() -> None:
-void test_uint32_to_int64();
-// def test_branch_int_widen(c: bool) -> None:
-void test_branch_int_widen(bool c);
+// def test_unsigned_joins_default(u8: uint8) -> None:
+void test_unsigned_joins_default(uint8_t u8);
+// def test_order_free_join(u32: uint32, a64: int64) -> None:
+void test_order_free_join(uint32_t u32, int64_t a64);
+// def test_branch_int_widen(c: bool, a64: int64) -> None:
+void test_branch_int_widen(bool c, int64_t a64);
 // def test_declared_float_local(c: bool) -> None:
 void test_declared_float_local(bool c);
 // def test_declared_float_param(t: float) -> None:

@@ -1,1 +1,0 @@
-main.py:13: error: in function 'probe': this construct is not yet supported by C++ code generation (stmt.aug_assign:widened_value)
