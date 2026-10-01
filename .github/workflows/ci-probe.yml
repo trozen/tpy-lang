@@ -1,0 +1,134 @@
+# Trial: can GitHub-hosted runners carry the nightly? One nightly toolchain
+# row (2404-gcc14) and the native macOS run, unsharded, reporting wall time
+# and cache sizes. A re-run of the same commit measures the warm-cache case.
+name: ci-probe
+
+on:
+  push:
+    branches: [ci-probe]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-probe
+  cancel-in-progress: false
+
+jobs:
+  linux-gcc14:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    container: ubuntu:24.04
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      # The distro Python is the 24.04 row's axis -- never a managed download.
+      UV_PYTHON: /usr/bin/python3
+      UV_PYTHON_DOWNLOADS: never
+      CCACHE_DIR: /root/.cache/ccache
+      CCACHE_COMPRESS: "1"
+      TPYC_SHARED_CACHE_DIR: /root/.cache/tpyc
+    steps:
+      - name: Toolchain
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates git curl python3 python3-venv ccache g++-14 lld
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Restore caches
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            /root/.cache/ccache
+            /root/.cache/tpyc
+          key: probe-linux-gcc14-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: probe-linux-gcc14-
+      - name: Sync
+        run: uv sync --quiet
+      - name: Machine
+        run: |
+          nproc; free -g; df -h / | tail -1
+          g++-14 --version | head -1; ld.lld --version
+          ccache -s | head -8 || true
+      - name: Suite
+        run: |
+          set -o pipefail
+          start=$(date +%s)
+          uv run pytest --cxx=gcc-14 --force-exec --no-cpy --junitxml=junit-linux-gcc14.xml \
+            -p no:cacheprovider -q 2>&1 | grep -v "^tpy| thir faces" | tail -30
+          echo "SUITE WALL: $(( $(date +%s) - start ))s"
+      - name: Cache sizes
+        if: always()
+        run: |
+          du -sh /root/.cache/ccache /root/.cache/tpyc 2>/dev/null || true
+          ccache -s | head -12 || true
+      - name: Save caches
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            /root/.cache/ccache
+            /root/.cache/tpyc
+          key: probe-linux-gcc14-${{ github.run_id }}-${{ github.run_attempt }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-linux-gcc14
+          path: junit-linux-gcc14.xml
+          retention-days: 7
+
+  macos-native:
+    runs-on: macos-15
+    timeout-minutes: 350
+    env:
+      CCACHE_DIR: /Users/runner/.cache/ccache
+      CCACHE_COMPRESS: "1"
+      TPYC_SHARED_CACHE_DIR: /Users/runner/.cache/tpyc
+    steps:
+      - name: Newest Xcode
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version; clang++ --version | head -1
+          sysctl -n hw.ncpu; sw_vers -productVersion
+      - name: ccache
+        run: brew install ccache
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Restore caches
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            /Users/runner/.cache/ccache
+            /Users/runner/.cache/tpyc
+          key: probe-macos-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: probe-macos-
+      - name: Sync
+        run: uv sync --quiet
+      - name: Suite
+        run: |
+          set -o pipefail
+          start=$(date +%s)
+          uv run pytest --force-exec --junitxml=junit-macos.xml \
+            -p no:cacheprovider -q 2>&1 | grep -v "^tpy| thir faces" | tail -30
+          echo "SUITE WALL: $(( $(date +%s) - start ))s"
+      - name: Cache sizes
+        if: always()
+        run: |
+          du -sh /Users/runner/.cache/ccache /Users/runner/.cache/tpyc 2>/dev/null || true
+          ccache -s | head -12 || true
+      - name: Save caches
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            /Users/runner/.cache/ccache
+            /Users/runner/.cache/tpyc
+          key: probe-macos-${{ github.run_id }}-${{ github.run_attempt }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-macos
+          path: junit-macos.xml
+          retention-days: 7
