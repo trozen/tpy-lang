@@ -11,7 +11,7 @@ from ..typesys import BOOL
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered,
+    MIRAssign, MIRBodyId, MIRFunction, MIRNotCovered,
     MIRRecordStorageInit, MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode,
     MIRRegionId, MIRStorageDuration,
 )
@@ -137,8 +137,7 @@ def artifacts() -> Artifacts:
     (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
     functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("record_hoists", name), definitions=definitions,
-                                  kind=MIRBodyKind.METHOD if fn.receiver else MIRBodyKind.FREE_FUNCTION)
+    bodies = {name: lower_function(fn, MIRBodyId("record_hoists", name), definitions=definitions)
               for name, fn in functions.items()}
     for ctor in ctx.thir_constructors.values():
         if ctor.record_name == "Runner":
@@ -219,7 +218,7 @@ def test_missing_or_inconsistent_positive_facts_stay_uncovered(artifacts: Artifa
                    if damage == "assigned" else replace(fact, optional_layout=th.THIROptionalLayout(BOOL)))
         hoist = replace(hoist, hoisted_bindings=(changed,))
     result = lower_function(replace(fn, body=(hoist, *fn.body[1:])), MIRBodyId("record_hoists", "damaged"),
-                            definitions=definitions, kind=MIRBodyKind.FREE_FUNCTION)
+                            definitions=definitions)
     assert isinstance(result, MIRNotCovered), result
 
 
@@ -227,7 +226,7 @@ def test_render_string_is_not_a_storage_fact(artifacts: Artifacts) -> None:
     fn = artifacts[0]["branch"]
     hoist = replace(fn.body[0], hoist_decls=(th.HoistDecl("cell", "opaque render data"),))
     result = lower_function(replace(fn, body=(hoist, *fn.body[1:])), MIRBodyId("record_hoists", "render"),
-                            definitions=artifacts[2], kind=MIRBodyKind.FREE_FUNCTION)
+                            definitions=artifacts[2])
     assert isinstance(result, MIRFunction), result
     assert execute(result, True) == 7
 
@@ -264,6 +263,6 @@ def example(flag: bool) -> int32:
     compiler, modules = _compile(source)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "example")
-    result = lower_function(fn, MIRBodyId("record_hoists", "unsupported"), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("record_hoists", "unsupported"),
                             definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
     assert isinstance(result, MIRNotCovered) and result.reason == "unsupported expression type", result

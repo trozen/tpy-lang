@@ -8,9 +8,9 @@ import pytest
 from ..parse import SourceLocation
 from ..thir import nodes as th
 from ..type_def_registry import ParamPassing
-from ..typesys import BIGINT, BOOL, INT32, STR, IntLiteralType, TpyType, TupleType
+from ..typesys import BIGINT, BOOL, BYTEARRAY, INT32, STR, IntLiteralType, TpyType, TupleType
 from .lower import lower_function
-from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered
+from .nodes import MIRBodyId, MIRFunction, MIRNotCovered
 
 LOC = SourceLocation(17, 4, "case.py")
 X = th.THIRName(INT32, "x", loc=LOC)
@@ -23,7 +23,7 @@ def function(body: Iterable[th.THIRStmt], return_type: TpyType = INT32) -> th.TH
 
 
 def reject(fn: th.THIRFunction, reason: str, node_kind: str | None = None) -> MIRNotCovered:
-    result = lower_function(fn, MIRBodyId("test", "f"), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("test", "f"))
     assert isinstance(result, MIRNotCovered), result
     assert reason in result.reason
     if node_kind is not None:
@@ -99,10 +99,10 @@ def test_statement_metadata_coverage(stmt: th.THIRStmt, reason: str) -> None:
 def test_branch_and_late_declarations_are_covered() -> None:
     decl = th.THIRVarDecl("y", INT32, ONE, loc=LOC)
     result = lower_function(function([th.THIRIf(th.THIRLiteral(BOOL, True), (decl,)), th.THIRReturn(ONE)]),
-                            MIRBodyId("test", "f"), kind=MIRBodyKind.FREE_FUNCTION)
+                            MIRBodyId("test", "f"))
     assert isinstance(result, MIRFunction)
     late = function([th.THIRAssign(X, ONE), decl, th.THIRReturn(th.THIRName(INT32, "y"))])
-    assert isinstance(lower_function(late, MIRBodyId("test", "late"), kind=MIRBodyKind.FREE_FUNCTION), MIRFunction)
+    assert isinstance(lower_function(late, MIRBodyId("test", "late")), MIRFunction)
 
 
 def test_uninitialized_source_is_not_covered() -> None:
@@ -114,8 +114,8 @@ def test_function_metadata_and_fallthrough() -> None:
     fn = function([th.THIRReturn(ONE)])
     reject(replace(fn, error_return_cpp="Error"), "error-return")
     reject(replace(fn, layout=th.THIRFunctionLayout(hoisted_locals=frozenset({"y"}))), "hoisted")
-    reject(replace(fn, return_type=STR), "return type")
-    reject(replace(fn, params=(th.THIRParam("x", BIGINT, passing=ParamPassing.CONST_REF),)), "parameter type")
+    reject(replace(fn, return_type=BYTEARRAY), "return type")
+    reject(replace(fn, params=(th.THIRParam("x", BYTEARRAY, passing=ParamPassing.CONST_REF),)), "parameter type")
     unpublished = reject(replace(fn, params=(th.THIRParam("x", INT32),)), "unpublished parameter passing")
     assert unpublished.node_kind == "THIRParam"
     reject(replace(fn, body=()), "non-void fallthrough")
@@ -124,7 +124,7 @@ def test_function_metadata_and_fallthrough() -> None:
 def test_returns_in_both_loop_exits_do_not_create_fake_fallthrough() -> None:
     fn = function([th.THIRWhile(th.THIRLiteral(BOOL, True), (th.THIRReturn(ONE),),
                                 (th.THIRReturn(X),))])
-    assert isinstance(lower_function(fn, MIRBodyId("test", "f"), kind=MIRBodyKind.FREE_FUNCTION), MIRFunction)
+    assert isinstance(lower_function(fn, MIRBodyId("test", "f")), MIRFunction)
 
 
 @pytest.mark.parametrize("op", ["and", "or"])

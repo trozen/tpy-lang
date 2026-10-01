@@ -137,7 +137,7 @@ from ...type_def_registry import (
     is_string_type,
     type_def_of,
 )
-from ...coercions import CoercionContext, context_free_wrap_template
+from ...coercions import BIGINT_NARROW, CoercionContext, context_free_wrap_template
 from ...value_category import (
     CONTAINER_LITERAL_NODES,
     call_returns_cpp_ref,
@@ -2458,7 +2458,7 @@ def _runtime_bigint(t: TpyType | None, analyzer) -> bool:
     return is_big_int_type(
         resolve_int_literals(t, analyzer.ctx.default_int_for_literal))
 
-_BIGINT_NARROW = "bigint_narrow"  # synthetic THIRCoerce tag (not a sema coercion)
+_BIGINT_NARROW = BIGINT_NARROW.name
 
 # The narrow-key answer for a shape this slice has no render for.
 _NARROW_UNMIRRORED = object()

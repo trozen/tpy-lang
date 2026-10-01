@@ -3101,7 +3101,9 @@ def passing_representation(passing: ParamPassing) -> Representation:
 def return_representation(t: TpyType) -> Representation:
     """The representation a function's result has at its return, following
     `to_cpp_return`: value types and `Own[T]` return by value, everything
-    else as a reference or pointer into the callee's reach."""
+    else as a reference or pointer into the callee's reach. A declared
+    borrowing view (`StrView`) returns by value too, but what it returns is
+    a view over storage the callee does not own."""
     t = unwrap_send_sync(unwrap_readonly(t))
     if isinstance(t, TypeParamRef) or (
             isinstance(t, (OwnType, RefType)) and isinstance(t.wrapped, TypeParamRef)):
@@ -3112,6 +3114,8 @@ def return_representation(t: TpyType) -> Representation:
         return Representation.REFERENCE
     if isinstance(t, (OptionalType, UnionType)) and t.uses_pointer_repr():
         return Representation.REFERENCE
+    if isinstance(t, NominalType) and (td := type_def_of(t)) is not None and td.is_borrowing_view:
+        return Representation.VIEW
     return Representation.STORAGE if t.is_value_type() else Representation.REFERENCE
 
 
@@ -3137,6 +3141,7 @@ class LoanClass:
 _LOAN_INERT = LoanClass(Loan.NO, Loan.NO)
 _LOAN_UNKNOWN = LoanClass(Loan.UNKNOWN, Loan.UNKNOWN)
 _LOAN_BORROW = LoanClass(Loan.YES, Loan.UNKNOWN)
+_LOAN_OWNED = LoanClass(Loan.NO, Loan.YES)
 
 # Records whose loan class is being computed; re-entering one answers
 # UNKNOWN, since a self-referential record's fields are not proved yet.
@@ -3170,6 +3175,16 @@ def is_inert_leaf(t: TpyType, representation: Representation = Representation.ST
     return isinstance(t, NominalType) and _inert_nominal(t)
 
 
+def is_owned_leaf(t: TpyType, representation: Representation = Representation.STORAGE) -> bool:
+    """`loan_class(t, representation) == LoanClass(NO, YES)` for a value that
+    owns an opaque buffer (`TypeDef.owned_leaf`): only its own storage, which
+    holds no borrow and which a borrow can point into."""
+    if representation is not Representation.STORAGE:
+        return False
+    t = _storage_subject(t)
+    return isinstance(t, NominalType) and not t.type_args and _owned_nominal(t)
+
+
 def _storage_subject(t: TpyType) -> TpyType:
     """The type whose storage a value of `t` is: structural facts see
     through the ownership wrapper (`Own[T]` stores a T) and modifiers."""
@@ -3183,6 +3198,11 @@ def _storage_subject(t: TpyType) -> TpyType:
 def _inert_nominal(t: 'NominalType') -> bool:
     td = type_def_of(t)
     return td is not None and (td.loan_inert or td.enum is not None)
+
+
+def _owned_nominal(t: 'NominalType') -> bool:
+    td = type_def_of(t)
+    return td is not None and td.owned_leaf
 
 
 def _storage_loan_class(t: TpyType) -> LoanClass:
@@ -3207,6 +3227,8 @@ def _storage_loan_class(t: TpyType) -> LoanClass:
     td = type_def_of(t)
     if td is None:
         return _LOAN_UNKNOWN
+    if td.owned_leaf and not t.type_args:
+        return _LOAN_OWNED
     if td.is_borrowing_view:
         return _LOAN_BORROW
     rec = td.record
@@ -3232,34 +3254,138 @@ def _aggregate_loan_class(parts: 'Sequence[TpyType]') -> LoanClass:
 
 
 def certified_primitive_op(method: 'FunctionInfo | None', operands: 'Sequence[TpyType]',
-                           result: TpyType) -> bool:
+                           result: TpyType, *, receiver: int = 0) -> bool:
     """Whether `method` applied to `operands` is a certified primitive
     operation: the type that declares it carries the primitive-operation
     contract (`TypeDef.primitive_ops`) and every operand and the result is
-    an inert leaf. A dunder a contract-less type declares -- a native generic
-    extension included -- is not certified. Conversions around the call
-    are the caller's to refuse."""
+    a leaf -- inert, or owned (`is_owned_leaf`), which the operation reads
+    through a borrow or builds fresh. A view or reference operand or result
+    is not certified, nor is a dunder a contract-less type declares -- a
+    native generic extension included. Conversions around the call are the
+    caller's to refuse. `receiver` is the index of the operand bound to
+    `self` (1 for a reverse operator); the others bind the declared
+    parameters in order."""
     if method is None or method.owning_type_qname is None:
         return False
     td = get_type_def(method.owning_type_qname)
-    # A literal operand converts at compile time into the declared parameter
-    # (or receiver) type, so it is inert exactly when every one of those is.
-    literal_ok = all(is_inert_leaf(p.type) for p in method.params)
-    return (td is not None and td.primitive_ops and is_inert_leaf(result)
-            and all(is_inert_leaf(t) or literal_ok and _is_number_literal(t) for t in operands))
+    if td is None or not td.primitive_ops or not _leaf_value(result):
+        return False
+    arguments = [i for i in range(len(operands)) if i != receiver]
+
+    def operand_ok(index: int, t: TpyType) -> bool:
+        if _leaf_value(t):
+            return True
+        if not _is_number_literal(t):
+            return False
+        # A literal converts at compile time into the type at its own
+        # position: the receiver into the method's owner, an argument into
+        # its declared parameter -- a leaf there, or no certificate.
+        if index == receiver:
+            return td.loan_inert or td.owned_leaf
+        position = arguments.index(index)
+        return position < len(method.params) and _leaf_value(method.params[position].type)
+
+    return all(operand_ok(i, t) for i, t in enumerate(operands))
 
 
 def certified_primitive_comparison(left: TpyType, right: TpyType) -> bool:
     """Whether a comparison sema resolves to no dunder (the derived
     `<= > >= !=`, rendered as the bare C++ operator) is a certified
-    primitive operation: the typed operands are one inert type whose
+    primitive operation. Either the typed operands are one leaf type whose
     TypeDef carries the primitive-operation contract, and any other operand
-    is a number literal, which the operator converts to that type."""
+    is a number literal the operator converts to that type (an owned leaf
+    takes only an int literal, and only when its runtime compares fixed-width
+    ints); or one operand is an owned leaf whose runtime compares fixed-width
+    ints (`TypeDef.compares_fixed_ints`) and the other a fixed-width int
+    carrying the contract. Sema accepts any unresolved comparison, so its
+    acceptance certifies nothing; these facts do."""
     typed = [t for t in (left, right) if not _is_number_literal(t)]
-    if not typed or any(t != typed[0] for t in typed):
+    if not typed:
         return False
+    if any(t != typed[0] for t in typed):
+        return _compares_fixed_int(left, right) or _compares_fixed_int(right, left)
     td = type_def_of(typed[0])
-    return td is not None and td.primitive_ops and is_inert_leaf(typed[0])
+    if td is None or not td.primitive_ops:
+        return False
+    if is_inert_leaf(typed[0]):
+        return True
+    literals = [t for t in (left, right) if _is_number_literal(t)]
+    return is_owned_leaf(typed[0]) and all(
+        isinstance(t, IntLiteralType) and td.compares_fixed_ints for t in literals)
+
+
+def _primitive_fixed_int(t: TpyType) -> bool:
+    """An inert fixed-width int carrying the primitive contract."""
+    return _primitive_inert(t) and int_traits_of(t) is not None
+
+
+def _compares_fixed_int(owned: TpyType, fixed: TpyType) -> bool:
+    return (is_primitive_owned_leaf(owned) and type_def_of(owned).compares_fixed_ints
+            and _primitive_fixed_int(fixed))
+
+
+def certified_primitive_conversion(source: TpyType, target: TpyType) -> bool:
+    """Whether converting a `source` value to `target` is runtime code over
+    leaves: both are inert or owned leaves whose TypeDefs carry the
+    primitive-operation contract. The conversion reads its source; whether
+    its result is a new value or aliases the source is the coercion node's
+    question (`THIRCoerce.conversion_refusal`), as is which rule applies."""
+    return all(_leaf_value(t) and (td := type_def_of(t)) is not None and td.primitive_ops
+               for t in (source, target))
+
+
+def certified_primitive_promotion(conversion: 'FunctionInfo | None', left: TpyType,
+                                  right: TpyType) -> int | None:
+    """Which operand (0 left, 1 right) a binary operator's promotion
+    (`ResolvedBinop.promotion`) converts into the other operand's type, when
+    that conversion is runtime code between leaves: an argument-less method
+    of exactly one operand's type, whose TypeDef carries the
+    primitive-operation contract, yielding the other operand's type, with
+    both leaves primitive (`certified_primitive_conversion`). None for any
+    other promotion, which stays uncertified."""
+    if conversion is None or conversion.owning_type_qname is None or conversion.params:
+        return None
+    owner = get_type_def(conversion.owning_type_qname)
+    if owner is None or not owner.primitive_ops:
+        return None
+    operands = (left, right)
+    sides = [i for i, t in enumerate(operands) if type_def_of(t) is owner]
+    if len(sides) != 1:
+        return None
+    side = sides[0]
+    source, target = operands[side], operands[1 - side]
+    if conversion.return_type != target or not certified_primitive_conversion(source, target):
+        return None
+    return side
+
+
+def certified_primitive_subscript(receiver: TpyType, index: TpyType, result: TpyType) -> bool:
+    """Whether an element read `receiver[index]` is a certified primitive
+    operation: the receiver is an owned leaf whose stub's `__getitem__` is
+    runtime code (`TypeDef.primitive_ops`), the index is a fixed-width int
+    (or an int literal, which converts to one; the stub declares no other
+    element index) and the element is an inert leaf carrying the contract
+    -- a slice index or a view result is not."""
+    return (is_primitive_owned_leaf(receiver)
+            and (isinstance(index, IntLiteralType) or _primitive_fixed_int(index))
+            and _primitive_inert(result))
+
+
+def is_primitive_owned_leaf(t: TpyType) -> bool:
+    """An owned leaf (`is_owned_leaf`) whose TypeDef carries the
+    primitive-operation contract (`TypeDef.primitive_ops`): its operators
+    and element reads are the runtime's and it prints with no user method."""
+    td = type_def_of(t)
+    return td is not None and td.primitive_ops and is_owned_leaf(t)
+
+
+def _primitive_inert(t: TpyType) -> bool:
+    td = type_def_of(t)
+    return td is not None and td.primitive_ops and is_inert_leaf(t)
+
+
+def _leaf_value(t: TpyType) -> bool:
+    return is_inert_leaf(t) or is_owned_leaf(t)
 
 
 def _is_number_literal(t: TpyType) -> bool:
@@ -5747,7 +5873,7 @@ SLICE = NominalType("slice", (), _module_qname="builtins.slice")
 # override is set on the TypeDef). Anything not in this set returns None --
 # user records, protocols, enums, primitives, etc.
 from tpyc.type_def_registry import TypeCategory as _TypeCategory
-from tpyc.type_def_registry import CppDefaultInit, ParamPassing, get_type_def, type_def_of
+from tpyc.type_def_registry import CppDefaultInit, ParamPassing, get_type_def, int_traits_of, type_def_of
 _ELEMENT_FROM_FIRST_ARG_CATEGORIES = frozenset({
     _TypeCategory.LIST,
     _TypeCategory.DICT,
@@ -6849,6 +6975,11 @@ class FunctionInfo:
     # mutated), not declared: only the receiver's const-ness is proven.
     readonly_inferred: bool = False
     is_pure: bool = False
+    # `transient=True` on the binding: the stub's C++ reads or writes only
+    # its arguments, retains nothing and reaches no other TPy storage.
+    # @pure implies the promise
+    # without setting this flag, so a reader of the promise checks both.
+    is_transient: bool = False
     is_inline: bool = False
     is_consuming: bool = False
     is_method: bool = False

@@ -1,5 +1,6 @@
 """Production copy writes retain the backing chosen for live and dead aliases."""
 
+import re
 from textwrap import indent
 
 import pytest
@@ -9,7 +10,9 @@ from ..thir.testutil import _compile, _entry
 from .collect import dump_codegen_mir
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
-from .nodes import MIRBodyId, MIRBodyKind, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRRecordWriteMode
+from .nodes import (
+    MIRBodyId, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRRecordWriteMode,
+)
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .test_cyclic_record_lower import nodes
@@ -46,7 +49,7 @@ def replace_copy(source: Cell, n: int32) -> int32:
     compiler, modules = _compile(source)
     (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
     body = next(fn for node, fn in ctx.thir_functions.items() if node.name == "replace_copy")
-    fn = lower_function(body, MIRBodyId("reused", "copy"), kind=MIRBodyKind.FREE_FUNCTION,
+    fn = lower_function(body, MIRBodyId("reused", "copy"),
                         definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
     assert isinstance(fn, MIRFunction), fn
     write, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRCopy))
@@ -200,8 +203,7 @@ def hoists() -> Hoists:
     _, ctx = compiler.generate_code_and_thir(entry)
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
     functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("reused", name), definitions=definitions,
-                                  kind=MIRBodyKind.METHOD if fn.receiver else MIRBodyKind.FREE_FUNCTION)
+    bodies = {name: lower_function(fn, MIRBodyId("reused", name), definitions=definitions)
               for name, fn in functions.items()}
     for ctor in ctx.thir_constructors.values():
         if ctor.record_name == "Runner":
@@ -265,9 +267,9 @@ def test_debug_collection_includes_optional_copy_writes(hoists: Hoists) -> None:
     dumped = hoists[2]
     assert "optional_assign" in dumped and " = copy " in dumped
     uncovered = [line for line in dumped.splitlines() if "MIR not covered" in line]
-    assert len(uncovered) == 2
-    assert any("__tpy_init" in line and "module initialization" in line for line in uncovered)
-    assert any("Runner.static" in line and "body kind and receiver mismatch" in line for line in uncovered)
+    assert len(uncovered) == 1
+    assert "__tpy_init" in uncovered[0] and "module initialization" in uncovered[0]
+    assert re.search(r"^fn \S+::Runner\.static@\S+ -> int32", dumped, re.MULTILINE), dumped
 
 
 @pytest.mark.parametrize("position,header", [
@@ -319,8 +321,7 @@ LOOP:
         fn = lower_constructor(function, MIRBodyId("reused", "move_ctor"), definitions=definitions)
     else:
         function = next(fn for node, fn in ctx.thir_functions.items() if node.name == "moved")
-        fn = lower_function(function, MIRBodyId("reused", "move"), definitions=definitions,
-                            kind=MIRBodyKind.METHOD if function.receiver else MIRBodyKind.FREE_FUNCTION)
+        fn = lower_function(function, MIRBodyId("reused", "move"), definitions=definitions)
     assert isinstance(fn, MIRFunction), fn
     assignment, = (n for n in nodes(function) if isinstance(n, th.THIRAssign) and isinstance(n.value, th.THIRMove))
     assert assignment.optional_record_assignment is not None
@@ -329,11 +330,7 @@ LOOP:
     assert analyze(fn).conflicts == ()
     assert inspect_scope_lifetimes(fn).conflicts == ()
     dumped = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, definitions, compiler.thir_reject_by_node)
-    if position == "static":
-        # The debug collector still classifies every class member as a receiver method.
-        assert "MIR not covered: body kind and receiver mismatch" in dumped
-    else:
-        assert " = move " in dumped and "optional_assign" in dumped
+    assert " = move " in dumped and "optional_assign" in dumped
     for run, flag, stop, trips in ((False, True, False, 0), (True, True, False, 2),
                                   (True, True, True, 1), (True, False, False, 1)):
         heap = {}
@@ -367,7 +364,7 @@ def escaped(source: Cell, n: int32) -> int32:
     compiler, modules = _compile(source)
     (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
     body = next(fn for node, fn in ctx.thir_functions.items() if node.name == "escaped")
-    fn = lower_function(body, MIRBodyId("reused", "escaped"), kind=MIRBodyKind.FREE_FUNCTION,
+    fn = lower_function(body, MIRBodyId("reused", "escaped"),
                         definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
     assert isinstance(fn, MIRFunction), fn
     write, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRMove if move else MIRCopy))
@@ -408,6 +405,6 @@ def example(flag: bool) -> int32:
     assert assignment.optional_record_assignment is None
     assert assignment.value.result_type != assignment.target.result_type
     assert ("target = std::move(original);" if move else "target = Derived(original);") in cpp
-    result = lower_function(function, MIRBodyId("reused", "derived"), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(function, MIRBodyId("reused", "derived"),
                             definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
     assert isinstance(result, MIRNotCovered), result

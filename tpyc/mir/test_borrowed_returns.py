@@ -7,16 +7,17 @@ import pytest
 
 from ..thir.testutil import _compile, _entry
 from ..thir.nodes import THIRBorrowedRecord, THIRCallableSignature, THIRFunction, THIRFunctionIdentity, THIRResolvedCallee
+from ..type_def_registry import ParamPassing
 from ..typesys import INT32, NominalType, RefType
 from ..mir_workspace import MIRCallWorkspace, analyze_call_workspace
-from .call_contract import MIRCallSummary, MIRSummaryState, result_problem, summary_problem
+from .call_contract import MIRCallSummary, MIRParameterBinding, MIRSummaryState, result_problem, summary_problem
 from .definitions import MIRDefinitions
-from .dependencies import analyze_dependencies, resolve_call_returns
+from .dependencies import MIRReferent, analyze_dependencies, resolve_call_returns
 from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRBodyKind, MIRCall, MIRConstruct, MIRDeref,
+    MIRAlias, MIRAssign, MIRBodyId, MIRCall, MIRConstruct, MIRDeref,
     MIRFunction, MIRNotCovered, MIRReturn, MIRPoint, MIRPlace, MIRRecordWrite, MIRRecordWriteMode,
 )
 from .retention import analyze_retention
@@ -139,17 +140,17 @@ def local_storage(value: int32) -> int32:
     local.value = 23
     return saved.value
 
-def loop(flag: bool, a: Cell) -> int32:
+def loop(flag: bool, a: Cell, b: Cell) -> int32:
     saved = identity(a)
     while flag:
-        saved = identity(saved)
+        saved = identity(b)
         flag = False
     return saved.value
 
-def range_loop(a: Cell) -> int32:
+def range_loop(a: Cell, b: Cell) -> int32:
     saved = identity(a)
     for i in range(2):
-        saved = identity(saved)
+        saved = identity(b)
     return saved.value
 
 def temporary() -> int32:
@@ -184,8 +185,7 @@ def artifacts() -> Artifacts:
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
     functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("main", name), definitions=definitions,
-                                   kind=MIRBodyKind.FREE_FUNCTION)
+    bodies = {name: lower_function(fn, MIRBodyId("main", name), definitions=definitions)
               for name, fn in functions.items()}
     return functions, bodies, definitions
 
@@ -333,13 +333,31 @@ def test_call_results_are_live_alias_holders(workspace: MIRCallWorkspace, name: 
     ("optional_result", "unsupported return type"),
     ("projected", "unsupported borrowed expression form"),
     ("local_storage", "summary storage or value shape"),
-    ("loop", "summary cyclic control flow"),
-    ("range_loop", "summary cyclic control flow"),
 ])
 def test_incomplete_result_evidence_stays_opaque(workspace: MIRCallWorkspace, name: str, reason: str) -> None:
     result = next(r for key, r in workspace.summaries.items() if key.name == name)
     assert result.state is MIRSummaryState.OPAQUE
     assert result.reason == reason
+
+
+@pytest.mark.parametrize("name", ["loop", "range_loop"])
+def test_borrowed_origin_joins_across_a_back_edge(workspace: MIRCallWorkspace, name: str) -> None:
+    # `saved` enters the loop borrowing `a` and leaves the loop body borrowing
+    # `b`: after the loop, where the entry edge and the back edge join, it may
+    # borrow either.
+    result = next(r for key, r in workspace.summaries.items() if key.name == name)
+    assert result.state is MIRSummaryState.KNOWN, result.reason
+    assert result.summary.writes == frozenset() and result.summary.returns == frozenset()
+    body = workspace.bodies[MIRBodyId("main", name)]
+    saved = next(s.id for s in body.slots if s.name == "saved")
+    a, b = (MIRReferent(MIRPlace(next(s.id for s in body.slots if s.name == n)), external=True) for n in "ab")
+    deps = analyze_dependencies(body, analyze_liveness(body))
+    exit_block = next(block for block in body.blocks if isinstance(block.terminator, MIRReturn))
+    joined = deps.referents[MIRPoint(exit_block.id, len(exit_block.statements))][MIRPlace(saved)]
+    assert joined == {a, b}
+    origins = {ref for refs in deps.referents.values() for leaf, values in refs.items()
+               if leaf.root == saved for ref in values}
+    assert origins == {a, b}
 
 
 def test_imported_return_roots_are_substituted(tmp_path: Path) -> None:
@@ -391,9 +409,9 @@ def test_call_result_retains_storage_across_scope_exit() -> None:
     body, observed = scoped_loop("record")
     ref = THIRBorrowedRecord(CELL, False)
     callee = THIRResolvedCallee(THIRFunctionIdentity("retention", "identity"),
-                                THIRCallableSignature((RefType(CELL),), RefType(CELL), ref))
-    summary = MIRCallSummary(callee, (ref,), frozenset({0}), frozenset(), frozenset(),
-                             frozenset({0}), frozenset(), True)
+                                THIRCallableSignature((RefType(CELL),), RefType(CELL), ref, (ParamPassing.MUT_REF,)))
+    summary = MIRCallSummary(callee, (MIRParameterBinding(CELL, ParamPassing.MUT_REF, False, ref),),
+                             frozenset({0}), frozenset(), frozenset(), frozenset({0}), frozenset(), True)
     blocks = tuple(replace(block, statements=tuple(
         replace(stmt, value=MIRCall(summary, (stmt.value.source,)))
         if isinstance(stmt, MIRAssign) and stmt.target == MIRPlace(SAVED) and isinstance(stmt.value, MIRAlias)
@@ -452,7 +470,7 @@ def test_method_and_constructor_callers(workspace: MIRCallWorkspace) -> None:
     method = next(fn for node, fn in ctx.thir_functions.items() if node.name == "method")
     constructor = next(fn for fn in ctx.thir_constructors.values() if fn.record_name == "Caller")
     bodies = (
-        lower_function(method, MIRBodyId("main", "method"), kind=MIRBodyKind.METHOD,
+        lower_function(method, MIRBodyId("main", "method"),
                        definitions=definitions, summaries=workspace.summaries),
         lower_constructor(constructor, MIRBodyId("main", "Caller"),
                           definitions=definitions, summaries=workspace.summaries),

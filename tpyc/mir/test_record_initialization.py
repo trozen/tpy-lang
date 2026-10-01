@@ -46,13 +46,13 @@ READ = MIRAssign(MIRPlace(RESULT), MIRRead(MIRPlace(SAVED, (MIRDeref(), FIELD)))
 
 def function(*blocks: MIRBlock) -> MIRFunction:
     slots = (
-        MIRSlot(BACKING, CELL, MIRSlotKind.LOCAL, form=Form.STORAGE, value_kind=MIRValueKind.RECORD_STORAGE,
+        MIRSlot(BACKING, CELL, MIRSlotKind.LOCAL, form=Form.STORAGE, value_kind=MIRValueKind.OWNED,
                 storage_duration=MIRStorageDuration.BODY, residence=ROOT,
                 record_storage=MIRRecordStorageKind.OPTIONAL),
         MIRSlot(CURRENT, CELL, MIRSlotKind.LOCAL, form=Form.BORROW,
-                value_kind=MIRValueKind.BORROWED_RECORD, residence=ROOT),
+                value_kind=MIRValueKind.BORROWED, residence=ROOT),
         MIRSlot(SAVED, CELL, MIRSlotKind.LOCAL, form=Form.BORROW,
-                value_kind=MIRValueKind.BORROWED_RECORD, residence=ROOT),
+                value_kind=MIRValueKind.BORROWED, residence=ROOT),
         MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
         MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
         MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL, residence=ROOT),
@@ -175,7 +175,7 @@ def test_empty_inner_activation_has_only_wrapper_end() -> None:
 @pytest.mark.parametrize("shape", ["tuple_one", "tuple_two", "optional", "union"])
 def test_aggregate_holder_retains_the_same_record_across_overwrite(shape: str) -> None:
     holder = MIRSlotId(BODY, 6)
-    member = MIRTupleElement(CELL, MIRValueKind.BORROWED_RECORD)
+    member = MIRTupleElement(CELL, MIRValueKind.BORROWED)
     if shape.startswith("tuple"):
         two = shape == "tuple_two"
         slot = MIRSlot(holder, TupleType((CELL, INT32) if two else (CELL,)), MIRSlotKind.LOCAL,
@@ -185,7 +185,7 @@ def test_aggregate_holder_retains_the_same_record_across_overwrite(shape: str) -
         payload = MIRPlace(holder, (MIRTupleIndex(0), MIRDeref()))
     elif shape == "optional":
         slot = MIRSlot(holder, OptionalType(CELL), MIRSlotKind.LOCAL, value_kind=MIRValueKind.OPTIONAL,
-                       residence=ROOT, optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED_RECORD))
+                       residence=ROOT, optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
         bind = MIRAssign(MIRPlace(holder), MIROptionalConstruct(CURRENT))
         payload = MIRPlace(holder, (MIROptionalPayload(), MIRDeref()))
     else:
@@ -258,7 +258,7 @@ def test_possible_engagement_with_retained_alias_reports_overwrite() -> None:
         MIRBlock(NO, (), MIRGoto(JOIN), ROOT),
         MIRBlock(JOIN, (MIRAssign(MIRPlace(VALUE), MIRConstant(9)), WRITE, BIND, READ), MIRReturn(RESULT), ROOT))
     fn = replace(fn, slots=(*fn.slots, MIRSlot(external, CELL, MIRSlotKind.PARAMETER,
-                 form=Form.BORROW, value_kind=MIRValueKind.BORROWED_RECORD)))
+                 form=Form.BORROW, value_kind=MIRValueKind.BORROWED)))
     assert dict(_analyze_presence(fn).engagement[MIRPoint(JOIN, 1)])[BACKING] == frozenset(MIREngagement)
     live = analyze_liveness(fn)
     conflicts = analyze_retention(fn, live, analyze_dependencies(fn, live), analyze_storage(fn)).conflicts

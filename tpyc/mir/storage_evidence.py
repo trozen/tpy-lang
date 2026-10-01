@@ -7,9 +7,13 @@ function and roots to the emitted THIR obligations and placement plan.
 
 MIR itself bounds the channels: it has no field/container/global stores of
 references, captures, exceptional edges or opaque calls, and every call carries
-a validated normal-return summary without retention. Record cleanup is not
+a validated summary without retention on any exit. Record cleanup is not
 representable in MIR, so every body storage record needs a verified hook-free
 definition from the caller.
+
+A verdict is normal-path evidence: it follows the CFG's edges to normal
+returns. A body that may exit by exception says so in
+`MIRFunction.exceptional_exits`; no verdict here covers those exits.
 """
 
 from collections.abc import Mapping
@@ -105,7 +109,7 @@ class MIRBorrowEvidence:
 
 
 def _storage_root(slot: MIRSlot) -> bool:
-    return (slot.value_kind is MIRValueKind.RECORD_STORAGE or owned_tuple(slot)
+    return (slot.value_kind is MIRValueKind.OWNED or owned_tuple(slot)
             or slot.kind is MIRSlotKind.LOCAL and scalar_wrapper(slot))
 
 
@@ -159,7 +163,7 @@ def _borrow_evidence(prepared: MIRPrepared, liveness: MIRLiveness,
         operation = block.statements[point.index] if point.index < len(block.statements) else block.terminator
         match operation:
             case MIRAssign(target=target) if (not target.projections
-                    and slots[target.root].value_kind is MIRValueKind.BORROWED_RECORD):
+                    and slots[target.root].value_kind is MIRValueKind.BORROWED):
                 holder = target
                 state_point = MIRPoint(point.block, point.index + 1)
             case MIRReturn(value=value) if (fn.borrowed_result is not None
@@ -240,8 +244,8 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
         return block.statements[point.index].loc if point.index < len(block.statements) else block.terminator.loc
 
     for slot in fn.slots:
-        members = ((slot.type,) if slot.value_kind is MIRValueKind.RECORD_STORAGE else
-                   tuple(m.type for m in slot.tuple_layout.elements if m.kind is MIRValueKind.RECORD_STORAGE)
+        members = ((slot.type,) if slot.value_kind is MIRValueKind.OWNED else
+                   tuple(m.type for m in slot.tuple_layout.elements if m.kind is MIRValueKind.OWNED)
                    if owned_tuple(slot) else ())
         for typ in members:
             try:
@@ -255,6 +259,8 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
     materialized = {stmt.target.root for block in fn.blocks for index, stmt in enumerate(block.statements)
                     if isinstance(stmt, (MIRAssign, MIRStorageInit)) and not stmt.target.projections
                     and MIRPoint(block.id, index) in presence.points}
+    # A by-value parameter's storage is materialized by the caller, before entry.
+    materialized.update(s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER and _storage_root(s))
     for root in sorted(required - materialized, key=lambda s: s.index):
         gap(f"required origin %{root.index} is never materialized on a feasible path")
 

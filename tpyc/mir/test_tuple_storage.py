@@ -32,8 +32,8 @@ FIELD = MIRField(MIRFieldId(CELL, "value"), INT32)
 PAIR, EXTERNAL, VALUE, FLAG, SAVED, RESULT = (MIRSlotId(BODY, i) for i in range(6))
 ENTRY, INNER, EXIT = (MIRBlockId(BODY, i) for i in range(3))
 ROOT, CHILD = (MIRRegionId(BODY, i) for i in range(2))
-OWNED = MIRTupleElement(CELL, MIRValueKind.RECORD_STORAGE)
-BORROWED = MIRTupleElement(CELL, MIRValueKind.BORROWED_RECORD)
+OWNED = MIRTupleElement(CELL, MIRValueKind.OWNED)
+BORROWED = MIRTupleElement(CELL, MIRValueKind.BORROWED)
 LAYOUT = MIRTupleLayout((OWNED, OWNED, BORROWED, MIRTupleElement(INT32)))
 TUPLE = TupleType((CELL, CELL, CELL, INT32))
 INIT = MIRAssign(MIRPlace(PAIR), MIRTupleConstruct((MIRConstruct((VALUE,)), MIRConstruct((VALUE,)),
@@ -49,11 +49,11 @@ def function(*statements: MIRAssign) -> MIRFunction:
         MIRSlot(PAIR, TUPLE, MIRSlotKind.LOCAL, form=Form.STORAGE, value_kind=MIRValueKind.TUPLE,
                 tuple_layout=LAYOUT, storage_duration=MIRStorageDuration.BODY, residence=ROOT),
         MIRSlot(EXTERNAL, CELL, MIRSlotKind.PARAMETER, form=Form.BORROW,
-                value_kind=MIRValueKind.BORROWED_RECORD),
+                value_kind=MIRValueKind.BORROWED),
         MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
         MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
         MIRSlot(SAVED, CELL, MIRSlotKind.LOCAL, form=Form.BORROW,
-                value_kind=MIRValueKind.BORROWED_RECORD, residence=ROOT),
+                value_kind=MIRValueKind.BORROWED, residence=ROOT),
         MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL, residence=ROOT),
     )
     return MIRFunction(BODY, INT32, slots, (MIRBlock(ENTRY, statements, MIRReturn(VALUE), ROOT),), ENTRY,
@@ -119,13 +119,13 @@ def test_aggregate_holders_retain_inline_member_after_tuple_ends(kind: str) -> N
         case "optional":
             typ = OptionalType(CELL)
             options = dict(value_kind=MIRValueKind.OPTIONAL,
-                           optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED_RECORD))
+                           optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
             capture, copy = MIROptionalConstruct(SAVED), MIROptionalCopy(holder)
         case _:
             other = NominalType("Other", _module_qname="tuple_storage.Other")
             typ = UnionType((CELL, other))
             options = dict(value_kind=MIRValueKind.UNION,
-                           union_layout=MIRUnionLayout((BORROWED, MIRTupleElement(other, MIRValueKind.BORROWED_RECORD))))
+                           union_layout=MIRUnionLayout((BORROWED, MIRTupleElement(other, MIRValueKind.BORROWED))))
             capture, copy = MIRUnionConstruct(0, SAVED), MIRUnionCopy(holder)
     fn = function()
     fn = replace(fn, slots=(*fn.slots, *(MIRSlot(s, typ, MIRSlotKind.LOCAL, residence=ROOT, **options)

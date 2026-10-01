@@ -4697,11 +4697,12 @@ spelling too).
   - Transient marker: stripped at field registration into a `FieldInfo` flag, so it never flows through the type system (no codegen / type-comparison cost) -- mirrors how `auto_readonly[Self]` is stripped.
   - See `docs/READONLY_DESIGN.md` for rationale and the soundness contract.
 - **Working**: `@pure` (no observable side effects -- no mutation of non-local state, no I/O)
-  - Trusted annotation (Phase 1): no enforcement, metadata only for future borrow checker / escape analysis
+  - Trusted annotation (Phase 1): no enforcement. Consumed by sema's borrow-argument, loop-frame (with-exit and loop-hold writes) and receiver-mutation checks, which treat a `@pure` callee as mutating nothing, and by MIR's stub call contract (the `PURE` contract)
   - Pure implies readonly -- `@pure` methods can be called on `readonly` receivers
   - Heap allocation is permitted (not considered an observable side effect); `@noalloc` is orthogonal
-  - Marked on built-in functions (`len`, `repr`, `hash`, `chr`, `ord`, `pow`, `round`, `divmod`, `abs`, `min`, `max`, `range`, `iter`), all `math.*` functions, and all readonly methods on builtin types
+  - Marked on built-in functions (`len`, `repr`, `hash`, `chr`, `ord`, `pow`, `round`, `divmod`, `abs`, `min`, `max`, `range`, `iter`), `math.log(x)`, `int(x: float)`, and all readonly methods on builtin types
   - Supported on user functions and methods via `from tpy import pure`
+- **Working**: `transient=True` on `@native(...)` / `@cpp_template(...)` -- the `transient` binding fact, e.g. `@native("tpy::time_time", transient=True)`: the bound C++ reads or writes only its arguments as their declared mutability says, retains nothing after return or raise, reads no other TPy storage and runs no user code (`time.time`, a clock read). A `@pure` stub counts as transient only where MIR's per-parameter gates hold (inert or owned-leaf arguments of builtin TypeDefs; a protocol or callable parameter bound to user code refuses), since `@pure` alone was never audited for "runs no user code". The kwarg takes a bool literal and is rejected on a class-level `@native` and on a binding with a TPy body. Consumed by MIR's stub call contract (see `docs/NATIVE_INTEROP.md` "Declaring a transient binding")
 - **Working**: `@value_ptr_coercion` (`from tpy.extern import value_ptr_coercion`) -- enables `T -> Ptr[T]` call-site coercion for any type on `Ptr[T]` parameters. The compiler inserts address-of (`&`) automatically and enforces mutable lvalue. Used to define `take_ptr` in the stdlib:
   ```python
   @value_ptr_coercion
@@ -9148,8 +9149,9 @@ summary scheduling. M4.1 implements the immutable states and bounded local
 extractor; M4.2 admits direct ordinary calls to known reader-only scalar-result
 callees through `--dump-mir`, including forward definitions and imported aliases.
 Arguments are stable scalar/record names or scalar literals. Calls retain their
-argument uses and produce unknown scalar values. Recursive, throwing and
-incompletely summarized callees remain uncovered.
+argument uses and produce unknown scalar values. Recursive and incompletely
+summarized callees remain uncovered; a raising callee is summarized with an
+exceptional-exit fact (`normal_return_only=False`).
 
 M4.3/M4.4 extend this interface with typed bool/int32-field may-writes from
 borrowed parameters, including writes through conditional aliases and

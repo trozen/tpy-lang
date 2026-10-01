@@ -63,7 +63,8 @@ __all__ = [
     # Pointer / ownership
     "Own", "Fn",
     # Decorators / type modifiers
-    "readonly", "noalloc", "hotpath", "nocopy", "pure", "inline", "dispatch", "dynamic", "error_return",
+    "readonly", "noalloc", "hotpath", "nocopy", "pure", "inline", "dispatch", "dynamic",
+    "error_return",
     "unsafe_send", "unsafe_sync", "nosend", "nosync", "nomove",
     "auto_readonly", "auto_own", "unsafe_interior_mutable",  # parser keywords (no .py stub)
     # Structural protocols

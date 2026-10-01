@@ -12,7 +12,7 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRBodyId, MIRBodyKind, MIRConstant, MIRFieldId, MIRFunction, MIRNotCovered,
+    MIRBodyId, MIRConstant, MIRFieldId, MIRFunction, MIRNotCovered,
     MIRSlotId, MIRSlotKind,
 )
 from .testutil import Reference, execute
@@ -116,7 +116,6 @@ def test_body_coverage_does_not_relax_constructor_call_summary(artifacts: Artifa
     constructors, functions = artifacts
     lower(constructors["Cell"])
     result = lower_function(functions["create"], MIRBodyId("constructors", "create"),
-                            kind=MIRBodyKind.FREE_FUNCTION,
                             definitions=MIRDefinitions(tuple(constructors.values())))
     assert isinstance(result, MIRNotCovered) and result.reason == "constructor body effects"
 
@@ -170,7 +169,7 @@ def test_entry_cannot_read_a_local_or_initialize_readonly_receiver(artifacts: Ar
 @pytest.mark.parametrize("fields,body,reason", [
     ("value: int32 = 4", "pass", "incomplete constructor"),
     ("value: int32", "saved = value\n        self.value = saved", "incomplete constructor"),
-    ("value: int32", "self.value = value\n        print(\"made\")", "unsupported expression"),
+    ("value: int32", "self.value = value\n        print((value, value))", "print argument needs a scalar leaf"),
     ("value: int32", "self.value = value + 1", "parameter or literal"),
 ])
 def test_actual_emitted_exclusions(fields: str, body: str, reason: str) -> None:

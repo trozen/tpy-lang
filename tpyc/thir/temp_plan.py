@@ -125,7 +125,7 @@ class _Planner:
             case th.THIRUnaryNot():
                 self.expr(expr.operand)
             case th.THIRCall():
-                _plain(expr, {"callee", "args", "callee_cpp", "resolved_callee"})
+                _plain(expr, {"callee", "args", "callee_cpp", "resolved_callee", "stub_callee"})
                 for arg in expr.args:
                     self.argument(arg)
             case th.THIRCtorCall():

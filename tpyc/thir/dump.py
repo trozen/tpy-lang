@@ -11,6 +11,7 @@ from typing import Iterable
 from ..identity_map import IdentityMap
 from ..typesys import TpyType
 from .reject import is_bodyless_binding
+from .validate import _iter_children
 from .lower import iter_module_callables, iter_module_constructors
 from .nodes import (
     Form,
@@ -22,6 +23,7 @@ from .nodes import (
     THIRBreak,
     THIRBytesLiteral,
     THIRCall,
+    THIRCallableSignature,
     THIRCharLiteral,
     THIRWalrus,
     THIRValueSelect,
@@ -717,6 +719,50 @@ def _extend_orelse(lines: list[str], orelse, depth: int) -> None:
         lines.extend(_stmt_lines(s, depth + 1))
 
 
+def _signature_facts(signature: THIRCallableSignature) -> str:
+    passings = ", ".join(
+        f"{_ty(t)}: {'?' if signature.passings is None else signature.passings[i].value}"
+        for i, t in enumerate(signature.param_types))
+    result = ("?" if signature.return_representation is None
+              else signature.return_representation.value)
+    return f"({passings}) -> {result}"
+
+
+def _callee_facts(e: THIRCall) -> str | None:
+    """The callee fact a call carries: a user callee's identity, or a stub's
+    declared contract (`none` when it declares nothing), each with how its
+    parameters pass and what its result is."""
+    if e.resolved_callee is not None:
+        identity = e.resolved_callee.identity
+        return f"callee {identity.module}.{identity.name}{_signature_facts(e.resolved_callee.signature)}"
+    if e.stub_callee is not None:
+        stub = e.stub_callee
+        contract = "none" if stub.contract is None else stub.contract.value
+        return f"stub {stub.identity.qualified_name}{_signature_facts(stub.signature)}, {contract}"
+    return None
+
+
+def _walk(node: object) -> Iterable[object]:
+    yield node
+    for child in _iter_children(node):
+        yield from _walk(child)
+
+
+def _callee_lines(fn: 'THIRFunction') -> list[str]:
+    """The callee facts of a body, listed after it rather than inline: the
+    statement renders stay the arguments' lowering, which the committed sweep
+    tables fingerprint."""
+    lines = []
+    if fn.resolved_callee is not None:
+        lines.append(f"  signature{_signature_facts(fn.resolved_callee.signature)}")
+    facts = [(node.callee or "<computed>", fact) for stmt in fn.body for node in _walk(stmt)
+             if isinstance(node, THIRCall) and (fact := _callee_facts(node)) is not None]
+    if facts:
+        lines.append("  callees:")
+        lines.extend(f"    [{i}] {name}: {fact}" for i, (name, fact) in enumerate(facts))
+    return lines
+
+
 def _function_lines(fn: 'THIRFunction') -> list[str]:
     params = ", ".join(f"{p.name}: {_ty(p.type)}" for p in fn.params)
     lines = [f"fn {fn.name}({params}) -> {_ty(fn.return_type)}:"]
@@ -804,6 +850,7 @@ def dump_codegen_thir(module_ast, analyzer, ctx,
         top = getattr(ctx, "thir_top_level", None)
         if top is not None:
             lines.extend(_function_lines(top))
+            lines.extend(_callee_lines(top))
         else:
             why = reasons.get(module_ast)
             lines.append(
@@ -819,9 +866,11 @@ def dump_codegen_thir(module_ast, analyzer, ctx,
                     if stubs else [])
         if func in ctx.thir_functions:
             lines.extend(_function_lines(ctx.thir_functions[func]))
+            lines.extend(_callee_lines(ctx.thir_functions[func]))
         elif stub_fns and all(fn is not None for fn in stub_fns):
             for fn in stub_fns:
                 lines.extend(_function_lines(fn))
+                lines.extend(_callee_lines(fn))
                 lines.append("")
             lines.pop()
         elif ctx.thir_resumables.get(func) is not None:

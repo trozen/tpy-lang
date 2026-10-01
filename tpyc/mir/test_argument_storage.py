@@ -19,7 +19,7 @@ from .collect import call_definitions
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCall,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRCall,
     MIRConstruct, MIRCopy, MIRFunction, MIRGoto, MIRSlot, MIRSlotId, MIRSlotKind,
     MIRNotCovered, MIRRecordStorageInit, MIRRecordStorageKind, MIRReturn,
     MIRStorageDuration, MIRValueKind, MIRPlace, MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId,
@@ -142,7 +142,7 @@ def _body(artifacts: Artifacts, name: str) -> MIRFunction:
     ctx, workspace, definitions, _ = artifacts
     if name == "Cell.method":
         fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "method")
-        body = lower_function(fn, MIRBodyId("main", name), kind=MIRBodyKind.METHOD,
+        body = lower_function(fn, MIRBodyId("main", name),
                               definitions=definitions, summaries=workspace.summaries)
     elif name == "Caller.__init__":
         ctor = next(ctor for ctor in ctx.thir_constructors.values() if ctor.record_name == "Caller")
@@ -155,7 +155,7 @@ def _body(artifacts: Artifacts, name: str) -> MIRFunction:
 
 
 def _storage(body: MIRFunction) -> list[MIRSlot]:
-    return [slot for slot in body.slots if slot.value_kind is MIRValueKind.RECORD_STORAGE]
+    return [slot for slot in body.slots if slot.value_kind is MIRValueKind.OWNED]
 
 
 @pytest.mark.parametrize("name", ["eager", "lazy", "multiple", "branches", "loop", "lazy_loop",
@@ -349,7 +349,7 @@ def test_deferred_backing_requires_verified_movability(artifacts: Artifacts) -> 
     definitions = MIRDefinitions(tuple(replace(ctor, record_layout=replace(ctor.record_layout, movable=False))
                                        if ctor.record_name == "Cell" else ctor for ctor in ctx.thir_constructors.values()))
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "lazy")
-    result = lower_function(fn, _body(artifacts, "lazy").id, kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, _body(artifacts, "lazy").id,
                             definitions=definitions, summaries=workspace.summaries)
     assert isinstance(result, MIRNotCovered) and result.reason == "deferred argument needs movable backing"
 
@@ -357,8 +357,7 @@ def test_deferred_backing_requires_verified_movability(artifacts: Artifacts) -> 
 def test_missing_plan_stays_uncovered(artifacts: Artifacts) -> None:
     ctx, workspace, definitions, _ = artifacts
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "eager")
-    result = lower_function(replace(fn, temp_plan=None), _body(artifacts, "eager").id,
-                            kind=MIRBodyKind.FREE_FUNCTION, definitions=definitions, summaries=workspace.summaries)
+    result = lower_function(replace(fn, temp_plan=None), _body(artifacts, "eager").id, definitions=definitions, summaries=workspace.summaries)
     assert isinstance(result, MIRNotCovered) and "complete temporary plan" in result.reason
 
 
@@ -370,7 +369,7 @@ def test_argument_adaptation_requires_exact_borrow_form(artifacts: Artifacts, da
     arg, = declaration.init.args
     body = (replace(declaration, init=replace(declaration.init, args=(replace(arg, **damage),))), *fn.body[1:])
     damaged = replace(fn, body=body, temp_plan=prepare_temporaries(body))
-    result = lower_function(damaged, _body(artifacts, "eager").id, kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(damaged, _body(artifacts, "eager").id,
                             definitions=definitions, summaries=workspace.summaries)
     assert isinstance(result, MIRNotCovered)
     expected = "readonly record" if "form" in damage else f"unsupported metadata: {next(iter(damage))}"
@@ -421,11 +420,11 @@ def test_retained_holders_observe_named_backing_scope_end(
     root, child = MIRRegionId(fn.id, 0), MIRRegionId(fn.id, 1)
     entry, inside, after = (MIRBlockId(fn.id, i) for i in range(3))
     holder, copied = (MIRSlotId(fn.id, len(fn.slots) + i) for i in range(2))
-    member = MIRTupleElement(storage.type, MIRValueKind.BORROWED_RECORD, readonly=True)
+    member = MIRTupleElement(storage.type, MIRValueKind.BORROWED, readonly=True)
     match shape:
         case "scalar":
             typ, form = storage.type, th.Form.BORROW
-            options = dict(value_kind=MIRValueKind.BORROWED_RECORD, readonly=True)
+            options = dict(value_kind=MIRValueKind.BORROWED, readonly=True)
             capture, copy = MIRAlias(source), MIRAlias(holder)
         case "tuple" | "mixed_tuple":
             scalar = next(slot for slot in fn.slots if slot.kind is MIRSlotKind.PARAMETER)
@@ -438,14 +437,14 @@ def test_retained_holders_observe_named_backing_scope_end(
         case "optional":
             typ, form = OptionalType(storage.type), th.Form.VALUE
             options = dict(value_kind=MIRValueKind.OPTIONAL,
-                           optional_layout=MIROptionalLayout(storage.type, MIRValueKind.BORROWED_RECORD, True))
+                           optional_layout=MIROptionalLayout(storage.type, MIRValueKind.BORROWED, True))
             capture, copy = MIROptionalConstruct(source), MIROptionalCopy(holder)
         case _:
             other = NominalType("Other", _module_qname="main.Other")
             typ, form = UnionType((storage.type, other)), th.Form.VALUE
             options = dict(value_kind=MIRValueKind.UNION,
                            union_layout=MIRUnionLayout((member, MIRTupleElement(
-                               other, MIRValueKind.BORROWED_RECORD, readonly=True))))
+                               other, MIRValueKind.BORROWED, readonly=True))))
             capture, copy = MIRUnionConstruct(0, source), MIRUnionCopy(holder)
     slots = tuple(replace(slot, storage_duration=child, residence=child,
                           record_storage=MIRRecordStorageKind.OPTIONAL if optional_backing

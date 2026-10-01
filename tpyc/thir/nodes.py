@@ -22,10 +22,12 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from ..identity_map import IdentityMap, IdentitySet
 from ..temp_schedule import banks_in_region
 from ..parse import RebindStorage, SourceLocation, TryTier
+from ..coercions import coercion_rule
 from ..type_def_registry import ParamPassing
 from ..typesys import (
-    NominalType, ResolvedBinop, ResolvedUnaryop, TpyType,
-    certified_primitive_comparison, certified_primitive_op, is_inert_leaf,
+    FloatLiteralType, IntLiteralType, NominalType, Representation, ResolvedBinop, ResolvedUnaryop, TpyType,
+    certified_primitive_comparison, certified_primitive_conversion, certified_primitive_op,
+    certified_primitive_promotion, certified_primitive_subscript, is_inert_leaf, is_owned_leaf,
 )
 
 if TYPE_CHECKING:
@@ -447,12 +449,38 @@ class THIRBinOp(THIRExpr):
     template_override: 'str | None' = None
 
     @property
+    def promoted_operand(self) -> int | None:
+        """The operand (0 left, 1 right) the resolution's promotion
+        (`ResolvedBinop.promotion`) converts into the operator's type, when
+        that conversion is certified runtime code between leaves
+        (`typesys.certified_primitive_promotion`); None without one."""
+        rb = self.resolved
+        if rb is None or rb.promotion is None:
+            return None
+        return certified_primitive_promotion(rb.promotion, self.left.result_type, self.right.result_type)
+
+    def operand_position_type(self, side: int) -> TpyType | None:
+        """The type operand `side` binds in the resolved dunder -- the
+        receiver's owner, or the declared parameter -- which a number
+        literal there converts into. None for a derived comparison, which
+        has no dunder."""
+        rb = self.resolved
+        if rb is None:
+            return None
+        if side == (1 if rb.is_reverse else 0):
+            owner = rb.receiver_type
+            return (owner if isinstance(owner, NominalType)
+                    and owner.qualified_name() == rb.method.owning_type_qname else None)
+        return rb.method.params[0].type if len(rb.method.params) == 1 else None
+
+    @property
     def certified_op(self) -> bool:
         """Whether the operation as rendered here is a certified primitive
-        operation over inert leaves (`typesys.certified_primitive_op`). Any
-        conversion around the operator refuses it: a promotion wrapper
-        (`ResolvedBinop.promotion`), an operand cast, or a template that
-        replaces the resolved one."""
+        operation over leaves (`typesys.certified_primitive_op`). A
+        promotion counts as a certified conversion of one operand
+        (`promoted_operand`) feeding the operator; any other conversion
+        around the operator refuses it: an uncertified promotion, an operand
+        cast, or a template that replaces the resolved one."""
         if (self.left_cast is not None or self.right_cast is not None
                 or self.template_override is not None):
             return False
@@ -461,9 +489,14 @@ class THIRBinOp(THIRExpr):
             return (self.op in COMPARISON_OPS
                     and certified_primitive_comparison(self.left.result_type, self.right.result_type)
                     and is_inert_leaf(self.result_type))
-        return (rb.promotion is None
-                and certified_primitive_op(rb.method, (self.left.result_type, self.right.result_type),
-                                           self.result_type))
+        operands = [self.left.result_type, self.right.result_type]
+        if rb.promotion is not None:
+            side = self.promoted_operand
+            if side is None:
+                return False
+            operands[side] = rb.promotion.return_type
+        return certified_primitive_op(rb.method, tuple(operands), self.result_type,
+                                      receiver=1 if rb.is_reverse else 0)
 
 
 # The comparisons sema may leave to the bare C++ operator.
@@ -734,7 +767,7 @@ class THIRUnaryArith(THIRExpr):
     @property
     def certified_op(self) -> bool:
         """Whether the operation is a certified primitive operation over
-        inert leaves (`typesys.certified_primitive_op`)."""
+        leaves (`typesys.certified_primitive_op`)."""
         return (self.resolved is not None
                 and certified_primitive_op(self.resolved.method, (self.operand.result_type,),
                                            self.result_type))
@@ -765,15 +798,54 @@ class THIRFunctionIdentity:
 
 @dataclass(frozen=True)
 class THIRCallableSignature:
+    """`passings` is how each parameter is passed, from the same declared
+    const verdict the definition's `THIRParam.passing` reads;
+    `return_representation` is `typesys.return_representation` of
+    `return_type`. None means unpublished (a hand-built signature), which a
+    consumer must refuse rather than guess."""
     param_types: tuple[TpyType, ...]
     return_type: TpyType
     borrowed_result: THIRBorrowedRecord | None = None
+    passings: tuple[ParamPassing, ...] | None = None
+    return_representation: Representation | None = None
 
 
 @dataclass(frozen=True)
 class THIRResolvedCallee:
     identity: THIRFunctionIdentity
     signature: THIRCallableSignature
+
+
+class THIRStubContract(Enum):
+    """What a stub declares about the C++ it binds, beyond its signature."""
+    # @pure: no non-local mutation, nothing retained after return or raise.
+    PURE = "pure"
+    # `transient=True`: reads or writes only its arguments as their declared
+    # mutability allows, retains nothing, reads no other TPy storage, runs
+    # no user code.
+    TRANSIENT = "transient"
+
+
+@dataclass(frozen=True)
+class THIRStubIdentity:
+    """A stub callee's identity: overloads of one stub share the qualified
+    name, so the parameter types keep two of them apart in one body."""
+    qualified_name: str
+    param_types: tuple[TpyType, ...]
+
+
+@dataclass(frozen=True)
+class THIRStubCallee:
+    """The declared facts of a `@native` / `@cpp_template` callee -- a free
+    function or a builtin type's `__init__` -- read off its FunctionInfo;
+    there is no body to derive anything from. `signature.return_type` is
+    the constructed type for an initializer. `readonly` is the const verdict
+    the stub declares per parameter; `contract` None means the stub
+    declares nothing beyond its signature."""
+    identity: THIRStubIdentity
+    signature: THIRCallableSignature
+    contract: THIRStubContract | None
+    readonly: tuple[bool, ...]
 
 
 @dataclass(frozen=True)
@@ -829,6 +901,9 @@ class THIRCall(THIRExpr):
     callee_expr: 'THIRExpr | None' = None
     template_args_cpp: tuple[str, ...] | None = None
     resolved_callee: THIRResolvedCallee | None = None
+    # The declared facts of a stub callee; exclusive with `resolved_callee`,
+    # which describes a callee with a TPy body.
+    stub_callee: THIRStubCallee | None = None
     # The callee is a TYPE, not a function: a builtin conversion, an
     # enum-from-value, a module-qualified constructor. Those lower to a call
     # node rather than a THIRCtorCall, so the arm that resolved the callee
@@ -1492,6 +1567,35 @@ class THIRCoerce(THIRExpr):
     coercion_name: str
     wrap: 'str | None' = None
 
+    @property
+    def conversion_refusal(self) -> str | None:
+        """Why the coercion is not a certified conversion, None when it is.
+
+        Certified: a runtime conversion between leaves
+        (`typesys.certified_primitive_conversion`) under a declared rule
+        whose result is a NEW value -- the target is an inert leaf, which
+        holds no borrow, or an owned leaf the `wrap` template builds
+        (`::tpy::BigInt({0})`, `{0}.to_fixed_check<..>()`). A passthrough
+        into an owned leaf renders its source in place (a `String` read at a
+        `str` view parameter), so its result aliases the source. A literal
+        source is compile-time data, not a conversion; a borrow-only rule
+        renders a view whatever its target type says."""
+        rule = coercion_rule(self.coercion_name)
+        source = self.expr.result_type
+        if (rule is None or rule.borrow_only or isinstance(self.expr, THIRLiteral)
+                or isinstance(source, (IntLiteralType, FloatLiteralType))
+                or not certified_primitive_conversion(source, self.result_type)):
+            return "unsupported coercion"
+        if is_inert_leaf(self.result_type):
+            return None
+        if is_owned_leaf(self.result_type) and self.wrap is not None:
+            return None
+        return "conversion aliases its source"
+
+    @property
+    def certified_conversion(self) -> bool:
+        return self.conversion_refusal is None
+
 
 @dataclass(frozen=True)
 class THIREnumMember(THIRExpr):
@@ -1690,6 +1794,16 @@ class THIRSubscript(THIRExpr):
     # (`std::get<N>` yields the element `T*`; a `T&` alias bind needs
     # `(*std::get<N>(t))`) -- the deref twin of THIRName's flag.
     deref: bool = False
+
+    @property
+    def certified_op(self) -> bool:
+        """Whether the read is a certified primitive element read of an owned
+        leaf (`typesys.certified_primitive_subscript`): no tuple projection,
+        record dunder, Optional unwrap or generic element reference."""
+        return (self.tuple_index is None and not self.record_getitem and not self.elem_ref
+                and not self.opt_deref_check and not self.deref
+                and certified_primitive_subscript(self.receiver.result_type, self.index.result_type,
+                                                  self.result_type))
 
 
 class OptionalCheckSpelling(Enum):

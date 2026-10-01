@@ -10,7 +10,7 @@ from ..typesys import INT32
 from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
-from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, MIRRangeAdvance
+from .nodes import MIRBodyId, MIRFunction, MIRNotCovered, MIRRangeAdvance
 from .scope_lifetime import inspect_scope_lifetimes
 from .testutil import Reference, execute
 
@@ -97,8 +97,7 @@ def artifacts():
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
     functions = {fn.name: fn for fn in ctx.thir_functions.values()}
-    bodies = {name: lower_function(fn, MIRBodyId("ranges", name), definitions=definitions,
-                                  kind=MIRBodyKind.METHOD if fn.receiver else MIRBodyKind.FREE_FUNCTION)
+    bodies = {name: lower_function(fn, MIRBodyId("ranges", name), definitions=definitions)
               for name, fn in functions.items()}
     ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Runner")
     bodies["Runner"] = lower_constructor(ctor, MIRBodyId("ranges", "Runner"), definitions=definitions)
@@ -159,6 +158,6 @@ def test_range_facts_fail_closed(artifacts, damage: str) -> None:
         case "hoists":
             loop = replace(loop, hoist_decls=(th.HoistDecl("missing", "int32_t"),))
     fn = replace(fn, body=tuple(loop if isinstance(s, th.THIRForRange) else s for s in fn.body))
-    result = lower_function(fn, MIRBodyId("ranges", "damaged"), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("ranges", "damaged"),
                             definitions=definitions)
     assert isinstance(result, MIRNotCovered)

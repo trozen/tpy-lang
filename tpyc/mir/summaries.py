@@ -1,25 +1,34 @@
 """Local effect/exit evidence from validated MIR, without callee scheduling."""
 
 from ..thir import nodes as th
-from ..thir.scalar_leaves import storage_leaf
+from ..thir.scalar_leaves import owned_value_type, storage_leaf
 from ..typesys import unwrap_readonly, unwrap_ref_type
-from .call_contract import MIRCallSummary, MIRParameterWrite, MIRSummaryResult, MIRSummaryState, summary_problem
+from .call_contract import (
+    BORROWING_PASSINGS, MIRCallSummary, MIRGlobalId, MIRParameterBinding, MIRParameterWrite, MIRSummaryResult,
+    MIRSummaryState, summary_problem,
+)
 from .call_effects import resolve_call_writes
-from .coverage import MIRUnsupported, scalar_slot
+from .coverage import MIRUnsupported, owned_borrow, owned_storage, scalar_slot
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, analyze_dependencies, resolve_referents
 from .liveness import analyze_liveness
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyKind, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref,
-    MIRField, MIRFunction, MIRNot, MIRNotCovered, MIROp, MIRPoint, MIRPrint, MIRRead, MIRReturn, MIRPlace, MIRSlotKind, MIRValueKind,
-    statement_call,
+    MIRAlias, MIRAssign, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRCopy, MIRDeref,
+    MIRField, MIRFunction, MIRNot, MIRNotCovered, MIROp, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRReturn,
+    MIRPlace, MIRSlotKind, MIRValueKind, statement_call,
 )
-from .validate import _cyclic_blocks, successors, validate_function
+from .validate import validate_function
 
 
 def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                        definitions: MIRDefinitions) -> MIRSummaryResult:
-    """Unsupported evidence is opaque; malformed MIR remains a validation error."""
+    """Unsupported evidence is opaque; malformed MIR remains a validation error.
+
+    The summary covers every exit of the body. Possible writes are collected
+    at every statement, so a write before a throw is in them, and every
+    nested call's writes are promised over its own exits too; nothing the
+    body holds survives an exit but its storage, which the body owns. Loops
+    are summarized by the dependency and liveness fixpoints."""
     validate_function(body)
     callee = declaration.resolved_callee
     if (callee is None or body.kind is not MIRBodyKind.FREE_FUNCTION
@@ -31,34 +40,41 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
     if (len(params) != len(declaration.params)
             or callee.signature.param_types != tuple(p.type for p in declaration.params)):
         return MIRSummaryResult.opaque("summary definition signature mismatch")
+    bindings: list[MIRParameterBinding] = []
     for slot, param in zip(params, declaration.params):
-        if (slot.name != param.name
-                or slot.type != unwrap_readonly(unwrap_ref_type(param.type))
-                or (slot.value_kind is MIRValueKind.BORROWED_RECORD
+        if param.passing is None:
+            return MIRSummaryResult.opaque("summary parameter passing unpublished")
+        owned = owned_value_type(param.type)
+        if (slot.name != param.name or slot.passing is not param.passing
+                or slot.type != (owned if owned is not None else unwrap_readonly(unwrap_ref_type(param.type)))
+                or (slot.value_kind is MIRValueKind.BORROWED and owned is None
                     and (param.borrowed_record is None
                          or slot.readonly != param.borrowed_record.readonly))):
             return MIRSummaryResult.opaque("summary parameter binding mismatch")
+        readonly = (param.borrowed_record.readonly if param.borrowed_record is not None
+                    else owned is not None and param.passing in BORROWING_PASSINGS)
+        bindings.append(MIRParameterBinding(slot.type, param.passing, readonly, param.borrowed_record))
     slots = {s.id: s for s in body.slots}
+    global_reads: set[MIRGlobalId] = set()
     for slot in body.slots:
         if slot.kind is MIRSlotKind.GLOBAL:
-            return MIRSummaryResult.opaque("summary global access")
+            # A handle the body only reads; a write refuses at its statement.
+            global_reads.add(slot.global_id)
         match slot.value_kind:
             case MIRValueKind.SCALAR if scalar_slot(slot):
                 pass
-            case MIRValueKind.BORROWED_RECORD:
+            case MIRValueKind.BORROWED:
                 try:
                     definitions.get(declaration, slot.type)
                 except MIRUnsupported as failure:
                     return MIRSummaryResult.opaque(f"summary record: {failure.reason}")
+            case MIRValueKind.OWNED if owned_storage(slot):
+                # An owned leaf's storage is private to the body: nothing of the caller's.
+                pass
             case _:
                 return MIRSummaryResult.opaque("summary storage or value shape")
-    blocks = {b.id: b for b in body.blocks}
-    predecessors = {b.id: set() for b in body.blocks}
-    for block in body.blocks:
-        for target in successors(block.terminator):
-            predecessors[target].add(block.id)
-    if _cyclic_blocks(blocks, predecessors):
-        return MIRSummaryResult.opaque("summary cyclic control flow")
+    for consumed in body.call_summaries:
+        global_reads.update(consumed.global_reads)
     dependencies = analyze_dependencies(body, analyze_liveness(body))
     if isinstance(dependencies, MIRNotCovered):
         return MIRSummaryResult.opaque(f"summary dependencies: {dependencies.reason}")
@@ -103,9 +119,15 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             if isinstance(stmt, MIRPrint):
                 # Output is an effect outside every parameter-rooted summary.
                 return MIRSummaryResult.opaque("summary output effect")
-            if not isinstance(stmt, MIRAssign) or stmt.storage_write is not None:
+            if not isinstance(stmt, MIRAssign):
                 return MIRSummaryResult.opaque("summary storage operation")
             target = slots[stmt.target.root]
+            if target.kind is MIRSlotKind.GLOBAL:
+                return MIRSummaryResult.opaque("summary global access")
+            # A write event is admitted only on the body's own owned-leaf storage,
+            # which no caller-visible place reaches.
+            if stmt.storage_write is not None and (stmt.target.projections or not owned_storage(target)):
+                return MIRSummaryResult.opaque("summary storage operation")
             if stmt.target.projections:
                 origins = resolve_referents(stmt.target, state, slots)
                 problem = include_writes(origins or None)
@@ -114,18 +136,16 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             match stmt.value:
                 case MIRCall():
                     pass
-                case MIRConstant() | MIRCompare() | MIRNot():
+                case MIRConstant() | MIRCompare() | MIRNot() | MIROp() | MIRRangeAdvance():
                     pass
-                case MIROp(may_raise=True):
-                    # The interface only describes normal returns; an exception exit is not in it.
-                    return MIRSummaryResult.opaque("summary raising operation")
-                case MIROp():
+                case MIRCopy() | MIRBorrow() if owned_storage(target) or owned_borrow(target):
+                    # Reads of an owned leaf into the body's own storage or holders.
                     pass
                 case MIRRead(source=source):
                     # Scalar field reads are safe on a live borrowed record;
                     # wrapper extraction and other projections need more proof.
                     if source.projections and not (
-                        slots[source.root].value_kind is MIRValueKind.BORROWED_RECORD
+                        slots[source.root].value_kind is MIRValueKind.BORROWED
                         and len(source.projections) == 2
                         and isinstance(source.projections[0], MIRDeref)
                         and isinstance(source.projections[1], MIRField)
@@ -133,13 +153,14 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     ):
                         return MIRSummaryResult.opaque("summary unsupported read projection")
                 case MIRAlias():
-                    if target.value_kind is not MIRValueKind.BORROWED_RECORD:
+                    if target.value_kind is not MIRValueKind.BORROWED:
                         return MIRSummaryResult.opaque("summary unsupported alias")
                 case _:
                     return MIRSummaryResult.opaque("summary unsupported operation")
-    summary = MIRCallSummary(callee, tuple(p.borrowed_record for p in declaration.params),
+    summary = MIRCallSummary(callee, tuple(bindings),
                              frozenset(range(len(params))), frozenset(writes), frozenset(),
-                             frozenset(returns), frozenset(), True)
+                             frozenset(returns), frozenset(), not body.exceptional_exits,
+                             frozenset(global_reads))
     problem = summary_problem(summary)
     if problem is not None:
         return MIRSummaryResult.opaque(problem)

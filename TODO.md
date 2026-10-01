@@ -1660,6 +1660,7 @@ Existing defects remain in BUGS.md; this section groups the architectural work.
 
 ## Deferred to THIR/MIR & workload-gated
 - **[design][POSTPONED 2026-09-16 -- its own branch, not mixed into a queue batch] Call-graph fact propagation: make the unit the import COMPONENT, then generalize the lattice.** Two points, one shape. (1) `propagate_mutation_facts` (`tpyc/sema/mutation_propagation.py`) runs per MODULE: it topologically sorts the module's call graph and resolves call-graph cycles with a monotone fixpoint, but an imported callee whose module has not yet run Phase 2 has `mutated_params is None` and takes the conservative leg (every flowing parameter marked mutated). Across an import cycle that is safe but order-dependent: two modules `a`/`b` importing each other, each forwarding a parameter to the other's read-only function, render `int32_t via_a(const Rec& r)` in the member analyzed second and `int32_t via_b(Rec& r)` in the member analyzed first (probed 2026-09-16), so a signature in a cycle depends on which member the driver analyzes first -- the external-C++-surface instability the project rules against elsewhere. Fix shape: the compiler already condenses import cycles into components (the `_cycle_peers` / forward-declaration machinery); analyze bodies for every member of a component, run ONE propagation over the union of their functions (external callees outside the component stay ground truth, so the acyclic corpus is byte-identical by construction), then `_sync_inferred_const` per member. A sequencing change in `Compiler._analyze_bodies` / `_finalize_workspace` plus a two-module cycle case; medium priority (cycle members are rare under the v1 gate), cheap. (2) The next call-graph fact is visible in the filed gaps: 'a borrow of parameter i escapes through the return' (what `ptr-readonly-dest-counts-as-write`, `readonly-borrow-of-temporary-receiver` and the dangling-return checks approximate locally from declared signatures). It has the mutation fact's shape exactly: a per-function summary on `FunctionInfo`, a monotone join, evaluation in call-graph order with cycles by fixpoint, external summaries as ground truth. Today every transitive fact has its own bespoke walk (mutation = the one call-graph lattice; owning-copy verdicts = a workspace-wide edge discharge; borrow/lifetime checks = local, deferred until mutation facts settle; global rebinding = per-module phase one; header reach = a type-graph closure). Do not build the abstraction before the second instance exists (measure before designing); do implement (1) as the evaluation order the abstraction will need, and fold the lattice abstraction in when the escape fact is built -- the natural first citizen of the MIR direction in `docs/IR_DESIGN.md`. Raised by the user reviewing batch 5 ("what if there is a cycle import"; "is the const deduction common with other fact inference, e.g. lifetimes"). ANALYSIS DONE 2026-09-16 (batch 6, measured on 9813ac2a26), design ready to implement: `Compiler._compute_compile_order` (`tpyc/compiler.py` ~1594-1696) already runs Tarjan over the import graph and then FLATTENS the components away, members in alphabetical order -- the only cycle break in sema that is an order rather than a fixpoint; 31 of 6171 cases contain an import cycle (lib/tpy none), 5 of them order-dependent (four on `const X&` vs `X&`, one on which module reports an error). Four probes: (a) the signature split above; (b) readonly inference has the same split one level out (`via_a() const` only in the second-analyzed member); (c) a SILENT use-after-move -- filed HIGH as `BUGS.md#cycle-peer-borrow-fact-read-as-stub`, because `return_borrows_from` is read during body sema where `None` means both "opaque stub" and "not analyzed yet" and `_seed_pending_borrow_fact_fis` (`tpyc/sema/analyzer.py` ~913-944) seeds per module; (d) ACCEPTANCE depends on order: `b.f(x: readonly[a.A])` calling an inferred-readonly method compiles when `a` runs first and errors when `b` does, because body sema reads `is_readonly` as an admission gate. (d) shapes the design: the component pass must be TWO-PHASE -- the provisional per-member `run_phase2_fixpoint` exactly as today (but not clearing `call_edges`), then a final pass over the component union; monotone (the provisional pass marks a superset of the mutated sets, so the final pass only shrinks them and only grants `is_readonly`), skipped for singleton components so the acyclic corpus is byte-identical by construction. Steps: A keep `compile_components` beside `compile_order` and derive the latter (partition components, not modules, at the implicit-stdlib step, assert none straddles); B the component loop with `_run_component_phase2` (one snapshot moves: `imports/mutual_cycle_with_dataclass` `add_pair(Pair&)` -> `const Pair&`, verified correct; new cases for both members const and for probe (d) so the provisional pass can never be dropped); C the borrow seed per component (zero churn measured over the 31 cyclic and 120 random cases; a case with the list mutated after the boundary); D replace the workspace SCAN in `_propagate_mutation_facts` (`analyzer.py` ~1055-1104; 89 calls x 15,473 FunctionInfo visits = 1.38M visits for 6.6 ms of work, 205 ms = 7.1% of the stdlib_render front end, O(modules x workspace)) with a per-analyzer index of the FIs it wrote facts onto; E (later, with the escape fact) the lattice: Tarjan over the CALL graph plus a worklist; today's `_resolve_cycle` round-robin is quadratic in the call-SCC (rings of 50/100/200 functions: 2.3/9.7/36.3 ms), the corpus's largest set is 11 FIs. Citizens of the lattice: the three mutation facts, `return_borrows_from` as a real summary, the transitive twin of `addr_escapes_params`; NOT citizens: `is_readonly`/const verdicts (decisions, anti-monotone), frame Send/Sync (a greatest fixed point over the await graph), own-copy discharge (a reachability closure), the deferred checks. A second home found on the way: signature emission (`tpyc/codegen_cpp/functions.py` ~491, ~607, and open-coded at ~582/~595) re-derives the const verdict from raw `mutated_params` while call-site lowering reads the materialized `const_borrow_params`; it also carries `reassigned_params`, which is not on `FunctionInfo` -- hoist that first, then collapse the emitter (its own unit, spelled out in "The sync function/method signature emitters"). One home for all of it: `FunctionInfo.const_borrow_params` stays the verdict and every other spelling becomes a projection of it -- see "A resumable frame answers" for the frame half. Risks recorded: copied `mutated_params` on substituted FIs keep provisional (conservative) values; frame Send/Sync across a cycle is unmeasured.
+- **[design][filed 2026-10-01, not for now] `pure` is two facts under one word: a declared binding fact on stubs and a checkable contract on TPy bodies.** On a stub (423 `@pure` sites in `lib/tpy`, every one on a `@native` / `@cpp_template` binding) it declares C++ the compiler cannot see, exactly like the `transient=True` kwarg; it should become `@native(..., pure=True)` / `@cpp_template(..., pure=True)` the same way (parser reads the kwarg into the existing `FunctionInfo.is_pure`; nothing downstream changes; mechanical). On a TPy-bodied function (seven uses, all in `tests/cases`: `readonly/pure_decorator` and siblings) it is TRUSTED today -- `docs/LANGUAGE_FEATURES.md` says so -- and sema acts on it: the borrow-argument conflict check (`sema/calls.py`), the loop-frame write checks (`sema/loop_frames.py`) and `receiver_calls.call_mutates_receiver` treat a `@pure` callee as mutating nothing, so `@pure def f(p: Point)` assigning `p.x` hides a real conflict; only the `self` half is enforced, through the readonly implication. The fix is to VERIFY it rather than trust it: purity is the call-graph lattice above with three more bits (writes no global, calls only pure or transient callees, no I/O through an unmarked native), inferred per function, and `@pure` on a body becomes an assertion sema checks and errors on (the ESCAPE_ANALYSIS_DESIGN section 7 "Phase 2"). Keep the two spellings apart on purpose: a kwarg says "declared about the binding", a decorator says "check my body". Order: the stub kwarg first (small, own branch), the enforced contract when the lattice lands. User decided 2026-10-01 to file rather than change now.
 
 Items below are blocked on the THIR/MIR migration (the `cpp_shape` /
 place-model end-state) or explicitly gated on a real workload / reproducer
@@ -1670,18 +1671,61 @@ alongside related feature work; only the big-rock deferrals live here.
 - **MIR (analysis-only): the place / loan model.** Order (approved
   2026-09-29): breadth-first, `docs/MIR_ANALYSIS_PLAN.md` "Breadth-first
   order" -- B1 loan classification of representations (landed: every
-  loan-inert primitive and enum value is a leaf), B2 views as places, B3 containers and iterators,
+  loan-inert primitive and enum value is a leaf), B2 owned leaves (landed:
+  BigInt, str, String and bytes as owned storage and readonly parameter
+  borrows, stub contracts, raising and cyclic summaries) then views as
+  places, B3 containers and iterators,
   cleanup, B4 generator/async frames; B5 call summaries alongside; B6 advisory
   checker and authority transition. Lifetime/loan bugs tagged `deferred: MIR`
   in BUGS.md wait on it. The history below records the landed increments.
-  **Body-kind selection is wrong on both entry paths** (951 measured bodies:
-  676 dunders, 104 methods, 95 properties, 76 staticmethods report "body
-  kind and receiver mismatch"): `analyze_call_workspace`
-  (`tpyc/mir_workspace.py`) lowers every scheduled callable as a free
-  function, so a method's receiver is refused, and `tpyc/mir/collect.py`
-  passes the method kind to a staticmethod, which has no receiver. Decide
-  the kind from the callable's own receiver fact in one place and have both
-  paths read it; measure with `scripts/mir_coverage/`.
+  **B2 second half, views as places** (next): StrView / BytesView locals
+  and their sources, slices, view returns and their origins, view fields;
+  owned-leaf record fields and constructor initializers (a callee's field
+  write can invalidate a forwarded borrow, so they land with the
+  replacement-conflict check over call writes); the first str conflicts
+  (`view_return_escape`, `view_source_mutation`, `temporary_borrow`).
+  **B2 follow-ups** (sliced out or found while landing it):
+  - Owned leaves inside tuple / Optional / union members and native
+    container elements (with B3); `bytearray` (a reference type: alias
+    bindings, B3); owned-leaf global writes (admitting them replaces the
+    immortal-handle model of a global with a place that has invalidation
+    events; module init is not lowered);
+    `String` in-place methods beyond `+=` and every `THIRMethodCall` on an
+    owned leaf (receiver effects, B3); f-strings.
+  - A `String` bound as `str` (`string_to_str`, a passthrough: the C++
+    passes a view of the `String` at a parameter and copies at an owning
+    sink) refuses at every sink ("conversion aliases its source"); the
+    views half models the parameter case as a borrow and the owning sink
+    as a copy, keyed on the sink.
+  - `THIRCoerce.conversion_refusal` keys "the result is a new value" on
+    the render's `wrap` template; the declared fact is
+    `Coercion.builds_fresh_value`, which `fixed_int_to_bigint`,
+    `int_type_param_to_bigint` and `char_to_str` do not set although their
+    renders build one. Sema's value_category and prescan read that flag,
+    so setting it is its own unit, expected zero-churn (a churn makes it a
+    decision); then the certificate reads
+    the rule, not the render.
+  - `int32(a)` and the other fixed-int constructors resolve to the generic
+    `__init__[T]` overload, whose parameters still hold `T`, so no
+    `THIRStubCallee` is published for them; a C-linkage native call
+    (rendered through `callee_cpp`) refuses as "unsupported metadata:
+    stub_callee". Both need a decided stub-callee shape, not a wider gate.
+  - Summaries: iterator operations stay out until a container parameter has
+    a binding kind in `MIRParameterBinding`; private record storage keeps a
+    summary opaque (only private owned-leaf storage is admitted); a by-value
+    copy of a global into an `Own[T]` parameter refuses because THIR
+    produces it as a named argument temporary; a stub result that could
+    borrow a scalar bound to a protocol parameter refuses.
+  - `typesys.return_representation` answers REFERENCE for `VoidType`; MIR
+    checks void separately, but the function should say STORAGE or refuse.
+  - `TypeDef.is_borrowing_view` is latched through the
+    `_dynamic_attached_qnames` holdout, so a per-test compiler reset
+    changes the answer for `StrView` mid-test (`tpyc/mir/test_stub_calls.py`
+    computes the verdict inside its fixture); the holdout's removal fixes it.
+  - Sema accepts every comparison it cannot resolve to a dunder and leaves
+    the verdict to C++ (`sema/expressions.py`, the comparison arm); THIR's
+    reject gate refuses unlike builtin pairs, so nothing is silent, but the
+    acceptance should be sema's.
   **B1 follow-ups** (the leaf vocabulary's facts still decided twice):
   - (i) The parameter renderers (`to_cpp_param` / `to_cpp_const_param` and
     `gen_params`) should read `TpyType.param_passing`, so passing is decided
@@ -1700,14 +1744,20 @@ alongside related feature work; only the big-rock deferrals live here.
     MIR re-deriving it (`mir/coverage.literal_type`).
   - (v) A `Coercion` field for "renders the literal in the target type" instead
     of MIR's `_LITERAL_COERCIONS` row-name set.
-  - (vi) A stub-level cannot-raise fact so `MIROp.may_raise` is derived; today it
-    is always True, which makes every arithmetic body's summary opaque.
+  - (vi) A stub-level cannot-raise fact so `MIROp.may_raise` and a stub
+    call's `may_raise` are derived; today both are always True, so every
+    arithmetic body reports an exceptional exit (B2 summarizes it as
+    `normal_return_only=False` instead of going opaque).
   - (vii) A print/IO effect in the call-summary vocabulary instead of an opaque
     summary for every body that prints.
-  - (viii) Call summaries derive a callee's parameter passing from
-    `typ.param_passing()` at the non-const verdict (`mir/call_contract.py`),
-    because `THIRCallableSignature` carries no passing. Carry
-    `THIRParam.passing` into the signature so there is one channel.
+  - (viii) The const verdict behind a parameter's passing is read in four
+    places -- `sema/calls.py` (twice), `sema/loop_frames.py` and
+    `thir/lower/callables.py` `_stub_param_consts` -- plus
+    `_param_is_const` for `THIRParam.passing`. It belongs on one
+    `FunctionInfo` property that all of them read. It touches emission, so
+    it is its own unit; the BUGS.md entry on `_param_is_const` lacking the
+    `is_ref_param()` filter its AST counterpart applies is the same fact
+    decided loosely and folds into it.
   - (ix) The iterator-object alias row in `thir/lower/statements.py` sets
     `cpp_type` `"auto&"` with the default VALUE form. Publish BORROW so
     "VALUE form means held by value" holds for every THIR local
@@ -1719,6 +1769,12 @@ alongside related feature work; only the big-rock deferrals live here.
   - (xi) Move `COMPARISON_OPS` below both sema and THIR (e.g. `typesys`)
     so the literal copies in `sema/narrowing.py`, `sema/expressions.py`
     and `codegen_cpp/types.py` collapse onto it.
+  - (xii) THIR should publish `storage_placement` for owned-leaf local
+    declarations, so MIR stops taking the placement from its own region.
+  - (xiii) `mir/call_contract.OWNING_PASSINGS` / `BORROWING_PASSINGS` and
+    `typesys.passing_representation` disagree about OWN: the MIR sets
+    treat it as the callee's own copy, `passing_representation` answers
+    REFERENCE. Pre-existing; decide one answer.
   Design: `docs/IR_DESIGN.md`
   (MIR Design; Phasing and Dependencies, phase 2). Active plan:
   `docs/MIR_ANALYSIS_PLAN.md`, analysis-first sequence approved 2026-09-17,

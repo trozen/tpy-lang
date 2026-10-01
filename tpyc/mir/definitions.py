@@ -1,11 +1,12 @@
-"""Immutable, verified constructor definitions supplied by the THIR caller."""
+"""Immutable, verified constructor definitions supplied by the THIR caller,
+and the builtin certificates of owned leaves' opaque storage."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
 from ..thir import nodes as th
-from ..thir.scalar_leaves import leaf_constant, record_type, storage_leaf
+from ..thir.scalar_leaves import leaf_constant, owned_leaf, record_type, storage_leaf
 from ..typesys import NominalType, TpyType
 from .coverage import MIRUnsupported, literal_type, plain, require, scalar_param
 from .nodes import MIRField, MIRFieldId, MIRRecordLayout
@@ -85,6 +86,14 @@ def _verify(ctor: th.THIRConstructor) -> MIRConstructorDefinition:
     return definition
 
 
+@dataclass(frozen=True)
+class MIROwnedLeafDefinition:
+    """The builtin certificate of an owned leaf's storage (`TypeDef.owned_leaf`):
+    one opaque buffer, copied, moved and destroyed with no hook. Kept apart
+    from verified constructor definitions; nothing else earns it."""
+    layout: MIRRecordLayout
+
+
 @dataclass(frozen=True, init=False)
 class MIRDefinitions:
     """Index and check each actual emitted definition once, including failures."""
@@ -105,7 +114,9 @@ class MIRDefinitions:
                 records[typ] = failure.reason
         object.__setattr__(self, "records", MappingProxyType(records))
 
-    def get(self, node: object, typ: NominalType) -> MIRConstructorDefinition:
+    def get(self, node: object, typ: NominalType) -> MIRConstructorDefinition | MIROwnedLeafDefinition:
+        if owned_leaf(typ):
+            return MIROwnedLeafDefinition(MIRRecordLayout(typ, (), True, True, opaque=True))
         definition = self.records.get(typ, "missing constructor definition")
         if isinstance(definition, str):
             raise MIRUnsupported(node, definition)

@@ -15,7 +15,7 @@ from ..thir.temp_plan import THIRTempPlan, validate_plan
 from .call_contract import MIRSummaryResult
 from .definitions import MIRDefinitions
 from .lower import lower_constructor_storage, lower_function_storage
-from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRSlotId
+from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRSlotId, function_body_kind
 from .storage_evidence import (
     MIRBorrowEvidence, MIRStorageEvidence, MIRStorageVerdict,
     certify_borrow_operations, certify_storage_origins,
@@ -116,7 +116,9 @@ def certify_thir_storage(request: MIRStorageRequest) -> MIRBoundStorageEvidence:
         lowered = lower_constructor_storage(source, request.body, definitions=request.definitions,
                                             summaries=request.summaries)
     else:
-        lowered = lower_function_storage(source, request.body, kind=request.kind,
+        if request.kind is not function_body_kind(source):
+            raise MIRValidationError("storage request kind differs from its function")
+        lowered = lower_function_storage(source, request.body,
                                          definitions=request.definitions, summaries=request.summaries)
     if isinstance(lowered, MIRNotCovered):
         gaps.append(lowered)

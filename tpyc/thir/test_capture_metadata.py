@@ -6,7 +6,7 @@ from dataclasses import replace
 import pytest
 
 from ..mir.lower import lower_function
-from ..mir.nodes import MIRBodyId, MIRBodyKind, MIRNotCovered
+from ..mir.nodes import MIRBodyId, MIRNotCovered
 from ..parse.nodes import TpyFunction, TpyIntLiteral, TpyLambda, TpyReturn
 from ..typesys import BOOL, FLOAT, INT32, INT64
 from . import nodes as th
@@ -213,8 +213,7 @@ def test_inventory_is_all_or_unavailable(functions: dict[str, th.THIRFunction], 
 
 
 def test_closure_facts_do_not_admit_mir(functions: dict[str, th.THIRFunction]) -> None:
-    result = lower_function(functions["record_write"], MIRBodyId("test", "record_write"),
-                            kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(functions["record_write"], MIRBodyId("test", "record_write"))
     assert isinstance(result, MIRNotCovered) and result.node_kind == "THIRNestedDef"
 
 

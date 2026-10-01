@@ -11,7 +11,9 @@ from ..thir.validate import _iter_children
 from .collect import dump_codegen_mir
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
-from .nodes import MIRBodyId, MIRBodyKind, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRRecordWriteMode
+from .nodes import (
+    MIRBodyId, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRRecordWriteMode,
+)
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .testutil import ContainerValue, Reference, execute
@@ -152,8 +154,7 @@ def artifacts() -> Artifacts:
     (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
     functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("cyclic", name), definitions=definitions,
-                                   kind=MIRBodyKind.METHOD if fn.receiver else MIRBodyKind.FREE_FUNCTION)
+    bodies = {name: lower_function(fn, MIRBodyId("cyclic", name), definitions=definitions)
               for name, fn in functions.items()}
     for ctor in ctx.thir_constructors.values():
         if ctor.record_name == "Runner":
@@ -247,7 +248,7 @@ def test_source_storage_fact_is_required(artifacts: Artifacts, dropped: dict, re
     assert isinstance(loop.body[0].init, th.THIRCopy)
     decl = replace(loop.body[0], **dropped)
     fn = replace(fn, body=(*fn.body[:2], replace(loop, body=(decl, *loop.body[1:])), fn.body[-1]))
-    result = lower_function(fn, MIRBodyId("cyclic", "missing"), definitions=artifacts[2], kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("cyclic", "missing"), definitions=artifacts[2])
     assert isinstance(result, MIRNotCovered) and result.reason == reason
 
 
@@ -293,7 +294,7 @@ def moved(run: bool, stop: bool, skip: bool, early: bool, items: list[int32], n:
     assert isinstance(target.init, th.THIRMove)
     assert target.owned_storage is not None
     assert target.storage_placement is th.THIRStoragePlacement.SCOPE
-    fn = lower_function(function, MIRBodyId("cyclic", "moved"), kind=MIRBodyKind.FREE_FUNCTION,
+    fn = lower_function(function, MIRBodyId("cyclic", "moved"),
                         definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
     assert isinstance(fn, MIRFunction), fn
     move, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRMove))
@@ -329,7 +330,7 @@ def moved(flag: bool) -> int32:
     (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
     function = next(fn for node, fn in ctx.thir_functions.items() if node.name == "moved")
     assert "target = std::move(original);" in cpp
-    result = lower_function(function, MIRBodyId("cyclic", "hoisted"), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(function, MIRBodyId("cyclic", "hoisted"),
                             definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
     assert isinstance(result, MIRFunction), result
     write, = (s for s in analyze_storage(result).writes.values() if isinstance(s.value, MIRMove))
@@ -349,6 +350,5 @@ def test_copy_metadata_does_not_admit_custom_effects(artifacts: Artifacts, membe
     fn = artifacts[0]["copied"]
     ctor = next(d.constructor for typ, d in artifacts[2].records.items() if typ.name == "Cell")
     ctor = replace(ctor, record_layout=replace(ctor.record_layout, **{member: True}))
-    result = lower_function(fn, MIRBodyId("cyclic", member), definitions=MIRDefinitions((ctor,)),
-                            kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("cyclic", member), definitions=MIRDefinitions((ctor,)))
     assert isinstance(result, MIRNotCovered) and result.reason == "custom record special member"

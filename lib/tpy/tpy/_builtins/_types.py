@@ -89,6 +89,8 @@ class int(Comparable, Equatable):
     @dispatch
     @cpp_template("::tpy::BigInt(static_cast<uint64_t>({0}))")
     def __init__(self, x: uint64) -> None: ...
+    # from_float raises on NaN / infinity and touches no TPy state.
+    @pure
     @dispatch
     @native("tpy::BigInt::from_float", function=True)
     def __init__(self, x: float) -> None: ...

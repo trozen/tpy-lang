@@ -4,10 +4,10 @@ from dataclasses import dataclass
 from enum import Enum, auto
 
 from ..parse import SourceLocation
-from ..thir.nodes import Form, THIRBorrowedRecord
+from ..thir.nodes import Form, THIRBorrowedRecord, THIRFunction
 from ..type_def_registry import ParamPassing
 from ..typesys import NominalType, TpyType
-from .call_contract import MIRCallSummary
+from .call_contract import MIRCallSummary, MIRGlobalId
 
 
 @dataclass(frozen=True)
@@ -25,6 +25,13 @@ class MIRBodyKind(Enum):
     GENERATOR = auto()
     ASYNC = auto()
     GENERIC = auto()
+
+
+def function_body_kind(fn: THIRFunction) -> MIRBodyKind:
+    # THIR withholds the receiver fact wherever `self` is not an ordinary
+    # borrowed receiver (staticmethods, properties, dunders, consuming
+    # methods), so having an owner record never makes a body a METHOD.
+    return MIRBodyKind.METHOD if fn.receiver is not None else MIRBodyKind.FREE_FUNCTION
 
 
 @dataclass(frozen=True)
@@ -74,8 +81,8 @@ class MIRSlotKind(Enum):
 
 class MIRValueKind(Enum):
     SCALAR = auto()
-    BORROWED_RECORD = auto()
-    RECORD_STORAGE = auto()
+    BORROWED = auto()
+    OWNED = auto()
     TUPLE = auto()
     OPTIONAL = auto()
     UNION = auto()
@@ -122,12 +129,6 @@ class MIROptionalLayout:
 @dataclass(frozen=True)
 class MIRUnionLayout:
     elements: tuple[MIRTupleElement | None, ...]
-
-
-@dataclass(frozen=True)
-class MIRGlobalId:
-    module: str
-    name: str
 
 
 @dataclass(frozen=True)
@@ -201,6 +202,10 @@ class MIRRecordLayout:
     fields: tuple[MIRField, ...]
     copyable: bool
     movable: bool
+    # An owned leaf's storage: a buffer MIR models whole, with no fields to
+    # project (`MIRDefinitions` answers it from the TypeDef, never from a
+    # constructor).
+    opaque: bool = False
 
 
 @dataclass(frozen=True)
@@ -212,14 +217,20 @@ class MIRPlace:
 
 @dataclass(frozen=True)
 class MIRConstant:
-    # The Python value of a scalar leaf constant (`scalar_leaves.leaf_constant`).
-    value: int | bool | float | str
+    # The Python value of a scalar leaf constant (`scalar_leaves.leaf_constant`)
+    # or of an owned leaf's (`scalar_leaves.owned_constant`). Written to owned
+    # storage it is materialized there; written to a borrowed holder it is a
+    # literal in static storage, which the holder borrows.
+    value: int | bool | float | str | bytes
 
 
 @dataclass(frozen=True)
 class MIRCall:
     summary: MIRCallSummary
     arguments: tuple[MIRSlotId, ...]
+    # The call can exit by exception: the consumed summary's
+    # `not normal_return_only`, so the caller's own exit fact sees it.
+    may_raise: bool = False
 
 
 @dataclass(frozen=True)
@@ -292,6 +303,9 @@ class MIRUnionExtract:
 @dataclass(frozen=True)
 class MIRCopy:
     source: MIRPlace
+    # The copy can exit by exception (`TypeDef.copy_may_raise`): a buffer
+    # allocation a bare `except:` catches.
+    may_raise: bool = False
 
 
 @dataclass(frozen=True)
@@ -313,12 +327,14 @@ class MIRNot:
 
 @dataclass(frozen=True)
 class MIROp:
-    """A certified primitive operation (`THIRBinOp.certified_op` /
-    `THIRUnaryArith.certified_op`): it reads its inert-leaf operands by
-    value and allocates, retains and borrows nothing. `op` names it for
-    inspection only. `may_raise`: it can exit by exception (checked
-    overflow, a zero divisor), which the call-summary interface does not
-    model."""
+    """A certified primitive operation (`THIRBinOp.certified_op`,
+    `THIRUnaryArith.certified_op`, `THIRSubscript.certified_op`,
+    `THIRCoerce.certified_conversion`): it reads its operands -- inert leaves
+    by value, owned leaves through borrowed holders live until it runs --
+    retains nothing, and yields an inert leaf or a fresh owned value. `op`
+    names it for inspection only. `may_raise`: it can exit by exception
+    (checked overflow, a zero divisor, an index out of range), which the
+    body's `exceptional_exits` records."""
     op: str
     operands: tuple[MIRSlotId, ...]
     may_raise: bool
@@ -501,6 +517,11 @@ class MIRFunction:
     regions: tuple[MIRRegion, ...] = ()
     call_summaries: tuple[MIRCallSummary, ...] = ()
     borrowed_result: THIRBorrowedRecord | None = None
+    # Some statement can exit the body by exception (`validate.statement_may_raise`):
+    # a raising operation, an allocating copy or materialization, a call whose
+    # summary may raise, or a print. Derived at lowering, re-checked by the
+    # validator.
+    exceptional_exits: bool = False
 
 
 @dataclass(frozen=True)

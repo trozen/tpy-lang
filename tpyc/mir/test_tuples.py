@@ -14,7 +14,7 @@ from ..typesys import INT32, TupleType
 from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
-from .nodes import MIRBodyId, MIRBodyKind, MIRFieldId, MIRFunction, MIRNotCovered
+from .nodes import MIRBodyId, MIRFieldId, MIRFunction, MIRNotCovered
 from .testutil import Heap, Reference, execute
 
 Artifacts = tuple[dict[str, th.THIRFunction], tuple[th.THIRConstructor, ...], tuple[str, str]]
@@ -120,7 +120,7 @@ def artifacts() -> Artifacts:
 
 
 def lower(fn: th.THIRFunction, constructors: tuple[th.THIRConstructor, ...] = ()) -> MIRFunction:
-    result = lower_function(fn, MIRBodyId("tuples", fn.name), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("tuples", fn.name),
                             definitions=MIRDefinitions(constructors))
     assert isinstance(result, MIRFunction), result
     return result
@@ -198,7 +198,7 @@ def test_shared_producers_cover_methods_and_constructors(artifacts: Artifacts) -
         projected = [n for n in nodes(body) if isinstance(n, th.THIRFieldAccess)
                      and isinstance(n.receiver, th.THIRSubscript)]
         assert projected and all(n.field_identity is not None for n in projected)
-    result = lower_function(method, MIRBodyId("tuples", "observe"), kind=MIRBodyKind.METHOD)
+    result = lower_function(method, MIRBodyId("tuples", "observe"))
     assert isinstance(result, MIRFunction)
     value = MIRFieldId(method.receiver.type, "value")
     assert execute(result, Reference(1), Reference(1), heap={1: {value: 1}}) == 7
@@ -215,8 +215,7 @@ def test_missing_or_contradictory_capture_facts_are_uncovered(
     fn = functions["copied"]
     decl = fn.body[0]
     bad = replace(fn, body=(replace(decl, init=change(decl.init)), *fn.body[1:]))
-    assert isinstance(lower_function(bad, MIRBodyId("tuples", fn.name),
-                                    kind=MIRBodyKind.FREE_FUNCTION), MIRNotCovered)
+    assert isinstance(lower_function(bad, MIRBodyId("tuples", fn.name)), MIRNotCovered)
 
 
 def test_normalized_index_is_positive_fact(artifacts: Artifacts) -> None:
@@ -226,8 +225,7 @@ def test_normalized_index_is_positive_fact(artifacts: Artifacts) -> None:
     assert ret.value.tuple_index == 1 and ret.value.index.value == 1
     for index in (None, -1, 2, True):
         bad = replace(fn, body=(*fn.body[:-1], replace(ret, value=replace(ret.value, tuple_index=index))))
-        assert isinstance(lower_function(bad, MIRBodyId("tuples", fn.name),
-                                        kind=MIRBodyKind.FREE_FUNCTION), MIRNotCovered)
+        assert isinstance(lower_function(bad, MIRBodyId("tuples", fn.name)), MIRNotCovered)
         if index is not None:
             with pytest.raises(THIRValidationError, match="tuple index"):
                 validate_thir(bad)
@@ -268,7 +266,7 @@ def test_readonly_source_thir_boundary(artifacts: Artifacts) -> None:
             8 if shared else 4)
     mutable = th.THIRTupleLayout((replace(reference, readonly=False),))
     bad = replace(fn, body=(replace(fn.body[0], tuple_layout=mutable), *fn.body[1:]))
-    result = lower_function(bad, MIRBodyId("tuples", fn.name), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(bad, MIRBodyId("tuples", fn.name))
     assert isinstance(result, MIRNotCovered) and "access mismatch" in result.reason
 
 
@@ -292,8 +290,7 @@ def example(a: readonly[Cell]) -> int32:
 ])
 def test_deferred_source_shapes_are_whole_body_uncovered(body: str, reason: str) -> None:
     functions, constructors, _ = compile_artifacts(PRELUDE + body)
-    result = lower_function(functions["example"], MIRBodyId("tuples", "example"),
-                            kind=MIRBodyKind.FREE_FUNCTION, definitions=MIRDefinitions(constructors))
+    result = lower_function(functions["example"], MIRBodyId("tuples", "example"), definitions=MIRDefinitions(constructors))
     assert isinstance(result, MIRNotCovered), result
     assert reason in result.reason
 
@@ -310,8 +307,7 @@ def test_unknown_tuple_storage_metadata_is_not_ignored(
     # Disable addr_of solely to allow construction of the wrapped node.
     decl = replace(fn.body[0], init=replace(fn.body[0].init, addr_of=(False, False)))
     fn = replace(fn, body=(change(decl), *fn.body[1:]))
-    assert isinstance(lower_function(fn, MIRBodyId("tuples", fn.name),
-                                    kind=MIRBodyKind.FREE_FUNCTION), MIRNotCovered)
+    assert isinstance(lower_function(fn, MIRBodyId("tuples", fn.name)), MIRNotCovered)
 
 
 def test_tuple_elements_cannot_write_existing_locals() -> None:
@@ -324,7 +320,7 @@ def test_tuple_elements_cannot_write_existing_locals() -> None:
     fn = th.THIRFunction("effect", (th.THIRParam("x", INT32, passing=ParamPassing.VALUE),), INT32,
                          (th.THIRVarDecl("pair", typ, init=literal, tuple_layout=layout),
                           th.THIRReturn(th.THIRName(INT32, "x"))), th.THIRFunctionLayout())
-    result = lower_function(fn, MIRBodyId("tuples", fn.name), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("tuples", fn.name))
     assert isinstance(result, MIRNotCovered)
     assert result.reason == "effectful or mistyped tuple element"
     assert result.node_kind == "THIRWalrus"
@@ -367,6 +363,6 @@ def test_owned_and_generic_captures_do_not_get_borrow_layouts(body: str) -> None
     # The node class alone must not classify every reference-type member as borrowed.
     assert isinstance(decl.init, th.THIRBorrowTupleLiteral)
     assert decl.init.tuple_layout is None and decl.tuple_layout is None
-    result = lower_function(fn, MIRBodyId("tuples", fn.name), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("tuples", fn.name),
                             definitions=MIRDefinitions(constructors))
     assert isinstance(result, MIRNotCovered), result

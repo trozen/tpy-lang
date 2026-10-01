@@ -11,7 +11,7 @@ from ..typesys import BOOL, INT32, NominalType
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRBranch, MIRConstant,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant,
     MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRGoto,
     MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordLayout, MIRRecordWrite,
     MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
@@ -58,7 +58,6 @@ def source_function(source: str, name: str = "reuse") -> MIRFunction:
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(fn for fn in ctx.thir_functions.values() if fn.name == name)
     result = lower_function(fn, MIRBodyId("reuse", name),
-                            kind=MIRBodyKind.METHOD if fn.receiver is not None else MIRBodyKind.FREE_FUNCTION,
                             definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
     assert isinstance(result, MIRFunction), result
     return result
@@ -142,8 +141,8 @@ def backing_function() -> MIRFunction:
     field = MIRField(MIRFieldId(cell, "value"), INT32)
     slots = (MIRSlot(n, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
              MIRSlot(store, cell, MIRSlotKind.TEMPORARY, form=Form.STORAGE,
-                     value_kind=MIRValueKind.RECORD_STORAGE, storage_duration=MIRStorageDuration.BODY),
-             MIRSlot(holder, cell, MIRSlotKind.LOCAL, form=Form.BORROW, value_kind=MIRValueKind.BORROWED_RECORD),
+                     value_kind=MIRValueKind.OWNED, storage_duration=MIRStorageDuration.BODY),
+             MIRSlot(holder, cell, MIRSlotKind.LOCAL, form=Form.BORROW, value_kind=MIRValueKind.BORROWED),
              MIRSlot(result, INT32, MIRSlotKind.LOCAL), MIRSlot(flag, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE))
     return MIRFunction(body, INT32, slots, (
         MIRBlock(a, (), MIRGoto(loop)),

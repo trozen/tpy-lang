@@ -10,16 +10,17 @@ from ..mir_workspace import MIRCallWorkspace, analyze_call_workspace
 from .. import cli
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL
-from .call_contract import MIRSummaryResult, MIRSummaryState
+from .call_contract import MIRGlobalId, MIRSummaryResult, MIRSummaryState, summary_problem
 from .collect import call_definitions, dump_codegen_mir
 from .definitions import MIRDefinitions
 from .dependencies import analyze_dependencies
 from .dump import dump_function
 from .liveness import analyze_liveness
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRBranch, MIRCall, MIRConstant,
-    MIRCopy, MIRFunction, MIRNotCovered, MIRPoint, MIRValueKind,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRConstant,
+    MIRCopy, MIRFunction, MIRNotCovered, MIRPoint, MIRRead, MIRSlotKind, MIRValueKind,
 )
 from .lower import lower_function
 from .presence import _analyze_presence
@@ -116,6 +117,20 @@ global_value = 3
 def global_argument() -> int32:
     return identity(global_value)
 
+def global_reader() -> int32:
+    return global_value
+
+def reads_through_callee() -> int32:
+    return global_reader()
+
+def global_writer() -> int32:
+    global global_value
+    global_value = 4
+    return 0
+
+def calls_global_writer() -> int32:
+    return global_writer()
+
 def optional_scalar_argument(value: int32 | None) -> int32:
     if value is not None:
         return identity(value)
@@ -210,8 +225,12 @@ def test_conditional_call_is_only_on_selected_arm(artifacts: Artifacts) -> None:
 
 def test_covered_caller_need_not_have_usable_summary(artifacts: Artifacts) -> None:
     _, workspace, _, _, _ = artifacts
+    # Private record storage keeps `observe` opaque although its body lowers.
+    assert len(calls(body_named(workspace, "observe"))) == 2
+    assert workspace.summaries[th.THIRFunctionIdentity("main", "observe")].state is MIRSummaryState.OPAQUE
+    # A loop is no obstacle: the dependency and liveness fixpoints summarize it.
     assert len(calls(body_named(workspace, "loop"))) == 2
-    assert workspace.summaries[th.THIRFunctionIdentity("main", "loop")].state is MIRSummaryState.OPAQUE
+    assert workspace.summaries[th.THIRFunctionIdentity("main", "loop")].state is MIRSummaryState.KNOWN
 
 
 @pytest.mark.parametrize(("name", "reason"), [
@@ -275,7 +294,7 @@ def test_standalone_validation_requires_the_published_contract(artifacts: Artifa
             body = replace(body, slots=tuple(replace(s, type=BOOL) if s.id == stmt.target.root else s
                                              for s in body.slots))
         else:
-            storage = next(s.id for s in body.slots if s.value_kind is MIRValueKind.RECORD_STORAGE)
+            storage = next(s.id for s in body.slots if s.value_kind is MIRValueKind.OWNED)
             call = replace(call, arguments=(storage,))
         body = replace(body, blocks=tuple(
             replace(block, statements=tuple(replace(s, value=call) if i == point.index else s
@@ -294,6 +313,8 @@ def test_standalone_validation_requires_the_published_contract(artifacts: Artifa
     ("arity", "call signature mismatch"), ("result", "call signature mismatch"),
     ("pending", "call needs finalized known summary"),
     ("opaque", "call needs finalized known summary"),
+    ("unpublished", "signature passings unpublished"),
+    ("passings", "signature passings mismatch"),
 ])
 def test_call_coverage_checks_selected_signature_and_contract(artifacts: Artifacts, damage: str, reason: str) -> None:
     functions, workspace, definitions, _, _ = artifacts
@@ -311,22 +332,66 @@ def test_call_coverage_checks_selected_signature_and_contract(artifacts: Artifac
             summary.callee.signature, return_type=BOOL))) if damage == "stale" else
             replace(summary, writes=frozenset({0})))
         entries[call.resolved_callee.identity] = MIRSummaryResult(MIRSummaryState.KNOWN, summary)
+    elif damage in ("unpublished", "passings"):
+        # The call and the summary agree on a signature whose passings are not the bindings'.
+        assert call.resolved_callee.signature.passings == (ParamPassing.CONST_REF,)
+        callee = replace(call.resolved_callee, signature=replace(
+            call.resolved_callee.signature, passings=None if damage == "unpublished" else (ParamPassing.MUT_REF,)))
+        summary = replace(entry.summary, callee=callee)
+        assert summary_problem(summary) == reason
+        entries[callee.identity] = MIRSummaryResult(MIRSummaryState.KNOWN, summary)
+        fn = replace(fn, body=(replace(stmt, value=replace(call, resolved_callee=callee)),))
     else:
         call = replace(call, **({"args": ()} if damage == "arity" else {"result_type": BOOL}))
         fn = replace(fn, body=(replace(stmt, value=call),))
-    result = lower_function(fn, MIRBodyId("bad", damage), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("bad", damage),
                             definitions=definitions, summaries=entries)
     assert isinstance(result, MIRNotCovered) and result.reason == reason
 
 
+def test_scalar_global_argument_is_read_before_the_call(artifacts: Artifacts) -> None:
+    # Sound because a KNOWN callee writes no global: the read value is the one the call sees.
+    body = body_named(artifacts[1], "global_argument")
+    (point, stmt), = calls(body)
+    argument, = stmt.value.arguments
+    slots = {s.id: s for s in body.slots}
+    assert slots[argument].kind is MIRSlotKind.TEMPORARY
+    read, = (s for b in body.blocks for s in b.statements if isinstance(s, MIRAssign) and s.target.root == argument)
+    assert isinstance(read.value, MIRRead) and slots[read.value.source.root].kind is MIRSlotKind.GLOBAL
+    result = artifacts[1].summaries[th.THIRFunctionIdentity("main", "global_argument")]
+    assert result.state is MIRSummaryState.KNOWN, result.reason
+    assert result.summary.global_reads == frozenset({MIRGlobalId("main", "global_value")})
+    # A global slot handed straight to the call skips the read.
+    damaged = replace(body, blocks=tuple(replace(block, statements=tuple(
+        replace(s, value=replace(s.value, arguments=(read.value.source.root,))) if s is stmt else s
+        for s in block.statements)) for block in body.blocks))
+    with pytest.raises(MIRValidationError, match="global value needs explicit read"):
+        validate_function(damaged)
+
+
 @pytest.mark.parametrize(("name", "reason"), [
-    ("global_argument", "call global argument"),
     ("optional_scalar_argument", "call needs unwrapped scalar binding"),
     ("optional_record_argument", "call needs unwrapped record binding"),
 ])
 def test_argument_adaptations_remain_explicitly_uncovered(artifacts: Artifacts, name: str, reason: str) -> None:
     result = next(body for bid, body in artifacts[1].bodies.items() if bid.declaration.split("@")[0] == name)
     assert isinstance(result, MIRNotCovered) and result.reason == reason
+
+
+def test_global_reads_union_through_consumed_summaries(artifacts: Artifacts) -> None:
+    _, workspace, _, _, dump = artifacts
+    for name in ("global_reader", "reads_through_callee"):
+        result = workspace.summaries[th.THIRFunctionIdentity("main", name)]
+        assert result.state is MIRSummaryState.KNOWN, result.reason
+        assert result.summary.global_reads == frozenset({MIRGlobalId("main", "global_value")})
+    caller = dump.split("::reads_through_callee@", 1)[1].split("\nfn ", 1)[0]
+    assert "global-reads={main::global_value}" in caller
+    # A global write keeps the writer opaque, and so every caller of it.
+    writer = workspace.summaries[th.THIRFunctionIdentity("main", "global_writer")]
+    assert writer.state is MIRSummaryState.OPAQUE and writer.reason == "summary global access"
+    assert isinstance(body_named(workspace, "global_writer"), MIRFunction)
+    caller = next(body for bid, body in workspace.bodies.items() if bid.declaration.startswith("calls_global_writer"))
+    assert isinstance(caller, MIRNotCovered) and caller.reason == "call needs finalized known summary"
 
 
 def test_cli_workspace_resolves_import_aliases(tmp_path: Path, capsys: pytest.CaptureFixture[str],

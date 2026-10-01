@@ -13,7 +13,7 @@ from ..typesys import BOOL, INT32
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRBodyId, MIRBodyKind, MIRFunction, MIRGlobalId, MIRNotCovered, MIRSlotKind,
+    MIRBodyId, MIRFunction, MIRGlobalId, MIRNotCovered, MIRSlotKind,
     MIRAssign, MIRCompare, MIRNot, MIRPlace, MIRReturn,
 )
 from .testutil import Reference, execute
@@ -67,8 +67,7 @@ def artifacts() -> Artifacts:
 
 
 def lower(fn: th.THIRFunction, module: str = "globals") -> MIRFunction:
-    kind = MIRBodyKind.METHOD if fn.receiver is not None else MIRBodyKind.FREE_FUNCTION
-    result = lower_function(fn, MIRBodyId(module, fn.name), kind=kind)
+    result = lower_function(fn, MIRBodyId(module, fn.name))
     assert isinstance(result, MIRFunction), result
     return result
 
@@ -112,8 +111,7 @@ def test_external_storage_must_be_supplied_and_eager_writes_stay_uncovered(artif
     functions, _ = artifacts
     with pytest.raises(AssertionError, match="global storage"):
         execute(lower(functions["read"]))
-    result = lower_function(functions["ordered"], MIRBodyId("globals", "ordered"),
-                            kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(functions["ordered"], MIRBodyId("globals", "ordered"))
     assert isinstance(result, MIRNotCovered) and result.reason == "order-sensitive eager operands"
 
 
@@ -126,13 +124,12 @@ def test_global_metadata_controls_identity_and_permissions(artifacts: Artifacts)
     assert f"{value.global_binding.module}::count" in dump_function(lower(fn))
     for fact in (None, replace(value.global_binding, type=BOOL)):
         altered = replace(fn, body=(replace(fn.body[0], value=replace(value, global_binding=fact)),))
-        result = lower_function(altered, MIRBodyId("globals", "bad"), kind=MIRBodyKind.FREE_FUNCTION)
+        result = lower_function(altered, MIRBodyId("globals", "bad"))
         assert isinstance(result, MIRNotCovered)
     with pytest.raises(THIRValidationError, match="global binding"):
         validate_thir(altered)
     write = th.THIRAssign(target=value, value=th.THIRLiteral(result_type=INT32, value=5))
-    result = lower_function(replace(fn, body=(write, *fn.body)), MIRBodyId("globals", "badwrite"),
-                            kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(replace(fn, body=(write, *fn.body)), MIRBodyId("globals", "badwrite"))
     assert isinstance(result, MIRNotCovered) and result.reason == "global binding is not writable"
 
 
@@ -230,7 +227,7 @@ def other() -> int32:
     for name in ("same", "other"):
         fn = functions[name]
         assert fn.body[0].value.global_binding is None
-        result = lower_function(fn, MIRBodyId("native", name), kind=MIRBodyKind.FREE_FUNCTION)
+        result = lower_function(fn, MIRBodyId("native", name))
         assert isinstance(result, MIRNotCovered)
 
 
@@ -275,5 +272,5 @@ def reexport() -> int32:
     # These bindings currently follow foreign rebinds instead of Python import snapshots.
     # BUGS.md#imported-scalar-binding-tracks-foreign-rebind
     for name in ("imported", "reexport"):
-        result = lower_function(functions[name], MIRBodyId("globals", name), kind=MIRBodyKind.FREE_FUNCTION)
+        result = lower_function(functions[name], MIRBodyId("globals", name))
         assert isinstance(result, MIRNotCovered)

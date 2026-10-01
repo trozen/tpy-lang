@@ -52,12 +52,12 @@ def _holds(member: MIRTupleElement | MIROptionalLayout) -> bool:
         if not scalar_member(member):
             raise MIRValidationError("scalar member is not an inert leaf")
         return False
-    return member.kind is MIRValueKind.BORROWED_RECORD
+    return member.kind is MIRValueKind.BORROWED
 
 
 def _leaves(slot: MIRSlot) -> tuple[MIRPlace, ...]:
     match slot.value_kind:
-        case (MIRValueKind.BORROWED_RECORD | MIRValueKind.PAYLOAD_ALIAS
+        case (MIRValueKind.BORROWED | MIRValueKind.PAYLOAD_ALIAS
               | MIRValueKind.BORROWED_CONTAINER | MIRValueKind.NATIVE_ITERATOR):
             return (MIRPlace(slot.id),)
         case MIRValueKind.TUPLE:
@@ -75,7 +75,7 @@ def _leaves(slot: MIRSlot) -> tuple[MIRPlace, ...]:
             if not scalar_slot(slot):
                 raise MIRValidationError("scalar holder is not an inert leaf")
             return ()
-        case MIRValueKind.RECORD_STORAGE:
+        case MIRValueKind.OWNED:
             return ()
         case _:
             raise MIRValidationError("unknown dependency holder kind")
@@ -84,7 +84,7 @@ def _leaves(slot: MIRSlot) -> tuple[MIRPlace, ...]:
 def _coverage(fn: MIRFunction) -> str | None:
     slots = {s.id: s for s in fn.slots}
     for slot in fn.slots:
-        root = (slot if slot.value_kind is MIRValueKind.RECORD_STORAGE or owned_tuple(slot) else
+        root = (slot if slot.value_kind is MIRValueKind.OWNED or owned_tuple(slot) else
                 slots[slot.alias_source.root] if slot.alias_source is not None else None)
         if root is not None and root.storage_duration is None:
             return f"missing storage duration for %{root.id.index}"
@@ -127,13 +127,13 @@ def resolve_referents(place: MIRPlace, state: MIRReferents,
     # Payload selectors address a holder leaf; dereference follows its value.
     leaf = MIRPlace(place.root)
     refs = (frozenset({MIRReferent(leaf)})
-            if slots[place.root].value_kind is MIRValueKind.RECORD_STORAGE else state.get(leaf, empty))
+            if slots[place.root].value_kind is MIRValueKind.OWNED else state.get(leaf, empty))
     for projection in place.projections:
         match projection:
             case MIRTupleIndex():
                 leaf = MIRPlace(leaf.root, (*leaf.projections, projection))
                 member = slots[place.root].tuple_layout.elements[projection.index]
-                refs = (frozenset({MIRReferent(leaf)}) if member.kind is MIRValueKind.RECORD_STORAGE
+                refs = (frozenset({MIRReferent(leaf)}) if member.kind is MIRValueKind.OWNED
                         else state.get(leaf, empty))
             case MIROptionalPayload() | MIRUnionPayload():
                 leaf = MIRPlace(leaf.root, (*leaf.projections, projection))
@@ -181,7 +181,7 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
         result: dict[MIRPlace, frozenset[MIRReferent]] = {}
         match value:
             case MIRCall():
-                if value.summary.callee.signature.borrowed_result is not None:
+                if value.summary.borrowed_result is not None:
                     result[target] = resolve_call_returns(value, state, slots) or empty
             case MIRIteratorInit(source=source):
                 result[target] = frozenset(
@@ -191,7 +191,7 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
             case MIRIteratorAdvance(source=source):
                 result[target] = state.get(MIRPlace(source), empty)
             case MIRIteratorRead(source=source):
-                if slots[target.root].value_kind is MIRValueKind.BORROWED_RECORD:
+                if slots[target.root].value_kind is MIRValueKind.BORROWED:
                     result[target] = frozenset(r for r in state.get(MIRPlace(source), empty)
                                                if isinstance(r.place.projections[-1], MIRContainerElements))
             case MIRAlias(source=source):
@@ -214,6 +214,10 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
                 leaf = MIRPlace(target.root, (MIRUnionPayload(alternative),))
                 if source is not None and leaf in leaves[target.root]:
                     result[leaf] = state.get(MIRPlace(source), empty)
+            case MIRConstant() if slots[target.root].value_kind is MIRValueKind.BORROWED:
+                # A literal's static storage outlives the body and is never written:
+                # the holder's own identity names that immortal external origin.
+                result[target] = frozenset({MIRReferent(MIRPlace(target.root), external=True)})
             case (MIRConstant() | MIRRead() | MIRCompare() | MIRNot() | MIROp() | MIRIsPresent()
                   | MIRIsAlternative() | MIRConstruct() | MIRCopy() | MIRMove() | MIRIteratorHasNext()
                   | MIRRangeAdvance()):
@@ -225,8 +229,12 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
                 state.pop(leaf, None)
             state.update((leaf, refs) for leaf, refs in result.items() if refs)
 
+    # A parameter holder borrows storage outside the body; an owned-leaf
+    # global's handle names the global itself (`global:<module>.<name>` by its
+    # slot's identity), external and static. External origins may alias.
     seed = {leaf: frozenset({MIRReferent(leaf, external=True)})
-            for slot in fn.slots if slot.kind is MIRSlotKind.PARAMETER for leaf in leaves[slot.id]}
+            for slot in fn.slots if slot.kind in (MIRSlotKind.PARAMETER, MIRSlotKind.GLOBAL)
+            for leaf in leaves[slot.id]}
     blocks = {b.id: b for b in fn.blocks}
     regions = MIRRegionFlow(fn)
     incoming: dict[MIRBlockId, dict[MIRPlace, frozenset[MIRReferent]]] = {fn.entry: seed.copy()}

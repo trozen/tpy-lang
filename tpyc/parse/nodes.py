@@ -1563,6 +1563,7 @@ class TpyFunction:
     is_readonly: bool = False
     readonly_opt_out: bool = False
     is_pure: bool = False
+    is_transient: bool = False
     is_override: bool = False
     hides_parent: bool = False
     # Which overload decorator the def carries, or None for a plain def.

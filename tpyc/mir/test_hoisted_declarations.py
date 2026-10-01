@@ -10,7 +10,7 @@ from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, MIRRecordWrite,
+    MIRBodyId, MIRFunction, MIRNotCovered, MIRRecordWrite,
     MIRRecordWriteMode, MIRReturn, MIRStorageDuration, MIRValueKind,
 )
 from .scope_lifetime import inspect_scope_lifetimes
@@ -244,8 +244,7 @@ def hoists() -> Hoists:
     functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
     bodies = {}
     for name, fn in functions.items():
-        result = lower_function(fn, MIRBodyId("hoists", name), definitions=definitions,
-                                kind=MIRBodyKind.METHOD if fn.receiver else MIRBodyKind.FREE_FUNCTION)
+        result = lower_function(fn, MIRBodyId("hoists", name), definitions=definitions)
         if name == "global_optional":
             assert isinstance(result, MIRNotCovered) and result.node_kind == "THIRName"
         else:
@@ -315,7 +314,7 @@ def test_record_backing_has_body_duration_but_holder_keeps_lexical_residence(hoi
         blocks = {b.id: b for b in fn.blocks}
         assert all(isinstance(blocks[edge.source].terminator, MIRReturn) for edge in inspection.ends.ends)
     local = next(s for s in bodies["escaped_loop"].slots if s.name == "local")
-    assert local.value_kind is MIRValueKind.BORROWED_RECORD and local.residence.index != 0
+    assert local.value_kind is MIRValueKind.BORROWED and local.residence.index != 0
     assert "Cell* value;" in cpp and "std::optional<Cell>" in cpp
 
 
@@ -342,8 +341,7 @@ def test_incomplete_or_inconsistent_hoist_facts_fail_closed(hoists: Hoists, dama
                                                        tuple_layout=th.THIRTupleLayout((INT32,))),))
     else:
         stmt = replace(stmt, hoist_slots=(("value", "int32_t"),))
-    result = lower_function(replace(fn, body=(stmt, *rest)), MIRBodyId("bad", damage),
-                            kind=MIRBodyKind.FREE_FUNCTION, definitions=definitions)
+    result = lower_function(replace(fn, body=(stmt, *rest)), MIRBodyId("bad", damage), definitions=definitions)
     assert isinstance(result, MIRNotCovered), result
 
 
@@ -352,7 +350,7 @@ def test_predeclaration_does_not_satisfy_definite_assignment(hoists: Hoists) -> 
     fn = functions["scalar"]
     stmt, *rest = fn.body
     result = lower_function(replace(fn, body=(replace(stmt, else_body=()), *rest)),
-                            MIRBodyId("bad", "unassigned"), kind=MIRBodyKind.FREE_FUNCTION, definitions=definitions)
+                            MIRBodyId("bad", "unassigned"), definitions=definitions)
     assert isinstance(result, MIRNotCovered) and "definite assignment" in result.reason
     mir = bodies["scalar"]
     value = next(s.id for s in mir.slots if s.name == "value")
@@ -367,8 +365,7 @@ def test_hoist_analysis_uses_typed_facts_not_render_strings(hoists: Hoists) -> N
     fn = functions["scalar"]
     stmt, *rest = fn.body
     changed = replace(stmt, hoist_decls=(th.HoistDecl("value", "uninterpreted render data"),))
-    result = lower_function(replace(fn, body=(changed, *rest)), MIRBodyId("facts", "scalar"),
-                            kind=MIRBodyKind.FREE_FUNCTION, definitions=definitions)
+    result = lower_function(replace(fn, body=(changed, *rest)), MIRBodyId("facts", "scalar"), definitions=definitions)
     assert isinstance(result, MIRFunction) and execute(result, True) == 1
 
 

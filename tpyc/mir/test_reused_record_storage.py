@@ -12,7 +12,7 @@ from .definitions import MIRDefinitions
 from .liveness import MIRPoint, analyze_liveness
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBodyId, MIRBodyKind, MIRBranch, MIRConstant,
+    MIRAssign, MIRBlock, MIRBodyId, MIRBranch, MIRConstant,
     MIRConstruct, MIRCopy, MIRDeref, MIRFunction, MIRGoto, MIRMove,
     MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot,
     MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRValueKind,
@@ -45,7 +45,7 @@ def test_reused_site_keeps_previous_holder_dependencies(move: bool, shape: str, 
 def optional_transfers(fn: MIRFunction, move: bool) -> MIRFunction:
     source = MIRSlotId(fn.id, max(s.id.index for s in fn.slots) + 1)
     slot = MIRSlot(source, optional.CELL, MIRSlotKind.LOCAL, form=th.Form.STORAGE,
-                   value_kind=MIRValueKind.RECORD_STORAGE,
+                   value_kind=MIRValueKind.OWNED,
                    storage_duration=MIRStorageDuration.BODY, residence=optional.ROOT)
     init = MIRAssign(MIRPlace(source), MIRConstruct((optional.VALUE,)),
                      storage_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE))
@@ -198,7 +198,7 @@ def test_internal_hoisted_transfer_preserves_source_read_form(hoist: tuple[th.TH
     changed = replace(write, value=value)
     fn = replace(fn, body=(fn.body[0], replace(branch, then_body=(changed,)), *fn.body[2:]))
     validate_thir(fn)
-    result = lower_function(fn, MIRBodyId("reused", "hoisted"), kind=MIRBodyKind.FREE_FUNCTION, definitions=definitions)
+    result = lower_function(fn, MIRBodyId("reused", "hoisted"), definitions=definitions)
     assert isinstance(result, MIRFunction), result
     assert execute(result, False) == 0 and execute(result, True) == 3
     transfer, = (s for s in analyze_storage(result).writes.values() if isinstance(s.value, (MIRCopy, MIRMove)))

@@ -17,7 +17,7 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
-    MIRBodyId, MIRBodyKind, MIRBorrow, MIRConstruct, MIRCopy, MIRFieldId, MIRFunction,
+    MIRBodyId, MIRBorrow, MIRConstruct, MIRCopy, MIRFieldId, MIRFunction,
     MIRMove, MIRNotCovered, MIRRecordWriteMode, MIRValueKind,
 )
 from .storage import MIRStorageEvents, analyze_storage
@@ -137,7 +137,7 @@ def artifacts() -> Artifacts:
 
 
 def lower(fn: th.THIRFunction, constructors: tuple[th.THIRConstructor, ...]) -> MIRFunction:
-    result = lower_function(fn, MIRBodyId("owned", fn.name), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("owned", fn.name),
                             definitions=MIRDefinitions(constructors))
     assert isinstance(result, MIRFunction), result
     return result
@@ -218,7 +218,7 @@ def test_actual_producer_shapes_and_deterministic_dump(artifacts: Artifacts) -> 
         values = [s.value for b in fn.blocks for s in b.statements]
         assert any(isinstance(v, operation) for v in values)
         assert any(isinstance(v, MIRBorrow) for v in values)
-        assert any(s.value_kind is MIRValueKind.RECORD_STORAGE for s in fn.slots)
+        assert any(s.value_kind is MIRValueKind.OWNED for s in fn.slots)
         assert dump_function(fn) == dump_function(lower(functions[name], constructors))
     cell = next(c for c in constructors if c.record_name == "Cell")
     assert [f.name for f in cell.record_layout.fields] == ["value", "template", "flag"]
@@ -230,8 +230,7 @@ def test_missing_definitions_are_uncovered(artifacts: Artifacts) -> None:
     for name, definitions, reason in (
         ("shared", MIRDefinitions(), "missing constructor definition"),
     ):
-        result = lower_function(functions[name], MIRBodyId("owned", name),
-                                kind=MIRBodyKind.FREE_FUNCTION, definitions=definitions)
+        result = lower_function(functions[name], MIRBodyId("owned", name), definitions=definitions)
         assert isinstance(result, MIRNotCovered) and reason in result.reason
 
 
@@ -259,7 +258,7 @@ def test_incomplete_or_effectful_constructor_is_not_summarized(
     functions, constructors = artifacts
     changed = tuple(change(c) if c.record_name == "Cell" else c for c in constructors)
     fn = functions["shared"]
-    result = lower_function(fn, MIRBodyId("owned", fn.name), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("owned", fn.name),
                             definitions=MIRDefinitions(changed))
     assert isinstance(result, MIRNotCovered) and reason in result.reason
 
@@ -278,7 +277,7 @@ def test_constructor_arguments_are_complete_and_pure(
     fn = functions["shared"]
     declaration = replace(fn.body[0], init=change(fn.body[0].init))
     fn = replace(fn, params=(th.THIRParam("n", INT32, passing=ParamPassing.VALUE),), body=(declaration, *fn.body[1:]))
-    result = lower_function(fn, MIRBodyId("owned", fn.name), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("owned", fn.name),
                             definitions=MIRDefinitions(constructors))
     assert isinstance(result, MIRNotCovered) and reason in result.reason
 
@@ -309,7 +308,7 @@ def test_owned_and_self_alias_method_bodies(body: str) -> None:
         assert fn.body[0].owned_storage is not None
     else:
         assert fn.body[0].alias_binding.source == "self"
-    result = lower_function(fn, MIRBodyId("owned", "method"), kind=MIRBodyKind.METHOD,
+    result = lower_function(fn, MIRBodyId("owned", "method"),
                             definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
     assert isinstance(result, MIRFunction)
     value = MIRFieldId(fn.receiver.type, "value")
@@ -332,7 +331,7 @@ def test_real_constructor_effects_and_sibling_shapes_remain_uncovered(
     compiler, modules = _compile(source)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(f for n, f in ctx.thir_functions.items() if n.name == "build")
-    result = lower_function(fn, MIRBodyId("owned", "build"), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("owned", "build"),
                             definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
     assert isinstance(result, MIRNotCovered) and reason in result.reason
 
@@ -358,7 +357,7 @@ def test_special_member_facts_come_from_real_declarations(
     ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Record")
     assert getattr(ctor.record_layout, attribute) is expected
     fn = next(f for n, f in ctx.thir_functions.items() if n.name == "build")
-    result = lower_function(fn, MIRBodyId("owned", "build"), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("owned", "build"),
                             definitions=MIRDefinitions((ctor,)))
     if attribute.startswith("custom"):
         assert isinstance(result, MIRNotCovered) and "special member" in result.reason
@@ -408,7 +407,7 @@ def outer() -> int32:
     outer = next(f for n, f in ctx.thir_functions.items() if n.name == "outer")
     nested = next(s for s in outer.body if isinstance(s, th.THIRNestedDef))
     assert nested.body[0].owned_storage is not None
-    assert isinstance(lower_function(outer, MIRBodyId("owned", "outer"), kind=MIRBodyKind.FREE_FUNCTION),
+    assert isinstance(lower_function(outer, MIRBodyId("owned", "outer")),
                       MIRNotCovered)
 
 

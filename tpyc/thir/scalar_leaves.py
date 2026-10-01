@@ -1,7 +1,10 @@
 """The scalar leaves and records THIR storage facts and MIR model."""
 
-from ..type_def_registry import int_traits_of, type_def_of, zero_value_of
-from ..typesys import NominalType, Representation, is_inert_leaf
+from ..type_def_registry import float_traits_of, int_traits_of, type_def_of, zero_value_of
+from ..typesys import (
+    NominalType, OwnType, Representation, TpyType, is_inert_leaf, is_owned_leaf, is_primitive_owned_leaf,
+    unwrap_readonly,
+)
 
 
 def storage_leaf(typ: object, representation: Representation = Representation.STORAGE) -> bool:
@@ -10,6 +13,43 @@ def storage_leaf(typ: object, representation: Representation = Representation.ST
     there -- the primitives by `TypeDef.loan_inert`, and enum values. A
     wrapper (readonly, Own, Literal) or aggregate is never a leaf itself."""
     return isinstance(typ, NominalType) and not typ.type_args and is_inert_leaf(typ, representation)
+
+
+def owned_leaf(typ: object) -> bool:
+    """Whether `typ` is an owned leaf: a non-generic nominal type whose
+    TypeDef declares `owned_leaf` (`typesys.is_owned_leaf`). MIR holds one as
+    owned storage or as a readonly borrow of storage, never as a scalar."""
+    return isinstance(typ, NominalType) and not typ.type_args and is_owned_leaf(typ)
+
+
+def primitive_owned_leaf(typ: object) -> bool:
+    """An owned leaf whose TypeDef carries the primitive-operation contract
+    (`typesys.is_primitive_owned_leaf`): a certified operation reads it
+    through a borrow, and the runtime prints it."""
+    return owned_leaf(typ) and is_primitive_owned_leaf(typ)
+
+
+def leaf_global(typ: object) -> bool:
+    """A type a leaf global binding (`THIRGlobalBinding`) carries: an inert
+    scalar leaf or an owned leaf, which MIR reaches through a handle."""
+    return storage_leaf(typ) or owned_leaf(typ)
+
+
+def owned_value_type(typ: TpyType) -> TpyType | None:
+    """The owned leaf a value of `typ` stores, seeing through the ownership
+    wrapper and access modifiers; None for anything else."""
+    typ = unwrap_readonly(typ)
+    while isinstance(typ, OwnType):
+        typ = unwrap_readonly(typ.wrapped)
+    return typ if owned_leaf(typ) else None
+
+
+def owned_constant(typ: object, value: object) -> bool:
+    """Whether an owned leaf of `typ` holds the Python constant `value`: the
+    value has the Python type of the leaf's declared zero value
+    (`TypeDef.zero_value`)."""
+    zero = zero_value_of(typ) if owned_leaf(typ) else None
+    return zero is not None and type(value) is type(zero)
 
 
 def primitive_leaf(typ: object) -> bool:
@@ -50,3 +90,20 @@ def record_type(typ: object) -> bool:
         return False
     td = type_def_of(typ)
     return td is None or td.record is not None and not td.record.is_native and td.enum is None
+
+
+def converted_literal(typ: object, value: object) -> object | None:
+    """The constant a number literal holding `value` is once converted into
+    the leaf `typ`, or None when that leaf cannot hold it exactly. An int
+    literal in a float context (`x * 1000`) is converted by C++ itself, a
+    loan-free conversion that is exact up to the float's precision; every
+    other literal must already be a constant of the leaf (`leaf_constant`).
+    Kept apart from `leaf_constant`, which also decides which union
+    alternative a literal names by its own Python type."""
+    if leaf_constant(typ, value):
+        return value
+    floats = float_traits_of(typ) if storage_leaf(typ) else None
+    if (floats is not None and type(value) is int and type(zero_value_of(typ)) is float
+            and abs(value) <= 2 ** floats.significand_bits):
+        return float(value)
+    return None

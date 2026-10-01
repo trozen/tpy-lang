@@ -13,7 +13,7 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
-from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, MIRRead, MIRPoint, MIRTupleCopy
+from .nodes import MIRBodyId, MIRFunction, MIRNotCovered, MIRRead, MIRPoint, MIRTupleCopy
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage
 from .testutil import Reference, execute
@@ -88,8 +88,7 @@ def artifacts() -> Artifacts:
 
 
 def lower(fn: th.THIRFunction, definitions: MIRDefinitions) -> MIRFunction | MIRNotCovered:
-    return lower_function(fn, MIRBodyId("tuple_alias", fn.name), definitions=definitions,
-                          kind=MIRBodyKind.METHOD if fn.receiver else MIRBodyKind.FREE_FUNCTION)
+    return lower_function(fn, MIRBodyId("tuple_alias", fn.name), definitions=definitions)
 
 
 def test_alias_chains_preserve_mutation_in_each_position(artifacts: Artifacts) -> None:

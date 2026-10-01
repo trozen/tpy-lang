@@ -11,7 +11,7 @@ from .dependencies import MIRDependencies, MIRReferent, _dependencies
 from .dump import _place
 from .liveness import MIRLiveness, _liveness
 from .nodes import (
-    MIRBlockId, MIRConstruct, MIRCopy, MIREdge, MIRFunction, MIRMove,
+    MIRBlockId, MIREdge, MIRFunction,
     MIRNotCovered, MIROptionalPayload, MIRPayloadWrite, MIRPlace,
     MIRRecordWrite, MIRRegionId, MIRSlotId, MIRSlotKind, MIRStorageDuration,
     MIRUnionPayload, MIRValueKind, MIRPoint, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
@@ -52,7 +52,7 @@ def _scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
         raise MIRValidationError("selection facts belong to a different MIR function")
     if not fn.regions:
         return MIRNotCovered(fn.id, "scope ends", "missing emitted storage regions")
-    roots = {s.id: s for s in fn.slots if s.value_kind is MIRValueKind.RECORD_STORAGE
+    roots = {s.id: s for s in fn.slots if s.value_kind is MIRValueKind.OWNED
              or owned_tuple(s) or s.kind is MIRSlotKind.LOCAL and scalar_wrapper(s)}
     for slot in roots.values():
         if slot.storage_duration is None:
@@ -69,14 +69,17 @@ def _scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
             if isinstance(stmt, (MIRStorageInit, MIRRecordStorageInit)):
                 initialized[block.id].add(stmt.target.root)
                 continue
-            record = isinstance(stmt.value, (MIRConstruct, MIRCopy, MIRMove))
-            expected = (MIRTupleInitialization if owned_tuple(roots[stmt.target.root])
-                        else MIRRecordWrite if record else MIRPayloadWrite)
+            # The fact follows the destination's storage, not the operation filling it.
+            root = roots[stmt.target.root]
+            expected = (MIRTupleInitialization if owned_tuple(root)
+                        else MIRRecordWrite if root.value_kind is MIRValueKind.OWNED else MIRPayloadWrite)
             if not isinstance(stmt.storage_write, expected):
                 return MIRNotCovered(fn.id, "scope ends", "missing storage initialization/write fact", stmt.loc)
             initialized[block.id].add(stmt.target.root)
     # A body-hoisted OWN site's optional backing can remain unengaged forever.
-    incoming: dict[MIRBlockId, frozenset[MIRSlotId]] = {fn.entry: frozenset()}
+    # A by-value parameter's storage is initialized before entry.
+    incoming: dict[MIRBlockId, frozenset[MIRSlotId]] = {
+        fn.entry: frozenset(sid for sid, slot in roots.items() if slot.kind is MIRSlotKind.PARAMETER)}
     outgoing: dict[MIRBlockId, frozenset[MIRSlotId]] = {}
     pending = deque([fn.entry])
     queued = {fn.entry}

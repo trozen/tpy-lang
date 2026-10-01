@@ -12,7 +12,7 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRBodyId, MIRBodyKind, MIRContainerElements, MIRFunction,
+    MIRBodyId, MIRContainerElements, MIRFunction,
     MIRNotCovered, MIRPlace, MIRPoint, MIRReturn, MIRValueKind,
 )
 from .scope_lifetime import analyze_scope_ends
@@ -86,8 +86,7 @@ def compile_bodies(source: str):
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
     functions = {fn.name: fn for fn in ctx.thir_functions.values()}
-    bodies = {name: lower_function(fn, MIRBodyId("native", name), definitions=definitions,
-                                  kind=MIRBodyKind.METHOD if fn.receiver else MIRBodyKind.FREE_FUNCTION)
+    bodies = {name: lower_function(fn, MIRBodyId("native", name), definitions=definitions)
               for name, fn in functions.items()}
     for ctor in ctx.thir_constructors.values():
         bodies[ctor.record_name] = lower_constructor(ctor, MIRBodyId("native", ctor.record_name),
@@ -188,7 +187,7 @@ def test_native_facts_fail_closed(artifacts, damage: str) -> None:
         case "reseat":
             fn = replace(fn, layout=replace(fn.layout, reassigned_locals=frozenset({"source"})))
     fn = replace(fn, body=tuple(loop if isinstance(s, th.THIRForEach) else s for s in fn.body))
-    result = lower_function(fn, MIRBodyId("native", "damaged"), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("native", "damaged"),
                             definitions=definitions)
     assert isinstance(result, MIRNotCovered)
 

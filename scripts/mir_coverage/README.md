@@ -17,6 +17,12 @@ excluded) gets:
 | conflict | an inspection reported a conflict (scope end, payload end, replacement, stale alias) or the certificate's verdict is CONFLICT |
 | certified | `storage_adapter.certify_thir_storage` returned CERTIFIED and the certificate binds the request |
 
+Next to the four, **exc-exits** counts the lowered bodies whose
+`MIRFunction.exceptional_exits` is set: a raising operation, an allocating
+copy or constant, or a call whose summary may raise. A storage verdict is
+normal-path evidence, so these are the bodies whose exceptional exits no
+certificate covers; the count reads the fact rather than a storage gap.
+
 `certify_thir_storage` with `requires_proof == False` (the body has no
 materialized storage and no borrowed-expression obligations) is its own
 bucket, **no-proof**, and never counts as certified. `requires_proof is None`
@@ -85,14 +91,11 @@ its own.
 - **Trial-scope events count.** Sema analyzes some expressions tentatively
   and discards the result; hooks fired inside such a trial still mark the body
   loan-active.
-- Body kinds follow `--dump-mir` rather than correcting it. The workspace
-  pass (`mir_workspace.analyze_call_workspace`) lowers every scheduled
-  callable as a free function and `--dump-mir` reuses that result, so an
-  instance method it scheduled is reported as "body kind and receiver
-  mismatch". Every other callable with an owner -- dunders, properties and
-  staticmethods included -- is lowered as a METHOD by `tpyc/mir/collect.py`,
-  so a staticmethod (no receiver) reports the same mismatch and dunders and
-  properties are measured as ordinary methods. The `position` column still
-  names each kind.
+- Body kinds follow `--dump-mir`: every path lowers a callable as a METHOD
+  exactly when its THIR carries a receiver fact
+  (`tpyc.mir.nodes.function_body_kind`), else as a free function. THIR
+  withholds that fact from staticmethods, properties, dunders and consuming
+  methods, so those are measured as free functions; the `position` column
+  still names each kind.
 - Blocker TYPE names come from a spy on the lowering's `require` and are a
   best-effort label, not part of the count.

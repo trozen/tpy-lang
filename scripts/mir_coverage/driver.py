@@ -1,5 +1,6 @@
 """Measure one program: compile in-process, lower every emitted body to MIR the
-way `tpyc --dump-mir` does, and record the four-count verdict per body.
+way `tpyc --dump-mir` does, and record the four-count verdict per body (plus
+the exceptional-exit fact).
 
 A job is `{corpus, program, src, opts, mode}`; `mode` is `user` (report the
 program's own modules, workspace over them -- the `--dump-mir` semantics) or
@@ -42,7 +43,7 @@ from tpyc.mir.collect import _declaration_name  # noqa: E402
 from tpyc.mir.dependencies import analyze_dependencies  # noqa: E402
 from tpyc.mir.liveness import analyze_liveness  # noqa: E402
 from tpyc.mir.lower import lower_constructor, lower_function  # noqa: E402
-from tpyc.mir.nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered  # noqa: E402
+from tpyc.mir.nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, function_body_kind  # noqa: E402
 from tpyc.mir.payload_lifetime import inspect_payload_lifetimes  # noqa: E402
 from tpyc.mir.retention import analyze_retention  # noqa: E402
 from tpyc.mir.scope_lifetime import inspect_scope_lifetimes  # noqa: E402
@@ -439,15 +440,12 @@ def enumerate_bodies(module, ctx, definitions, workspace, reasons, user, body_ra
     def measure(source, body, kind, lower):
         """Lower (or take the workspace's result), then run the four-count stages."""
         cached = workspace.bodies.get(body) if kind is not MIRBodyKind.CONSTRUCTOR else None
-        # The workspace lowers every callable it schedules as a free function;
-        # certification must re-lower the body the same way it was lowered.
-        used_kind = MIRBodyKind.FREE_FUNCTION if cached is not None else kind
         try:
             _LAST["node"] = None
-            result = cached if cached is not None else lower(used_kind)
+            result = cached if cached is not None else lower(kind)
             if isinstance(result, MIRNotCovered) and cached is not None:
                 _LAST["node"] = None
-                again = lower(used_kind)
+                again = lower(kind)
                 if not (isinstance(again, MIRNotCovered) and again.reason == result.reason):
                     _LAST["node"] = None
         except Exception as e:  # noqa: BLE001
@@ -456,7 +454,9 @@ def enumerate_bodies(module, ctx, definitions, workspace, reasons, user, body_ra
             return ("not_covered", f"MIR not covered: {result.reason}", result.node_kind,
                     result.loc.line if result.loc is not None else None, blocker_type(result.reason), {})
         measured = run_analyses(result)
-        measured.update(certify(source, body, used_kind, definitions, workspace.summaries))
+        # Storage verdicts are normal-path evidence; the exit fact says which bodies they leave uncovered.
+        measured["exceptional_exits"] = result.exceptional_exits
+        measured.update(certify(source, body, kind, definitions, workspace.summaries))
         measured["conflict"] = bool(measured["analysis_conflicts"]) or measured["storage"] == "conflict"
         return "covered", None, None, None, None, measured
 
@@ -499,10 +499,9 @@ def enumerate_bodies(module, ctx, definitions, workspace, reasons, user, body_ra
                 st, raw = missing(func)
                 rec(body, pos, st, raw, **common)
             else:
-                kind = MIRBodyKind.METHOD if owner is not None else MIRBodyKind.FREE_FUNCTION
                 st, raw, nk, line, bt, measured = measure(
-                    fn, body, kind, lambda k, fn=fn, body=body: lower_function(
-                        fn, body, kind=k, definitions=definitions, summaries=workspace.summaries))
+                    fn, body, function_body_kind(fn), lambda _k, fn=fn, body=body: lower_function(
+                        fn, body, definitions=definitions, summaries=workspace.summaries))
                 rec(body, pos, st, raw, node_kind=nk, line=line, btype=bt, measured=measured, **common)
         else:
             st, raw = missing(func)

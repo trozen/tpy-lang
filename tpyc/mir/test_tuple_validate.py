@@ -21,13 +21,13 @@ CELL = NominalType("Cell", _module_qname="test.Cell")
 TUPLE = TupleType((CELL, INT32))
 A, R, X, PAIR, SAVED, RESULT, FLAG = (MIRSlotId(B, i) for i in range(7))
 ENTRY, YES, NO, JOIN = (MIRBlockId(B, i) for i in range(4))
-LAYOUT = MIRTupleLayout((MIRTupleElement(CELL, MIRValueKind.BORROWED_RECORD, True),
+LAYOUT = MIRTupleLayout((MIRTupleElement(CELL, MIRValueKind.BORROWED, True),
                          MIRTupleElement(INT32)))
 FIELD = MIRField(MIRFieldId(CELL, "value"), INT32)
 SLOTS = (
-    MIRSlot(A, CELL, MIRSlotKind.PARAMETER, form=Form.BORROW, value_kind=MIRValueKind.BORROWED_RECORD),
+    MIRSlot(A, CELL, MIRSlotKind.PARAMETER, form=Form.BORROW, value_kind=MIRValueKind.BORROWED),
     MIRSlot(R, CELL, MIRSlotKind.PARAMETER, form=Form.BORROW,
-            value_kind=MIRValueKind.BORROWED_RECORD, readonly=True),
+            value_kind=MIRValueKind.BORROWED, readonly=True),
     MIRSlot(X, INT32, MIRSlotKind.TEMPORARY),
     MIRSlot(PAIR, TUPLE, MIRSlotKind.LOCAL, value_kind=MIRValueKind.TUPLE, tuple_layout=LAYOUT),
     MIRSlot(SAVED, TUPLE, MIRSlotKind.LOCAL, value_kind=MIRValueKind.TUPLE, tuple_layout=LAYOUT),
@@ -117,7 +117,7 @@ def test_tuple_layout_validation() -> None:
         (None, "tuple slot"),
         (MIRTupleLayout(()), "tuple layout arity"),
         (MIRTupleLayout((MIRTupleElement(BOOL), MIRTupleElement(INT32))), "tuple scalar"),
-        (MIRTupleLayout((MIRTupleElement(CELL, MIRValueKind.RECORD_STORAGE), MIRTupleElement(INT32))),
+        (MIRTupleLayout((MIRTupleElement(CELL, MIRValueKind.OWNED), MIRTupleElement(INT32))),
          "tuple slot"),
     ):
         invalid(replace(GOOD, slots=(*SLOTS[:3], replace(SLOTS[3], tuple_layout=layout), *SLOTS[4:])), reason)

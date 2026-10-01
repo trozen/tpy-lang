@@ -610,7 +610,7 @@ emission and pass it as `definitions=` to `lower_function`. The immutable index
 verifies each definition once and retains failed coverage as an explicit reason.
 Missing definitions affect only bodies needing owning operations.
 
-MIR uses `RECORD_STORAGE` slots and `MIRConstruct`, `MIRCopy`, `MIRMove` and
+MIR uses `OWNED` slots (`RECORD_STORAGE` until B2) and `MIRConstruct`, `MIRCopy`, `MIRMove` and
 `MIRBorrow` rvalues. A record-place write through `MIRDeref` preserves identity;
 an OWN replacement initializes a distinct slot before rebinding its holder.
 The verifier checks complete layouts, initialization, access, copy/move
@@ -1865,13 +1865,22 @@ form facts, never on lists of accepted kinds.
   records are recognized by their TypeDef, never as "not a leaf". Operations are admitted through proved
   loan-neutral contracts, never by result type: a scalar-returning call can
   mutate a global, a user dunder runs code.
-- **B2: views as places.** str/bytes/Span views carry a loan on their source,
-  starting with parameter, local and field roots (container-element views
-  need B3). str and bytes follow one rule. The classification B1 leaves
-  UNKNOWN comes here: str/bytes own buffers yet are viewed; BigInt parameters
-  are `const BigInt&`; `TupleType.is_value_type()` is always true; `Own` is
-  not position-transparent (a value type becomes a value, a reference type
-  `T&&`); `Ptr` is value-typed; `readonly` limits access, not lifetime.
+- **B2, first half: owned leaves.** Landed as the [B2 contract](#b2-contract):
+  BigInt, str, String and bytes are owned storage at rest and a readonly
+  borrow of storage outside the body at a `const T&` / view parameter, in
+  the record model with an opaque interior; operators, conversions and
+  `getitem` on them are certified reads; stub calls get a contract from the
+  stub's declared facts (`@pure`, `transient=True`); summaries cover raising
+  and cyclic bodies and global reads.
+- **B2, second half: views as places.** str/bytes/Span views carry a loan
+  on their source, starting with parameter, local and field roots
+  (container-element views need B3); owned-leaf record fields and
+  constructor initializers; the first str conflicts (`view_return_escape`,
+  `view_source_mutation`, `temporary_borrow`). str and bytes follow one
+  rule. The classification still UNKNOWN comes here: `TupleType.
+  is_value_type()` is always true; `Own` is not position-transparent (a
+  value type becomes a value, a reference type `T&&`); `Ptr` is
+  value-typed; `readonly` limits access, not lifetime.
 - **B3: containers.** Holders with element places, element views and
   iterator loans. From here on each step builds the call-effect contracts it
   needs -- retention, invalidation, result origins, exceptional behavior --
@@ -1948,17 +1957,18 @@ as the corpus grows).
   scalar (RAW, INT8, BOOL, FLOAT, FLOAT32), with a literal or default
   `sep`/`end` and no `file=` sink. Enum values stay out of print (a user enum
   may define `__str__`).
-- **Exception rule.** The primitive contract admits raising (checked
-  overflow, a zero divisor), so every `MIROp` is `may_raise`. A body may
-  contain one, but its call summary is OPAQUE ("summary raising operation"):
-  `normal_return_only` is not reinterpreted, and callers stay uncovered until
-  summaries carry exit semantics. A body that prints is OPAQUE too ("summary
-  output effect"): output is no parameter-rooted effect.
+- **Exception rule** (superseded by the B2 contract's exit rule). The
+  primitive contract admits raising (checked overflow, a zero divisor), so
+  every `MIROp` is `may_raise`. Under B1 a body containing one had an
+  OPAQUE summary; B2 summarizes it with `normal_return_only=False`. A body
+  that prints is OPAQUE ("summary output effect"): output is no
+  parameter-rooted effect.
 - **Deferred (not covered).** User ValueType records as opaque kinds;
-  certifying operations on whole aggregates; summaries of raising calls;
-  enum operations and enum print (no enum TypeDef carries the primitive
-  contract); `len()` and other builtin calls (B3); BigInt,
-  str, bytes and String (B2); formatter resolution for aggregates in print.
+  certifying operations on whole aggregates; enum operations and enum print
+  (no enum TypeDef carries the primitive contract); formatter resolution for
+  aggregates in print. (Summaries of raising calls, builtin calls such as
+  `len()`, and BigInt, str, bytes and String were deferred here and are
+  covered by the B2 contract below.)
 - **Measured** (`scripts/mir_coverage/`, same name-hash sample as the
   baseline): lowered test bodies 7.1% -> 9.4% (997 of 10554), example bodies
   1.8% -> 9.0%, stdlib bodies 2.1% -> 2.9%. Loan-active USER bodies (tests
@@ -1969,6 +1979,145 @@ as the corpus grows).
   pass reports the replaced storage. The top loan-active blockers are now
   return and local types outside the leaf set (str views first), resumable
   frames and module init.
+
+### B2 contract
+
+- **Invariant.** A value MIR admits as an OWNED LEAF holds no borrow and
+  owns opaque storage a compiler-introduced borrow can point into: at
+  STORAGE it is an owned place (local, temporary, return, global); at
+  CONST_REF or VIEW passing it is a readonly borrow of storage outside the
+  body; every admitted operation reads that storage through a borrow that
+  lives through the operation and yields a fresh owned value or an inert
+  leaf. A view result is refused (second half). The TypeDef declares it:
+  `owned_leaf` on `int` (BigInt), `str`, `String` and `bytes` (their C++
+  types own a buffer, copy and move with no observable effect beyond
+  allocation, destroy with no hook), `copy_may_raise` (a standard
+  container's `bad_alloc`, which a bare `except:` catches; BigInt's
+  allocation failure is a panic) and `compares_fixed_ints` on BigInt (the
+  runtime's comparison operators take every fixed-width int).
+  `typesys.loan_class` answers `LoanClass(holds=NO, lendable=YES)` at
+  STORAGE (`is_owned_leaf`, `thir/scalar_leaves.owned_leaf`); views stay
+  borrows, `bytearray` (a reference type) and everything else stay UNKNOWN.
+  The four carry `primitive_ops`, whose contract now reads "may allocate".
+- **Model.** The record model with no interior: `MIRRecordLayout.opaque`,
+  answered by `MIRDefinitions` from the TypeDef as a tagged builtin
+  certificate beside the verified constructor definitions, never for any
+  other missing type. A `const T&` / view parameter is a readonly
+  `BORROWED` slot with an external referent; a local, temporary,
+  by-value parameter (entry-initialized) or result is `OWNED` with
+  a duration; every write to owned storage carries a `MIRRecordWrite`
+  (storage events key on the DESTINATION, not the rvalue class); no
+  `MIRField` projection exists under an opaque layout. A global of
+  owned-leaf type is a readonly handle to the immortal external identity
+  `global:<module>.<name>` (seeded in the dependency pass; never a private
+  root, since a parameter may borrow the same global); its writes refuse. A
+  borrowed str / bytes literal has an immortal static origin; a
+  storage-form bytes literal is an owned constant.
+- **Operation rule.** Operands of owned-leaf kind are borrows (`MIRBorrow`
+  holders) live through the operation; results are owned temporaries;
+  `MIRCopy` (with `may_raise` from the TypeDef) only where the C++ copies:
+  an initializer from a borrow, `return a`, a `param_copy`, a by-value
+  argument, a BORROW -> STORAGE form conversion. Certified on the THIR
+  node: an operator whose resolved dunder's owner carries `primitive_ops`
+  over inert or owned leaves (`certified_op`); a derived comparison of one
+  inert type, or of BigInt with a fixed-width int (`compares_fixed_ints`);
+  a non-literal coercion under a declared `Coercion` row (`bigint_narrow`
+  included) whose target is an inert leaf or an owned leaf the render
+  materializes as a new value (`THIRCoerce.wrap`, e.g. `::tpy::BigInt({0})`,
+  `std::string(::tpy::char_to_str({0}))`); a passthrough into an owned leaf
+  (`string_to_str`: at a view parameter the C++ passes a view of the
+  `String`) refuses at every sink, owning sinks included, until the views
+  half models it as a borrow (`THIRCoerce.conversion_refusal` names the
+  reason); a promotion that is an argument-less method of one operand's
+  type yielding the other's (`THIRBinOp.promoted_operand`, lowered as a
+  `coerce` op feeding the operator); `s[i]` on a str / bytes place with a
+  fixed-width int (or int literal) index and an inert result
+  (`THIRSubscript.certified_op`). `THIRStrAppend` is an
+  IN_PLACE write; `print` admits str and bytes (RAW / BYTES forms).
+- **Exit rule** (supersedes B1's Exception rule). `MIRFunction.
+  exceptional_exits` is derived at lowering and re-checked: any `MIROp` or
+  `MIRCopy` that may raise, any owned constant whose materialization may
+  raise, any `MIRCall.may_raise`, any `print` (formatting allocates). Such
+  a body's summary is KNOWN with `normal_return_only=False`; its effects
+  are promised over every exit
+  (possible writes cover a prefix ending in a throw). Within MIR's coverage
+  an exceptional exit is an exit without a result and without a handler
+  (no `try` lowers). Storage evidence stays normal-path evidence (B1's
+  meaning, written down); the coverage tool reports bodies with
+  exceptional exits as a fifth count. Whether a certificate must cover
+  exits is decided per diagnostic family at B6.
+- **Call rule.** `MIRCallSummary.parameters` are `MIRParameterBinding(type,
+  passing, readonly, borrowed_record)`; an unpublished passing fails
+  closed, and the caller cross-checks `THIRCallableSignature.passings`
+  against them. Both passings read `TpyType.param_passing` at a const
+  verdict: a resolved signature's from `fi.const_borrow_params` (a stub's
+  from its declaration, `_stub_param_consts`), a definition's
+  `THIRParam.passing` from `_param_is_const`; the validator
+  (`call_contract.summary_problem`, and the caller's check at lowering)
+  enforces that the two agree. An owned-leaf
+  argument at CONST_REF / VIEW passing is lent for the call (a borrow of a
+  name, a global handle, a static literal or an admitted temporary); at
+  VALUE / OWN it is copied. A user callee's owned-leaf result is fresh
+  owned storage. Summaries cover cyclic bodies (`MIRRangeAdvance`, private
+  owned writes; recursion stays opaque) and carry `global_reads`, unioned
+  through callees; any global write keeps a summary opaque. A global
+  argument is read into a temporary (scalar) or lent through its handle
+  (owned leaf), sound because a KNOWN callee writes no global and an owned
+  leaf is reachable only through its own storage.
+- **Stub rule.** A call to a `@native` / `@cpp_template` free function or a
+  builtin type's `__init__` carries `THIRCall.stub_callee` (identity =
+  qualified name plus parameter types, signature with passings and the
+  actual return representation, per-parameter readonly, and the declared
+  contract). MIR derives its summary from the declaration -- reads every
+  parameter, writes / invalidates / retains nothing, may raise -- when the
+  contract is `@pure` (no non-local mutation, nothing retained after
+  return or raise) or `transient=True` (reads or writes only its arguments,
+  retains nothing, reaches no other TPy storage, runs no user code; a
+  `@pure` stub counts as transient only under the per-parameter gates
+  below, since `@pure` was never audited for "runs no user code"), every
+  parameter is an inert leaf by value or an
+  owned leaf at a readonly CONST_REF / VIEW passing, and the result is
+  void, an inert leaf or an owned leaf returned as STORAGE. A protocol
+  parameter is admitted only under `@pure` and only for an argument whose
+  TypeDef is `loan_inert` or `owned_leaf` (no user dunder can run). A stub
+  result of owned-leaf type MAY BORROW every lent argument (`min(a, b)` is
+  `@pure` and binds `std::min`, a reference to an argument); it is fresh
+  only when no argument is lent. An unmarked stub stays opaque. Audited for
+  the acceptance program: `len` (`@pure`), `time.time` (`transient=True`),
+  `math.log` and `int(x: float)` (`@pure`).
+- **Deferred (not covered), second half or later.** StrView / BytesView
+  locals and their sources, slices, view returns and their origins, view
+  fields; owned-leaf record fields and constructor initializers (a callee's
+  field write can invalidate a forwarded borrow, so they land with the
+  conflict check); owned leaves in tuple / Optional / union members and
+  container elements (B3); `bytearray`; owned-leaf global writes; `String`
+  in-place methods beyond `+=`; f-strings; method calls on these types;
+  `THIRMethodCall` stub contracts; the cannot-raise stub fact so
+  `may_raise` can be False; a `String` bound as `str` (a passthrough
+  conversion, a view at a parameter and a copy at an owning sink) refuses
+  until the views half models the parameter case as a borrow; the
+  conversion certificate keys freshness on the render's `wrap` where the
+  declared `Coercion.builds_fresh_value` should decide it (the rows that
+  would need the flag are read by sema too, so that is its own zero-churn
+  unit).
+- **Measured** (`scripts/mir_coverage/`, name-hash sample, branch base vs
+  the reviewed B2 tree): lowered test bodies 9.5% -> 11.5% (1001 -> 1218
+  of 10577; 11.5% -> 14.0% excluding module init), of which the body-kind
+  fix alone accounts for 1001 -> 1024 and the owned leaves for the rest;
+  example bodies 9.0% -> 12.0% (15 -> 20 of 166), stdlib bodies 2.9% ->
+  3.8% (39 -> 52). Loan-active USER bodies 47 -> 74 of 2219 (2.1% ->
+  3.3%); normal-path-certified test bodies 35 -> 45; 383 lowered test
+  bodies may exit by exception (print counts), which no certificate
+  covers. Conflicts 1 -> 2, both true and both record shapes -- no
+  owned-leaf conflict yet: the first half proves coverage, the first str
+  conflicts come with views:
+  `pointers/escape_hoist_conditional` (B1) and
+  `records/warn_alias_rebind_clobber` (a rebind sema warns about, reached
+  now that its str print lowers). The top first blockers after B2: module
+  init, resumable bodies, return / parameter / local types outside the
+  leaf set (records, containers, views), then "stub declares no contract"
+  (216 bodies: unmarked stubs, the cheapest next lever), "owned-leaf record
+  field" (174, second half), f-strings (105) and "view local" (74).
 
 ## Scope matrix and remaining increments
 
