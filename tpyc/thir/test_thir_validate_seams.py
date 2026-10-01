@@ -17,8 +17,9 @@ from ..codegen_cpp.context import CodeGenOptions
 from ..compilation_context import activate_compiler
 from ..typesys import BOOL, INT32, VoidType
 from .nodes import (
-    Form, HoistDecl, THIRArgTemp, THIRBinOp, THIRCall, THIRCoerce,
-    THIRExprStmt,
+    Form, HoistDecl, THIRArgTemp, THIRBaseInit, THIRBinOp, THIRCall,
+    THIRCoerce, THIRComprehension, THIRConstructor, THIRExprStmt,
+    THIRMilInit,
     THIRFieldAccess, THIRFormConvert, THIRFunction, THIRFunctionLayout,
     THIRIf, THIRLiteral,
     THIRMethodCall, THIRRaise, THIRResumableBody, THIRReturn, THIRSelf,
@@ -406,6 +407,46 @@ class TestValidator:
                         dataclasses.replace(ctor, mil_inits=(bad,)))
                 return
         raise AssertionError("H ctor not lowered")
+
+    @staticmethod
+    def _call_with_temp() -> THIRCall:
+        temp = THIRArgTemp(result_type=INT32,
+                           init=THIRLiteral(result_type=INT32, value=1),
+                           cpp_type="int32_t", movable=True)
+        return THIRCall(result_type=INT32, callee="f", args=(temp,))
+
+    def test_arg_temp_in_a_mil_cell_raises(self):
+        # A member-init runs before the ctor body: no statement exists to
+        # declare the temp before, so lowering must have demoted the init.
+        ctor = THIRConstructor(
+            record_name="R", params=(),
+            mil_inits=(THIRMilInit(field_cpp="n",
+                                   value=self._call_with_temp()),))
+        with pytest.raises(THIRValidationError,
+                           match="statement temp in a member-init"):
+            validate_constructor(ctor)
+
+    def test_arg_temp_in_a_base_init_arg_raises(self):
+        ctor = THIRConstructor(
+            record_name="R", params=(), mil_inits=(),
+            base_inits=(THIRBaseInit(base_cpp="B",
+                                     args=(self._call_with_temp(),)),))
+        with pytest.raises(THIRValidationError,
+                           match="statement temp in a member-init"):
+            validate_constructor(ctor)
+
+    def test_arg_temp_in_a_mil_comprehension_element_passes(self):
+        # The element renders inside the comprehension's loop body, which
+        # flushes its temps per iteration: a flush point of its own.
+        comp = THIRComprehension(
+            result_type=INT32, kind="list",
+            container_cpp="std::vector<int32_t>", var="i", loop="range",
+            counter_cpp="int32_t",
+            range_stop=THIRLiteral(result_type=INT32, value=3),
+            range_stop_literal=True, element=self._call_with_temp())
+        validate_constructor(THIRConstructor(
+            record_name="R", params=(),
+            mil_inits=(THIRMilInit(field_cpp="xs", value=comp),)))
 
     def test_borrow_return_of_value_type_raises(self):
         bad = THIRReturn(value=THIRLiteral(result_type=INT32, value=1,

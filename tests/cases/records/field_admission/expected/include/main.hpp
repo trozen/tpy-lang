@@ -20,6 +20,9 @@ struct Q;
 struct Src;
 struct Res;
 struct Built;
+struct UA;
+struct UB;
+struct Placed;
 struct Pt;
 struct Closed;
 struct Base;
@@ -53,6 +56,12 @@ Res make_res(int32_t v);
 void show_cb(int32_t n);
 // def pick(a: int32) -> int32:
 int32_t pick(int32_t a);
+// def count(xs: list[int32]) -> int32:
+int32_t count(const std::vector<int32_t>& xs);
+// def mk(xs: list[int32]) -> Own[list[int32]]:
+std::vector<int32_t> mk(const std::vector<int32_t>& xs);
+// def union_tag(x: UA | UB) -> int32:
+int32_t union_tag(::tpy::Union<const UA*, const UB*> x);
 // def view_of_borrow() -> None:
 void view_of_borrow();
 // def nested_writes(p: Own[str], t: tuple[int, int32] | None,
@@ -314,6 +323,74 @@ struct Built {
 
 inline std::ostream& operator<<(std::ostream& os, const Built& obj) {
     ::tpy::print_object_default(os, "Built", obj);
+    return os;
+}
+
+// class UA:
+struct UA {
+    // v: int32
+    int32_t v;
+
+    // def __init__(self, v: int32) -> None:
+    UA() = default;
+    explicit UA(int32_t v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.UA";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const UA& obj) {
+    ::tpy::print_object_default(os, "UA", obj);
+    return os;
+}
+
+// class UB:
+struct UB {
+    // v: int32
+    int32_t v;
+
+    // def __init__(self, v: int32) -> None:
+    UB() = default;
+    explicit UB(int32_t v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.UB";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const UB& obj) {
+    ::tpy::print_object_default(os, "UB", obj);
+    return os;
+}
+
+// class Placed:
+struct Placed {
+    // ks: list[int32]
+    std::vector<int32_t> ks;
+    // ys: list[int32]
+    std::vector<int32_t> ys;
+    // n: int32
+    int32_t n;
+    // n2: int32
+    int32_t n2;
+    // t: tuple[int32, int32]
+    std::tuple<int32_t, int32_t> t;
+    // zs: list[int32]
+    std::vector<int32_t> zs;
+    // u: int32
+    int32_t u;
+    // xs: list[int32]
+    std::vector<int32_t> xs;
+
+    // def __init__(self, n: int32, a: int32, src: list[int32]) -> None:
+    Placed() = default;
+    explicit Placed(int32_t n, int32_t a, const std::vector<int32_t>& src);
+
+    // def fill(self) -> None:
+    void fill();
+
+    // def show(self) -> None:
+    void show() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Placed";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Placed& obj) {
+    ::tpy::print_object_default(os, "Placed", obj);
     return os;
 }
 
@@ -786,6 +863,32 @@ inline void Built::show() {
     (*this).action();
     this->xs.push_back(99);
     std::cout << "ctor.fields" << " " << ::tpy::__len__(this->buf) << " " << ::tpy::ListPrinter(this->xs) << " " << this->cp.v << " " << this->name << " " << this->lab << " " << std::get<0>(this->pair) << " " << std::get<1>(this->pair).v << " " << this->other.v << " " << this->lim << " " << this->lim2 << " " << this->res.val << " " << this->flat.n << " " << this->late << "\n";
+}
+
+// def __init__(self, v: int32) -> None:
+//     self.v = v
+inline UA::UA(int32_t v) : v(v) {}
+
+// def __init__(self, v: int32) -> None:
+//     self.v = v
+inline UB::UB(int32_t v) : v(v) {}
+
+// def fill(self) -> None:
+//     # method: a container literal whose element hoists an argument temp
+//     # before the write statement.
+//     self.xs = [count([1, 2]), 3]  # tpyc: ok
+//     print("method.literal_arg_temp", self.xs)
+inline void Placed::fill() {
+    std::vector<int32_t> __tmp_1 = {1, 2};
+    this->xs = {::tpyapp::main::count(__tmp_1), 3};
+    std::cout << "method.literal_arg_temp" << " " << ::tpy::ListPrinter(this->xs) << "\n";
+}
+
+// def show(self) -> None:
+//     print("ctor.placed", self.ks, self.ys, self.n, self.n2, self.t,
+//           self.zs, self.u)
+inline void Placed::show() const {
+    std::cout << "ctor.placed" << " " << ::tpy::ListPrinter(this->ks) << " " << ::tpy::ListPrinter(this->ys) << " " << this->n << " " << this->n2 << " " << ::tpy::TuplePrinter(this->t) << " " << ::tpy::ListPrinter(this->zs) << " " << this->u << "\n";
 }
 
 // def __init__(self, x: int32) -> None:

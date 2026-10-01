@@ -94,10 +94,15 @@ class ThirUnsupported(Exception):
 
     def __init__(self, reason: str, *, detail: bool = False,
                  loc: 'SourceLocation | None' = None,
-                 message: str | None = None) -> None:
+                 message: str | None = None,
+                 no_flush: bool = False) -> None:
         super().__init__(reason)
         self.reason = reason
         self.detail = detail
+        # The arm needed a declaration hoisted before a statement and the
+        # region has none (`_LowerCtx.may_hoist`): a ctor member-init
+        # answers it by demoting the init to the body, which has one.
+        self.no_flush = no_flush
         # The offending source position, stamped by the statement chokepoint as
         # the reject unwinds (innermost frame wins) -- what the diagnostic
         # points the user at.
@@ -117,7 +122,8 @@ class ThirUnsupported(Exception):
         # statement's landmark scan must not replace that evidence.
         if self.loc is not None and ":lambda." in self.reason:
             return self
-        return ThirUnsupported(reason, loc=self.loc, message=self.message)
+        return ThirUnsupported(reason, loc=self.loc, message=self.message,
+                               no_flush=self.no_flush)
 
 
 # One rule for a FunctionInfo and the TpyFunction it came from; shared with

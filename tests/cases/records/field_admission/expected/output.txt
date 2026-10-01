@@ -19,6 +19,7 @@ method.ref_fresh None b'xy' 7 (2, 'two') [7, 2, 9] 12 False 1
 method.op_copy 6 99
 gen.yield 1
 gen.writes gen b'xy' 11 (2, 'two') [8, 3, 8] 12 False 1
+gen.literal_arg_temp [2, 7]
 gen.yield 2
 gen.frame_locals [8, 30, 31, 32] gt! gt!
 async.writes async b'xy' 3 (3, 'tx') [8, 30, 31, 32] 12 False 1
@@ -37,6 +38,9 @@ ctor.pick 1
 ctor.closed_pt 2
 ctor.closed_union Pt(6)
 ctor.closed (1.5, 3) 1 tt b'bb' b'z' None
+ctor.pick 0
+ctor.placed [1, 1, 1] [1, 9] 2 2 (1, 2) [5, 9] 4
+method.literal_arg_temp [2, 3]
 ctor.pick 3
 ctor.pick 4
 ctor.base True 46 3 4

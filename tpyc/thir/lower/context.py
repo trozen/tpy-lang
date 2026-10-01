@@ -572,13 +572,22 @@ class SlotBorrow(Enum):
 
 
 class SlotPlacement(Enum):
-    """Where a temporary the source needs can live -- the PLACEMENT part of
-    the slot contract. The RIGHT to hoist one is `allow_temps`; this says
-    whether there is a statement to hoist it before at all."""
+    """Whether the region being lowered has a statement a hoisted
+    declaration can precede (`_LowerCtx.placement_scope`).
+
+    Two separate facts decide a temporary. The GRANT (`_ExprUse.allow_temps`)
+    is the sink's: whether this position takes the temporary path at all,
+    and it is all the admission rows read. The PLACEMENT is the region's:
+    whether a statement exists to put the declaration before. It is a
+    property of the whole region, not of one operand, so the scope carries
+    it to every nested operand and to the rows that lower without passing
+    through `_lower_expr`. Under NO_FLUSH_POINT, creating a node that
+    hoists a declaration raises a `no_flush`-marked reject (`_hoisted`),
+    which a member-init answers by demoting to the ctor body."""
     # The consumer sits in a statement: a hoisted decl lands before it.
     STATEMENT = auto()
-    # A ctor member-init: no statement exists, so a source that needs a
-    # temporary demotes the init to the ctor body (where it can) instead.
+    # A ctor member-init, a base-init argument or a lambda body: no
+    # statement exists to host a decl.
     NO_FLUSH_POINT = auto()
 
 
@@ -622,11 +631,10 @@ class _ExprUse:
         has not stated it yet.
       * LIFETIME (`lifetime`): what the source's storage must outlive
         (`slot_lifetime`).
-      * PLACEMENT (`placement`, `allow_temps`): whether a statement exists
-        to hoist a temporary before, and whether this expression may use
-        it. `allow_temps` applies only to the expression passed to
-        `_lower_expr`; recursive operands get the default value use unless
-        their own consumer supplies another.
+      * GRANT (`allow_temps`): whether this expression may take the
+        temporary path; it applies only to the expression passed to
+        `_lower_expr`. Whether a statement exists to host the temporary
+        is the region's placement, not the use's (see `SlotPlacement`).
 
     What the SOURCE brings (last use, movability, form) rides on the
     lowered node, not here. `pos` stays the name diagnostics use.
@@ -654,7 +662,6 @@ class _ExprUse:
     slot_target: 'TpyType | None' = None
     dest: 'SlotDest | None' = None
     lifetime: SlotLifetime = SlotLifetime.NONE
-    placement: SlotPlacement = SlotPlacement.STATEMENT
 
     def admits(self, form: SinkForm) -> bool:
         """Whether this sink admits `form`. The one spelling every
@@ -664,17 +671,18 @@ class _ExprUse:
         return form in (_POS_FORMS[self.pos] if forms is None else forms)
 
 
-def field_slot_use(slot: 'TpyType | None', construct: SlotConstruct, *,
-                   placement: SlotPlacement = SlotPlacement.STATEMENT
-                   ) -> _ExprUse:
+def field_slot_use(slot: 'TpyType | None',
+                   construct: SlotConstruct) -> _ExprUse:
     """The slot contract a record FIELD hands its source, decided once per
     statement from the declared slot -- a field write assigns, a member-init
     direct-initializes. A field holds storage, so it borrows nothing; its
-    lifetime is the slot type's. Each site then names its sink and verdict
-    with `dataclasses.replace`, keeping the contract."""
+    lifetime is the slot type's. It grants its source the temporary path
+    wherever it sits (grant vs placement: `SlotPlacement`). Each site then
+    names its sink and verdict with `dataclasses.replace`, keeping the
+    contract."""
     return _ExprUse(
         dest=(SlotDest(slot, construct) if slot is not None else None),
-        lifetime=slot_lifetime(slot), placement=placement)
+        lifetime=slot_lifetime(slot), allow_temps=True)
 
 
 def narrow_alias_taken(bound_names, frame_field_names, *,
@@ -1274,7 +1282,7 @@ _LC_NOT_NAME_KEYED = (
     "analyzer", "func", "prescan", "render_type", "render_type_stored",
     "render_resolve", "render_concept", "record_name", "self_cpp",
     "self_is_pointer", "error_return_cpp", "overload_stub_return",
-    "overload_terminated", "resumable_leaf_mode", "in_lambda_body",
+    "overload_terminated", "resumable_leaf_mode", "placement",
     "slot_hoist_ok", "in_container_elem", "in_finally_helper", "in_for_body",
     "top_level_scope", "global_binding_scope", "top_level_line",
     # Keyed by statement id / a list of return nodes / enclosing functions.
@@ -1374,7 +1382,7 @@ class _LowerCtx:
                  "const_storage_tuple_locals", "const_loop_vars",
                  "frame_own_tuple_types",
                  "frame_slots",
-                 "resumable_leaf_mode", "in_lambda_body", "slot_hoist_ok",
+                 "resumable_leaf_mode", "placement", "slot_hoist_ok",
                  "in_container_elem",
                  "nested_returns", "in_finally_helper",
                  "plain_frame_fields", "borrow_tuple_frame_locals",
@@ -1718,10 +1726,12 @@ class _LowerCtx:
         # Their nested frame writes and async-return shapes reject at the
         # statement arm rather than through a predictive leaf-tree scan.
         self.resumable_leaf_mode = False
-        # Inside a lambda's single-expression body: no statement of the
-        # lambda's own encloses its expressions, so nothing may be hoisted
-        # "before the statement" there -- that would land outside the lambda.
-        self.in_lambda_body = False
+        # Whether the expressions being lowered sit in a statement a hoisted
+        # temporary can precede (`placement_scope`). A member-init, a
+        # base-init argument and a lambda's single-expression body have no
+        # such statement: a decl hoisted "before the statement" would land
+        # in front of the constructor or outside the lambda.
+        self.placement = SlotPlacement.STATEMENT
         # The statement being lowered declares pending named slots before
         # its first line (see `_SLOT_HOIST_STMTS`); off everywhere else, so
         # an unclassified position cannot place one after its use.
@@ -2167,6 +2177,27 @@ class _LowerCtx:
         return self.own_params | frozenset(
             pname for pname, ptype in self.params
             if isinstance(ptype, TpyType) and param_takes_ownership(ptype))
+
+    @property
+    def may_hoist(self) -> bool:
+        """Whether a statement encloses the expression being lowered, so a
+        declaration may be hoisted before it -- whatever the immediate use
+        grants. Read where a hoisting node is created (`_hoisted`), where a
+        select would emplace a slot, and where an optional iterator temp
+        is a render choice."""
+        return self.placement is SlotPlacement.STATEMENT
+
+    @contextmanager
+    def placement_scope(self, placement: SlotPlacement):
+        """Lower a region under `placement` (see `SlotPlacement`). A region
+        with its own flush point inside a no-flush one (a comprehension's
+        loop body) reopens STATEMENT."""
+        saved = self.placement
+        self.placement = placement
+        try:
+            yield
+        finally:
+            self.placement = saved
 
     @contextmanager
     def moves_only(self, names: AbstractSet[str]):

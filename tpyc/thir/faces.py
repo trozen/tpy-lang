@@ -3068,7 +3068,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.loop_slot_bind",           # frame_slot loop var admitted ((*x) reads)
     "binop.poly_inline_narrow",     # inline poly-isinstance under && (spelled static_cast RHS)
     "truthy.optional_field_whole",  # truthy Optional field condition (is_truthy over raw storage)
-    "mil.demote_probe",             # MIL demote: the lowered source declares a temp
+    "mil.demote_placement",         # MIL demote: an arm reported a no-flush temp
     "res.return_opt_record_none",   # storage Optional[record] async return of None (nullopt)
     "res.return_ptr_opt_field",     # ptr-repr Optional field lift at the BORROW async return
     "res.poly_cond",                # poly isinstance Branch cond (no-alias dynamic_cast check)

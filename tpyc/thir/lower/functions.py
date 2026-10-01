@@ -134,6 +134,7 @@ from .predicates import (
 )
 from .context import (
     _LowerCtx,
+    SlotPlacement,
     ValueOptKind,
 )
 from .checks import (
@@ -143,7 +144,6 @@ from .checks import (
     _nondef_ctor_field,
 )
 from .expressions import (
-    _declares_statement_temp,
     _lower_expr,
     _union_source_layout,
 )
@@ -1108,7 +1108,10 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     try:
         # Base initializers (`super().__init__` / `BaseN.__init__`), sorted by parent
         # declaration order (M3d); None if any is outside the slice -> reject.
-        base_inits = _lower_base_inits(init_method, ri, declared, lc)
+        # A base initializer, like a member-init, runs before the body:
+        # no statement exists to host a temporary its arguments need.
+        with lc.placement_scope(SlotPlacement.NO_FLUSH_POINT):
+            base_inits = _lower_base_inits(init_method, ri, declared, lc)
         if base_inits is None:
             note("ctor.base_init")
             return None
@@ -1122,7 +1125,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         # run in; own fields take `__init__` assignment order
         # (`reorder_fields_by_init`), so it is the order they are written in.
         field_index = {f.name: i for i, f in enumerate(record.fields)}
-        message_init = _lower_message_init(init_method, ri, declared, lc)
+        with lc.placement_scope(SlotPlacement.NO_FLUSH_POINT):
+            message_init = _lower_message_init(init_method, ri, declared, lc)
         if message_init is not None:
             # Hoisted ahead of every field init, so a later `self.message = x`
             # is a re-assignment that runs in the body.
@@ -1212,12 +1216,13 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                     field_init_names.append(stmt.target.field)
                     mil_done_fields.add(stmt.target.field)
                     continue
-                # The source needs a statement temporary (an argument temp,
-                # a `*args` array, an `and` / `or` operand held once): the
-                # init goes to the body like the readiness demotes below.
+                # An arm the source reaches reported that it needs a
+                # statement temporary (an argument temp, a `*args` array, an
+                # `and` / `or` operand held once): the init goes to the body
+                # like the readiness demotes below.
                 _reject_nondef_ctor_field(stmt, analyzer,
                                           emit_prims.CTOR_DEMOTE_NEEDS_TEMP)
-                _witness("mil.demote_probe")
+                _witness("mil.demote_placement")
                 chain_broken = True
                 body_done_fields.add(stmt.target.field)
                 body_stmts.append(stmt)
@@ -1273,17 +1278,16 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
 
 def _attempt_ctor_mil_init(stmt, own_field_names, declared: dict,
                            lc) -> 'THIRMilInit | None':
-    """Lower one member-init; None = demote it to the body, because its
-    source needs a declaration hoisted before a statement and the list has
-    no statement to host one. The source is first lowered as the list takes
-    it; a reject there is probed once more with temporaries admitted, and a
-    source that lowers only with one demotes -- every other reject rejects
-    the whole ctor. Each attempt's side effects roll back: `declared` by
+    """Lower one member-init; None = demote it to the body. The source
+    lowers under a NO_FLUSH_POINT scope (`SlotPlacement`), so an arm that
+    would hoist a declaration before a statement raises a `no_flush`-marked
+    reject: the list has no statement, the body does. Every other reject
+    rejects the whole ctor. The rejected attempt's side effects roll back: `declared` by
     copy, the branch-scoped lc name-sets via branch_scope, the
     FUNCTION-scoped walrus sets by explicit copy (branch_scope deliberately
-    skips them), and the faces / move-verdict journals by delta subtraction
-    (the flat one-window journal design forbids a nested begin/rollback
-    here)."""
+    skips them), and the faces / move-verdict journals by delta
+    subtraction (the flat one-window journal design forbids a nested
+    begin/rollback here)."""
     from ...compilation_context import get_current_compiler
     compiler = get_current_compiler()
     decl_snap = dict(declared)
@@ -1312,33 +1316,20 @@ def _attempt_ctor_mil_init(stmt, own_field_names, declared: dict,
                     compiler._move_verdict_thir.pop(key, None)
                 compiler._move_verdict_journal = set(mj_snap)
 
-    def attempt(probe: bool) -> THIRMilInit:
+    try:
         with lc.branch_scope(), lc.moves_only(lc.handed_over_params):
             return THIRMilInit(
                 field_cpp=escape_cpp_name(stmt.target.field),
-                value=lower_member_init_value(stmt, lc, declared,
-                                              temps_probe=probe))
-
-    try:
-        node = attempt(False)
-    except ThirUnsupported as first:
+                value=lower_member_init_value(stmt, lc, declared))
+    except ThirUnsupported as ex:
         # A member-init never reaches the statement chokepoint, so this is
         # the innermost frame that knows which source line rejected.
-        if first.loc is None:
-            first.loc = getattr(stmt, "loc", None)
+        if ex.loc is None:
+            ex.loc = getattr(stmt, "loc", None)
         rollback()
-        try:
-            node = attempt(True)
-        except ThirUnsupported:
-            rollback()
-            raise first
-    # Some sources hold an operand in a temporary whatever the slot allows
-    # (an `and` / `or` evaluates its left operand once), so the verdict is
-    # read off the lowered node, not off which attempt succeeded.
-    if not _declares_statement_temp(node.value):
-        return node
-    rollback()
-    return None
+        if ex.no_flush:
+            return None
+        raise
 
 
 def _member_init_demote_reason(stmt: TpyAssign, chain_broken: bool,

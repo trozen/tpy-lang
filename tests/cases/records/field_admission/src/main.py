@@ -94,6 +94,10 @@ class Box:
         self.xs = [n] + [3]  # tpyc: ok
         self.xs.append(8)
         self.show("gen.writes")
+        # generator method: a container literal whose element hoists an
+        # argument temp before the write.
+        self.xs = [count([n, n]), 7]  # tpyc: ok
+        print("gen.literal_arg_temp", self.xs)
         # generator method: a frame-local list at its last use moves in; the
         # field is then the only owner.
         ys = [n, 30]
@@ -308,6 +312,71 @@ class Built:
               self.lim, self.lim2, self.res.val, self.flat.n, self.late)
 
 
+def count(xs: list[int32]) -> int32:
+    return len(xs)
+
+
+def mk(xs: list[int32]) -> Own[list[int32]]:
+    return [xs[0], 9]
+
+
+class UA:
+    v: int32
+
+    def __init__(self, v: int32) -> None:
+        self.v = v
+
+
+class UB:
+    v: int32
+
+    def __init__(self, v: int32) -> None:
+        self.v = v
+
+
+def union_tag(x: UA | UB) -> int32:
+    return x.v if isinstance(x, UA) else -x.v
+
+
+class Placed:
+    ks: list[int32]
+    ys: list[int32]
+    n: int32
+    n2: int32
+    t: tuple[int32, int32]
+    zs: list[int32]
+    u: int32
+    xs: list[int32]
+
+    def __init__(self, n: int32, a: int32, src: list[int32]) -> None:
+        # ctor: a comprehension whose element hoists an argument temp keeps
+        # it inside its own loop body, so the init stays a member-init.
+        self.ks = [count([i]) for i in range(n)]  # tpyc: ok
+        # ctor: a comprehension whose SOURCE hoists an argument temp needs
+        # the statement before it -- the init becomes a body assignment.
+        self.ys = [x for x in mk([1, 2])]  # tpyc: ok
+        # ctor: an argument temp, bare and under a call-shaped argument, and
+        # a tuple literal holding an `or` operand -- all body assignments.
+        self.n = count([1, 2])  # tpyc: ok
+        self.n2 = count(mk([1]))  # tpyc: ok
+        self.t = (pick(a) or 1, 2)  # tpyc: ok
+        # ctor: a select whose fresh left operand is held once, and a record
+        # rvalue lifted into a union parameter -- both body assignments.
+        self.zs = mk(src) or [1]  # tpyc: ok
+        self.u = union_tag(UA(a + 4))  # tpyc: ok
+        self.xs = []
+
+    def fill(self) -> None:
+        # method: a container literal whose element hoists an argument temp
+        # before the write statement.
+        self.xs = [count([1, 2]), 3]  # tpyc: ok
+        print("method.literal_arg_temp", self.xs)
+
+    def show(self) -> None:
+        print("ctor.placed", self.ks, self.ys, self.n, self.n2, self.t,
+              self.zs, self.u)
+
+
 class Pt(ValueType):
     x: int32
 
@@ -511,6 +580,9 @@ def ctor_writes() -> None:
     built.show()
     closed = Closed(Pt(2), 6, 0, "tt", b"bb", False)
     closed.show()
+    pl = Placed(3, 0, [5])
+    pl.show()
+    pl.fill()
     d = Derived("a string long enough to leave the small buffer")
     print("ctor.base", d.a == d.b, len(d.a), d.c, d.d)
     r = Reads()

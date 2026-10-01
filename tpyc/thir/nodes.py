@@ -4013,3 +4013,17 @@ class THIRResumableBody:
     # when the recipe table does not cover the shape -- so the seam never
     # decides anything at emit and a missing entry is a disagreement.
     deferred_returns: 'IdentityMap' = field(default_factory=IdentityMap)
+
+
+def hoists_declaration(node: THIRNode) -> bool:
+    """Whether `node`'s render declares something before its enclosing
+    statement: an arg temp or a temp-bearing union lift, a slot emplace, a
+    `*args` pack's element array, an `and` / `or` operand held once, or a
+    walrus target. The one definition the lowering's factory (`_hoisted`)
+    and the validator's no-statement checks share."""
+    return (isinstance(node, (THIRArgTemp, THIRSlotEmplace, THIRWalrus))
+            or (isinstance(node, THIRUnionArgLift)
+                and node.temp_cpp is not None)
+            or (isinstance(node, THIRValueSelect)
+                and node.lhs_temp_cpp is not None)
+            or (isinstance(node, THIRVarargPack) and bool(node.args)))

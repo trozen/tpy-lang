@@ -572,6 +572,7 @@ from .checks import (
     _user_iterator_iterable,
 )
 from .expressions import (
+    _hoisted,
     _subscript_yields_borrow_ptr,
     _self_capture_cpp,
     _whole_optional_bare,
@@ -16964,12 +16965,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         # and a prvalue's lifetime extends to the end of the
                         # enclosing block, so the token stays valid through
                         # the chain.
-                        lowered_kw = THIRArgTemp(
+                        lowered_kw = _hoisted(THIRArgTemp(
                             result_type=analyzer.get_expr_type(kv),
                             init=_lower_expr(kv, lc, declared,
                                              use=_ExprUse(allow_temps=True)),
                             cpp_type="const auto&",
-                            movable=False)
+                            movable=False), lc)
                     else:
                         lowered_kw = (_lower_expr(kv, lc, declared)
                                       if kind == "name" else None)
