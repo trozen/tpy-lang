@@ -4,6 +4,9 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
 
@@ -18,8 +21,16 @@ struct Derived;
 struct Slot;
 struct Opt;
 struct Many;
+struct R;
+struct OptSrc;
+struct PqSrc;
+struct Deep;
+struct Slots;
 
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_Slots_gen_writes;
+struct __coro_Slots_async_writes;
 
 // def mk(v: int32) -> Own[P]:
 P mk(int32_t v);
@@ -33,6 +44,56 @@ void own_args(std::vector<int32_t>& xs);
 std::vector<int32_t> keep_list(std::vector<int32_t>&& xs);
 // def comp_elems() -> None:
 void comp_elems();
+// def mk_opt(v: int32) -> Own[P] | None:
+std::optional<P> mk_opt(int32_t v);
+// def mk_pq(v: int32) -> Own[P | R]:
+::tpy::Union<P, R> mk_pq(int32_t v);
+// def bump(p: P | None) -> None:
+void bump(P* p);
+// def bumpu(u: P | R) -> None:
+void bumpu(::tpy::Union<P*, R*> u);
+// def show(p: P | None) -> int32:
+int32_t show(const P* p);
+// def bump_at(xs: list[P | None], i: int32) -> None:
+void bump_at(std::vector<std::optional<P>>& xs, int32_t i);
+// def show_at(xs: list[P | None], i: int32) -> int32:
+int32_t show_at(const std::vector<std::optional<P>>& xs, int32_t i);
+// def bump_key(d: dict[str, P | None], k: str) -> None:
+void bump_key(::tpy::ordered_map<std::string, std::optional<P>>& d, std::string_view k);
+// def show_key(d: dict[str, P | None], k: str) -> int32:
+int32_t show_key(const ::tpy::ordered_map<std::string, std::optional<P>>& d, std::string_view k);
+// def showu(u: P | R) -> int32:
+int32_t showu(::tpy::Union<const P*, const R*> u);
+// def bumpu_at(us: list[P | R], i: int32) -> None:
+void bumpu_at(std::vector<::tpy::Union<P, R>>& us, int32_t i);
+// def showu_at(us: list[P | R], i: int32) -> int32:
+int32_t showu_at(const std::vector<::tpy::Union<P, R>>& us, int32_t i);
+// def bumpu_key(d: dict[str, P | R], k: str) -> None:
+void bumpu_key(::tpy::ordered_map<std::string, ::tpy::Union<P, R>>& d, std::string_view k);
+// def showu_key(d: dict[str, P | R], k: str) -> int32:
+int32_t showu_key(const ::tpy::ordered_map<std::string, ::tpy::Union<P, R>>& d, std::string_view k);
+// def bump_src(o: OptSrc) -> None:
+void bump_src(OptSrc& o);
+// def show_src(o: OptSrc) -> int32:
+int32_t show_src(const OptSrc& o);
+// def bumpu_src(u: PqSrc) -> None:
+void bumpu_src(PqSrc& u);
+// def showu_src(u: PqSrc) -> int32:
+int32_t showu_src(const PqSrc& u);
+// def bump_deep(h: Deep) -> None:
+void bump_deep(Deep& h);
+// def show_deep(h: Deep) -> int32:
+int32_t show_deep(const Deep& h);
+// def bumpu_deep(h: Deep) -> None:
+void bumpu_deep(Deep& h);
+// def showu_deep(h: Deep) -> int32:
+int32_t showu_deep(const Deep& h);
+// def store_g(s: Slots, g: Own[P] | None) -> None:
+void store_g(Slots& s, std::optional<P> g);
+// def slot_holder(o: OptSrc, u: PqSrc, xs: list[P | None]) -> None:
+void slot_holder(const OptSrc& o, PqSrc& u, std::vector<std::optional<P>>& xs);
+// def slot_writes() -> None:
+void slot_writes();
 // def main() -> None:
 void main();
 
@@ -222,6 +283,124 @@ inline std::ostream& operator<<(std::ostream& os, const Many& obj) {
     return os;
 }
 
+// class R:
+struct R {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    R() = default;
+    explicit R(int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.R";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const R& obj) {
+    ::tpy::print_object_default(os, "R", obj);
+    return os;
+}
+
+// class OptSrc:
+struct OptSrc {
+    // f: P | None
+    std::optional<P> f;
+
+    // def __init__(self, f: Own[P]) -> None:
+    OptSrc() = default;
+    explicit OptSrc(P&& f);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OptSrc";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OptSrc& obj) {
+    ::tpy::print_object_default(os, "OptSrc", obj);
+    return os;
+}
+
+// class PqSrc:
+struct PqSrc {
+    // f: P | R
+    ::tpy::Union<P, R> f;
+
+    // def __init__(self, f: Own[P]) -> None:
+    PqSrc() = default;
+    explicit PqSrc(P&& f);
+
+    // def set_r(self, r: Own[R]) -> None:
+    void set_r(R&& r);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.PqSrc";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const PqSrc& obj) {
+    ::tpy::print_object_default(os, "PqSrc", obj);
+    return os;
+}
+
+// class Deep:
+struct Deep {
+    // a: OptSrc
+    OptSrc a;
+    // b: PqSrc
+    PqSrc b;
+
+    // def __init__(self, a: Own[OptSrc], b: Own[PqSrc]) -> None:
+    Deep() = default;
+    explicit Deep(OptSrc&& a, PqSrc&& b);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Deep";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Deep& obj) {
+    ::tpy::print_object_default(os, "Deep", obj);
+    return os;
+}
+
+// class Slots:
+struct Slots {
+    // op: P | None
+    std::optional<P> op;
+    // pq: P | R
+    ::tpy::Union<P, R> pq;
+    // g2: P | None
+    std::optional<P> g2;
+    // g3: P | R
+    ::tpy::Union<P, R> g3;
+
+    // def __init__(self, o: OptSrc, u: PqSrc) -> None:
+    Slots() = default;
+    explicit Slots(const OptSrc& o, const PqSrc& u);
+
+    // def show_op(self) -> int32:
+    int32_t show_op() const;
+
+    // def showu_pq(self) -> int32:
+    int32_t showu_pq() const;
+
+    // def bump_g2(self) -> None:
+    void bump_g2();
+
+    // def show_g2(self) -> int32:
+    int32_t show_g2() const;
+
+    // def bumpu_g3(self) -> None:
+    void bumpu_g3();
+
+    // def showu_g3(self) -> int32:
+    int32_t showu_g3() const;
+
+    // def writes(self, o: OptSrc, u: PqSrc, h: Deep, xs: list[P | None],
+    //            us: list[P | R], d: dict[str, P | None],
+    //            du: dict[str, P | R]) -> None:
+    void writes(OptSrc& o, PqSrc& u, Deep& h, std::vector<std::optional<P>>& xs, std::vector<::tpy::Union<P, R>>& us, ::tpy::ordered_map<std::string, std::optional<P>>& d, ::tpy::ordered_map<std::string, ::tpy::Union<P, R>>& du);
+
+    __gen_Slots_gen_writes gen_writes(OptSrc& o, std::vector<::tpy::Union<P, R>>& us);
+
+    __coro_Slots_async_writes async_writes(Deep& h, ::tpy::ordered_map<std::string, ::tpy::Union<P, R>>& d);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Slots";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Slots& obj) {
+    ::tpy::print_object_default(os, "Slots", obj);
+    return os;
+}
+
 // class Derived(Base):
 struct Derived : Base {
     // ia: Item
@@ -238,6 +417,74 @@ struct Derived : Base {
 inline std::ostream& operator<<(std::ostream& os, const Derived& obj) {
     ::tpy::print_object_default(os, "Derived", obj);
     return os;
+}
+
+// async def async_writes(self, h: Deep, d: dict[str, P | R]) -> int32:
+struct __coro_Slots_async_writes {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    Slots& __self;
+    Deep& h;
+    ::tpy::ordered_map<std::string, ::tpy::Union<P, R>>& d;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_Slots_async_writes(Slots& __self, Deep& h, ::tpy::ordered_map<std::string, ::tpy::Union<P, R>>& d)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          __self(__self),
+          h(h),
+          d(d) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_Slots_async_writes&) {
+        return os << "<coroutine Slots.async_writes>";
+    }
+};
+
+inline __coro_Slots_async_writes Slots::async_writes(Deep& h, ::tpy::ordered_map<std::string, ::tpy::Union<P, R>>& d) {
+    return __coro_Slots_async_writes(*this, h, d);
+}
+
+// def gen_writes(self, o: OptSrc, us: list[P | R]) -> Iterator[int32]:
+struct __gen_Slots_gen_writes : public ::tpy::next_iter_mixin<__gen_Slots_gen_writes, int32_t> {
+    ::tpy::frame_state __state;
+    Slots& __self;
+    OptSrc& o;
+    std::vector<::tpy::Union<P, R>>& us;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_RESUME_3 = 4,
+        S_DONE = 5,
+    };
+
+    __gen_Slots_gen_writes(Slots& __self, OptSrc& o, std::vector<::tpy::Union<P, R>>& us)
+        : __state(S_INITIAL),
+          __self(__self),
+          o(o),
+          us(us) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Slots_gen_writes& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Slots_gen_writes&) {
+        return os << "<generator Slots.gen_writes>";
+    }
+};
+
+inline __gen_Slots_gen_writes Slots::gen_writes(OptSrc& o, std::vector<::tpy::Union<P, R>>& us) {
+    return __gen_Slots_gen_writes(*this, o, us);
 }
 
 
@@ -358,6 +605,106 @@ inline void Many::reset(P&& p, const P& r) {
         }
         std::move(__result);
     });
+}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline R::R(int32_t n) : n(n) {}
+
+// def __init__(self, f: Own[P]) -> None:
+//     self.f = f
+inline OptSrc::OptSrc(P&& f) : f(std::move(f)) {}
+
+// def __init__(self, f: Own[P]) -> None:
+//     self.f = f
+inline PqSrc::PqSrc(P&& f) : f(std::move(f)) {}
+
+// def set_r(self, r: Own[R]) -> None:
+//     self.f = r
+inline void PqSrc::set_r(R&& r) {
+    this->f = std::move(r);
+}
+
+// def __init__(self, a: Own[OptSrc], b: Own[PqSrc]) -> None:
+//     self.a = a
+//     self.b = b
+inline Deep::Deep(OptSrc&& a, PqSrc&& b)
+    : a(std::move(a)),
+      b(std::move(b)) {}
+
+// def __init__(self, o: OptSrc, u: PqSrc) -> None:
+//     # ctor: member-inits of an Optional-record and a record-union field
+//     # from another object's field of the same type copy the storage.
+//     self.op = o.f  # tpyc: warning(/copies P \| None into field/)
+//     self.pq = u.f  # tpyc: warning(/copies P \| R into field/)
+//     self.g2 = mk_opt(2)
+//     # An owning call into a union field warns a copy that never happens
+//     # (BUGS.md#own-optional-param-field-store-copies, the CALL twin).
+//     self.g3 = mk_pq(-3)  # tpyc: warning(/copies P \| R into field/)
+inline Slots::Slots(const OptSrc& o, const PqSrc& u)
+    : op(o.f),
+      pq(u.f),
+      g2(::tpyapp::main::mk_opt(2)),
+      g3(::tpyapp::main::mk_pq(-3)) {}
+
+// def show_op(self) -> int32:
+//     e = self.op
+//     return -1 if e is None else e.v
+inline int32_t Slots::show_op() const {
+    const P* e = ::tpy::optional_to_ptr(this->op);
+    return (((e == nullptr)) ? (-1) : (e->v));
+}
+
+// def showu_pq(self) -> int32:
+//     e = self.pq
+//     return e.v if isinstance(e, P) else -e.n
+inline int32_t Slots::showu_pq() const {
+    ::tpy::Union<const P*, const R*> e = ::tpy::to_const_ptr_variant(this->pq);
+    return ((std::holds_alternative<const P*>(e)) ? ((*std::get<const P*>(e)).v) : (::tpy::neg_check<int32_t>((*std::get<const R*>(e)).n)));
+}
+
+// def bump_g2(self) -> None:
+//     e = self.g2
+//     if e is not None:
+//         e.v += 1
+inline void Slots::bump_g2() {
+    P* e = ::tpy::optional_to_ptr(this->g2);
+    if ((e != nullptr)) {
+        e->v = ::tpy::add_check<int32_t>(e->v, 1);
+    }
+}
+
+// def show_g2(self) -> int32:
+//     e = self.g2
+//     return -1 if e is None else e.v
+inline int32_t Slots::show_g2() const {
+    const P* e = ::tpy::optional_to_ptr(this->g2);
+    return (((e == nullptr)) ? (-1) : (e->v));
+}
+
+// def bumpu_g3(self) -> None:
+//     e = self.g3
+//     if isinstance(e, P):
+//         e.v += 1
+//     else:
+//         e.n += 1
+inline void Slots::bumpu_g3() {
+    ::tpy::Union<P*, R*> e = ::tpy::to_ptr_variant(this->g3);
+    if (std::holds_alternative<P*>(e)) {
+        auto& __e = *std::get<P*>(e);
+        __e.v = ::tpy::add_check<int32_t>(__e.v, 1);
+    } else {
+        auto& __e = *std::get<R*>(e);
+        __e.n = ::tpy::add_check<int32_t>(__e.n, 1);
+    }
+}
+
+// def showu_g3(self) -> int32:
+//     e = self.g3
+//     return e.v if isinstance(e, P) else -e.n
+inline int32_t Slots::showu_g3() const {
+    ::tpy::Union<const P*, const R*> e = ::tpy::to_const_ptr_variant(this->g3);
+    return ((std::holds_alternative<const P*>(e)) ? ((*std::get<const P*>(e)).v) : (::tpy::neg_check<int32_t>((*std::get<const R*>(e)).n)));
 }
 
 // def __init__(self, it: Own[Item]) -> None:

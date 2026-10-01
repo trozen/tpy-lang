@@ -130,7 +130,7 @@ from .context import (_ExprResultUse, _ExprUse, _LowerCtx,
                       _ONLY_BTUPLE_SLOT, _ONLY_FRAME_FACTORY, _Prescan,
                       narrow_alias_taken, SinkPos, ValueOptKind)
 from .expressions import (
-    _is_move_source,
+    _node_moves,
     _poly_cast_checks,
     _lower_call_arg,
     _lower_expr,
@@ -2540,7 +2540,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # owning-CALL init (`t = mk(i)`, markers kept) bind the
                     # same storage tuple.
                     _sv = _lower_expr(yv_src, lc, declared)
-                    if _is_move_source(yv_src, lc):
+                    if _node_moves(_sv):
                         yield_values[ys] = THIRMove(
                             result_type=yt_bare, value=_sv,
                             form=Form.STORAGE,

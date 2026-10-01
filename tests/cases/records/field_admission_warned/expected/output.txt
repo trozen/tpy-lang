@@ -11,3 +11,21 @@ method.opt_elem 7 70
 own_arg.or [1, 94, 95, 96] [1, 94, 95, 96, 81]
 ctor.comp_elem 9 1
 method.comp_elem 8 2 5 5
+ctor.opt_pq 10 11 -20 -21 9 -3
+method.opt_field 11 12
+method.opt_self_field 9 10
+method.opt_chain 30 31
+method.opt_elem 50 51
+method.opt_dict 70 71
+method.opt_call 9
+method.pq_field -21 -22
+method.pq_self_field -3 -4
+method.pq_chain 40 41
+method.pq_elem -60 -61
+method.pq_dict 80 81
+method.pq_call -8
+gen.opt_pq [12, 13, -61, -62]
+async.opt_pq 3501
+holder.opt_elem 51 52
+holder.pq_call 4
+holder.pq_field -22 -23

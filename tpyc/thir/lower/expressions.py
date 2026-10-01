@@ -388,6 +388,7 @@ from .predicates import (
     _nullable_static_protocol_param,
     _nullable_protocol_slot,
     _protocol_union_arg,
+    _declared_own_return,
     _own_declared_call_ret,
     _own_storage_opt_param,
     _record_class_binding,
@@ -5520,6 +5521,28 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         movable = lc.movable_now(e.name)
         if last or movable:
             lowered = replace(lowered, is_last_use=last, is_movable=movable)
+        if e.name in lc.pointers:
+            # The binding is a pointer: with `deref` unset the read IS the
+            # raw `T*`, which only a whole lift consumes (`raw_pointer`).
+            lowered = replace(lowered, indirect=True)
+    if (isinstance(e, TpyName) and isinstance(lowered, THIRSelf)
+            and e.name == lc.self_receiver):
+        # A consuming method owns its receiver: the same move facts a name
+        # read carries, so `return self` and a field sink read one stamp.
+        last = lc.analyzer.ctx.is_last_use(e)
+        movable = lc.movable_now(e.name)
+        if last or movable:
+            lowered = replace(lowered, is_last_use=last, is_movable=movable)
+    if (isinstance(e, (TpyCall, TpyMethodCall))
+            and isinstance(lowered, (THIRCall, THIRMethodCall))
+            and lowered.form is Form.VALUE):
+        if _own_declared_result(e, lowered):
+            lowered = replace(lowered, form=Form.STORAGE)
+        elif _pointer_repr_tuple_result(lowered):
+            # A pointer-repr tuple result (`std::tuple<Box, Box*>`, the
+            # mixed own / borrow render) is the borrow form whatever its
+            # stripped type says; a storage sink lifts it.
+            lowered = replace(lowered, form=Form.BORROW)
     if (isinstance(e, TpyName) and isinstance(lowered, THIRName)
             and lowered.cpp is None and not lowered.opt_deref_check):
         binding = declared.get(e.name)
@@ -5957,6 +5980,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                             form=Form.STORAGE, loc=loc)
         if e.name in lc.storage_tuple_locals:
             form = Form.STORAGE
+        elif e.name in lc.own_borrow_tuple_locals:
+            # A mixed own + borrow tuple binding (`std::tuple<T, T*>`, the
+            # handed-over param or a local bound from one) is the borrow
+            # form whatever its stripped type says -- at a generic
+            # instantiation the type alone cannot tell.
+            form = Form.BORROW
         elif _is_own_param(e.name, lc):
             # An `Own[...]` param owns its storage (a by-value / rvalue-ref
             # slot): STORAGE, not a borrow of someone else's -- keeps the MIL
@@ -6372,7 +6401,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 field_cpp=_field_cpp(e),
                 is_arrow=False,
                 narrowed_deref=narrowed_opt,
-                form=_viewfam_result_form(fa_str),
+                form=_member_read_form(rtype, fa_str),
                 loc=loc,
             )
         if (isinstance(e.obj, TpyName) and e.obj.name in lc.storage_opt_locals
@@ -6392,7 +6421,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     name=e.obj.name, form=Form.BORROW, deref=True, loc=loc),
                 field_cpp=_field_cpp(e),
                 narrowed_deref=narrowed_opt,
-                form=_viewfam_result_form(fa_str),
+                form=_member_read_form(rtype, fa_str),
                 loc=loc,
             )
         if (isinstance(e.obj, TpyName)
@@ -6414,7 +6443,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     field_cpp=_field_cpp(e),
                     is_arrow=True,
                     narrowed_deref=narrowed_opt,
-                    form=_viewfam_result_form(fa_str),
+                    form=_member_read_form(rtype, fa_str),
                     loc=loc,
                 )
         if _ptr_value_field_recv_ok(e, declared, analyzer):
@@ -6435,7 +6464,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 is_arrow=fa_arrow,
                 deref_check=fa_deref,
                 narrowed_deref=narrowed_opt,
-                form=_viewfam_result_form(fa_str),
+                form=_member_read_form(rtype, fa_str),
                 loc=loc,
             )
         if _user_deref_field_recv_ok(e, declared, lc.narrow.narrowed, analyzer,
@@ -6455,7 +6484,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 is_arrow=_name_recv_is_arrow(e.obj, lc),
                 deref_chain=e.deref_depth,
                 narrowed_deref=narrowed_opt,
-                form=_viewfam_result_form(fa_str),
+                form=_member_read_form(rtype, fa_str),
                 loc=loc,
             ))
         # A call-shaped receiver's own arg temps flush at the enclosing
@@ -6477,7 +6506,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             field_cpp=_field_cpp(e),
             is_arrow=_field_is_arrow(e, lc),
             narrowed_deref=narrowed_opt,
-            form=_viewfam_result_form(fa_str),
+            form=_member_read_form(rtype, fa_str),
             loc=loc,
         ))
     if isinstance(e, TpySubscript):
@@ -6503,14 +6532,14 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     use=_ExprUse(result=_ExprResultUse.RECEIVER),
                     field_prechecked=isinstance(e.obj, TpyFieldAccess)),
                 field_cpp=escape_cpp_name(e.typed_dict_field),
-                form=_viewfam_result_form(td_str),
+                form=_member_read_form(rtype, td_str),
                 loc=loc)
             if e.typed_dict_optional:
                 _witness("subscript.typed_dict_check")
                 return THIRCall(
                     result_type=rtype, callee="typed_dict_field_check",
                     native_name="tpy::typed_dict_field_check",
-                    args=(td_fa,), form=_viewfam_result_form(td_str),
+                    args=(td_fa,), form=_member_read_form(rtype, td_str),
                     loc=loc)
             _witness("subscript.typed_dict")
             return td_fa
@@ -7371,6 +7400,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # the consuming get reads `.`-style off it.
             form = Form.STORAGE
             _witness("subscript.tuple_elem_recv")
+        elif _is_borrow_form_name(rtype):
+            # An Optional / union / storage-tuple element: a container
+            # stores its elements in storage form, so the read names the
+            # element slot's own `std::optional<T>` / variant / tuple.
+            form = Form.STORAGE
         if isinstance(e.obj, TpyFieldAccess):
             _witness("subscript.field_recv")
             if _resolved_bytes_value(analyzer.get_expr_type(e.obj),
@@ -9426,10 +9460,36 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         # copy -- a non-copyable or last-use-movable element forces the
         # reserve+emplace helper. std::array aggregate-init moves fine, so
         # the Array family never switches.
+        # Lowered ahead of the make switch below, which reads each element's
+        # move verdict off its lowered node.
+        elements = tuple(
+            _lower_checked_container_elem(
+                x, slot, lc, declared,
+                allow_temps=use.allow_temps,
+                threaded=(True if isinstance(e, TpySetLiteral)
+                          else container_threaded),
+                forced=(isinstance(e, TpySetLiteral)
+                        or is_array(container_type)),
+                # Set RECORD elements are admitted: the copyable-record
+                # moves / make_ordered_set path renders like the list
+                # rows. Nested/optional set elements stay conservative.
+                allow_record=True,
+                allow_nested=not isinstance(e, TpySetLiteral),
+                allow_optional=not isinstance(e, TpySetLiteral),
+                retype_scalars=retype,
+                # SET literals excluded: this arm serves list, Array AND
+                # set, and only the first two have a witnessed
+                # frame-emplace render. A non-value tuple in a set needs a
+                # hashable record element, so the shape may not exist at
+                # all -- but "probably unreachable" is what made the
+                # previous keying look safe, so it keeps the wrap.
+                frame_bare_tuple=not isinstance(e, TpySetLiteral))
+            for x in e.elements)
         make = False
         elem_cpp = None
         if e.elements and not is_array(container_type):
-            if (any(_elem_needs_emplace(x, slot, lc) for x in e.elements)
+            if (any(_elem_needs_emplace(el, x, slot, lc)
+                    for el, x in zip(elements, e.elements))
                     or _container_nocopy_elem(slot, lc.analyzer)):
                 make = True
                 _witness("containerlit.make")
@@ -9458,29 +9518,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             raise ThirUnsupported("expr.container_literal")
         return THIRContainerLiteral(
             result_type=container_type,
-            elements=tuple(
-                _lower_checked_container_elem(
-                    x, slot, lc, declared,
-                    allow_temps=use.allow_temps,
-                    threaded=(True if isinstance(e, TpySetLiteral)
-                              else container_threaded),
-                    forced=(isinstance(e, TpySetLiteral)
-                            or is_array(container_type)),
-                    # Set RECORD elements are admitted: the copyable-record
-                    # moves / make_ordered_set path renders like the list
-                    # rows. Nested/optional set elements stay conservative.
-                    allow_record=True,
-                    allow_nested=not isinstance(e, TpySetLiteral),
-                    allow_optional=not isinstance(e, TpySetLiteral),
-                    retype_scalars=retype,
-                    # SET literals excluded: this arm serves list, Array AND
-                    # set, and only the first two have a witnessed
-                    # frame-emplace render. A non-value tuple in a set needs a
-                    # hashable record element, so the shape may not exist at
-                    # all -- but "probably unreachable" is what made the
-                    # previous keying look safe, so it keeps the wrap.
-                    frame_bare_tuple=not isinstance(e, TpySetLiteral))
-                for x in e.elements),
+            elements=elements,
             make_container=make,
             elem_cpp=elem_cpp,
             # An IMMEDIATE container element (`elem_storage`, which does not
@@ -9503,21 +9541,26 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             _witness_container_elem_fam(vslot, lc.analyzer)
         # make_ordered_map for a non-copyable or last-use-movable key/value
         # (the nocopy check reads the VALUE type only).
+        keys = tuple(_lower_container_elem(k, kslot, lc, declared)
+                     for k in e.keys)
+        values = tuple(
+            _lower_checked_container_elem(
+                v, vslot, lc, declared, threaded=True, forced=True,
+                allow_record=True, allow_nested=True,
+                allow_optional=True)
+            for v in e.values)
         make = bool(e.keys) and (
-            any(_elem_needs_emplace(k, kslot, lc) for k in e.keys)
-            or any(_elem_needs_emplace(v, vslot, lc) for v in e.values)
+            any(_elem_needs_emplace(kl, k, kslot, lc)
+                for kl, k in zip(keys, e.keys))
+            or any(_elem_needs_emplace(vl, v, vslot, lc)
+                   for vl, v in zip(values, e.values))
             or _container_nocopy_elem(vslot, lc.analyzer))
         if make:
             _witness("containerlit.make")
         return THIRContainerLiteral(
             result_type=container_type,
-            elements=tuple(_lower_container_elem(k, kslot, lc, declared) for k in e.keys),
-            values=tuple(
-                _lower_checked_container_elem(
-                    v, vslot, lc, declared, threaded=True, forced=True,
-                    allow_record=True, allow_nested=True,
-                    allow_optional=True)
-                for v in e.values),
+            elements=keys,
+            values=values,
             make_container=make,
             loc=loc,
         )
@@ -11874,6 +11917,39 @@ def _viewfam_result_form(t: 'TpyType | None') -> Form:
         return Form.BORROW
     return Form.STORAGE
 
+
+def _member_read_form(t: 'TpyType | None', viewfam: 'TpyType | None') -> Form:
+    """The form of a FIELD read: the view-family axis for a str/bytes member,
+    else STORAGE for every member with a form axis -- a member IS the field's
+    own storage (`std::optional<T>`, `::tpy::Union<A, B>`, the storage
+    tuple, the record itself), never the `T*` / pointer variant a borrow of
+    the same type is -- and VALUE for a value scalar."""
+    if viewfam is not None:
+        return _viewfam_result_form(viewfam)
+    return Form.STORAGE if _is_borrow_form_name(t) else Form.VALUE
+
+
+def _own_declared_result(call: 'TpyCall | TpyMethodCall', lowered: THIRExpr
+                         ) -> bool:
+    """Whether a call's result owns its storage: the callee's DECLARED return
+    is `Own[T]` or `Own[T] | None` (the expression type sema stamps has the
+    `Own` stripped) and the result has a form axis at all. The call arms tag
+    the view-family axis themselves; this is the one owning stamp over every
+    call node, whichever arm built it."""
+    own = _declared_own_return(call, under_optional=True)
+    # The axis is the PAYLOAD's: `Own` itself answers as a value.
+    return own is not None and _is_borrow_form_name(unwrap_readonly(own.wrapped))
+
+
+def _pointer_repr_tuple_result(lowered: THIRExpr) -> bool:
+    """A call result that is a tuple with a pointer-repr element: the
+    callee hands back `std::tuple<..., T*>`, the borrow form. A record
+    borrow result stays VALUE: MIR's `_borrowed_expression` reads a call
+    as VALUE by contract."""
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        lowered.result_type)))
+    return isinstance(t, TupleType) and t.has_pointer_repr_element()
+
 def _lower_checked_container_elem(
         e: TpyExpr, slot: TpyType | None, lc: '_LowerCtx',
         declared: dict[str, TpyType], *, threaded: bool, forced: bool,
@@ -11947,7 +12023,7 @@ def _lower_ru_elem(x: TpyExpr, ut: 'UnionType', lc: '_LowerCtx',
         return THIRLiteral(result_type=ut, value=None, form=Form.VALUE,
                            loc=getattr(x, "loc", None))
     lowered = _lower_expr(x, lc, declared, use=_NESTED_ARG_USE)
-    if isinstance(x, TpyName) and _is_move_source(x, lc):
+    if isinstance(x, TpyName) and _node_moves(lowered):
         # An element wraps ANY movable name at its last use, a wrapper
         # NAME element included.
         lowered = THIRMove(result_type=lowered.result_type, value=lowered,
@@ -12422,6 +12498,7 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
     # Optional inner. The converts apply BEFORE the move wrap: the owned-slot
     # wrap comes first, then the move takes the WRAPPED temp
     # (`std::move(std::string((*a)))`, the make_vector face).
+    unconverted = el
     ou = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
           if slot is not None else None)
     view_slot = (ou.inner if isinstance(ou, OptionalType)
@@ -12441,26 +12518,29 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
             el = THIRFormConvert(result_type=bt, value=el, form=Form.STORAGE,
                                  loc=getattr(e, "loc", None))
     return _elem_maybe_move(el, e, lc, suppress_move=suppress_move,
-                            tuple_elem=tuple_elem)
+                            tuple_elem=tuple_elem, source=unconverted)
 
 
 def _elem_maybe_move(el: THIRExpr, e: TpyExpr, lc: '_LowerCtx', *,
-                     suppress_move: bool, tuple_elem: bool) -> THIRExpr:
+                     suppress_move: bool, tuple_elem: bool,
+                     source: 'THIRExpr | None' = None) -> THIRExpr:
     """Wrap one lowered container element in `std::move` if its source is
     movable -- the element-lowering exit rule, shared by the dispatch tail and
-    the arms that return early.
+    the arms that return early. `source` is the lowered read under any
+    view->owned convert `el` wraps it in (the verdict's facts sit on it);
+    `el` itself when absent.
 
     A list-repeat element is copied into EVERY slot (one source, N slots), so
     it must never move; moving would use-after-move the source for slots
     1..N-1 -- that is what `suppress_move` says."""
     if not suppress_move and _container_elem_move_source(
-            e, lc, tuple_elem=tuple_elem):
+            el if source is None else source, lc, tuple_elem=tuple_elem):
         _witness("containerlit.move")
         return THIRMove(result_type=el.result_type, value=el, form=el.form,
                         loc=getattr(e, "loc", None))
     return el
 
-def _container_elem_move_source(e: TpyExpr, lc: '_LowerCtx', *,
+def _container_elem_move_source(el: THIRExpr, lc: '_LowerCtx', *,
                                 tuple_elem: bool = False) -> bool:
     """The move verdict for a container element / dict key-value / tuple
     element.
@@ -12482,25 +12562,28 @@ def _container_elem_move_source(e: TpyExpr, lc: '_LowerCtx', *,
 
     The ptr-variant clause this used to carry is GONE, and stays gone: no
     decl arm promotes a ptr-variant local, so the set excludes it already."""
-    if not _is_move_source(e, lc):
+    if not _node_moves(el):
         return False
     if not tuple_elem:
         return True
-    inner = _peel_coerce(e)
-    if isinstance(inner, TpyName) and (
+    inner = el
+    while isinstance(inner, THIRCoerce):
+        inner = inner.expr
+    if isinstance(inner, THIRName) and (
             _value_opt_scalar_binding(inner.name, lc)
             or _value_opt_view_param(inner.name, lc)):
         return True
-    t = lc.analyzer.get_expr_type(e)
+    t = el.result_type
     if t is None:
         return False
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     return not t.is_value_type()
 
-def _elem_needs_emplace(e: TpyExpr, slot: 'TpyType | None',
+def _elem_needs_emplace(el: THIRExpr, e: TpyExpr, slot: 'TpyType | None',
                         lc: '_LowerCtx') -> bool:
     """Whether ONE element forces the reserve+emplace helpers over the
-    brace-init (the `make_container` switch, asked per element/slot pair).
+    brace-init (the `make_container` switch, asked per element/slot pair),
+    read off the lowered element `el` of source `e`.
 
     std::initializer_list elements are const, so a brace-init COPY-constructs
     every element from them. Two sources lose by that:
@@ -12513,8 +12596,17 @@ def _elem_needs_emplace(e: TpyExpr, slot: 'TpyType | None',
       a non-copyable payload does not compile at all.
 
     The nocopy-SLOT switch is the callers' own leg: it reads the slot type
-    alone, with no element to ask about."""
-    return (_container_elem_move_source(e, lc)
+    alone, with no element to ask about.
+
+    The movable name is read under the element's own wraps (a move, a form
+    lift such as `tuple_to_storage(t)`): this switch asks whether the SOURCE
+    dies here, whatever the element render did with it, while `_node_moves`
+    asks whether the node itself may be spelled `std::move` -- so the two
+    peel differently on purpose."""
+    inner = el
+    while isinstance(inner, (THIRMove, THIRFormConvert)):
+        inner = inner.value
+    return (isinstance(el, THIRMove) or _container_elem_move_source(inner, lc)
             or _container_storage_call_rvalue(e, slot, lc.analyzer))
 
 
@@ -12817,7 +12909,7 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                     # literal (`nullptr`) never moves.
                     wraps.append("std::move({0})"
                                  if (consuming and isinstance(elem, TpyName)
-                                     and _is_move_source(elem, lc))
+                                     and _node_moves(node.value))
                                  else None)
                     continue
         if (isinstance(et_slot, UnionType)
@@ -12990,7 +13082,7 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             subscript_prechecked=_btuple_elem_passthrough)
         lowered.append(elem_lowered if lift
                        else _raw_pointer_slot(elem_lowered))
-        if consuming and lift and _is_move_source(elem, lc):
+        if consuming and lift and _node_moves(elem_lowered):
             wraps.append("std::move(&({0}))")
             lifts.append(False)
         else:
@@ -14319,7 +14411,7 @@ def _lower_dyn_own_conformer(a: TpyExpr, ptype: 'TpyType | None',
     takes `std::make_unique<U>(x)` (unique_ptr<U> converts to
     unique_ptr<P>), a structural one the owning
     `::tpy::make_adapter<Base>(x)` Adapter wrap. A movable NAME source
-    moves in (`_is_move_source`); a ctor rvalue lands bare. Shared by the
+    moves in (`_node_moves`); a ctor rvalue lands bare. Shared by the
     `Own[P]` call-arg row and the `Own[P]` return arm."""
     conf_proto, verdict = conf
     inner = _lower_expr(a, lc, declared,
@@ -14328,7 +14420,7 @@ def _lower_dyn_own_conformer(a: TpyExpr, ptype: 'TpyType | None',
                                     allow_temps=temp_args,
                                     pos=SinkPos.CALL_ARG),
                         allow_unrouted_name=True)
-    if isinstance(a, TpyName) and _is_move_source(a, lc):
+    if isinstance(a, TpyName) and _node_moves(inner):
         inner = THIRMove(result_type=inner.result_type, value=inner,
                          form=inner.form,
                          loc=getattr(a, "loc", None))
@@ -14682,14 +14774,13 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # cascade).
         if a.name in lc.narrow.narrowed:
             raise ThirUnsupported("arg.own_proto_container_live")
-        if _is_move_source(a, lc):
-            lowered = _lower_expr(a, lc, declared)
+        lowered = _lower_expr(a, lc, declared)
+        if _node_moves(lowered):
             _witness("move.own_proto_container")
             return THIRMove(result_type=lowered.result_type, value=lowered,
                             form=Form.STORAGE, loc=getattr(a, "loc", None))
         if not temp_args:
             raise ThirUnsupported("arg.own_proto_container_live")
-        lowered = _lower_expr(a, lc, declared)
         _witness("argtemp.own_proto_container")
         _opc = lowered.result_type
         return THIRArgTemp(result_type=_opc, cpp_type=lc.render_type(_opc),
@@ -15562,7 +15653,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                             allow_temps=temp_args,
                                             pos=SinkPos.CALL_ARG),
                                 allow_unrouted_name=True)
-            if isinstance(a, TpyName) and _is_move_source(a, lc):
+            if isinstance(a, TpyName) and _node_moves(inner):
                 inner = THIRMove(result_type=inner.result_type,
                                  value=inner, form=inner.form,
                                  loc=getattr(a, "loc", None))
@@ -15672,7 +15763,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                      or a.name in lc.inline_narrowed):
             _witness("argtemp.ru_wrapper_member")
             init = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
-            if _is_move_source(a, lc):
+            if _node_moves(init):
                 init = THIRMove(result_type=init.result_type, value=init,
                                 form=init.form, loc=getattr(a, "loc", None))
             return THIRArgTemp(result_type=ru_m,
@@ -15969,11 +16060,11 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # and rejects. The name may arrive under the Own-lift coerce (an
         # inferred-targ generic call) -- peel it like the gate does.
         a_own = _peel_coerce(a)
-        if not _is_move_source(a_own, lc):
-            note_detail("call.opt_own_copy")
-            raise ThirUnsupported(call_reject_reason("expr.call"))
         lowered = _lower_expr(a_own, lc, declared, use=_NESTED_ARG_USE,
                               allow_unrouted_name=True)
+        if not _node_moves(lowered):
+            note_detail("call.opt_own_copy")
+            raise ThirUnsupported(call_reject_reason("expr.call"))
         _witness("move.opt_own_last_use")
         return THIRMove(result_type=ow_opt, value=lowered,
                         form=Form.STORAGE, loc=getattr(a_own, "loc", None))
@@ -15988,13 +16079,12 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             # the movable last use renders `std::move(a)` BARE (the
             # optional's converting ctor absorbs the moved record); the
             # copy shape is unwitnessed and rejects.
-            if not _is_move_source(a, lc):
+            lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
+            if not _node_moves(lowered):
                 note_detail("call.own_opt_copy")
                 raise ThirUnsupported(call_reject_reason("expr.call"))
             _witness("move.own_opt_last_use")
-            return THIRMove(result_type=own_opt_slot,
-                            value=_lower_expr(a, lc, declared,
-                                              use=_NESTED_ARG_USE),
+            return THIRMove(result_type=own_opt_slot, value=lowered,
                             form=Form.STORAGE, loc=getattr(a, "loc", None))
         if (isinstance(a, (TpyCall, TpyMethodCall)) and at_oo == own_opt_slot
                 and _own_declared_call_ret(a)):
@@ -18748,5 +18838,5 @@ def _node_moves(value: THIRExpr) -> bool:
     may arrive under."""
     while isinstance(value, THIRCoerce):
         value = value.expr
-    return (isinstance(value, THIRName) and value.is_last_use
+    return (isinstance(value, (THIRName, THIRSelf)) and value.is_last_use
             and value.is_movable)

@@ -7,7 +7,7 @@ class H:
     s: StrView | None
 
     def __init__(self) -> None:
-        self.s = "xy"  # tpyc: error(/assign\.field_write_shape/)
+        self.s = "xy"  # tpyc: error(/field_write\.lift\.value/)
 
     def has(self) -> bool:
         return self.s is not None

@@ -9630,16 +9630,28 @@ def _btuple_owning_call_init(init: TpyExpr, analyzer) -> bool:
                     for et in cru.element_types))
 
 
-def _own_declared_call_ret(call: 'TpyCall | TpyMethodCall') -> bool:
-    """Whether the callee's DECLARED return is `Own[...]` -- the owning
-    signal sema strips from the call expr's stamped type (the same fi
-    consult as `_call_iterable_lvalue`; the skeleton's
-    `is_storage_form_source` keys owning tuple slots on it)."""
+def _declared_own_return(call: 'TpyCall | TpyMethodCall', *,
+                         under_optional: bool) -> 'OwnType | None':
+    """The `Own[...]` the callee's DECLARED return carries, or None -- the
+    owning signal sema strips from the call expr's stamped type. With
+    `under_optional` an `Own[T] | None` return answers its `Own[T]` too.
+    The one reader of that fact: `_own_declared_call_ret` and the call
+    result's form stamp are both written over it."""
     fi = getattr(call, "resolved_function_info", None)
     rt = getattr(fi, "return_type", None) if fi is not None else None
     if not isinstance(rt, TpyType):
-        return False
-    return isinstance(unwrap_readonly(unwrap_send_sync(rt)), OwnType)
+        return None
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+    if under_optional and isinstance(u, OptionalType):
+        u = unwrap_readonly(u.inner)
+    return u if isinstance(u, OwnType) else None
+
+
+def _own_declared_call_ret(call: 'TpyCall | TpyMethodCall') -> bool:
+    """Whether the callee's DECLARED return is `Own[...]` (the same fi
+    consult as `_call_iterable_lvalue`; the skeleton's
+    `is_storage_form_source` keys owning tuple slots on it)."""
+    return _declared_own_return(call, under_optional=False) is not None
 
 def _ptr_opt_borrow_call_ret(e: 'TpyCall | TpyMethodCall',
                              ret: 'TpyType | None') -> bool:

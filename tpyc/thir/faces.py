@@ -887,8 +887,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # A numeric literal into a value-union FIELD, retyped to the union so
     # the variant's converting assignment picks the member.
     "field_write.value_union_literal",
-    # An `Own`-declared NAME moved at its last use into a slot no other
-    # family renders (a recursive-alias wrapper, a tuple of type params).
+    # A movable NAME moved at its last use into a slot no other family
+    # renders (a recursive-alias wrapper, a tuple of type params): the
+    # residual family's one node-fact row.
     "field_write.owned_move",
     # A container literal into a recursive-alias wrapper FIELD: the
     # wrapper-instance spelled render.

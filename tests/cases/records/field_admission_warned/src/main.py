@@ -1,5 +1,7 @@
 # Field writes that copy where CPython aliases, each warned: every write is
 # followed by a mutation and both sides are printed, pinning TPy's copy.
+import asyncio
+from typing import Iterator
 from tpy import Own, int32
 
 
@@ -194,6 +196,308 @@ def comp_elems() -> None:
     print("method.comp_elem", m.xs[0].v, m.xs[1].v, m.d[0].v, m.d[1].v)
 
 
+class R:
+    n: int32
+
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+
+def mk_opt(v: int32) -> Own[P] | None:
+    if v > 0:
+        return P(v)
+    return None
+
+
+def mk_pq(v: int32) -> Own[P | R]:
+    if v > 0:
+        return P(v)
+    return R(-v)
+
+
+def bump(p: P | None) -> None:
+    if p is not None:
+        p.v += 1
+
+
+def bumpu(u: P | R) -> None:
+    if isinstance(u, P):
+        u.v += 1
+    else:
+        u.n += 1
+
+
+def show(p: P | None) -> int32:
+    return -1 if p is None else p.v
+
+
+def bump_at(xs: list[P | None], i: int32) -> None:
+    e = xs[i]
+    if e is not None:
+        e.v += 1
+
+
+def show_at(xs: list[P | None], i: int32) -> int32:
+    e = xs[i]
+    return -1 if e is None else e.v
+
+
+def bump_key(d: dict[str, P | None], k: str) -> None:
+    e = d[k]
+    if e is not None:
+        e.v += 1
+
+
+def show_key(d: dict[str, P | None], k: str) -> int32:
+    e = d[k]
+    return -1 if e is None else e.v
+
+
+def showu(u: P | R) -> int32:
+    return u.v if isinstance(u, P) else -u.n
+
+
+def bumpu_at(us: list[P | R], i: int32) -> None:
+    e = us[i]
+    if isinstance(e, P):
+        e.v += 1
+    else:
+        e.n += 1
+
+
+def showu_at(us: list[P | R], i: int32) -> int32:
+    e = us[i]
+    return e.v if isinstance(e, P) else -e.n
+
+
+def bumpu_key(d: dict[str, P | R], k: str) -> None:
+    e = d[k]
+    if isinstance(e, P):
+        e.v += 1
+    else:
+        e.n += 1
+
+
+def showu_key(d: dict[str, P | R], k: str) -> int32:
+    e = d[k]
+    return e.v if isinstance(e, P) else -e.n
+
+
+class OptSrc:
+    f: P | None
+
+    def __init__(self, f: Own[P]) -> None:
+        self.f = f
+
+
+class PqSrc:
+    f: P | R
+
+    def __init__(self, f: Own[P]) -> None:
+        self.f = f
+
+    def set_r(self, r: Own[R]) -> None:
+        self.f = r
+
+
+class Deep:
+    a: OptSrc
+    b: PqSrc
+
+    def __init__(self, a: Own[OptSrc], b: Own[PqSrc]) -> None:
+        self.a = a
+        self.b = b
+
+
+def bump_src(o: OptSrc) -> None:
+    e = o.f
+    if e is not None:
+        e.v += 1
+
+
+def show_src(o: OptSrc) -> int32:
+    e = o.f
+    return -1 if e is None else e.v
+
+
+def bumpu_src(u: PqSrc) -> None:
+    e = u.f
+    if isinstance(e, P):
+        e.v += 1
+    else:
+        e.n += 1
+
+
+def showu_src(u: PqSrc) -> int32:
+    e = u.f
+    return e.v if isinstance(e, P) else -e.n
+
+
+def bump_deep(h: Deep) -> None:
+    bump_src(h.a)
+
+
+def show_deep(h: Deep) -> int32:
+    return show_src(h.a)
+
+
+def bumpu_deep(h: Deep) -> None:
+    bumpu_src(h.b)
+
+
+def showu_deep(h: Deep) -> int32:
+    return showu_src(h.b)
+
+
+class Slots:
+    op: P | None
+    pq: P | R
+    g2: P | None
+    g3: P | R
+
+    def __init__(self, o: OptSrc, u: PqSrc) -> None:
+        # ctor: member-inits of an Optional-record and a record-union field
+        # from another object's field of the same type copy the storage.
+        self.op = o.f  # tpyc: warning(/copies P \| None into field/)
+        self.pq = u.f  # tpyc: warning(/copies P \| R into field/)
+        self.g2 = mk_opt(2)
+        # An owning call into a union field warns a copy that never happens
+        # (BUGS.md#own-optional-param-field-store-copies, the CALL twin).
+        self.g3 = mk_pq(-3)  # tpyc: warning(/copies P \| R into field/)
+
+    def show_op(self) -> int32:
+        e = self.op
+        return -1 if e is None else e.v
+
+    def showu_pq(self) -> int32:
+        e = self.pq
+        return e.v if isinstance(e, P) else -e.n
+
+    def bump_g2(self) -> None:
+        e = self.g2
+        if e is not None:
+            e.v += 1
+
+    def show_g2(self) -> int32:
+        e = self.g2
+        return -1 if e is None else e.v
+
+    def bumpu_g3(self) -> None:
+        e = self.g3
+        if isinstance(e, P):
+            e.v += 1
+        else:
+            e.n += 1
+
+    def showu_g3(self) -> int32:
+        e = self.g3
+        return e.v if isinstance(e, P) else -e.n
+
+    def writes(self, o: OptSrc, u: PqSrc, h: Deep, xs: list[P | None],
+               us: list[P | R], d: dict[str, P | None],
+               du: dict[str, P | R]) -> None:
+        # method: an Optional-record field from a field read, a self field,
+        # a chain, a container element, a dict value and an owning call.
+        self.op = o.f  # tpyc: warning(/copies P \| None into field/)
+        bump_src(o)
+        print("method.opt_field", self.show_op(), show_src(o))
+        self.op = self.g2  # tpyc: warning(/copies P \| None into field/)
+        self.bump_g2()
+        print("method.opt_self_field", self.show_op(), self.show_g2())
+        self.op = h.a.f  # tpyc: warning(/copies P \| None into field/)
+        bump_deep(h)
+        print("method.opt_chain", self.show_op(), show_deep(h))
+        self.op = xs[0]  # tpyc: warning(/copies P \| None into field/)
+        bump_at(xs, 0)
+        print("method.opt_elem", self.show_op(), show_at(xs, 0))
+        self.op = d["k"]  # tpyc: warning(/copies P \| None into field/)
+        bump_key(d, "k")
+        print("method.opt_dict", self.show_op(), show_key(d, "k"))
+        self.op = mk_opt(9)  # tpyc: ok
+        print("method.opt_call", self.show_op())
+        # method: the record-union twin of each source.
+        self.pq = u.f  # tpyc: warning(/copies P \| R into field/)
+        bumpu_src(u)
+        print("method.pq_field", self.showu_pq(), showu_src(u))
+        self.pq = self.g3  # tpyc: warning(/copies P \| R into field/)
+        self.bumpu_g3()
+        print("method.pq_self_field", self.showu_pq(), self.showu_g3())
+        self.pq = h.b.f  # tpyc: warning(/copies P \| R into field/)
+        bumpu_deep(h)
+        print("method.pq_chain", self.showu_pq(), showu_deep(h))
+        self.pq = us[0]  # tpyc: warning(/copies P \| R into field/)
+        bumpu_at(us, 0)
+        print("method.pq_elem", self.showu_pq(), showu_at(us, 0))
+        self.pq = du["k"]  # tpyc: warning(/copies P \| R into field/)
+        bumpu_key(du, "k")
+        print("method.pq_dict", self.showu_pq(), showu_key(du, "k"))
+        # An owning call into a union field warns a copy that never happens
+        # (BUGS.md#own-optional-param-field-store-copies, the CALL twin).
+        self.pq = mk_pq(-8)  # tpyc: warning(/copies P \| R into field/)
+        print("method.pq_call", self.showu_pq())
+
+    def gen_writes(self, o: OptSrc, us: list[P | R]) -> Iterator[int32]:
+        # generator method: the same storage copies inside a frame.
+        self.op = o.f  # tpyc: warning(/copies P \| None into field/)
+        bump_src(o)
+        yield self.show_op()
+        yield show_src(o)
+        self.pq = us[0]  # tpyc: warning(/copies P \| R into field/)
+        bumpu_at(us, 0)
+        yield self.showu_pq()
+        yield showu_at(us, 0)
+
+    async def async_writes(self, h: Deep, d: dict[str, P | R]) -> int32:
+        # async method: a chain and a dict value copy inside a frame.
+        self.op = h.a.f  # tpyc: warning(/copies P \| None into field/)
+        bump_deep(h)
+        self.pq = d["k"]  # tpyc: warning(/copies P \| R into field/)
+        bumpu_key(d, "k")
+        await asyncio.sleep(0)
+        return self.show_op() * 100 + show_deep(h) * 10 + self.showu_pq()
+
+
+def store_g(s: Slots, g: Own[P] | None) -> None:
+    # local holder: an `Own[P] | None` param is the caller's transfer and
+    # moves into the field (its `Own[P | None]` spelling still copies and
+    # warns: BUGS.md#own-optional-param-field-store-copies).
+    s.g2 = g  # tpyc: ok
+
+
+def slot_holder(o: OptSrc, u: PqSrc, xs: list[P | None]) -> None:
+    # local holder: a free function writing a local instance's fields.
+    s = Slots(o, u)
+    s.op = xs[0]  # tpyc: warning(/copies P \| None into field/)
+    bump_at(xs, 0)
+    print("holder.opt_elem", s.show_op(), show_at(xs, 0))
+    s.pq = mk_pq(4)  # tpyc: warning(/copies P \| R into field/)
+    print("holder.pq_call", s.showu_pq())
+    s.pq = u.f  # tpyc: warning(/copies P \| R into field/)
+    bumpu_src(u)
+    print("holder.pq_field", s.showu_pq(), showu_src(u))
+
+
+def slot_writes() -> None:
+    o = OptSrc(P(10))
+    u = PqSrc(P(0))
+    u.set_r(R(20))
+    s = Slots(o, u)
+    store_g(s, P(9))
+    bump_src(o)
+    bumpu_src(u)
+    print("ctor.opt_pq", s.show_op(), show_src(o), s.showu_pq(), showu_src(u),
+          s.show_g2(), s.showu_g3())
+    h = Deep(OptSrc(P(30)), PqSrc(P(40)))
+    xs: list[P | None] = [P(50), None]
+    us: list[P | R] = [R(60)]
+    d: dict[str, P | None] = {"k": P(70)}
+    du: dict[str, P | R] = {"k": P(80)}
+    s.writes(o, u, h, xs, us, d, du)
+    print("gen.opt_pq", list(s.gen_writes(o, us)))
+    print("async.opt_pq", asyncio.run(s.async_writes(h, du)))
+    slot_holder(o, u, xs)
+
+
 def main() -> None:
     xs = [1]
     h = Holder(xs)
@@ -221,6 +525,7 @@ def main() -> None:
     o.elem([P(7)])
     own_args(xs)
     comp_elems()
+    slot_writes()
 
 
 main()

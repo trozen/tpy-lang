@@ -649,7 +649,7 @@
  ],
  "async_method__StrView__chain2": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:field.result_type)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -657,7 +657,7 @@
  ],
  "async_method__StrView__cond": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:field_write.lift.borrow)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -673,7 +673,7 @@
  ],
  "async_method__StrView__dict_get": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape) {driver-main error: Type mismatch in variable 'v_d': expected StrView, got str}",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:subscript.elem.strview) {driver-main error: Type mismatch in variable 'v_d': expected StrView, got str}",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -681,7 +681,7 @@
  ],
  "async_method__StrView__elem": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape) {driver-main error: in function 'main': this construct is not yet supported by C++ code generation (expr.container_literal)}",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:subscript.elem.strview) {driver-main error: in function 'main': this construct is not yet supported by C++ code generation (expr.container_literal)}",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -721,7 +721,7 @@
  ],
  "async_method__StrView__other_field": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:field.result_type)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -737,7 +737,7 @@
  ],
  "async_method__StrView__self_field": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:field.result_type)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -2729,7 +2729,7 @@
  ],
  "ctor__StrView__chain2": [
   "error",
-  "[subject] in the constructor of 'Subj': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in the constructor of 'Subj': this construct is not yet supported by C++ code generation (field.result_type)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -2737,7 +2737,7 @@
  ],
  "ctor__StrView__cond": [
   "error",
-  "[subject] in the constructor of 'Subj': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in the constructor of 'Subj': this construct is not yet supported by C++ code generation (field_write.lift.borrow)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -2753,7 +2753,7 @@
  ],
  "ctor__StrView__dict_get": [
   "error",
-  "[subject] in the constructor of 'Subj': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape) {driver-main error: Type mismatch in variable 'v_d': expected StrView, got str}",
+  "[subject] in the constructor of 'Subj': this construct is not yet supported by C++ code generation (subscript.elem.strview) {driver-main error: Type mismatch in variable 'v_d': expected StrView, got str}",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -2761,7 +2761,7 @@
  ],
  "ctor__StrView__elem": [
   "error",
-  "[subject] in the constructor of 'Subj': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape) {driver-main error: in function 'main': this construct is not yet supported by C++ code generation (expr.container_literal)}",
+  "[subject] in the constructor of 'Subj': this construct is not yet supported by C++ code generation (subscript.elem.strview) {driver-main error: in function 'main': this construct is not yet supported by C++ code generation (expr.container_literal)}",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -2801,7 +2801,7 @@
  ],
  "ctor__StrView__other_field": [
   "error",
-  "[subject] in the constructor of 'Subj': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in the constructor of 'Subj': this construct is not yet supported by C++ code generation (field.result_type)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -2817,7 +2817,7 @@
  ],
  "ctor__StrView__self_field": [
   "error",
-  "[subject] in the constructor of 'Subj': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in the constructor of 'Subj': this construct is not yet supported by C++ code generation (field.result_type)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -2833,7 +2833,7 @@
  ],
  "ctor__StrView__tuple_elem": [
   "error",
-  "[subject] in the constructor of 'Subj': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape) {driver-main error: in function 'main': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.tuple_literal_shape)}",
+  "[subject] in the constructor of 'Subj': this construct is not yet supported by C++ code generation (subscript.tuple_shape) {driver-main error: in function 'main': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.tuple_literal_shape)}",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -4809,7 +4809,7 @@
  ],
  "gen_method__StrView__chain2": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:field.result_type)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -4817,7 +4817,7 @@
  ],
  "gen_method__StrView__cond": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:field_write.lift.borrow)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -4833,7 +4833,7 @@
  ],
  "gen_method__StrView__dict_get": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape) {driver-main error: Type mismatch in variable 'v_d': expected StrView, got str}",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:subscript.elem.strview) {driver-main error: Type mismatch in variable 'v_d': expected StrView, got str}",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -4841,7 +4841,7 @@
  ],
  "gen_method__StrView__elem": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape) {driver-main error: in function 'main': this construct is not yet supported by C++ code generation (expr.container_literal)}",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:subscript.elem.strview) {driver-main error: in function 'main': this construct is not yet supported by C++ code generation (expr.container_literal)}",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -4881,7 +4881,7 @@
  ],
  "gen_method__StrView__other_field": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:field.result_type)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -4897,7 +4897,7 @@
  ],
  "gen_method__StrView__self_field": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:field.result_type)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -8841,7 +8841,7 @@
  ],
  "local_holder__StrView__chain2": [
   "error",
-  "[subject] in function 'probe': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'probe': this construct is not yet supported by C++ code generation (stmt.assign:field.result_type)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -8849,7 +8849,7 @@
  ],
  "local_holder__StrView__cond": [
   "error",
-  "[subject] in function 'probe': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'probe': this construct is not yet supported by C++ code generation (stmt.assign:field_write.lift.borrow)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -8865,7 +8865,7 @@
  ],
  "local_holder__StrView__dict_get": [
   "error",
-  "[subject] in function 'probe': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape) {driver-main error: Type mismatch in variable 'v_d': expected StrView, got str}",
+  "[subject] in function 'probe': this construct is not yet supported by C++ code generation (stmt.assign:subscript.elem.strview) {driver-main error: Type mismatch in variable 'v_d': expected StrView, got str}",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -8873,7 +8873,7 @@
  ],
  "local_holder__StrView__elem": [
   "error",
-  "[subject] in function 'probe': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'probe': this construct is not yet supported by C++ code generation (stmt.assign:subscript.elem.strview)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -8913,7 +8913,7 @@
  ],
  "local_holder__StrView__other_field": [
   "error",
-  "[subject] in function 'probe': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'probe': this construct is not yet supported by C++ code generation (stmt.assign:field.result_type)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -8929,7 +8929,7 @@
  ],
  "local_holder__StrView__self_field": [
   "error",
-  "[subject] in function 'probe': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'probe': this construct is not yet supported by C++ code generation (stmt.assign:field.result_type)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -8945,7 +8945,7 @@
  ],
  "local_holder__StrView__tuple_elem": [
   "error",
-  "[subject] in function 'probe': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'probe': this construct is not yet supported by C++ code generation (stmt.assign:subscript.tuple_shape)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -10921,7 +10921,7 @@
  ],
  "method__StrView__chain2": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:field.result_type)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -10929,7 +10929,7 @@
  ],
  "method__StrView__cond": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:field_write.lift.borrow)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -10945,7 +10945,7 @@
  ],
  "method__StrView__dict_get": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape) {driver-main error: Type mismatch in variable 'v_d': expected StrView, got str}",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:subscript.elem.strview) {driver-main error: Type mismatch in variable 'v_d': expected StrView, got str}",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -10953,7 +10953,7 @@
  ],
  "method__StrView__elem": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape) {driver-main error: in function 'main': this construct is not yet supported by C++ code generation (expr.container_literal)}",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:subscript.elem.strview) {driver-main error: in function 'main': this construct is not yet supported by C++ code generation (expr.container_literal)}",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -10993,7 +10993,7 @@
  ],
  "method__StrView__other_field": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:field.result_type)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -11009,7 +11009,7 @@
  ],
  "method__StrView__self_field": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:field.result_type)",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
@@ -11025,7 +11025,7 @@
  ],
  "method__StrView__tuple_elem": [
   "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape) {driver-main error: in function 'main': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.tuple_literal_shape)}",
+  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:subscript.tuple_shape) {driver-main error: in function 'main': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.tuple_literal_shape)}",
   "",
   "R",
   "view copy of a view with the admitted param's lifetime class; lowering reject by kind",
