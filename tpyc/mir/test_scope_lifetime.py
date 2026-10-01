@@ -11,7 +11,7 @@ from ..typesys import BOOL, INT32, OptionalType
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch,
     MIRConstant, MIREdge, MIRFunction, MIRGoto, MIRNotCovered,
     MIRIsPresent,
     MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
@@ -146,8 +146,7 @@ def artifacts() -> Artifacts:
     (_header, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
     thir = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("scope", name), definitions=definitions,
-                                  kind=MIRBodyKind.METHOD if fn.receiver else MIRBodyKind.FREE_FUNCTION)
+    bodies = {name: lower_function(fn, MIRBodyId("scope", name), definitions=definitions)
               for name, fn in thir.items()}
     for ctor in ctx.thir_constructors.values():
         bodies[ctor.record_name] = lower_constructor(ctor, MIRBodyId("scope", ctor.record_name),
@@ -180,7 +179,7 @@ def test_producer_and_emitter_agree_without_changing_placement(artifacts: Artifa
     assert body.index("if (") < body.index("Cell local = Cell(1);")
     fn = bodies["own"]
     assert isinstance(fn, MIRFunction)
-    roots = {s.id for s in fn.slots if s.value_kind is MIRValueKind.RECORD_STORAGE}
+    roots = {s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED}
     assert all(s.storage_duration is MIRStorageDuration.BODY for s in fn.slots if s.id in roots)
     ends = analyze_scope_ends(fn)
     blocks = {b.id: b for b in fn.blocks}
@@ -192,7 +191,7 @@ def test_producer_and_emitter_agree_without_changing_placement(artifacts: Artifa
 def test_loop_transfers_end_iteration_and_else_separately(artifacts: Artifacts) -> None:
     fn = artifacts[1]["loop"]
     result = analyze_scope_ends(fn)
-    roots = [s.id for s in fn.slots if s.value_kind is MIRValueKind.RECORD_STORAGE]
+    roots = [s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED]
     counts = {sid: sum(any(e.storage.root == sid for e in events) for events in result.ends.values()) for sid in roots}
     # Body fallthrough, break and continue each destroy the per-iteration local.
     assert sorted(counts.values()) == [1, 3]
@@ -219,7 +218,7 @@ def test_missing_placement_is_uncovered(artifacts: Artifacts) -> None:
     loop = fn.body[1]
     broken = replace(loop.body[0], storage_placement=None)
     changed = replace(fn, body=(fn.body[0], replace(loop, body=(broken, *loop.body[1:])), *fn.body[2:]))
-    result = lower_function(changed, MIRBodyId("scope", "missing"), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(changed, MIRBodyId("scope", "missing"))
     assert isinstance(result, MIRNotCovered) and "placement" in result.reason
 
 

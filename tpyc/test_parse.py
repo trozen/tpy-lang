@@ -1,11 +1,13 @@
 """Tests for parser utilities."""
 
 import ast
+from collections.abc import Callable
 import pytest
 from .parse import RelativeImportKey, Parser, ParseError
 from .parse.imports import (
     get_tpy_exports, scan_star_exports, NonLiteralAllError, read_module_all,
 )
+from . import get_lib_dir
 from .parse.parser import _TEMPLATE_STRING_NODES, _validate_cpp_template
 
 
@@ -64,6 +66,63 @@ class TestTpyExports:
         exports = get_tpy_exports()
         for name in ["int", "float", "str", "bool", "None"]:
             assert name not in exports, f"Python builtin {name} should not be in tpy exports"
+
+
+@pytest.fixture(scope="module")
+def extern_parser() -> Callable[[], Parser]:
+    """A parser that knows the `tpy.extern` decorator kwargs: the schemas
+    come from parsing the extern stubs, as the compiler does first."""
+    stubs = Parser()
+    stubs.parse((get_lib_dir() / "tpy" / "tpy" / "_bootstrap" / "_extern.py").read_text(),
+                module_name="tpy._bootstrap._extern")
+    return lambda: Parser(decorator_schemas=stubs._decorator_schemas)
+
+
+class TestTransientKwarg:
+    """`transient=True` is a binding fact on `@native` / `@cpp_template`,
+    carried beside `@pure`."""
+
+    STUBS = (
+        "from tpy import pure, int32\n"
+        "from tpy.extern import native, cpp_template\n"
+        "@native(\"clock\", transient=True)\ndef clock() -> float: ...\n"
+        "@cpp_template(\"({0})\", transient=True)\ndef ident(x: int32) -> int32: ...\n"
+        "@pure\n@native(\"sq\")\ndef sq(x: float) -> float: ...\n"
+        "@native(\"plain\", transient=False)\ndef plain() -> float: ...\n"
+        "@native(\"K\")\n"
+        "class K:\n"
+        "    @native(\"k_m\", transient=True)\n    def m(self) -> int32: ...\n"
+        "    @cpp_template(\"{0}.n\", transient=True)\n    def t(self) -> int32: ...\n")
+
+    def test_parsed_on_native_and_template_stubs(self, extern_parser):
+        module = extern_parser().parse(self.STUBS, module_name="main")
+        flags = {f.name: (f.is_transient, f.is_pure) for f in module.functions}
+        assert flags == {"clock": (True, False), "ident": (True, False), "sq": (False, True),
+                         "plain": (False, False)}
+        assert [(f.name, f.is_transient) for r in module.records for f in r.methods] == [("m", True), ("t", True)]
+        by_name = {f.name: f for f in module.functions}
+        assert by_name["clock"].native_name == "clock" and by_name["ident"].cpp_template == "({0})"
+
+    def test_non_bool_value_rejected(self, extern_parser):
+        with pytest.raises(ParseError, match=r"@native\(transient=\.\.\.\) expects bool"):
+            extern_parser().parse("from tpy.extern import native\n"
+                                  "@native(\"clock\", transient=1)\ndef clock() -> float: ...\n",
+                                  module_name="main")
+
+    def test_rejected_on_a_method_with_a_body(self, extern_parser):
+        # A @native method may carry a TPy body; the promise would shadow it.
+        with pytest.raises(ParseError, match=r"@native\(transient=True\) is only valid on a stub: .*'m' has a TPy body"):
+            extern_parser().parse("from tpy import int32\nfrom tpy.extern import native\n"
+                                  "@native(\"K\")\nclass K:\n"
+                                  "    @native(\"k_m\", transient=True)\n"
+                                  "    def m(self) -> int32:\n        return 1\n",
+                                  module_name="main")
+
+    def test_rejected_on_a_class(self, extern_parser):
+        with pytest.raises(ParseError, match=r"@native\(transient=\.\.\.\) is only valid on a function or method stub"):
+            extern_parser().parse("from tpy.extern import native\n"
+                                  "@native(\"K\", transient=True)\nclass K:\n    pass\n",
+                                  module_name="main")
 
 
 class TestStarImportResolution:

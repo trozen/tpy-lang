@@ -50,6 +50,9 @@ def test_run_reports_four_count(tmp_path: Path) -> None:
     counts = summary["four_count"]["tests"]
     assert counts["lowered"] == len([r for r in lowered if r["status"] != "no_body"])
     assert counts["certified"] + counts["no_proof"] <= counts["lowered"]
+    # The exit fact is reported per lowered body and counted beside the four.
+    assert all(r["exceptional_exits"] in ("True", "False") for r in lowered)
+    assert counts["exceptional"] == sum(r["exceptional_exits"] == "True" for r in lowered)
 
     # Comparing a run with itself moves no blocker.
     proc = subprocess.run([sys.executable, str(_RUN), "--corpus", "tests", "--cases", *_CASES,

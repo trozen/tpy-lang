@@ -2,7 +2,7 @@
 
 from ..thir import nodes as th
 from ..thir.metadata import unsupported_metadata
-from ..thir.scalar_leaves import storage_leaf
+from ..thir.scalar_leaves import owned_leaf, primitive_leaf, primitive_owned_leaf, storage_leaf
 from ..typesys import (
     FLOAT, INT32, FloatLiteralType, IntLiteralType, Representation, TpyType, passing_representation,
 )
@@ -29,12 +29,32 @@ def scalar_param(p: th.THIRParam) -> bool:
 
 
 def slot_representation(slot: MIRSlot) -> Representation:
-    """The representation a scalar slot's value has: a parameter's passing
-    convention (unknown when unpublished), else its form (a value is its
-    own storage)."""
+    """The representation a slot's value has: a parameter's passing
+    convention (unknown when unpublished), else its form (a value and owned
+    storage are their own storage, a holder points elsewhere)."""
     if slot.kind is MIRSlotKind.PARAMETER:
         return Representation.TRAIT if slot.passing is None else passing_representation(slot.passing)
-    return Representation.STORAGE if slot.value_kind is MIRValueKind.SCALAR else Representation.REFERENCE
+    return (Representation.STORAGE if slot.value_kind in (MIRValueKind.SCALAR, MIRValueKind.OWNED)
+            else Representation.REFERENCE)
+
+
+def owned_storage(slot: MIRSlot) -> bool:
+    """An OWNED slot of an owned leaf: storage the body holds by value."""
+    return slot.value_kind is MIRValueKind.OWNED and owned_leaf(slot.type)
+
+
+def owned_borrow(slot: MIRSlot) -> bool:
+    """A readonly BORROWED holder of an owned leaf's storage."""
+    return slot.value_kind is MIRValueKind.BORROWED and slot.readonly and owned_leaf(slot.type)
+
+
+def primitive_operand(slot: MIRSlot) -> bool:
+    """An operand a certified primitive operation reads: an inert leaf by
+    value, or an owned leaf through a borrowed holder, whose TypeDef carries
+    the primitive-operation contract."""
+    if owned_borrow(slot):
+        return primitive_owned_leaf(slot.type)
+    return scalar_slot(slot) and primitive_leaf(slot.type)
 
 
 def scalar_slot(slot: MIRSlot) -> bool:
@@ -50,7 +70,7 @@ def scalar_member(member: MIRTupleElement | MIROptionalLayout | None) -> bool:
 
 def owned_tuple(slot: MIRSlot) -> bool:
     return (slot.value_kind is MIRValueKind.TUPLE and isinstance(slot.tuple_layout, MIRTupleLayout)
-            and any(isinstance(m, MIRTupleElement) and m.kind is MIRValueKind.RECORD_STORAGE
+            and any(isinstance(m, MIRTupleElement) and m.kind is MIRValueKind.OWNED
                     for m in slot.tuple_layout.elements))
 
 

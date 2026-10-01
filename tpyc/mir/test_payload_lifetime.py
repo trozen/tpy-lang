@@ -10,7 +10,7 @@ from ..typesys import BOOL, INT32, NoneType, OptionalType, UnionType
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch, MIRFunction,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRFunction,
     MIRGoto, MIRIsAlternative, MIRIsPresent, MIRNotCovered, MIROptionalConstruct,
     MIROptionalCopy, MIROptionalLayout, MIROptionalPayload, MIRPayloadWrite,
     MIRPayloadWriteMode, MIRPlace, MIRPoint, MIRReturn, MIRSlot, MIRSlotId,
@@ -240,8 +240,7 @@ def source_bodies() -> dict[str, MIRFunction]:
     compiler, modules = _compile(SOURCE)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    functions = {fn.name: lower_function(fn, MIRBodyId("payload_source", fn.name), definitions=definitions,
-                 kind=MIRBodyKind.METHOD if fn.receiver is not None else MIRBodyKind.FREE_FUNCTION)
+    functions = {fn.name: lower_function(fn, MIRBodyId("payload_source", fn.name), definitions=definitions)
                  for fn in ctx.thir_functions.values()}
     functions.update({c.record_name: lower_constructor(c, MIRBodyId("payload_source", c.record_name),
                                                      definitions=definitions)
@@ -280,5 +279,5 @@ def mixed(value: Cell | int32) -> int32:
 """)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(fn for fn in ctx.thir_functions.values() if fn.name == "mixed")
-    result = lower_function(fn, MIRBodyId("payload_source", "mixed"), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("payload_source", "mixed"))
     assert isinstance(result, MIRNotCovered) and result.reason == "unsupported parameter type"

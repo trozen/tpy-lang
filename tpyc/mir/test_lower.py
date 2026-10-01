@@ -11,7 +11,7 @@ from ..typesys import BOOL, INT32
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
-    MIRBodyId, MIRBodyKind, MIRBranch, MIRFunction, MIRNotCovered, MIRPlace,
+    MIRBodyId, MIRBodyKind, MIRBranch, MIRFunction, MIRPlace,
 )
 from .testutil import execute
 
@@ -91,7 +91,7 @@ def functions() -> dict[str, th.THIRFunction]:
 
 
 def lower(fn: th.THIRFunction, name: str = "fixture") -> MIRFunction:
-    result = lower_function(fn, MIRBodyId("test", name), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("test", name))
     assert isinstance(result, MIRFunction), result
     return result
 
@@ -111,14 +111,14 @@ def test_actual_thir_paths(functions: dict[str, th.THIRFunction], name: str,
 
 def test_deterministic_body_scoped_ids(functions: dict[str, th.THIRFunction]) -> None:
     fn = functions["choose"]
-    a = lower_function(fn, MIRBodyId("one", "choose@1"), kind=MIRBodyKind.FREE_FUNCTION)
-    b = lower_function(fn, MIRBodyId("two", "choose@1"), kind=MIRBodyKind.FREE_FUNCTION)
-    c = lower_function(fn, MIRBodyId("one", "choose@2"), kind=MIRBodyKind.FREE_FUNCTION)
+    a = lower_function(fn, MIRBodyId("one", "choose@1"))
+    b = lower_function(fn, MIRBodyId("two", "choose@1"))
+    c = lower_function(fn, MIRBodyId("one", "choose@2"))
     assert isinstance(a, MIRFunction) and isinstance(b, MIRFunction) and isinstance(c, MIRFunction)
     assert {s.id for s in a.slots}.isdisjoint(s.id for s in b.slots)
     assert {s.id for s in a.slots}.isdisjoint(s.id for s in c.slots)
     assert dump_function(a) == dump_function(lower_function(
-        fn, a.id, kind=MIRBodyKind.FREE_FUNCTION))
+        fn, a.id))
     assert any(s.loc is not None for block in a.blocks for s in block.statements)
 
 
@@ -165,8 +165,6 @@ def test_unreachable_supported_tail_is_not_executed(functions: dict[str, th.THIR
     assert execute(lower(fn), True) == 10
 
 
-@pytest.mark.parametrize("kind", [k for k in MIRBodyKind
-                                 if k not in (MIRBodyKind.FREE_FUNCTION, MIRBodyKind.METHOD)])
-def test_body_kinds_explicitly_excluded(functions: dict[str, th.THIRFunction], kind: MIRBodyKind) -> None:
-    result = lower_function(functions["choose"], MIRBodyId("test", "choose"), kind=kind)
-    assert isinstance(result, MIRNotCovered) and result.reason == "unsupported body kind"
+def test_the_body_kind_is_the_functions_own(functions: dict[str, th.THIRFunction]) -> None:
+    result = lower_function(functions["choose"], MIRBodyId("test", "choose"))
+    assert isinstance(result, MIRFunction) and result.kind is MIRBodyKind.FREE_FUNCTION

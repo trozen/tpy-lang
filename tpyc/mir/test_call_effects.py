@@ -21,7 +21,7 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBodyKind, MIRBranch, MIRCall, MIRCallStmt, MIRFunction,
+    MIRAssign, MIRBodyId, MIRBranch, MIRCall, MIRCallStmt, MIRFunction,
     MIRNotCovered, MIRPlace, MIRPoint, MIRRead,
 )
 from .payload_lifetime import inspect_payload_lifetimes
@@ -184,7 +184,7 @@ def body(artifacts: Artifacts, name: str) -> MIRFunction:
                                    summaries=workspace.summaries)
     elif name == "method":
         declaration = next(f for f in ctx.thir_functions.values() if f.name == name)
-        result = lower_function(declaration, MIRBodyId("main", name), kind=MIRBodyKind.METHOD,
+        result = lower_function(declaration, MIRBodyId("main", name),
                                 definitions=definitions, summaries=workspace.summaries)
     else:
         result = next(b for bid, b in workspace.bodies.items() if bid.declaration.split("@")[0] == name)
@@ -313,7 +313,7 @@ def test_unproven_void_and_writing_calls_stay_uncovered(artifacts: Artifacts,
     summaries[th.THIRFunctionIdentity("main", callee)] = (
         MIRSummaryResult(state) if state is MIRSummaryState.PENDING else MIRSummaryResult.opaque("unproved"))
     declaration = next(f for f in ctx.thir_functions.values() if f.name == name)
-    result = lower_function(declaration, MIRBodyId("main", name), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(declaration, MIRBodyId("main", name),
                             definitions=definitions, summaries=summaries)
     assert isinstance(result, MIRNotCovered) and result.reason == "call needs finalized known summary"
 

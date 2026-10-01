@@ -85,8 +85,7 @@ def artifacts() -> Artifacts:
     (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
     functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("temporary", name), definitions=definitions,
-              kind=MIRBodyKind.METHOD if fn.receiver else MIRBodyKind.FREE_FUNCTION)
+    bodies = {name: lower_function(fn, MIRBodyId("temporary", name), definitions=definitions)
               for name, fn in functions.items()}
     for ctor in ctx.thir_constructors.values():
         if ctor.record_name == "Runner":
@@ -150,7 +149,7 @@ def test_source_facts_and_verified_constructor_are_required(artifacts: Artifacts
     rhs = replace(rhs, left=access)
     expr = replace(expr, **({"rhs": rhs} if isinstance(expr, th.THIRValueSelect) else {"right": rhs}))
     fn = replace(fn, body=(replace(fn.body[0], value=expr),))
-    result = lower_function(fn, MIRBodyId("bad", mutation), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("bad", mutation),
                             definitions=definitions)
     assert isinstance(result, MIRNotCovered)
     assert result.reason == {"no_field": "missing field identity",
@@ -180,12 +179,12 @@ def boundary(n: int32) -> int32:
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "boundary")
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    result = lower_function(fn, MIRBodyId("boundary", "test"), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("boundary", "test"),
                             definitions=definitions)
     if reason is None:
         assert isinstance(result, MIRFunction)
         # The named tuple's backing retains its existing body lifetime.
-        assert all(s.value_kind is not MIRValueKind.RECORD_STORAGE for s in result.slots)
+        assert all(s.value_kind is not MIRValueKind.OWNED for s in result.slots)
     else:
         assert isinstance(result, MIRNotCovered) and result.reason == reason
         bound = certify_thir_storage(MIRStorageRequest(fn, result.body, MIRBodyKind.FREE_FUNCTION,
@@ -208,7 +207,7 @@ def test_imported_constructor_boundary(tmp_path: Path, qualified: bool) -> None:
             _, imported_ctx = compiler.generate_code_and_thir(module)
             constructors.extend(imported_ctx.thir_constructors.values())
     definitions = MIRDefinitions(tuple(constructors))
-    result = lower_function(fn, MIRBodyId("qualified", "read"), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("qualified", "read"),
                             definitions=definitions)
     if qualified:
         # This spelling still lowers as a general THIRCall, without constructor identity.
@@ -278,6 +277,6 @@ def boundary() -> int32:
     compiler, modules = _compile(source)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "boundary")
-    result = lower_function(fn, MIRBodyId("global", "boundary"), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("global", "boundary"),
                             definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
     assert isinstance(result, MIRNotCovered) and result.reason == "temporary global assignment"

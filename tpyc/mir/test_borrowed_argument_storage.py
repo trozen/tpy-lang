@@ -18,7 +18,7 @@ from .dependencies import analyze_dependencies
 from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRBodyKind, MIRCall, MIRConstruct,
+    MIRAlias, MIRAssign, MIRBodyId, MIRCall, MIRConstruct,
     MIRCopy, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRRecordStorageInit,
     MIRRecordStorageKind, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
     MIRValueKind,
@@ -113,7 +113,7 @@ def _thir(artifacts: Artifacts, name: str) -> th.THIRFunction:
 
 def _lower(artifacts: Artifacts, fn: th.THIRFunction) -> MIRFunction | MIRNotCovered:
     _, workspace, definitions = artifacts
-    return lower_function(fn, MIRBodyId("main", fn.name), kind=MIRBodyKind.FREE_FUNCTION,
+    return lower_function(fn, MIRBodyId("main", fn.name),
                           definitions=definitions, summaries=workspace.summaries)
 
 
@@ -139,7 +139,7 @@ def _body(artifacts: Artifacts, name: str) -> MIRFunction:
         return _lazy(artifacts)
     if name == "method":
         fn = next(fn for fn in ctx.thir_functions.values() if fn.name == name)
-        result = lower_function(fn, MIRBodyId("main", name), kind=MIRBodyKind.METHOD,
+        result = lower_function(fn, MIRBodyId("main", name),
                                 definitions=definitions, summaries=workspace.summaries)
     elif name == "Caller":
         ctor = next(ctor for ctor in ctx.thir_constructors.values() if ctor.record_name == name)
@@ -153,7 +153,7 @@ def _body(artifacts: Artifacts, name: str) -> MIRFunction:
 
 
 def _storage(body: MIRFunction) -> list[MIRSlot]:
-    return [slot for slot in body.slots if slot.value_kind is MIRValueKind.RECORD_STORAGE]
+    return [slot for slot in body.slots if slot.value_kind is MIRValueKind.OWNED]
 
 
 @pytest.mark.parametrize("name", ["eager", "lazy", "mixed", "unreturned", "loop", "ranges", "method", "Caller"])

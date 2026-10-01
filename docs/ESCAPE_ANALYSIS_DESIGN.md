@@ -634,9 +634,33 @@ or passed to a non-readonly function), `mark_str_borrowers_mutated()` sets the
 **Effort**: S-M
 
 A function marked `@pure` has no observable side effects: no mutation of non-local
-state, no I/O, deterministic output for the same inputs. `@pure` subsumes `@readonly`
+state, no I/O, deterministic output for the same inputs, and nothing it was given
+retained after it returns or raises. `@pure` subsumes `@readonly`
 (which only promises no mutation of `self`). Heap allocation is permitted -- it is
 not considered an observable side effect since the returned object is fresh and owned.
+
+Consumers: sema's borrow-argument check (`_check_borrow_arg_conflicts`), its
+mutation call edges, the with-exit and loop-hold write checks
+(`sema/loop_frames.py`) and the receiver-mutation predicate
+(`sema/receiver_calls.call_mutates_receiver`) treat a `@pure` callee as mutating
+nothing; THIR publishes it as the `PURE` contract of a stub callee
+(`THIRStubCallee`) for MIR's stub call contract.
+
+The `transient` binding fact (`transient=True` on `@native(...)` /
+`@cpp_template(...)`) is the weaker, stub-only sibling for a binding that is
+impure but reaches nothing beyond its arguments (`time.time()` reads a
+clock): the call reads or writes only its arguments as their declared
+mutability says, retains nothing after return or raise, reads no other TPy
+storage and runs no user code. THIR publishes a `@pure` stub as the `PURE`
+contract instead; MIR reads it as transient only where its per-parameter gates
+hold (inert or owned-leaf arguments of builtin TypeDefs), because the existing
+`@pure` annotations were never audited for "runs no user code" (`repr`, `hash`
+and `min` with a `key` dispatch to user code through a protocol or callable
+parameter, which the gates refuse).
+It is an audited promise about C++ the compiler cannot see, so it is a kwarg of
+the binding decorator and is rejected on a binding with a TPy body. Its only
+consumer is MIR's stub call contract (the `TRANSIENT` contract); sema's borrow
+checks do not read it.
 
 ```python
 @pure

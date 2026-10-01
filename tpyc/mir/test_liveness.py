@@ -109,7 +109,7 @@ def test_nonterminating_loop_and_unreachable_reads() -> None:
 
 def test_projected_write_uses_receiver_even_without_a_later_read() -> None:
     slots = (MIRSlot(P, CELL, MIRSlotKind.PARAMETER, form=Form.BORROW,
-                     value_kind=MIRValueKind.BORROWED_RECORD),
+                     value_kind=MIRValueKind.BORROWED),
              MIRSlot(X, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE))
     fn = MIRFunction(B, VoidType(), slots, (MIRBlock(A, (
         MIRAssign(MIRPlace(P, (MIRDeref(), FIELD)), MIRRead(MIRPlace(X))),
@@ -155,7 +155,7 @@ def test_scalar_payload_alias_keeps_union_live_until_value_read() -> None:
 
 def test_receiver_initialization_is_an_entry_use_not_a_loop_use() -> None:
     slots = (MIRSlot(P, CELL, MIRSlotKind.PARAMETER, form=Form.BORROW,
-                     value_kind=MIRValueKind.BORROWED_RECORD),
+                     value_kind=MIRValueKind.BORROWED),
              MIRSlot(X, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE))
     fn = MIRFunction(B, VoidType(), slots, (MIRBlock(A, (), MIRReturn()),), A,
                      records=(MIRRecordLayout(CELL, (FIELD,), True, True),),
@@ -177,11 +177,11 @@ def test_invalid_mir_is_not_an_empty_success() -> None:
 ])
 def test_rvalue_operands_survive_dead_destinations(operation: str) -> None:
     ref = MIRSlot(P, CELL, MIRSlotKind.PARAMETER, form=Form.BORROW,
-                  value_kind=MIRValueKind.BORROWED_RECORD)
+                  value_kind=MIRValueKind.BORROWED)
     scalar = MIRSlot(X, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)
     other = MIRSlot(Y, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)
     target = MIRSlot(Z, CELL, MIRSlotKind.TEMPORARY, form=Form.STORAGE,
-                     value_kind=MIRValueKind.RECORD_STORAGE)
+                     value_kind=MIRValueKind.OWNED)
     records = (MIRRecordLayout(CELL, (FIELD,), True, True),)
     expected = {X}
     value = MIRConstruct((X,))
@@ -195,7 +195,7 @@ def test_rvalue_operands_survive_dead_destinations(operation: str) -> None:
         value, expected = MIRMove(P), {P}
     elif operation in ("tuple", "tuple_copy", "tuple_element"):
         typ = TupleType((CELL, INT32))
-        layout = MIRTupleLayout((MIRTupleElement(CELL, MIRValueKind.BORROWED_RECORD),
+        layout = MIRTupleLayout((MIRTupleElement(CELL, MIRValueKind.BORROWED),
                                  MIRTupleElement(INT32)))
         other = MIRSlot(Y, typ, MIRSlotKind.PARAMETER, value_kind=MIRValueKind.TUPLE, tuple_layout=layout)
         target = replace(other, id=Z, kind=MIRSlotKind.TEMPORARY)
@@ -209,7 +209,7 @@ def test_rvalue_operands_survive_dead_destinations(operation: str) -> None:
     elif operation in ("optional", "optional_copy", "present"):
         other = MIRSlot(Y, OptionalType(CELL), MIRSlotKind.PARAMETER,
                         value_kind=MIRValueKind.OPTIONAL,
-                        optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED_RECORD))
+                        optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
         target = replace(other, id=Z, kind=MIRSlotKind.TEMPORARY)
         if operation == "optional":
             value, expected = MIROptionalConstruct(P), {P}
@@ -223,7 +223,7 @@ def test_rvalue_operands_survive_dead_destinations(operation: str) -> None:
         other = MIRSlot(Y, UnionType((CELL, sibling)), MIRSlotKind.PARAMETER,
                         value_kind=MIRValueKind.UNION,
                         union_layout=MIRUnionLayout(tuple(
-                            MIRTupleElement(t, MIRValueKind.BORROWED_RECORD) for t in (CELL, sibling))))
+                            MIRTupleElement(t, MIRValueKind.BORROWED) for t in (CELL, sibling))))
         target = replace(other, id=Z, kind=MIRSlotKind.TEMPORARY)
         value, expected = ((MIRUnionConstruct(0, P), {P}) if operation == "union"
                            else (MIRUnionCopy(Y), {Y}))
@@ -302,8 +302,7 @@ def test_emitted_operations_and_reference_copy_last_use() -> None:
     workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
     operations: set[type] = set()
     for node, thir in ctx.thir_functions.items():
-        fn = lower_function(thir, MIRBodyId("liveness", node.name),
-                            kind=MIRBodyKind.FREE_FUNCTION, definitions=definitions, summaries=workspace.summaries)
+        fn = lower_function(thir, MIRBodyId("liveness", node.name), definitions=definitions, summaries=workspace.summaries)
         assert isinstance(fn, MIRFunction), fn
         result = analyze_liveness(fn)
         for block in fn.blocks:

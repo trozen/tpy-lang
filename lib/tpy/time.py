@@ -6,7 +6,8 @@ from tpy import int64
 from tpy.extern import native
 
 # Wall-clock time and sleep
-@native("tpy::time_time")
+# Reads the system clock and nothing else.
+@native("tpy::time_time", transient=True)
 def time() -> float: ...
 
 @native("tpy::stdlib::time::time_ns")

@@ -11,7 +11,9 @@ from ..typesys import BOOL, INT32, TpyType
 from .coverage import owned_tuple
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
-from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, MIRRegionId, MIRTupleInitialization
+from .nodes import (
+    MIRBodyId, MIRFunction, MIRNotCovered, MIRRegionId, MIRTupleInitialization,
+)
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage
 from .testutil import Reference, execute
@@ -89,8 +91,7 @@ def artifacts() -> Artifacts:
     (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
     functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("owned_tuple", name), definitions=definitions,
-                                  kind=MIRBodyKind.METHOD if fn.receiver else MIRBodyKind.FREE_FUNCTION)
+    bodies = {name: lower_function(fn, MIRBodyId("owned_tuple", name), definitions=definitions)
               for name, fn in functions.items()}
     for ctor in ctx.thir_constructors.values():
         if ctor.record_name == "Runner":
@@ -158,7 +159,7 @@ def test_damaged_producer_facts_do_not_grant_coverage(artifacts: Artifacts, chan
         case _:
             decl = replace(decl, init=th.THIRName(result_type=decl.resolved_type, name="pair", form=th.Form.STORAGE))
     bad = replace(fn, body=(decl, *fn.body[1:]))
-    result = lower_function(bad, MIRBodyId("damaged", change), kind=MIRBodyKind.FREE_FUNCTION, definitions=definitions)
+    result = lower_function(bad, MIRBodyId("damaged", change), definitions=definitions)
     assert isinstance(result, MIRNotCovered)
     if change != "decl_layout":
         with pytest.raises(THIRValidationError):
@@ -170,7 +171,7 @@ def test_renderer_type_strings_do_not_supply_storage_facts(artifacts: Artifacts)
     fn = functions["singleton"]
     decl = fn.body[0]
     fn = replace(fn, body=(replace(decl, cpp_type="unrelated render text"), *fn.body[1:]))
-    result = lower_function(fn, MIRBodyId("spelling", "singleton"), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("spelling", "singleton"),
                             definitions=definitions)
     assert isinstance(result, MIRFunction) and execute(result) == 9
 
@@ -185,7 +186,7 @@ def test_scalar_projection_does_not_admit_temporary_owned_backing(artifacts: Art
     callee = replace(fn.resolved_callee, signature=replace(fn.resolved_callee.signature, return_type=typ))
     fn = replace(fn, body=(th.THIRReturn(value=read),), return_type=typ, resolved_callee=callee)
     validate_thir(fn)
-    result = lower_function(fn, MIRBodyId("temporary", "projection"), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("temporary", "projection"),
                             definitions=definitions)
     assert isinstance(result, MIRNotCovered)
     assert result.reason == "owned tuple projection needs existing local"
@@ -209,7 +210,7 @@ def test_owned_tuple_source_hoists_and_rebinds_remain_uncovered(source: str, rea
     compiler, modules = _compile(SOURCE.split("def singleton", 1)[0] + source)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn, = ctx.thir_functions.values()
-    result = lower_function(fn, MIRBodyId("boundary", fn.name), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("boundary", fn.name),
                             definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
     assert isinstance(result, MIRNotCovered)
     assert result.reason == reason

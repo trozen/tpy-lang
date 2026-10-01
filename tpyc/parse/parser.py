@@ -1663,6 +1663,11 @@ class Parser:
                         f"Class '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
                 linkage = new_linkage
                 native_name = pos
+                if "transient" in kw:
+                    raise ParseError(
+                        f"@{bare_name(qname)}(transient=...) is only valid on a "
+                        f"function or method stub: it declares what a bound C++ "
+                        f"call does", dec)
                 if kw.get("indirecting"):
                     is_indirecting = True
                 if kw.get("borrowing_view"):
@@ -2476,6 +2481,7 @@ class Parser:
         is_readonly = False
         readonly_opt_out = False
         is_pure = False
+        transient_dec: ast.expr | None = None
         is_inline = False
         is_hotpath = False
         is_override = False
@@ -2538,6 +2544,8 @@ class Parser:
                 error_return = pos.name
             elif qname == qnames.CPP_TEMPLATE:
                 cpp_template = pos
+                if kw.get("transient"):
+                    transient_dec = dec
             elif qname == qnames.NATIVE_PRESERVES_REFS:
                 native_preserves_refs = True
             elif qname == qnames.COPY_RETURNS_WARN:
@@ -2566,6 +2574,8 @@ class Parser:
                 native_name = pos
                 native_function = kw.get("function", False)
                 self._reject_type_fact_kwargs(qname, kw, dec)
+                if kw.get("transient"):
+                    transient_dec = dec
                 cpp_rt = kw.get("cpp_return_type")
                 if isinstance(cpp_rt, _NameArg):
                     native_cpp_return_type = cpp_rt.name
@@ -2769,6 +2779,7 @@ class Parser:
             err = _validate_cpp_template(cpp_template)
             if err is not None:
                 raise ParseError(err, node)
+        self._check_transient_stub(transient_dec, node)
         is_stub_body = self._is_stub_body(node.body)
         is_stub = is_stub_body or cpp_template is not None
         if overload_form is not None:
@@ -2844,6 +2855,7 @@ class Parser:
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
             is_pure=is_pure,
+            is_transient=transient_dec is not None,
             has_auto_readonly_decorator=auto_readonly_dec is not None,
             is_override=is_override,
             overload_form=overload_form,
@@ -2901,6 +2913,7 @@ class Parser:
         is_readonly = False
         readonly_opt_out = False
         is_pure = False
+        transient_dec: ast.expr | None = None
         overload_form: OverloadForm | None = None
         value_ptr_coercion = False
         error_return: str | None = None
@@ -2950,6 +2963,8 @@ class Parser:
                     f"Function '{node.name}'", node)
             elif qname == qnames.CPP_TEMPLATE:
                 cpp_template = pos
+                if kw.get("transient"):
+                    transient_dec = dec
             elif qname == qnames.BUILTIN_DECORATOR:
                 builtin_decorator_key = pos
             elif qname == qnames.BUILTIN_FUNCTION:
@@ -3004,6 +3019,8 @@ class Parser:
                         f"before modules that use decorator kwargs)", dec)
                 native_name = pos
                 self._reject_type_fact_kwargs(qname, kw, dec)
+                if kw.get("transient"):
+                    transient_dec = dec
                 cpp_rt = kw.get("cpp_return_type")
                 if isinstance(cpp_rt, _NameArg):
                     native_cpp_return_type = cpp_rt.name
@@ -3121,6 +3138,7 @@ class Parser:
             return_type = self._parse_type_ref(node.returns, type_param_scope)
 
         # Validate body vs linkage
+        self._check_transient_stub(transient_dec, node)
         is_stub_body = self._is_stub_body(node.body)
         is_stub = False
 
@@ -3213,6 +3231,7 @@ class Parser:
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
             is_pure=is_pure,
+            is_transient=transient_dec is not None,
             overload_form=overload_form,
             linkage=linkage,
             exposed_to_host=exposed_to_host,
@@ -3276,6 +3295,18 @@ class Parser:
                 f"use @overload stubs with a trailing implementation instead",
                 node)
         return ([] if bodyless else self._parse_body(node.body)), bodyless
+
+    def _check_transient_stub(self, dec: ast.expr | None,
+                              node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
+        """`transient=True` declares what a bound C++ symbol does; a TPy body
+        is the compiler's to analyze, so the promise would only shadow it.
+        A @native method (or @dispatch variant) may still carry a body."""
+        if dec is None or self._is_stub_body(node.body):
+            return
+        name = self._decorator_local_name(dec) or "native"
+        raise ParseError(
+            f"@{name}(transient=True) is only valid on a stub: it declares "
+            f"what the bound C++ does, and '{node.name}' has a TPy body", dec)
 
     def _is_stub_body(self, body: list[ast.stmt]) -> bool:
         """Check if a function body is a stub (only `...`).

@@ -1,22 +1,25 @@
 """Structural, typing and definite-assignment checks for MIR holders and places."""
 
 from collections import deque
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from ..identity_map import IdentitySet
 from ..parse import SourceLocation
-from ..thir.nodes import COMPARISON_OPS, Form
+from ..thir.nodes import COMPARISON_OPS, Form, THIRStubCallee
 from ..type_def_registry import is_list, is_array, is_set, is_dict
-from ..thir.scalar_leaves import leaf_constant, primitive_leaf, record_type, storage_leaf
-from ..type_def_registry import ParamPassing, zero_value_of
+from ..thir.scalar_leaves import (
+    leaf_constant, owned_constant, owned_leaf, owned_value_type, primitive_leaf, record_type, storage_leaf,
+)
+from ..type_def_registry import ParamPassing, type_def_of, zero_value_of
 from ..typesys import (
     BOOL, INT32, NominalType, OptionalType, ReadonlyType, TupleType, TpyType, VoidType,
-    UnionType, is_void_like_type, unwrap_readonly,
+    UnionType, certified_primitive_comparison, is_void_like_type, unwrap_readonly,
 )
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref,
     MIRField, MIRFieldId, MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead,
-    MIRReturn, MIRRvalue, MIRSlotId, MIRSlotKind, MIRValueKind, MIRStorageDuration,
+    MIRReturn, MIRRvalue, MIRSlot, MIRSlotId, MIRSlotKind, MIRValueKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRReceiverInit, MIRBodyKind, MIRGlobalId,
     MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode, MIRStorageInit, MIRRecordStorageInit, MIRStatement,
     MIRRegionId, MIREdge, MIRRecordStorageKind, MIRTupleInitialization,
@@ -29,9 +32,12 @@ from .nodes import (
     statement_target,
 )
 from .presence import MIRPresence, _analyze_presence
-from .coverage import owned_tuple, scalar_member, scalar_slot, scalar_wrapper
+from .coverage import (
+    owned_borrow, owned_storage, owned_tuple, primitive_operand, scalar_member, scalar_slot,
+    scalar_wrapper,
+)
 from .region_flow import MIRRegionFlow, outgoing_edges
-from .call_contract import result_problem, summary_problem
+from .call_contract import BORROWING_PASSINGS, OWNING_PASSINGS, result_problem, summary_problem
 
 
 class MIRValidationError(ValueError):
@@ -111,7 +117,7 @@ def _region_structure(fn: MIRFunction) -> MIRRegionFlow:
             _require(slot.storage_duration in regions and regions[slot.storage_duration].parent is not None
                      and local and slot.residence == slot.storage_duration,
                      "invalid storage region")
-        elif slot.storage_duration is MIRStorageDuration.BODY and regions:
+        elif slot.storage_duration is MIRStorageDuration.BODY and regions and local:
             _require(slot.residence == roots[0].id, "body storage has nested residence")
     flow = MIRRegionFlow(fn)
     for transition in flow.edges.values():
@@ -176,6 +182,27 @@ def statement_reads(stmt: MIRStatement) -> tuple[MIRSlotId, ...]:
             return ()
         case MIRAssign(target=target, value=value):
             return (*operands(value), target.root) if target.projections else operands(value)
+        case _:
+            raise MIRValidationError("unknown instruction")
+
+
+def statement_may_raise(stmt: MIRStatement, slots: 'Mapping[MIRSlotId, MIRSlot]') -> bool:
+    """Whether `stmt` can exit the body by exception: a raising operation, a
+    copy or constant materialization into owned storage whose allocation
+    can throw (`TypeDef.copy_may_raise`), a call whose summary may raise, or
+    a print, whose formatting allocates."""
+    match stmt:
+        case MIRCallStmt(call=call) | MIRAssign(value=MIRCall() as call):
+            return call.may_raise
+        case MIRPrint():
+            return True
+        case MIRAssign(value=MIROp(may_raise=may_raise) | MIRCopy(may_raise=may_raise)):
+            return may_raise
+        case MIRAssign(target=target, value=MIRConstant()) if not target.projections and owned_storage(
+                slots[target.root]):
+            return bool(type_def_of(slots[target.root].type).copy_may_raise)
+        case MIRAssign() | MIRStorageInit() | MIRRecordStorageInit():
+            return False
         case _:
             raise MIRValidationError("unknown instruction")
 
@@ -248,7 +275,13 @@ def _validate_structure(fn: MIRFunction) -> None:
              "missing borrowed return record layout")
     field_types: dict[MIRFieldId, TpyType] = {}
     for record in fn.records:
-        _require(record_type(record.type), "unsupported record layout identity")
+        _require(type(record.opaque) is bool, "invalid record layout kind")
+        if record.opaque:
+            # The builtin certificate: one opaque buffer, freely copied and moved.
+            _require(owned_leaf(record.type) and record.fields == ()
+                     and record.copyable is True and record.movable is True, "invalid opaque leaf layout")
+        else:
+            _require(record_type(record.type), "unsupported record layout identity")
         _require(type(record.copyable) is bool and type(record.movable) is bool,
                  "invalid record eligibility")
         seen: set[MIRFieldId] = set()
@@ -269,23 +302,28 @@ def _validate_structure(fn: MIRFunction) -> None:
         _require(slot.id.body == fn.id and slot.id.index >= 0, "foreign or invalid slot ID")
         _require(isinstance(slot.record_storage, MIRRecordStorageKind), "invalid record storage kind")
         if slot.record_storage is MIRRecordStorageKind.OPTIONAL:
-            _require(slot.value_kind is MIRValueKind.RECORD_STORAGE
+            _require(slot.value_kind is MIRValueKind.OWNED and not owned_leaf(slot.type)
                      and slot.kind is MIRSlotKind.LOCAL
                      and not slot.readonly and slot.storage_duration is not None,
                      "optional backing needs local record storage")
         if slot.storage_duration is not None:
             _require(isinstance(slot.storage_duration, (MIRStorageDuration, MIRRegionId))
-                     and (slot.value_kind is MIRValueKind.RECORD_STORAGE or scalar_wrapper(slot) or owned_tuple(slot)
+                     and (slot.value_kind is MIRValueKind.OWNED or scalar_wrapper(slot) or owned_tuple(slot)
                           or slot.value_kind is MIRValueKind.UNION)
                      and ((slot.storage_duration is MIRStorageDuration.CALLER
                            and slot.kind is MIRSlotKind.PARAMETER and slot.value_kind is MIRValueKind.UNION)
+                          # A by-value owned leaf is the body's storage from entry to exit.
+                          or (slot.storage_duration is MIRStorageDuration.BODY
+                              and slot.kind is MIRSlotKind.PARAMETER and owned_storage(slot))
                           or ((slot.storage_duration is MIRStorageDuration.BODY
                                or isinstance(slot.storage_duration, MIRRegionId))
                               and slot.kind in (MIRSlotKind.LOCAL, MIRSlotKind.TEMPORARY))),
                      "invalid storage duration fact")
         if slot.kind is MIRSlotKind.GLOBAL:
+            # An owned-leaf global is external static storage, read through a readonly handle.
             _require(isinstance(slot.global_id, MIRGlobalId) and bool(slot.global_id.module and slot.global_id.name)
-                     and slot.global_id not in global_ids and slot.value_kind is MIRValueKind.SCALAR,
+                     and slot.global_id not in global_ids
+                     and (slot.value_kind is MIRValueKind.SCALAR or owned_borrow(slot)),
                      "invalid or duplicate global identity")
             global_ids.add(slot.global_id)
         else:
@@ -306,7 +344,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                      "unsupported native container type")
             _require(type(member.readonly) is bool and (
                 scalar_member(member)
-                or member.kind is MIRValueKind.BORROWED_RECORD and member.type in records
+                or member.kind is MIRValueKind.BORROWED and member.type in records
                 and member.readonly == slot.readonly
                 and (is_list(slot.type) or is_array(slot.type))
                 and all(storage_leaf(f.type) for f in records[member.type].fields)),
@@ -331,7 +369,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                 if member.kind is MIRValueKind.SCALAR:
                     _require(scalar_member(member), "unsupported union scalar")
                 else:
-                    _require(member.kind is MIRValueKind.BORROWED_RECORD and record_type(member.type)
+                    _require(member.kind is MIRValueKind.BORROWED and record_type(member.type)
                              and (typ == member.type or member.readonly), "unsupported union reference")
             _require(len(kinds) == 1 and len(layout.elements) >= 2, "mixed or empty union layout")
             _require(slot.storage_duration is not MIRStorageDuration.CALLER
@@ -349,7 +387,7 @@ def _validate_structure(fn: MIRFunction) -> None:
             if layout.kind is MIRValueKind.SCALAR:
                 _require(scalar_member(layout), "unsupported optional scalar")
             else:
-                _require(layout.kind is MIRValueKind.BORROWED_RECORD and record_type(layout.type)
+                _require(layout.kind is MIRValueKind.BORROWED and record_type(layout.type)
                          and (slot.type.inner == layout.type or layout.readonly), "unsupported optional reference")
         elif slot.value_kind is MIRValueKind.TUPLE:
             layout = slot.tuple_layout
@@ -365,24 +403,33 @@ def _validate_structure(fn: MIRFunction) -> None:
                          "invalid tuple element")
                 if member.kind is MIRValueKind.SCALAR:
                     _require(scalar_member(member) and typ == member.type, "invalid tuple scalar")
-                elif member.kind is MIRValueKind.RECORD_STORAGE:
+                elif member.kind is MIRValueKind.OWNED:
                     _require(member.type in records and unwrap_readonly(typ) == member.type
                              and (typ == member.type or member.readonly), "invalid owned tuple record")
                 else:
-                    _require(member.kind is MIRValueKind.BORROWED_RECORD
+                    _require(member.kind is MIRValueKind.BORROWED
                              and record_type(member.type) and unwrap_readonly(typ) == member.type
                              and (typ == member.type or member.readonly), "invalid tuple reference")
         elif slot.value_kind is MIRValueKind.SCALAR:
             _require(scalar_slot(slot) and slot.form is Form.VALUE
                      and (not slot.readonly or slot.kind is MIRSlotKind.GLOBAL),
                      "unsupported slot type or form")
-        elif slot.value_kind is MIRValueKind.RECORD_STORAGE:
+        elif slot.value_kind is MIRValueKind.OWNED:
             _require(slot.type in records and slot.form is Form.STORAGE
-                     and slot.kind is not MIRSlotKind.PARAMETER,
+                     and records[slot.type].opaque == owned_leaf(slot.type)
+                     and (slot.kind is not MIRSlotKind.PARAMETER
+                          or owned_leaf(slot.type) and slot.passing in OWNING_PASSINGS),
                      "unsupported record storage type or form")
+            if owned_leaf(slot.type):
+                _require(not slot.readonly and slot.storage_duration is not None,
+                         "owned leaf storage needs a mutable placement")
         else:
-            _require(slot.value_kind is MIRValueKind.BORROWED_RECORD and record_type(slot.type)
-                     and slot.form is Form.BORROW, "unsupported reference slot type or form")
+            _require(slot.value_kind is MIRValueKind.BORROWED and slot.form is Form.BORROW
+                     and (record_type(slot.type) or owned_borrow(slot) and slot.type in records
+                          and records[slot.type].opaque), "unsupported reference slot type or form")
+            _require(not owned_leaf(slot.type) or slot.kind is not MIRSlotKind.PARAMETER
+                     or slot.passing in BORROWING_PASSINGS,
+                     "owned leaf parameter borrow needs a readonly passing")
         _require(type(slot.readonly) is bool, "invalid access capability")
         _require(slot.value_kind is MIRValueKind.TUPLE or slot.tuple_layout is None,
                  "tuple layout on non-tuple slot")
@@ -404,7 +451,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                  "invalid constructor receiver")
         receiver = slots[init.receiver]
         _require(receiver.kind is MIRSlotKind.PARAMETER
-                 and receiver.value_kind is MIRValueKind.BORROWED_RECORD
+                 and receiver.value_kind is MIRValueKind.BORROWED
                  and not receiver.readonly and receiver.type in records
                  and isinstance(fn.return_type, VoidType), "invalid constructor receiver")
         members = records[receiver.type].fields
@@ -461,13 +508,14 @@ def _validate_structure(fn: MIRFunction) -> None:
                     typ, kind, readonly = member.type, member.kind, member.readonly
                     tuple_member = True
                 case MIRDeref():
-                    _require(kind is MIRValueKind.BORROWED_RECORD, "dereference needs reference holder")
+                    _require(kind is MIRValueKind.BORROWED, "dereference needs reference holder")
                     _require(not (write and readonly), "store through readonly reference")
-                    kind = MIRValueKind.RECORD_STORAGE
+                    kind = MIRValueKind.OWNED
                     tuple_member = False
                     optional_member = False
                 case MIRField():
-                    _require(kind is MIRValueKind.RECORD_STORAGE, "field needs record storage")
+                    _require(kind is MIRValueKind.OWNED, "field needs record storage")
+                    _require(not (typ in records and records[typ].opaque), "field projection under an opaque layout")
                     tuple_member = False
                     _require(not (write and readonly), "store through readonly storage")
                     _require(isinstance(projection.id, MIRFieldId) and projection.id.owner == typ
@@ -480,14 +528,14 @@ def _validate_structure(fn: MIRFunction) -> None:
                     _require(field_types.setdefault(projection.id, projection.type) == projection.type,
                              "inconsistent field type")
                     typ = member_type
-                    kind = MIRValueKind.RECORD_STORAGE if inline_record else MIRValueKind.SCALAR
+                    kind = MIRValueKind.OWNED if inline_record else MIRValueKind.SCALAR
                     readonly = readonly or isinstance(projection.type, ReadonlyType)
                 case _:
                     raise MIRValidationError("unsupported place projections")
         _require(not (write and tuple_member), "tuple element replacement is forbidden")
         _require(not (write and optional_member), "optional payload replacement is forbidden")
         _require(not (write and inline_record), "inline record replacement is unsupported")
-        if kind is MIRValueKind.RECORD_STORAGE and not place.projections:
+        if kind is MIRValueKind.OWNED and not place.projections:
             _require(typ in records, "record place needs layout")
         return typ, kind, readonly
 
@@ -509,20 +557,101 @@ def _validate_structure(fn: MIRFunction) -> None:
         _require(isinstance(call, MIRCall) and call.summary in call_summaries,
                  "call summary does not belong to this body")
         summary = call.summary
+        # No declaration can say a stub cannot raise yet.
+        _require(not isinstance(summary.callee, THIRStubCallee) or call.may_raise is True,
+                 "stub call must be a possible exceptional exit")
+        _require(type(call.may_raise) is bool and call.may_raise is (not summary.normal_return_only),
+                 "call exit fact mismatch")
         _require(len(call.arguments) == len(summary.parameters), "call arity mismatch")
-        for sid, typ, ref in zip(call.arguments, summary.callee.signature.param_types, summary.parameters):
+        for sid, binding in zip(call.arguments, summary.parameters):
             _require(sid in slots, "unknown slot ID")
             source = slots[sid]
-            if ref is None:
-                _require(source.type == typ and source.value_kind is MIRValueKind.SCALAR,
-                         "call scalar argument mismatch")
-            else:
-                _require(source.type == ref.type and source.value_kind is MIRValueKind.BORROWED_RECORD
+            _require(source.kind is not MIRSlotKind.GLOBAL, "global value needs explicit read")
+            ref, owned = binding.borrowed_record, owned_value_type(binding.type)
+            if binding.protocol:
+                # Only a builtin leaf's dispatch is the stub's own runtime code;
+                # the leaf is read in place or by value.
+                bound = type_def_of(source.type)
+                _require(bound is not None and (bound.owned_leaf and owned_borrow(source)
+                                                or bound.loan_inert and scalar_slot(source)),
+                         "call protocol argument is not a builtin leaf")
+                continue
+            _require(source.type == binding.type, "call argument type mismatch")
+            if ref is not None:
+                _require(source.type == ref.type and source.value_kind is MIRValueKind.BORROWED
                          and (not source.readonly or ref.readonly), "call record argument mismatch")
+            elif owned is not None:
+                # Lent for the call at a borrowing passing, else the callee's own copy.
+                _require(source.type == owned and (
+                    owned_borrow(source) if binding.passing in BORROWING_PASSINGS
+                    else owned_storage(source) and source.kind is MIRSlotKind.TEMPORARY),
+                    "call owned-leaf argument mismatch")
+            else:
+                _require(source.type == binding.type and source.value_kind is MIRValueKind.SCALAR,
+                         "call scalar argument mismatch")
 
     pred: dict[MIRBlockId, set[MIRBlockId]] = {b: set() for b in blocks}
     initialized_storage: set[MIRSlotId] = set()
     owning_blocks: set[MIRBlockId] = set()
+
+    def validate_owned_write(stmt: MIRAssign, block: MIRBlock, target: MIRSlot) -> None:
+        fact, value = stmt.storage_write, stmt.value
+        _require(isinstance(fact, MIRRecordWrite) and fact.rebind_owner is None
+                 and fact.mode in (MIRRecordWriteMode.INITIALIZE_ONCE, MIRRecordWriteMode.INITIALIZE_REGION,
+                                   MIRRecordWriteMode.IN_PLACE),
+                 "owned leaf write needs an initialization or replacement fact")
+        match fact.mode:
+            case MIRRecordWriteMode.INITIALIZE_ONCE:
+                _require(target.storage_duration is MIRStorageDuration.BODY, "backing write needs private body storage")
+                owning_blocks.add(block.id)
+            case MIRRecordWriteMode.INITIALIZE_REGION:
+                # A full expression's result is initialized inside that expression's
+                # own region, nested in the region that owns the destination.
+                _require(isinstance(target.storage_duration, MIRRegionId)
+                         and target.storage_duration in regions.chains[block.region],
+                         "scoped initialization needs owning region")
+                region_initializations[target.id] = block.id
+        if fact.mode is not MIRRecordWriteMode.IN_PLACE:
+            _require(target.id not in initialized_storage, "repeated storage initialization")
+            initialized_storage.add(target.id)
+        for operand in operands(value):
+            _require(operand in slots and (slots[operand].kind is not MIRSlotKind.GLOBAL
+                                           or isinstance(value, MIRCopy) and owned_borrow(slots[operand])),
+                     "global value needs explicit read")
+        match value:
+            case MIRCopy():
+                source_type, source_kind, _ = place_info(value.source)
+                _require(source_type == target.type and source_kind is MIRValueKind.OWNED
+                         and (value.source.projections == (MIRDeref(),)
+                              or not value.source.projections and owned_storage(slots[value.source.root])),
+                         "owned leaf copy source mismatch")
+                td = type_def_of(target.type)
+                _require(value.may_raise is bool(td.copy_may_raise), "owned leaf copy exit fact mismatch")
+            case MIRMove():
+                source = slots[value.source]
+                _require(owned_storage(source) and source.type == target.type and value.source != target.id,
+                         "owned leaf move source mismatch")
+            case MIROp():
+                td = type_def_of(target.type)
+                _require(isinstance(value.op, str) and bool(value.op) and type(value.may_raise) is bool
+                         and isinstance(value.operands, tuple) and 1 <= len(value.operands) <= 2
+                         and all(scalar_slot(slots[o]) or owned_borrow(slots[o]) for o in value.operands),
+                         "primitive operation needs leaf operands and result")
+                _require(td.primitive_ops and all(primitive_operand(slots[o]) for o in value.operands),
+                         "primitive operation lacks the primitive contract")
+                # No fact says a primitive operation cannot raise yet.
+                _require(value.may_raise is True, "primitive operation must be a possible exceptional exit")
+            case MIRConstant():
+                _require(owned_constant(target.type, value.value), "constant type or range mismatch")
+            case MIRCall():
+                # A callee returns an owned leaf by value: fresh storage the caller
+                # owns, unless the result may borrow an argument (a holder, then a copy).
+                validate_call(value)
+                _require(value.summary.borrowed_result is None
+                         and owned_value_type(value.summary.callee.signature.return_type) == target.type,
+                         "call owned result type mismatch")
+            case _:
+                raise MIRValidationError("owned leaf write needs a copy, move, operation, constant or call")
     payload_initializations: set[MIRSlotId] = set()
     payload_init_blocks: set[MIRBlockId] = set()
     region_initializations: dict[MIRSlotId, MIRBlockId] = {}
@@ -535,10 +664,11 @@ def _validate_structure(fn: MIRFunction) -> None:
             target_place = statement_target(stmt)
             if isinstance(stmt, MIRPrint):
                 _require(isinstance(stmt.arguments, tuple) and all(
-                    sid in slots and scalar_slot(slots[sid]) and slots[sid].kind is not MIRSlotKind.GLOBAL
+                    sid in slots and (scalar_slot(slots[sid]) or owned_borrow(slots[sid]))
+                    and slots[sid].kind is not MIRSlotKind.GLOBAL
                     for sid in stmt.arguments), "print needs local inert leaf arguments")
                 # A user method could format any other leaf (an enum's `__str__`).
-                _require(all(primitive_leaf(slots[sid].type) for sid in stmt.arguments),
+                _require(all(primitive_operand(slots[sid]) for sid in stmt.arguments),
                          "print argument lacks the primitive contract")
             if isinstance(stmt, MIRCallStmt):
                 validate_call(stmt.call)
@@ -585,6 +715,10 @@ def _validate_structure(fn: MIRFunction) -> None:
                 continue
             value = stmt.value
             fact = stmt.storage_write
+            if not stmt.target.projections and owned_storage(target):
+                # Every write to owned storage carries its storage event, whatever produces the value.
+                validate_owned_write(stmt, block, target)
+                continue
             if isinstance(fact, MIRTupleInitialization):
                 _require(not stmt.target.projections and owned_tuple(target)
                          and isinstance(value, MIRTupleConstruct), "tuple initialization needs owning tuple construction")
@@ -625,18 +759,18 @@ def _validate_structure(fn: MIRFunction) -> None:
                                  and fact.rebind_owner is None,
                                  "invalid optional backing assignment")
                     case MIRRecordWriteMode.INITIALIZE_REGION:
-                        _require(not stmt.target.projections and target.value_kind is MIRValueKind.RECORD_STORAGE
+                        _require(not stmt.target.projections and target.value_kind is MIRValueKind.OWNED
                                  and isinstance(target.storage_duration, MIRRegionId)
                                  and target.storage_duration == block.region and fact.rebind_owner is None,
                                  "scoped initialization needs owning region")
                         region_initializations[target.id] = block.id
                     case MIRRecordWriteMode.INITIALIZE_ONCE | MIRRecordWriteMode.OWN_SITE:
-                        _require(not stmt.target.projections and target.value_kind is MIRValueKind.RECORD_STORAGE
+                        _require(not stmt.target.projections and target.value_kind is MIRValueKind.OWNED
                                  and target.storage_duration is MIRStorageDuration.BODY and fact.rebind_owner is None,
                                  "backing write needs private body storage")
                     case MIRRecordWriteMode.IN_PLACE:
                         _require(fact.rebind_owner == stmt.target.root
-                                 and ((target.value_kind is MIRValueKind.BORROWED_RECORD
+                                 and ((target.value_kind is MIRValueKind.BORROWED
                                        and stmt.target.projections == (MIRDeref(),))
                                       or (target.value_kind is MIRValueKind.OPTIONAL
                                           and stmt.target.projections == (MIROptionalPayload(), MIRDeref()))),
@@ -653,7 +787,8 @@ def _validate_structure(fn: MIRFunction) -> None:
                          "payload alias requires extraction")
             for operand in operands(value):
                 slot_type(operand)
-                _require(slots[operand].kind is not MIRSlotKind.GLOBAL or isinstance(value, MIRRead),
+                _require(slots[operand].kind is not MIRSlotKind.GLOBAL or isinstance(value, MIRRead)
+                         or isinstance(value, (MIRBorrow, MIRCopy)) and owned_borrow(slots[operand]),
                          "global value needs explicit read")
             match value:
                 case MIRRangeAdvance():
@@ -723,7 +858,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                         _require(target.value_kind is MIRValueKind.PAYLOAD_ALIAS and target.alias_source == source,
                                  "scalar extraction must bind payload storage")
                     else:
-                        _require(target.value_kind is MIRValueKind.BORROWED_RECORD
+                        _require(target.value_kind is MIRValueKind.BORROWED
                                  and (not member.readonly or target.readonly), "union extraction increases access")
                 case MIROptionalConstruct() | MIROptionalCopy():
                     target = slots[stmt.target.root]
@@ -753,7 +888,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                         elements = []
                         for source, member in zip(value.elements, target.tuple_layout.elements):
                             if isinstance(source, MIRConstruct):
-                                _require(member.kind is MIRValueKind.RECORD_STORAGE,
+                                _require(member.kind is MIRValueKind.OWNED,
                                          "tuple constructor needs inline record member")
                                 fields = records[member.type].fields
                                 _require(len(source.fields) == len(fields) and all(
@@ -761,7 +896,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                                     for s, f in zip(source.fields, fields)), "incomplete or mistyped tuple record construction")
                                 elements.append(member)
                             else:
-                                _require(member.kind is not MIRValueKind.RECORD_STORAGE,
+                                _require(member.kind is not MIRValueKind.OWNED,
                                          "inline tuple member needs constructor")
                                 elements.append(MIRTupleElement(slots[source].type, slots[source].value_kind,
                                                                slots[source].readonly))
@@ -780,7 +915,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                         owning_blocks.add(block.id)
                     target = slots[stmt.target.root]
                     _require(target_type in records and (
-                        (not stmt.target.projections and target.value_kind is MIRValueKind.RECORD_STORAGE)
+                        (not stmt.target.projections and target.value_kind is MIRValueKind.OWNED)
                         or stmt.target.projections in ((MIRDeref(),), (MIROptionalPayload(), MIRDeref()))),
                         "record destination type")
                     if fact is not None and fact.mode in (MIRRecordWriteMode.OWN_SITE, MIRRecordWriteMode.OPTIONAL_ASSIGN):
@@ -802,37 +937,43 @@ def _validate_structure(fn: MIRFunction) -> None:
                                 for src, member in zip(value.fields, members)),
                                 "incomplete or mistyped record construction")
                         case MIRCopy():
-                            _require(records[target_type].copyable and place_type(value.source) == target_type
+                            _require(records[target_type].copyable and value.may_raise is False
+                                     and place_type(value.source) == target_type
                                      and (value.source.projections == (MIRDeref(),)
                                           or (not value.source.projections
-                                              and slots[value.source.root].value_kind is MIRValueKind.RECORD_STORAGE)),
+                                              and slots[value.source.root].value_kind is MIRValueKind.OWNED)),
                                      "record copy source or eligibility")
                         case _:
                             source = slots[value.source]
-                            _require(source.value_kind is MIRValueKind.RECORD_STORAGE
+                            _require(source.value_kind is MIRValueKind.OWNED
                                      and source.type == target_type and not source.readonly
                                      and records[target_type].movable and value.source != stmt.target.root,
                                      "record move source or eligibility")
                 case MIRBorrow():
                     target = slots[stmt.target.root]
                     source_type, source_kind, readonly = place_info(value.source)
-                    _require(not stmt.target.projections and target.value_kind is MIRValueKind.BORROWED_RECORD
+                    _require(not stmt.target.projections and target.value_kind is MIRValueKind.BORROWED
                              and target.kind is not MIRSlotKind.PARAMETER
-                             and source_kind is MIRValueKind.RECORD_STORAGE
+                             and source_kind is MIRValueKind.OWNED
                              and target_type == source_type, "storage borrow type mismatch")
                     _require(not readonly or target.readonly, "borrow increases access")
                 case MIRCall():
                     validate_call(value)
-                    result = value.summary.callee.signature.borrowed_result
+                    result = value.summary.borrowed_result
                     _require(not stmt.target.projections, "call needs whole result holder")
                     if result is None:
                         _require(scalar_slot(target)
                                  and target_type == value.summary.callee.signature.return_type,
                                  "call result type or target mismatch")
                     else:
-                        _require(target.value_kind is MIRValueKind.BORROWED_RECORD
+                        _require(target.value_kind is MIRValueKind.BORROWED
                                  and target_type == result.type and (not result.readonly or target.readonly),
                                  "call result type or access mismatch")
+                case MIRConstant() if owned_borrow(target):
+                    # A str or bytes literal lives in static storage its holder borrows.
+                    _require(not stmt.target.projections and target.kind is MIRSlotKind.TEMPORARY
+                             and type(value.value) in (str, bytes) and owned_constant(target_type, value.value),
+                             "static literal needs a borrowed temporary of its type")
                 case MIRConstant():
                     _require(leaf_constant(target_type, value.value), "constant type or range mismatch")
                 case MIRRead():
@@ -842,7 +983,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                     target = slots[stmt.target.root]
                     source = slots[value.source]
                     _require(not stmt.target.projections
-                             and target.value_kind in (MIRValueKind.BORROWED_RECORD, MIRValueKind.BORROWED_CONTAINER)
+                             and target.value_kind in (MIRValueKind.BORROWED, MIRValueKind.BORROWED_CONTAINER)
                              and source.value_kind is target.value_kind
                              and source.container_layout == target.container_layout
                              and target_type == source.type, "alias type mismatch")
@@ -852,10 +993,13 @@ def _validate_structure(fn: MIRFunction) -> None:
                     _require(value.op in COMPARISON_OPS,
                              "unsupported comparison")
                     _require(target_type == BOOL, "comparison result is not bool")
-                    _require(slot_type(value.left) == slot_type(value.right)
-                             and scalar_slot(slots[value.left]) and scalar_slot(slots[value.right]),
+                    left, right = slots[value.left], slots[value.right]
+                    certified = certified_primitive_comparison(left.type, right.type)
+                    _require(all(scalar_slot(s) or owned_borrow(s) for s in (left, right))
+                             and (left.type == right.type or certified),
                              "comparison operand type mismatch")
-                    _require(primitive_leaf(slot_type(value.left)), "comparison lacks the primitive contract")
+                    _require(certified and primitive_operand(left) and primitive_operand(right),
+                             "comparison lacks the primitive contract")
                 case MIRNot():
                     _require(target_type == BOOL and slot_type(value.operand) == BOOL
                              and slots[value.operand].value_kind is MIRValueKind.SCALAR,
@@ -865,10 +1009,11 @@ def _validate_structure(fn: MIRFunction) -> None:
                              and target.kind is not MIRSlotKind.GLOBAL
                              and isinstance(value.op, str) and bool(value.op) and type(value.may_raise) is bool
                              and isinstance(value.operands, tuple) and 1 <= len(value.operands) <= 2
-                             and all(scalar_slot(slots[operand]) for operand in value.operands),
+                             and all(scalar_slot(slots[o]) or owned_borrow(slots[o]) for o in value.operands),
                              "primitive operation needs inert leaf operands and result")
-                    _require(primitive_leaf(target_type) and all(primitive_leaf(slot_type(o)) for o in value.operands),
+                    _require(primitive_leaf(target_type) and all(primitive_operand(slots[o]) for o in value.operands),
                              "primitive operation lacks the primitive contract")
+                    _require(value.may_raise is True, "primitive operation must be a possible exceptional exit")
                 case _:
                     raise MIRValidationError("unknown rvalue semantics")
         term = block.terminator
@@ -892,15 +1037,21 @@ def _validate_structure(fn: MIRFunction) -> None:
                     _require(isinstance(fn.return_type, VoidType), "missing return value")
                 elif fn.borrowed_result is not None:
                     source = slots[term.value]
-                    _require(source.value_kind is MIRValueKind.BORROWED_RECORD
+                    _require(source.value_kind is MIRValueKind.BORROWED
                              and source.type == fn.borrowed_result.type
                              and (not source.readonly or fn.borrowed_result.readonly),
                              "borrowed return type or access mismatch")
+                elif owned_storage(slots[term.value]):
+                    # An owned leaf returns by value: its storage is copied or moved out.
+                    _require(slot_type(term.value) == owned_value_type(fn.return_type), "return type mismatch")
                 else:
                     _require(slot_type(term.value) == fn.return_type and slots[term.value].value_kind is MIRValueKind.SCALAR,
                              "return type mismatch")
                     _require(slots[term.value].kind is not MIRSlotKind.GLOBAL, "global value needs explicit read")
 
+    exceptional = any(statement_may_raise(stmt, slots) for block in fn.blocks for stmt in block.statements)
+    _require(type(fn.exceptional_exits) is bool and fn.exceptional_exits is exceptional,
+             "exceptional exit fact mismatch")
     cyclic = _cyclic_blocks(blocks, pred)
     _require(not owning_blocks.intersection(cyclic), "owning operation in cycle")
     _require(not payload_init_blocks.intersection(cyclic), "payload initialization in cycle")
@@ -979,6 +1130,10 @@ def _validate_structure(fn: MIRFunction) -> None:
                      "read before storage initialization")
             if isinstance(stmt, MIRAssign) and stmt.storage_write == MIRPayloadWrite(MIRPayloadWriteMode.ASSIGN):
                 _require(stmt.target.root in constructed, "assignment before storage initialization")
+            if (isinstance(stmt, MIRAssign) and not stmt.target.projections
+                    and stmt.storage_write == MIRRecordWrite(MIRRecordWriteMode.IN_PLACE)
+                    and owned_storage(slots[stmt.target.root])):
+                _require(stmt.target.root in constructed, "replacement before storage initialization")
             if (isinstance(stmt, MIRAssign) and not stmt.target.projections
                     and slots[stmt.target.root].record_storage is MIRRecordStorageKind.OPTIONAL):
                 _require(stmt.target.root in constructed, "record assignment before wrapper initialization")

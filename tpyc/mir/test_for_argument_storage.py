@@ -15,7 +15,7 @@ from .collect import call_definitions
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRBodyKind, MIRBranch, MIRCall, MIRConstruct,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBranch, MIRCall, MIRConstruct,
     MIRCopy, MIRFunction, MIRGoto, MIRIteratorAdvance, MIRIteratorInit, MIRNotCovered,
     MIRPlace, MIRRangeAdvance, MIRRecordStorageInit, MIRRecordStorageKind,
     MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRValueKind,
@@ -52,7 +52,7 @@ def body(artifacts: Artifacts, name: str) -> MIRFunction:
                                    summaries=workspace.summaries)
     elif name == "method":
         fn = next(fn for fn in ctx.thir_functions.values() if fn.name == name)
-        result = lower_function(fn, MIRBodyId("main", name), kind=MIRBodyKind.METHOD,
+        result = lower_function(fn, MIRBodyId("main", name),
                                 definitions=definitions, summaries=workspace.summaries)
     else:
         result = next(b for identity, b in workspace.bodies.items()
@@ -62,7 +62,7 @@ def body(artifacts: Artifacts, name: str) -> MIRFunction:
 
 
 def storage(fn: MIRFunction) -> list[MIRSlot]:
-    return [s for s in fn.slots if s.value_kind is MIRValueKind.RECORD_STORAGE]
+    return [s for s in fn.slots if s.value_kind is MIRValueKind.OWNED]
 
 
 @pytest.mark.parametrize("name", ["ranges", "descending", "written", "native", "records",
@@ -193,8 +193,7 @@ def test_retaining_a_real_for_argument_reports_its_body_end(artifacts: Artifacts
 def test_missing_for_scope_evidence_does_not_gain_coverage(artifacts: Artifacts) -> None:
     ctx, workspace, definitions = artifacts
     fn = next(f for f in ctx.thir_functions.values() if f.name == "ranges")
-    result = lower_function(replace(fn, temp_plan=None), body(artifacts, "ranges").id,
-                            kind=MIRBodyKind.FREE_FUNCTION, definitions=definitions,
+    result = lower_function(replace(fn, temp_plan=None), body(artifacts, "ranges").id, definitions=definitions,
                             summaries=workspace.summaries)
     assert isinstance(result, MIRNotCovered) and result.reason == "named argument needs complete temporary plan"
 
@@ -204,7 +203,7 @@ def test_existing_iteration_fact_gate_is_preserved(artifacts: Artifacts) -> None
     fn = next(f for f in ctx.thir_functions.values() if f.name == "native")
     statements = tuple(replace(s, iteration=None) if isinstance(s, th.THIRForEach) else s for s in fn.body)
     damaged = replace(fn, body=statements, temp_plan=prepare_temporaries(statements))
-    result = lower_function(damaged, body(artifacts, "native").id, kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(damaged, body(artifacts, "native").id,
                             definitions=definitions, summaries=workspace.summaries)
     assert isinstance(result, MIRNotCovered) and result.reason == "missing or invalid native iteration facts"
 

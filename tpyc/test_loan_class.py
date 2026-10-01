@@ -7,17 +7,20 @@ from __future__ import annotations
 import pytest
 
 from tpyc.compilation_context import activate_compiler
-from tpyc.type_def_registry import ParamPassing, _type_defs, get_type_def, zero_value_of
+from tpyc.type_def_registry import ParamPassing, TypeCategory, TypeDef, _type_defs, get_type_def, zero_value_of
 from tpyc.typesys import (
-    ALL_FIXED_INTS, BIGINT, BOOL, BYTEARRAY, BYTES, CHAR, FLOAT, FLOAT32, INT32, INT64, NONE, STR, STRING,
-    FunctionInfo, Loan, LoanClass, NominalType, OptionalType, OwnType, PtrType, ReadonlyType, RefType,
-    Representation, TupleType, TypeParamRef, UnionType, certified_primitive_comparison,
-    certified_primitive_op, is_inert_leaf, loan_class, passing_representation, return_representation,
-    unwrap_readonly, unwrap_ref_type,
+    ALL_FIXED_INTS, BIGINT, BOOL, BYTEARRAY, BYTES, BYTESVIEW, CHAR, FLOAT, FLOAT32, INT32, INT64, NONE, STR,
+    STRING, STRVIEW,
+    FloatLiteralType, FunctionInfo, IntLiteralType, Loan, LoanClass, NominalType, OptionalType, OwnType,
+    PtrType, ReadonlyType, RefType, Representation, TupleType, TypeParamRef, UnionType,
+    certified_primitive_comparison, certified_primitive_op, is_inert_leaf, is_owned_leaf, loan_class,
+    passing_representation, return_representation, unwrap_readonly, unwrap_ref_type,
 )
+from tpyc.thir.scalar_leaves import owned_constant, owned_leaf, storage_leaf
 from tpyc.thir.testutil import _compile, _entry
 
 PRIMITIVES = (*ALL_FIXED_INTS, FLOAT, FLOAT32, BOOL, CHAR)
+OWNED = (BIGINT, STR, STRING, BYTES)
 
 
 # --- loan_class -------------------------------------------------------------
@@ -54,7 +57,63 @@ def test_aggregates_of_inert_leaves_are_lendable_not_inert(typ):
 
 def test_aggregate_holds_what_a_member_holds():
     assert loan_class(TupleType((INT32, PtrType(INT32)))).holds is Loan.YES
-    assert loan_class(TupleType((INT32, STR))).holds is Loan.UNKNOWN
+    assert loan_class(TupleType((INT32, STR))).holds is Loan.NO
+    assert loan_class(TupleType((INT32, BYTEARRAY))).holds is Loan.UNKNOWN
+
+
+# --- owned leaves -------------------------------------------------------------
+
+@pytest.mark.parametrize("typ", OWNED, ids=str)
+def test_owned_leaves_hold_nothing_and_lend_their_storage(typ):
+    assert loan_class(typ) == LoanClass(Loan.NO, Loan.YES)
+    assert loan_class(OwnType(typ)) == LoanClass(Loan.NO, Loan.YES)
+    assert is_owned_leaf(typ) and owned_leaf(typ)
+    # Owned leaves are not inert: a borrow can point into their buffer.
+    assert not is_inert_leaf(typ) and not storage_leaf(typ)
+    for rep in (Representation.VIEW, Representation.REFERENCE):
+        assert loan_class(typ, rep) == LoanClass(Loan.YES, Loan.UNKNOWN)
+        assert not is_owned_leaf(typ, rep)
+    assert loan_class(typ, Representation.TRAIT) == LoanClass(Loan.UNKNOWN, Loan.UNKNOWN)
+    assert not is_owned_leaf(typ, Representation.TRAIT)
+
+
+def test_views_buffers_and_records_are_not_owned_leaves():
+    compiler, types = _record_types()
+    with activate_compiler(compiler):
+        for view in (STRVIEW, BYTESVIEW):
+            assert loan_class(view) == LoanClass(Loan.YES, Loan.UNKNOWN)
+            assert not is_owned_leaf(view) and not owned_leaf(view)
+        # A mutable buffer is a reference type: no loan model yet.
+        assert loan_class(BYTEARRAY) == LoanClass(Loan.UNKNOWN, Loan.UNKNOWN)
+        assert not is_owned_leaf(BYTEARRAY)
+        assert not any(is_owned_leaf(t) for t in (*types.values(), *PRIMITIVES, NONE))
+    # The ownership wrapper is seen through; the leaf predicate names the bare type only.
+    assert is_owned_leaf(OwnType(STR)) and not owned_leaf(OwnType(STR))
+
+
+def test_owned_leaf_facts_are_declared_on_exactly_the_four():
+    def declared(flag):
+        return {q for q, td in _type_defs.items() if getattr(td, flag)}
+    assert declared("owned_leaf") == {t.qualified_name() for t in OWNED}
+    assert declared("compares_fixed_ints") == {BIGINT.qualified_name()}
+    # BigInt allocation failure is a panic; the standard containers throw,
+    # and the fact fails closed: a type that declares nothing may raise.
+    assert {q for q in declared("owned_leaf") if not get_type_def(q).copy_may_raise} == {BIGINT.qualified_name()}
+    assert TypeDef("x.undeclared", TypeCategory.RECORD).copy_may_raise is True
+    for typ in OWNED:
+        td = get_type_def(typ.qualified_name())
+        assert td.primitive_ops and not td.loan_inert
+
+
+@pytest.mark.parametrize("typ,value,other", [
+    (BIGINT, 0, "0"), (STR, "abc", b"abc"), (STRING, "", 0), (BYTES, b"ab", "ab"),
+], ids=str)
+def test_owned_constants_take_the_zero_value_type(typ, value, other):
+    assert type(zero_value_of(typ)) is type(value)
+    assert owned_constant(typ, value) and not owned_constant(typ, other)
+    assert not owned_constant(STRVIEW, "abc") and not owned_constant(INT32, 1)
+    # A bool is no BigInt constant, though Python calls it an int.
+    assert not owned_constant(BIGINT, True)
 
 
 def test_wrappers_see_through_to_storage():
@@ -193,6 +252,17 @@ def test_return_representation():
     assert return_representation(BYTEARRAY) is Representation.REFERENCE
 
 
+def test_view_return_representation():
+    # A declared borrowing view returns by value, but as a view over storage
+    # the callee does not own -- not as storage of its own.
+    compiler, _ = _record_types()
+    with activate_compiler(compiler):
+        assert return_representation(STRVIEW) is Representation.VIEW
+        assert return_representation(BYTESVIEW) is Representation.VIEW
+        assert return_representation(STRING) is Representation.STORAGE
+        assert return_representation(BYTES) is Representation.STORAGE
+
+
 # --- param_passing ----------------------------------------------------------
 
 def _rendered_passing(typ, const: bool) -> ParamPassing:
@@ -289,9 +359,11 @@ def test_primitives_declare_the_contract_and_their_zero(typ):
     assert type(zero_value_of(typ)) is type(td.zero_value)
 
 
-def test_contract_is_declared_on_exactly_the_primitives():
-    declared = {q for q, td in _type_defs.items() if td.primitive_ops or td.loan_inert}
-    assert declared == {t.qualified_name() for t in PRIMITIVES}
+def test_contract_is_declared_on_exactly_the_primitives_and_owned_leaves():
+    inert = {q for q, td in _type_defs.items() if td.loan_inert}
+    assert inert == {t.qualified_name() for t in PRIMITIVES}
+    contract = {q for q, td in _type_defs.items() if td.primitive_ops}
+    assert contract == {t.qualified_name() for t in (*PRIMITIVES, *OWNED)}
 
 
 def _method(owner: str, ret) -> FunctionInfo:
@@ -301,17 +373,31 @@ def _method(owner: str, ret) -> FunctionInfo:
 def test_certified_primitive_op():
     assert certified_primitive_op(_method("tpy.int32", INT32), (INT32, INT32), INT32)
     assert certified_primitive_op(_method("builtins.float", FLOAT), (FLOAT, INT64), FLOAT)
-    # The owner carries no contract.
-    assert not certified_primitive_op(_method("builtins.int", BIGINT), (BIGINT, BIGINT), BIGINT)
+    # Owned leaves are read through a borrow; an owned result is built fresh.
+    assert certified_primitive_op(_method("builtins.int", BIGINT), (BIGINT, BIGINT), BIGINT)
+    assert certified_primitive_op(_method("builtins.str", STRING), (STR, STR), STRING)
+    assert certified_primitive_op(_method("builtins.float", FLOAT), (FLOAT, BIGINT), FLOAT)
+    assert certified_primitive_op(_method("tpy.int32", BIGINT), (INT32,), BIGINT)
     assert not certified_primitive_op(_method(None, INT32), (INT32, INT32), INT32)
-    # A contract owner whose operation leaves the inert set (`int32.__int__`).
-    assert not certified_primitive_op(_method("tpy.int32", BIGINT), (INT32,), BIGINT)
     assert not certified_primitive_op(None, (INT32, INT32), INT32)
+    # A view result or operand, and a reference-type operand, are not leaves.
+    assert not certified_primitive_op(_method("builtins.str", STRVIEW), (STR, INT32), STRVIEW)
+    assert not certified_primitive_op(_method("builtins.str", STRING), (STRVIEW, STR), STRING)
+    assert not certified_primitive_op(_method("builtins.bytes", BYTES), (BYTES, BYTEARRAY), BYTES)
 
 
 def test_certified_primitive_comparison():
-    for typ in PRIMITIVES:
+    for typ in (*PRIMITIVES, *OWNED):
         assert certified_primitive_comparison(typ, typ)
     assert not certified_primitive_comparison(INT32, INT64)
-    assert not certified_primitive_comparison(BIGINT, BIGINT)
-    assert not certified_primitive_comparison(STR, STR)
+    assert not certified_primitive_comparison(STRVIEW, STRVIEW)
+    # BigInt's runtime compares every fixed-width int, and an int literal.
+    for fixed in ALL_FIXED_INTS:
+        assert certified_primitive_comparison(BIGINT, fixed) and certified_primitive_comparison(fixed, BIGINT)
+    assert certified_primitive_comparison(BIGINT, IntLiteralType(5))
+    assert not certified_primitive_comparison(BIGINT, FLOAT)
+    assert not certified_primitive_comparison(BIGINT, FloatLiteralType(1.5))
+    # Only a declared fact admits a mixed pair; str compares no number.
+    assert not certified_primitive_comparison(STR, INT32)
+    assert not certified_primitive_comparison(STR, IntLiteralType(1))
+    assert not certified_primitive_comparison(STR, STRING)

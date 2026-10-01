@@ -11,7 +11,7 @@ from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, MIRPayloadWrite,
+    MIRAssign, MIRBodyId, MIRFunction, MIRNotCovered, MIRPayloadWrite,
     MIRPayloadWriteMode, MIRRegionId, MIRStorageDuration, MIRStorageInit,
 )
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
@@ -140,8 +140,7 @@ def artifacts() -> Artifacts:
     (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
     functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("wrapper_hoists", name), definitions=definitions,
-                                  kind=MIRBodyKind.METHOD if fn.receiver else MIRBodyKind.FREE_FUNCTION)
+    bodies = {name: lower_function(fn, MIRBodyId("wrapper_hoists", name), definitions=definitions)
               for name, fn in functions.items()}
     for ctor in ctx.thir_constructors.values():
         bodies[ctor.record_name] = lower_constructor(ctor, MIRBodyId("wrapper_hoists", ctor.record_name),
@@ -234,8 +233,7 @@ def test_bad_producer_facts_remain_uncovered(artifacts: Artifacts, name: str, da
     else:
         fact = replace(fact, name="wrong")
     changed = replace(fn, body=(replace(stmt, hoisted_bindings=(fact,)), *fn.body[1:]))
-    result = lower_function(changed, MIRBodyId("wrapper_hoists", "damaged"), definitions=definitions,
-                            kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(changed, MIRBodyId("wrapper_hoists", "damaged"), definitions=definitions)
     assert isinstance(result, MIRNotCovered), result
     assert any(word in result.reason for word in ("hoisted", "default", "union layout")), result
     if damage in ("tag", "type", "layout"):
@@ -248,7 +246,7 @@ def test_physical_default_does_not_mask_missing_source_assignment(artifacts: Art
     fn = functions["optional_snapshot"]
     stmt = replace(fn.body[0], else_body=())
     result = lower_function(replace(fn, body=(stmt, *fn.body[1:])), MIRBodyId("wrapper_hoists", "unassigned"),
-                            definitions=definitions, kind=MIRBodyKind.FREE_FUNCTION)
+                            definitions=definitions)
     assert isinstance(result, MIRNotCovered) and "definite assignment" in result.reason
 
 
@@ -272,5 +270,5 @@ def test_contextual_optional_literal_keeps_strict_coercion_checks(artifacts: Art
         expr = replace(expr, expr=replace(expr.expr, value=2**31))
     stmt = replace(stmt, then_body=(replace(assignment, value=expr),))
     result = lower_function(replace(fn, body=(stmt, *fn.body[1:])), MIRBodyId("wrapper_hoists", "literal"),
-                            definitions=definitions, kind=MIRBodyKind.FREE_FUNCTION)
+                            definitions=definitions)
     assert isinstance(result, MIRNotCovered) and result.node_kind in ("THIRLiteral", "THIRCoerce"), result

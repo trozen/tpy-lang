@@ -12,7 +12,7 @@ from ..type_def_registry import ParamPassing
 from ..typesys import INT32, ReadonlyType
 from .definitions import MIRDefinitions
 from .lower import lower_function
-from .nodes import MIRBodyId, MIRBodyKind, MIRFieldId, MIRFunction, MIRNotCovered, MIRSlotKind
+from .nodes import MIRBodyId, MIRBodyKind, MIRFieldId, MIRFunction, MIRNotCovered, MIRSlotKind, function_body_kind
 from .testutil import Reference, execute
 
 
@@ -96,14 +96,14 @@ def artifacts() -> Artifacts:
 
 
 def lower(fn: th.THIRFunction, definitions: MIRDefinitions | None = None) -> MIRFunction:
-    result = lower_function(fn, MIRBodyId("methods", fn.name), kind=MIRBodyKind.METHOD,
+    result = lower_function(fn, MIRBodyId("methods", fn.name),
                             definitions=definitions)
     assert isinstance(result, MIRFunction), result
     return result
 
 
-def uncovered(fn: th.THIRFunction, reason: str, kind: MIRBodyKind = MIRBodyKind.METHOD) -> None:
-    result = lower_function(fn, MIRBodyId("methods", fn.name), kind=kind)
+def uncovered(fn: th.THIRFunction, reason: str) -> None:
+    result = lower_function(fn, MIRBodyId("methods", fn.name))
     assert isinstance(result, MIRNotCovered), result
     assert reason in result.reason
 
@@ -167,7 +167,8 @@ def test_nested_receiver_place(artifacts: Artifacts) -> None:
 def test_nonordinary_method_kinds_have_no_receiver_fact(artifacts: Artifacts, name: str) -> None:
     fn = artifacts[0][name]
     assert fn.receiver is None
-    uncovered(fn, "body kind and receiver mismatch")
+    # Without the fact the body is not a METHOD, whatever record owns it.
+    assert function_body_kind(fn) is MIRBodyKind.FREE_FUNCTION
 
 
 @pytest.mark.parametrize("flags", [
@@ -191,9 +192,7 @@ class Cell:
 
 def test_receiver_and_body_kind_must_agree(artifacts: Artifacts) -> None:
     fn = artifacts[0]["direct"]
-    uncovered(replace(fn, receiver=None), "body kind and receiver mismatch")
-    uncovered(fn, "body kind and receiver mismatch", MIRBodyKind.FREE_FUNCTION)
-    uncovered(fn, "unsupported body kind", MIRBodyKind.CONSTRUCTOR)
+    assert lower(fn).kind is MIRBodyKind.METHOD
     uncovered(replace(fn, receiver=replace(fn.receiver, type=INT32)), "unsupported reference fact")
     uncovered(replace(fn, params=(th.THIRParam("self", INT32, passing=ParamPassing.VALUE),)), "duplicate binding")
     with pytest.raises(THIRValidationError, match="invalid receiver fact"):

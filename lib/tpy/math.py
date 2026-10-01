@@ -35,7 +35,7 @@
 #   Minor; consider if benchmarks warrant.
 
 from typing import Final, Iterable
-from tpy import int32, dispatch
+from tpy import int32, dispatch, pure
 from tpy.extern import native, cpp_template, type_param_default, DefaultInt
 
 pi: Final[float] = 3.141592653589793
@@ -44,6 +44,8 @@ e: Final[float] = 2.718281828459045
 inf: Final[float] = 1e309
 nan: Final[float] = float("nan")
 
+# checked_log raises on a domain error and touches no TPy state.
+@pure
 @dispatch
 @native("tpy::stdlib::math::checked_log")
 def log(x: float) -> float: ...

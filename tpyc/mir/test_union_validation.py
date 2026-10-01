@@ -170,7 +170,7 @@ def test_record_construction_requires_explicit_scalar_alias_read(checked_read: b
     storage = MIRSlotId(BODY, len(SLOTS))
     field = MIRField(MIRFieldId(record, "value"), INT32)
     slot = MIRSlot(storage, record, MIRSlotKind.LOCAL, form=Form.STORAGE,
-                   value_kind=MIRValueKind.RECORD_STORAGE)
+                   value_kind=MIRValueKind.OWNED)
     # A checked read before replacement snapshots a scalar; the alias itself
     # cannot bypass that read by appearing directly in a constructor operand.
     statements = (BUILD, EXTRACT) + ((ALIAS_READ,) if checked_read else ()) + (
@@ -223,7 +223,7 @@ def reference_function(source_const: bool = False, dest_const: bool = False) -> 
     other = NominalType("Other", _module_qname="union_validation.Other")
     typ = UnionType((cell, other))
     def layout(readonly: bool) -> MIRUnionLayout:
-        return MIRUnionLayout(tuple(MIRTupleElement(t, MIRValueKind.BORROWED_RECORD, readonly) for t in (cell, other)))
+        return MIRUnionLayout(tuple(MIRTupleElement(t, MIRValueKind.BORROWED, readonly) for t in (cell, other)))
     ref_slots = (
         MIRSlot(PARAM, typ, MIRSlotKind.PARAMETER, value_kind=MIRValueKind.UNION, union_layout=layout(source_const)),
         MIRSlot(CURRENT, typ, MIRSlotKind.LOCAL, value_kind=MIRValueKind.UNION, union_layout=layout(dest_const)),
@@ -231,8 +231,8 @@ def reference_function(source_const: bool = False, dest_const: bool = False) -> 
         MIRSlot(GUARD, BOOL, MIRSlotKind.LOCAL),
         MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
         MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL),
-        MIRSlot(FLAG, cell, MIRSlotKind.PARAMETER, value_kind=MIRValueKind.BORROWED_RECORD, form=Form.BORROW),
-        MIRSlot(ALIAS, cell, MIRSlotKind.LOCAL, value_kind=MIRValueKind.BORROWED_RECORD, form=Form.BORROW,
+        MIRSlot(FLAG, cell, MIRSlotKind.PARAMETER, value_kind=MIRValueKind.BORROWED, form=Form.BORROW),
+        MIRSlot(ALIAS, cell, MIRSlotKind.LOCAL, value_kind=MIRValueKind.BORROWED, form=Form.BORROW,
                 readonly=dest_const),
     )
     field = MIRField(MIRFieldId(cell, "value"), INT32)

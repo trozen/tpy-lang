@@ -13,7 +13,7 @@ from ..typesys import BOOL, INT32, NominalType
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
-    MIRAlias, MIRBodyId, MIRBodyKind, MIRFieldId, MIRFunction, MIRNotCovered,
+    MIRAlias, MIRBodyId, MIRFieldId, MIRFunction, MIRNotCovered,
     MIRValueKind,
 )
 from .testutil import Heap, Reference, execute
@@ -119,7 +119,7 @@ def functions() -> dict[str, th.THIRFunction]:
 
 
 def lower(fn: th.THIRFunction) -> MIRFunction:
-    result = lower_function(fn, MIRBodyId("storage", fn.name), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("storage", fn.name))
     assert isinstance(result, MIRFunction), result
     return result
 
@@ -243,7 +243,7 @@ def test_alias_producer_paths_and_dump(functions: dict[str, th.THIRFunction]) ->
         fn = lower(functions[name])
         assert any(isinstance(stmt.value, MIRAlias) for block in fn.blocks for stmt in block.statements)
         assert all(slot.type not in (BOOL, INT32) for slot in fn.slots
-                   if slot.value_kind is MIRValueKind.BORROWED_RECORD)
+                   if slot.value_kind is MIRValueKind.BORROWED)
     text = dump_function(lower(functions["reseat"]))
     assert " = alias %" in text and "::value" in text
     assert "mutable-ref" in text
@@ -253,7 +253,7 @@ def test_alias_producer_paths_and_dump(functions: dict[str, th.THIRFunction]) ->
 
 
 def not_covered(fn: th.THIRFunction, reason: str) -> None:
-    result = lower_function(fn, MIRBodyId("storage", fn.name), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("storage", fn.name))
     assert isinstance(result, MIRNotCovered), result
     assert reason in result.reason
 

@@ -65,7 +65,7 @@ def operations(fn: MIRFunction) -> frozenset[MIRPoint]:
     slots = {s.id: s for s in fn.slots}
     writes = {MIRPoint(b.id, i) for b in fn.blocks for i, stmt in enumerate(b.statements)
               if isinstance(stmt, MIRAssign) and not stmt.target.projections
-              and slots[stmt.target.root].value_kind is MIRValueKind.BORROWED_RECORD}
+              and slots[stmt.target.root].value_kind is MIRValueKind.BORROWED}
     returns = {MIRPoint(b.id, len(b.statements)) for b in fn.blocks
                if fn.borrowed_result is not None and isinstance(b.terminator, MIRReturn)}
     return frozenset(writes | returns)
@@ -182,7 +182,7 @@ def test_owned_tuple_member_infers_its_local_backing(definitions: MIRDefinitions
     fn = forwarding(definitions, dead=not escape)
     backing = MIRSlot(pair, TupleType((cell, INT32)), MIRSlotKind.LOCAL, form=Form.STORAGE,
                       value_kind=MIRValueKind.TUPLE, tuple_layout=MIRTupleLayout((
-                          MIRTupleElement(cell, MIRValueKind.RECORD_STORAGE), MIRTupleElement(INT32))),
+                          MIRTupleElement(cell, MIRValueKind.OWNED), MIRTupleElement(INT32))),
                       storage_duration=MIRStorageDuration.BODY, residence=ROOT)
     fn = replace(fn, slots=(*fn.slots, backing, MIRSlot(result, INT32, MIRSlotKind.LOCAL, residence=ROOT)),
                  blocks=(MIRBlock(ENTRY, (

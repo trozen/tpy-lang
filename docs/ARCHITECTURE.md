@@ -32,7 +32,11 @@ and nonrecursive unions of scalar leaves or borrowed plain records. A scalar
 leaf is a value the loan classifier (`typesys.loan_class`) proves inert at
 its representation: every fixed-width int, `float`, `float32`, `bool`,
 `char`, and enum values (`thir/scalar_leaves.storage_leaf`; the rules are
-the B1 contract in `MIR_ANALYSIS_PLAN.md`).
+the B1 contract in `MIR_ANALYSIS_PLAN.md`). An owned leaf is a value type
+whose TypeDef declares `owned_leaf` (`int`, `str`, `String`, `bytes`): owned
+storage at rest and a readonly borrow at a `const T&` / view parameter,
+modeled as a record with an opaque interior (`thir/scalar_leaves.owned_leaf`;
+the B2 contract there).
 THIR carries immutable borrowed-parameter,
 alias-binding, owned-storage and direct-field facts from the existing lowering decisions.
 Ordinary monomorphic instance methods also carry a borrowed receiver fact with
@@ -529,17 +533,22 @@ internal stopgap for dict_items, whose iteration yields proxy reference
 tuples -- drives the resumable-frame borrow-tuple loop binding; set by the
 private stub kwarg `_iter_yields_ref_tuple_proxies` and slated for removal), `needs_explicit_element_target`,
 `param_kinds`, `type_factory`, the loan-model facts `loan_inert` (a
-value holds no borrow and lends no storage), `primitive_ops` (the
-primitive-operation contract: runtime operators, printed with no user
-method), `zero_value` (the value of value-initialized storage) and
-`param_passing` (the parameter convention, where the default derivation
-from `is_value_type` does not spell it), category payloads `int_traits`,
-`float_traits`, `enum: EnumInfo`, `record: RecordInfo`,
-`protocol: ProtocolInfo`). `loan_inert` and `param_passing` are read
-through `typesys.loan_class` and `TpyType.param_passing`; `zero_value` is
-read directly (`zero_value_of`, by `mir/lower.py` and `mir/validate.py`),
-and `primitive_ops` through `thir/scalar_leaves.primitive_leaf` and
-`typesys.certified_primitive_op`. The `is_indirecting`
+value holds no borrow and lends no storage), `owned_leaf` (a value owns an
+opaque buffer a borrow can point into and holds no borrow), `copy_may_raise`
+(copying it can throw a C++ exception a bare `except:` catches),
+`compares_fixed_ints` (the runtime compares it with every fixed-width int),
+`primitive_ops` (the primitive-operation contract: runtime operators that
+may allocate, printed with no user method), `zero_value` (the value of
+value-initialized storage) and `param_passing` (the parameter convention,
+where the default derivation from `is_value_type` does not spell it),
+category payloads `int_traits`, `float_traits`, `enum: EnumInfo`,
+`record: RecordInfo`, `protocol: ProtocolInfo`). `loan_inert`,
+`owned_leaf` and `param_passing` are read through `typesys.loan_class`,
+`typesys.is_owned_leaf` and `TpyType.param_passing`; `zero_value` is read
+directly (`zero_value_of`, by `mir/lower.py` and `mir/validate.py`);
+`primitive_ops` and `compares_fixed_ints` through
+`thir/scalar_leaves.primitive_leaf` and the `typesys.certified_primitive_*`
+certificates; `copy_may_raise` by `mir/lower.py` and `mir/validate.py`. The `is_indirecting`
 flag is set from `@native(..., indirecting=True)` on the stub class --
 it flows parser -> `TpyRecord` -> `RecordInfo` -> `TypeDef` during
 `attach_dynamic_type_def`. Cycle detection consults it to decide

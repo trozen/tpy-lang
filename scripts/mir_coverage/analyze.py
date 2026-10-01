@@ -21,7 +21,8 @@ LOWERED = "(lowered)"
 CSV_COLUMNS = ["corpus", "program", "module", "qualname", "user", "position", "generic", "overloaded",
                "features", "status", "reason_cat", "reason_raw", "node_kind", "blocker_line", "blocker_type",
                "lowered", "analyses", "analysis_gap", "analysis_conflicts", "storage", "storage_gap",
-               "conflict", "certified", "blocker", "loan_kinds", "check_events", "lifetime_diags"]
+               "conflict", "certified", "exceptional_exits", "blocker", "loan_kinds", "check_events",
+               "lifetime_diags"]
 
 
 def load_programs(out_dir: Path) -> list[dict]:
@@ -69,6 +70,7 @@ def body_rows(programs: list[dict]) -> list[dict]:
             b.setdefault("lowered", b["status"] == "covered")
             b["certified"] = b.get("storage") == "certified"
             b.setdefault("conflict", False)
+            b.setdefault("exceptional_exits", False)
             b["blocker"] = blocker(b)
             rows.append(b)
     return rows
@@ -98,16 +100,18 @@ def four(rs: list[dict]) -> dict:
             "complete": sum(r["lowered"] and r.get("analyses") == "complete" for r in rs),
             "conflict": sum(bool(r["conflict"]) for r in rs),
             "certified": sum(r["certified"] for r in rs),
-            "no_proof": sum(r.get("storage") == "no_proof_required" for r in rs)}
+            "no_proof": sum(r.get("storage") == "no_proof_required" for r in rs),
+            "exceptional": sum(bool(r["lowered"] and r.get("exceptional_exits")) for r in rs)}
 
 
-FOUR_HEAD = f"{'bodies':>7} {'lowered':>15} {'complete':>15} {'conflict':>9} {'certified':>10} {'no-proof':>9}"
+FOUR_HEAD = (f"{'bodies':>7} {'lowered':>15} {'complete':>15} {'conflict':>9} {'certified':>10} {'no-proof':>9}"
+             f" {'exc-exits':>10}")
 
 
 def four_line(c: dict) -> str:
     n = c["bodies"]
     return (f"{n:7} {c['lowered']:6} {pct(c['lowered'], n)} {c['complete']:6} {pct(c['complete'], n)} "
-            f"{c['conflict']:9} {c['certified']:10} {c['no_proof']:9}")
+            f"{c['conflict']:9} {c['certified']:10} {c['no_proof']:9} {c['exceptional']:10}")
 
 
 def report(out_dir: Path, sample: dict | None, compare_dir: Path | None, cases_dir: Path | None) -> str:
@@ -136,7 +140,9 @@ def report(out_dir: Path, sample: dict | None, compare_dir: Path | None, cases_d
     emit("\n== 1. four-count (bodies with a body; no_body excluded) ==")
     emit("lowered = MIR lowering succeeded; complete = every --dump-mir analysis ran without MIRNotCovered;")
     emit("conflict = an analysis or the storage certificate found one; certified = certify_thir_storage")
-    emit("CERTIFIED; no-proof = requires_proof False (nothing to certify, never counted as certified)")
+    emit("CERTIFIED; no-proof = requires_proof False (nothing to certify, never counted as certified);")
+    emit("exc-exits = lowered bodies that may exit by exception (MIRFunction.exceptional_exits), which")
+    emit("no storage verdict covers")
     emit(f"{'corpus':18} {FOUR_HEAD}")
     for corpus in CORPORA:
         rs = [r for r in bodies if r["corpus"] == corpus]

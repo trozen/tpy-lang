@@ -33,7 +33,7 @@ CELL = NominalType("Cell", _module_qname="iteration.Cell")
 LIST = NominalType("list", (CELL,), _module_qname="builtins.list")
 FIELD = MIRField(MIRFieldId(CELL, "value"), INT32)
 RECORD = MIRRecordLayout(CELL, (FIELD,), True, True)
-LAYOUT = MIRContainerLayout(MIRTupleElement(CELL, MIRValueKind.BORROWED_RECORD))
+LAYOUT = MIRContainerLayout(MIRTupleElement(CELL, MIRValueKind.BORROWED))
 
 
 def assignment(target: MIRSlotId, value) -> MIRAssign:
@@ -44,7 +44,7 @@ def fixture() -> MIRFunction:
     container = MIRSlot(P, LIST, MIRSlotKind.PARAMETER, form=Form.BORROW,
                         value_kind=MIRValueKind.BORROWED_CONTAINER, container_layout=LAYOUT)
     alias = MIRSlot(FIRST, CELL, MIRSlotKind.LOCAL, form=Form.BORROW,
-                    value_kind=MIRValueKind.BORROWED_RECORD)
+                    value_kind=MIRValueKind.BORROWED)
     slots = (container, replace(container, id=Q), replace(container, id=SOURCE, kind=MIRSlotKind.LOCAL),
              replace(container, id=ITER, kind=MIRSlotKind.TEMPORARY, value_kind=MIRValueKind.NATIVE_ITERATOR),
              MIRSlot(HAS, BOOL, MIRSlotKind.TEMPORARY), alias, replace(alias, id=CURRENT),
@@ -107,17 +107,17 @@ def test_ending_iteration_target_does_not_end_caller_elements() -> None:
 def test_aggregate_holder_retains_element_after_cursor_advance(shape: str) -> None:
     fn = fixture()
     saved = MIRSlotId(B, len(fn.slots))
-    member = MIRTupleElement(CELL, MIRValueKind.BORROWED_RECORD)
+    member = MIRTupleElement(CELL, MIRValueKind.BORROWED)
     match shape:
         case "optional":
             slot = MIRSlot(saved, OptionalType(CELL), MIRSlotKind.LOCAL, value_kind=MIRValueKind.OPTIONAL,
-                           optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED_RECORD))
+                           optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
             value, projection = MIROptionalConstruct(FIRST), MIROptionalPayload()
         case "union":
             other = NominalType("Other", _module_qname="iteration.Other")
             fn = replace(fn, records=(*fn.records, MIRRecordLayout(other, (), True, True)))
             slot = MIRSlot(saved, UnionType((CELL, other)), MIRSlotKind.LOCAL, value_kind=MIRValueKind.UNION,
-                           union_layout=MIRUnionLayout((member, MIRTupleElement(other, MIRValueKind.BORROWED_RECORD))))
+                           union_layout=MIRUnionLayout((member, MIRTupleElement(other, MIRValueKind.BORROWED))))
             value, projection = MIRUnionConstruct(0, FIRST), MIRUnionPayload(0)
         case "tuple":
             slot = MIRSlot(saved, TupleType((CELL,)), MIRSlotKind.LOCAL, value_kind=MIRValueKind.TUPLE,

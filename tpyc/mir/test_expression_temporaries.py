@@ -12,7 +12,7 @@ from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionTy
 from .definitions import MIRDefinitions
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRBranch, MIRConstruct,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRBranch, MIRConstruct,
     MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRGoto, MIRNotCovered,
     MIRPlace, MIRRead, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRValueKind,
     MIROptionalConstruct, MIROptionalLayout, MIROptionalPayload,
@@ -57,7 +57,7 @@ def function(expr: th.THIRExpr) -> th.THIRFunction:
 
 def lower(fn: th.THIRFunction, definitions: MIRDefinitions) -> MIRFunction:
     validate_thir(fn)
-    result = lower_function(fn, MIRBodyId("temporary", fn.name), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("temporary", fn.name),
                             definitions=definitions)
     assert isinstance(result, MIRFunction), result
     validate_function(result)
@@ -65,7 +65,7 @@ def lower(fn: th.THIRFunction, definitions: MIRDefinitions) -> MIRFunction:
 
 
 def storage(fn: MIRFunction) -> tuple[MIRSlot, ...]:
-    return tuple(s for s in fn.slots if s.value_kind is MIRValueKind.RECORD_STORAGE)
+    return tuple(s for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
 
 
 def test_return_value_survives_the_full_expression(definitions: MIRDefinitions) -> None:
@@ -166,8 +166,8 @@ def test_reference_kept_after_expression_is_reported(definitions: MIRDefinitions
     result = next(b for b in fn.blocks if isinstance(b.terminator, MIRReturn))
     member = MIRField(MIRFieldId(owned.type, "value"), INT32)
     reference = MIRSlot(holder, owned.type, MIRSlotKind.LOCAL, form=th.Form.BORROW,
-                        value_kind=MIRValueKind.BORROWED_RECORD, residence=result.region)
-    borrowed = MIRTupleElement(owned.type, MIRValueKind.BORROWED_RECORD)
+                        value_kind=MIRValueKind.BORROWED, residence=result.region)
+    borrowed = MIRTupleElement(owned.type, MIRValueKind.BORROWED)
     wrapper_id = MIRSlotId(fn.id, holder.index + 1)
     match shape:
         case "record":
@@ -181,7 +181,7 @@ def test_reference_kept_after_expression_is_reported(definitions: MIRDefinitions
         case "optional":
             wrapper = MIRSlot(wrapper_id, OptionalType(owned.type), MIRSlotKind.LOCAL,
                               value_kind=MIRValueKind.OPTIONAL,
-                              optional_layout=MIROptionalLayout(owned.type, MIRValueKind.BORROWED_RECORD),
+                              optional_layout=MIROptionalLayout(owned.type, MIRValueKind.BORROWED),
                               residence=result.region)
             capture = (MIRAssign(MIRPlace(wrapper_id), MIROptionalConstruct(holder)),)
             path = MIRPlace(wrapper_id, (MIROptionalPayload(),))
@@ -189,7 +189,7 @@ def test_reference_kept_after_expression_is_reported(definitions: MIRDefinitions
             other = NominalType("Other", _module_qname="temporary.Other")
             wrapper = MIRSlot(wrapper_id, UnionType((owned.type, other)), MIRSlotKind.LOCAL,
                               value_kind=MIRValueKind.UNION,
-                              union_layout=MIRUnionLayout((borrowed, MIRTupleElement(other, MIRValueKind.BORROWED_RECORD))),
+                              union_layout=MIRUnionLayout((borrowed, MIRTupleElement(other, MIRValueKind.BORROWED))),
                               residence=result.region)
             capture = (MIRAssign(MIRPlace(wrapper_id), MIRUnionConstruct(0, holder)),)
             path = MIRPlace(wrapper_id, (MIRUnionPayload(0),))
@@ -234,7 +234,7 @@ def test_invalid_materialization_fails_closed(definitions: MIRDefinitions, chang
     fn = function(replace(expr, receiver=ctor))
     with pytest.raises(THIRValidationError):
         validate_thir(fn)
-    result = lower_function(fn, MIRBodyId("bad", change), kind=MIRBodyKind.FREE_FUNCTION, definitions=definitions)
+    result = lower_function(fn, MIRBodyId("bad", change), definitions=definitions)
     assert isinstance(result, MIRNotCovered)
 
 
@@ -257,7 +257,7 @@ def test_value_select_hoist_does_not_inherit_inline_lifetime(
                              lhs_temp_cpp="auto&&" if hoist else None)
     fn = function(expr)
     if hoist and side == "lhs":
-        result = lower_function(fn, MIRBodyId("hoist", "select"), kind=MIRBodyKind.FREE_FUNCTION,
+        result = lower_function(fn, MIRBodyId("hoist", "select"),
                                 definitions=definitions)
         assert isinstance(result, MIRNotCovered) and result.reason == "temporary in hoisted select operand"
     else:

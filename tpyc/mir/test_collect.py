@@ -3,14 +3,18 @@
 import io
 import re
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from .. import cli
+from ..mir_workspace import analyze_call_workspace
+from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from .collect import dump_codegen_mir
 from .definitions import MIRDefinitions
+from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, function_body_kind
 
 
 def dump(source: str) -> str:
@@ -47,8 +51,9 @@ def choose(flag: bool) -> int32:
     saved.value = 7
     return current.value
 
-def unsupported() -> None:
-    print("text")
+def unsupported(v: int32) -> None:
+    # A tuple is no leaf the print contract streams.
+    print((v, v))
 
 print(choose(True))
 """
@@ -66,7 +71,7 @@ def test_dump_uses_real_bodies_and_constructor_definitions() -> None:
     assert "branch" in out
     for name in ("Cell.read", "Other.read", "Cell.__init__", "choose"):
         assert re.search(rf"fn .*::{re.escape(name)}@[^\n]+ ->", out), out
-    assert re.search(r"Cell.static@[^\n]+<MIR not covered: body kind and receiver mismatch>", out)
+    assert re.search(r"fn .*::Cell.static@[^\n]+ -> int32", out), out
     assert re.search(r"unsupported@[^\n]+<MIR not covered:", out)
     assert "<MIR not covered: module initialization>" in out
     assert out == dump(SOURCE)
@@ -198,7 +203,7 @@ class Cell:
         return 1
 """
     out = dump(source)
-    names = re.findall(r"^fn ([^\n]+::Cell.constant@[^\n]+?): <MIR not covered:", out, re.MULTILINE)
+    names = re.findall(r"^fn (\S+::Cell\.constant@\d+:\d+(?:#\d+)?)(?:: <| ->)", out, re.MULTILINE)
     assert len(names) == 2 and len(set(names)) == 2, out
     assert names[1] == names[0] + "#2", out
     assert out == dump(source)
@@ -303,3 +308,59 @@ def closure(x: int32) -> int32:
 """)
     assert "<MIR not covered: overloaded callable>" in out, out
     assert re.search(r"closure@[^\n]+<MIR not covered:", out), out
+
+
+KIND_SOURCE = """\
+from tpy import int32
+
+class Cell:
+    value: int32
+    def __init__(self, value: int32):
+        self.value = value
+    def read(self) -> int32:
+        return self.value
+    @staticmethod
+    def static(value: int32) -> int32:
+        return value
+    @property
+    def prop(self) -> int32:
+        return self.value
+    def __bool__(self) -> bool:
+        return self.value != 0
+
+def free(value: int32) -> int32:
+    return value
+"""
+
+# Only an ordinary method carries THIR's receiver fact; an owner record alone
+# (staticmethod, property, dunder) does not make a body a METHOD.
+KINDS = {"read": MIRBodyKind.METHOD, "static": MIRBodyKind.FREE_FUNCTION,
+         "prop": MIRBodyKind.FREE_FUNCTION, "__bool__": MIRBodyKind.FREE_FUNCTION,
+         "free": MIRBodyKind.FREE_FUNCTION}
+
+
+def test_both_entry_paths_take_the_kind_from_the_receiver_fact() -> None:
+    compiler, modules = _compile(KIND_SOURCE)
+    entry = _entry(modules)
+    ctx = compiler.collect_thir(entry, tolerate_reject=True)
+    functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
+    assert {name: function_body_kind(functions[name]) for name in KINDS} == KINDS
+    callee = functions["free"].resolved_callee
+    with compiler.mir_analysis([(entry, ctx)]) as program:
+        out = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, program.definitions,
+                               compiler.thir_reject_by_node, program.workspace)
+        # Only free functions carry a resolved callee today; granting one to
+        # every body pins that the scheduler, too, reads the receiver fact.
+        scheduled = tuple((MIRBodyId("kinds", name), replace(fn, resolved_callee=replace(
+            callee, identity=th.THIRFunctionIdentity("kinds", name)))) for name, fn in functions.items()
+            if name in ("read", "static", "free"))
+        workspace = analyze_call_workspace(scheduled, program.definitions)
+    for name in ("Cell.read", "Cell.static", "free"):
+        assert re.search(rf"fn .*::{re.escape(name)}@[^\n]+ -> int32", out), out
+    # Properties and dunders still lack the receiver fact their `self` needs.
+    for name in ("Cell.prop", "Cell.__bool__"):
+        assert re.search(rf"{re.escape(name)}@[^\n]+<MIR not covered: missing receiver fact>", out), out
+    for body, _fn in scheduled:
+        lowered = workspace.bodies[body]
+        assert isinstance(lowered, MIRFunction), lowered
+        assert lowered.kind is KINDS[body.declaration]

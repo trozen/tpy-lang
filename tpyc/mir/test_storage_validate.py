@@ -28,9 +28,9 @@ def field(root: MIRSlotId) -> MIRPlace:
 
 SLOTS = (
     MIRSlot(P, CELL, MIRSlotKind.PARAMETER, form=Form.BORROW,
-            value_kind=MIRValueKind.BORROWED_RECORD),
+            value_kind=MIRValueKind.BORROWED),
     MIRSlot(Q, CELL, MIRSlotKind.LOCAL, form=Form.BORROW,
-            value_kind=MIRValueKind.BORROWED_RECORD),
+            value_kind=MIRValueKind.BORROWED),
     MIRSlot(X, INT32, MIRSlotKind.LOCAL),
     MIRSlot(Y, BOOL, MIRSlotKind.LOCAL),
     MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),

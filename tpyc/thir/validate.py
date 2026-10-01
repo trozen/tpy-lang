@@ -48,17 +48,18 @@ from collections.abc import Sequence
 
 from ..codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union, LoopBinding, loop_binding_kind
 from ..type_def_registry import (
+    ParamPassing,
     is_basic_slice_type, is_bytearray_type, is_bytes_type, is_bytes_view_type,
     is_slice_type, is_span, is_str_type, is_str_view_type, is_string_type,
     is_list, is_array, is_set, is_dict, zero_value_of,
 )
 from ..typesys import (
-    AnyType, NominalType, OptionalType, OwnType, PtrType, ReadonlyType, TupleType,
+    AnyType, NominalType, OptionalType, OwnType, PtrType, ReadonlyType, Representation, TupleType,
     UnionType, TpyType,
     TypeParamRef,
-    is_inert_leaf, is_void_like_type, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
+    is_inert_leaf, return_representation, is_void_like_type, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
-from .scalar_leaves import leaf_constant, storage_leaf
+from .scalar_leaves import leaf_constant, leaf_global, owned_leaf, storage_leaf
 from .nodes import (
     FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign, THIRCall, THIRChainedCompareStmtExpr,
     THIRCoerce, THIRConstructor, THIRCopy, THIRMove,
@@ -80,6 +81,7 @@ from .nodes import (
     THIRUnionLayout, THIRUnionTest, THIRUnionExtraction, THIRUnionLiteral, THIRWrapperDefault,
     THIRIsinstance, THIRNarrowAlias, THIRNarrowedRead,
     THIRResolvedCallee, THIRFunctionIdentity, THIRCallableSignature,
+    THIRStubCallee, THIRStubContract, THIRStubIdentity,
     THIRLambda, THIRNestedDef, THIRClosureIdentity, THIRClosureKind,
     THIRCapture, THIRCaptureSlot, THIRCaptureSourceKind, THIRCaptureRelation,
 )
@@ -222,16 +224,47 @@ def _check_union(owner: str, node: object, layout: THIRUnionLayout,
         _fail(owner, node, "mixed or empty union layout")
 
 
+def _signature_problem(signature: object) -> bool:
+    if (not isinstance(signature, THIRCallableSignature)
+            or not isinstance(signature.param_types, tuple)
+            or not all(isinstance(t, TpyType) for t in signature.param_types)
+            or not isinstance(signature.return_type, TpyType)):
+        return True
+    passings = signature.passings
+    if passings is not None and (
+            not isinstance(passings, tuple) or len(passings) != len(signature.param_types)
+            or not all(isinstance(p, ParamPassing) for p in passings)):
+        return True
+    return (signature.return_representation is not None
+            and signature.return_representation is not return_representation(signature.return_type))
+
+
 def _check_callee(owner: str, node: object, fact: THIRResolvedCallee) -> None:
     if (not isinstance(fact, THIRResolvedCallee)
             or not isinstance(fact.identity, THIRFunctionIdentity)
             or not isinstance(fact.identity.module, str) or not fact.identity.module
             or not isinstance(fact.identity.name, str) or not fact.identity.name
-            or not isinstance(fact.signature, THIRCallableSignature)
-            or not isinstance(fact.signature.param_types, tuple)
-            or not all(isinstance(t, TpyType) for t in fact.signature.param_types)
-            or not isinstance(fact.signature.return_type, TpyType)):
+            or _signature_problem(fact.signature)):
         _fail(owner, node, "invalid resolved callee")
+
+
+def _check_stub_callee(owner: str, node: THIRCall, fact: THIRStubCallee) -> None:
+    if (not isinstance(fact, THIRStubCallee) or not isinstance(fact.identity, THIRStubIdentity)
+            or not isinstance(fact.identity.qualified_name, str) or not fact.identity.qualified_name
+            or _signature_problem(fact.signature)
+            or fact.identity.param_types != fact.signature.param_types
+            or fact.signature.passings is None or not isinstance(fact.signature.return_representation, Representation)
+            or fact.signature.borrowed_result is not None
+            or not (fact.contract is None or isinstance(fact.contract, THIRStubContract))
+            or not isinstance(fact.readonly, tuple) or len(fact.readonly) != len(fact.signature.param_types)
+            or not all(type(r) is bool for r in fact.readonly)):
+        _fail(owner, node, "invalid stub callee")
+    # A stub renders through its bound symbol or template, never a TPy
+    # callee spelling of its own.
+    if (len(node.args) != len(fact.signature.param_types)
+            or node.callee_expr is not None or node.template_args_cpp is not None
+            or (node.native_name is None and node.cpp_template is None and node.callee_cpp is None)):
+        _fail(owner, node, "stub callee on incompatible call")
 
 
 def _check_captures(owner: str, node: THIRLambda | THIRNestedDef) -> None:
@@ -358,6 +391,10 @@ def _check_node(owner: str, node: THIRNode) -> None:
             _fail(owner, node, "native iteration element mismatch")
     if isinstance(node, (THIRLambda, THIRNestedDef)):
         _check_captures(owner, node)
+    if isinstance(node, THIRCall) and node.resolved_callee is not None and node.stub_callee is not None:
+        _fail(owner, node, "call carries both a resolved and a stub callee")
+    if isinstance(node, THIRCall) and node.stub_callee is not None:
+        _check_stub_callee(owner, node, node.stub_callee)
     if isinstance(node, THIRCall) and node.resolved_callee is not None:
         _check_callee(owner, node, node.resolved_callee)
         if (len(node.args) != len(node.resolved_callee.signature.param_types)
@@ -367,9 +404,9 @@ def _check_node(owner: str, node: THIRNode) -> None:
     if isinstance(node, (THIRName, THIRModuleVar, THIRWalrus)) and node.global_binding is not None:
         fact = node.global_binding
         if (not isinstance(fact, THIRGlobalBinding) or not fact.module or not fact.name
-                or not storage_leaf(fact.type) or fact.type != node.result_type
-                or node.form is not Form.VALUE or type(fact.writable) is not bool):
-            _fail(owner, node, "invalid scalar global binding")
+                or not (leaf_global(fact.type) and (node.form is Form.VALUE or owned_leaf(fact.type)))
+                or fact.type != node.result_type or type(fact.writable) is not bool):
+            _fail(owner, node, "invalid leaf global binding")
         if isinstance(node, THIRWalrus) and not fact.writable:
             _fail(owner, node, "global walrus needs writable binding")
     if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind, THIRAssign)):
@@ -1084,7 +1121,9 @@ def validate_function(fn: THIRFunction) -> None:
                 # Body normalization adds @readonly access separately from the declaration type.
                 or tuple(unwrap_ref_type(unwrap_readonly(unwrap_ref_type(p.type))) for p in fn.params)
                 != tuple(unwrap_ref_type(unwrap_readonly(unwrap_ref_type(t))) for t in signature.param_types)
-                or fn.return_type != signature.return_type):
+                or fn.return_type != signature.return_type
+                or (signature.passings is not None and all(p.passing is not None for p in fn.params)
+                    and signature.passings != tuple(p.passing for p in fn.params))):
             _fail(fn.name, fn, "resolved callee disagrees with definition")
     for stmt in fn.body:
         _walk(fn.name, stmt, fn.return_type)

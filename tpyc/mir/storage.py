@@ -7,8 +7,8 @@ from types import MappingProxyType
 from .dump import _location, _place
 from .liveness import MIRPoint
 from .nodes import (
-    MIRAssign, MIRConstruct, MIRCopy, MIRFunction, MIRMove, MIRNotCovered,
-    MIRRecordWrite, MIRTupleConstruct, MIRTupleIndex, MIRPlace,
+    MIRAssign, MIRConstruct, MIRDeref, MIRFunction, MIRNotCovered, MIRSlot, MIRSlotId,
+    MIRRecordWrite, MIRTupleConstruct, MIRTupleIndex, MIRPlace, MIRValueKind,
 )
 from .validate import successors, validate_function
 
@@ -30,24 +30,33 @@ def analyze_storage(fn: MIRFunction) -> MIRStorageEvents | MIRNotCovered:
         if bid not in reached:
             reached.add(bid)
             pending.extend(successors(blocks[bid].terminator))
+    slots = {slot.id: slot for slot in fn.slots}
     writes: dict[MIRPoint, MIRAssign] = {}
     members: dict[MIRPoint, tuple[MIRPlace, ...]] = {}
     for block in fn.blocks:
         for index, stmt in enumerate(block.statements):
             if not isinstance(stmt, MIRAssign):
                 continue
-            match stmt.value:
-                case MIRTupleConstruct(elements=elements):
-                    initialized = tuple(MIRPlace(stmt.target.root, (MIRTupleIndex(i),))
-                                        for i, element in enumerate(elements) if isinstance(element, MIRConstruct))
-                    if initialized and block.id in reached:
-                        members[MIRPoint(block.id, index)] = initialized
-                case MIRConstruct() | MIRCopy() | MIRMove():
-                    if not isinstance(stmt.storage_write, MIRRecordWrite):
-                        return MIRNotCovered(fn.id, "storage", "missing record write fact", stmt.loc)
-                    if block.id in reached:
-                        writes[MIRPoint(block.id, index)] = stmt
+            if isinstance(stmt.value, MIRTupleConstruct):
+                initialized = tuple(MIRPlace(stmt.target.root, (MIRTupleIndex(i),))
+                                    for i, element in enumerate(stmt.value.elements) if isinstance(element, MIRConstruct))
+                if initialized and block.id in reached:
+                    members[MIRPoint(block.id, index)] = initialized
+            elif storage_destination(stmt.target, slots):
+                if not isinstance(stmt.storage_write, MIRRecordWrite):
+                    return MIRNotCovered(fn.id, "storage", "missing record write fact", stmt.loc)
+                if block.id in reached:
+                    writes[MIRPoint(block.id, index)] = stmt
     return MIRStorageEvents(fn, MappingProxyType(writes), MappingProxyType(members))
+
+
+def storage_destination(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
+    """Whether a write to `place` replaces whole storage: an OWNED root, or
+    the storage a borrowed holder points at (a trailing dereference). The
+    write's event follows its destination, whatever produces the value."""
+    if not place.projections:
+        return slots[place.root].value_kind is MIRValueKind.OWNED
+    return isinstance(place.projections[-1], MIRDeref)
 
 
 def dump_storage(result: MIRStorageEvents | MIRNotCovered) -> str:

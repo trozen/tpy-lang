@@ -6,11 +6,15 @@ import pytest
 
 from ..thir.testutil import _compile, _entry
 from ..thir.nodes import THIRFunction
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32
-from .call_contract import MIRSummaryResult, MIRSummaryState, summary_problem
+from .call_contract import MIRGlobalId, MIRSummaryResult, MIRSummaryState, summary_problem
 from .definitions import MIRDefinitions
 from .lower import lower_function
-from .nodes import MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered
+from .nodes import (
+    MIRAssign, MIRBlockId, MIRBodyId, MIRFunction, MIRNotCovered, MIRRecordWriteMode,
+    MIRStorageDuration, MIRValueKind,
+)
 from .summaries import summarize_function
 from .validate import MIRValidationError
 
@@ -77,6 +81,27 @@ def owned(value: int32) -> int32:
 value = 3
 def global_read() -> int32:
     return value
+
+def global_write() -> None:
+    global value
+    value = 4
+
+def write_then_raise(cell: Cell, a: int32) -> int32:
+    # The write lands before the checked multiply may throw.
+    cell.value = 3
+    return a * a
+
+def range_sum(n: int32) -> int32:
+    total = 0
+    for i in range(n):
+        total = total + i
+    return total
+
+def big_loop(n: int32, k: int) -> int32:
+    # An owned local initialized once per iteration's activation.
+    for i in range(n):
+        t = k * 2
+    return n
 '''
 
 
@@ -89,8 +114,7 @@ def artifacts() -> Artifacts:
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
     functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("main", name),
-                                   kind=MIRBodyKind.FREE_FUNCTION, definitions=definitions)
+    bodies = {name: lower_function(fn, MIRBodyId("main", name), definitions=definitions)
               for name, fn in functions.items()}
     return functions, bodies, definitions
 
@@ -110,8 +134,7 @@ def test_leaf_evidence_is_known(artifacts: Artifacts, name: str) -> None:
 
 
 @pytest.mark.parametrize(("name", "reason"), [
-    ("loop", "cyclic control flow"),
-    ("owned", "storage or value shape"), ("global_read", "global access"),
+    ("owned", "storage or value shape"), ("global_write", "global access"),
 ])
 def test_covered_mir_is_not_a_harmlessness_proof(artifacts: Artifacts, name: str, reason: str) -> None:
     functions, bodies, definitions = artifacts
@@ -119,6 +142,67 @@ def test_covered_mir_is_not_a_harmlessness_proof(artifacts: Artifacts, name: str
     result = summarize_function(functions[name], bodies[name], definitions)
     assert result.state is MIRSummaryState.OPAQUE and reason in result.reason
     assert result.summary is None
+
+
+@pytest.mark.parametrize(("name", "normal", "exits"), [
+    ("loop", True, False), ("range_sum", False, True), ("big_loop", False, True),
+])
+def test_cyclic_bodies_summarize_through_the_fixpoints(artifacts: Artifacts, name: str, normal: bool,
+                                                      exits: bool) -> None:
+    functions, bodies, definitions = artifacts
+    body = bodies[name]
+    assert isinstance(body, MIRFunction) and body.exceptional_exits is exits
+    result = summarize_function(functions[name], body, definitions)
+    assert result.state is MIRSummaryState.KNOWN, result.reason
+    assert result.summary.normal_return_only is normal
+    assert result.summary.writes == result.summary.global_reads == frozenset()
+
+
+def test_repeated_owned_activation_is_private_storage(artifacts: Artifacts) -> None:
+    body = artifacts[1]["big_loop"]
+    local, = (s for s in body.slots if s.name == "t")
+    assert local.value_kind is MIRValueKind.OWNED and local.storage_duration != MIRStorageDuration.BODY
+    writes = [stmt.storage_write.mode for block in body.blocks for stmt in block.statements
+              if isinstance(stmt, MIRAssign) and stmt.target.root == local.id]
+    assert writes == [MIRRecordWriteMode.INITIALIZE_REGION]
+
+
+def test_raising_summary_covers_writes_before_the_throw(artifacts: Artifacts) -> None:
+    functions, bodies, definitions = artifacts
+    result = summarize_function(functions["write_then_raise"], bodies["write_then_raise"], definitions)
+    assert result.state is MIRSummaryState.KNOWN, result.reason
+    summary = result.summary
+    assert summary.normal_return_only is False
+    assert {(w.parameter, w.path[0].name) for w in summary.writes} == {(0, "value")}
+    assert summary_problem(summary) is None
+    assert summary_problem(replace(summary, normal_return_only=None)) == "unsupported call summary contract"
+
+
+def test_global_reads_are_summarized(artifacts: Artifacts) -> None:
+    functions, bodies, definitions = artifacts
+    result = summarize_function(functions["global_read"], bodies["global_read"], definitions)
+    assert result.state is MIRSummaryState.KNOWN, result.reason
+    assert result.summary.global_reads == frozenset({MIRGlobalId("main", "value")})
+    for damaged in (frozenset({("main", "value")}), frozenset({MIRGlobalId("", "value")}), ("main", "value")):
+        assert summary_problem(replace(result.summary, global_reads=damaged)) is not None
+
+
+def test_parameter_bindings_carry_passing_and_access(artifacts: Artifacts) -> None:
+    functions, bodies, definitions = artifacts
+    summary = summarize_function(functions["setter"], bodies["setter"], definitions).summary
+    cell, value = summary.parameters
+    assert (cell.passing, cell.readonly, cell.borrowed_record.readonly) == (ParamPassing.MUT_REF, False, False)
+    assert (value.type, value.passing, value.readonly, value.borrowed_record) == (
+        INT32, ParamPassing.VALUE, False, None)
+    for damaged in (replace(value, passing=ParamPassing.CONST_REF), replace(value, readonly=True),
+                    replace(cell, passing=ParamPassing.CONST_REF), replace(cell, type=BOOL)):
+        broken = replace(summary, parameters=(damaged, value) if damaged.borrowed_record else (cell, damaged))
+        assert summary_problem(broken) is not None, damaged
+    # An unpublished passing fails closed.
+    fn = functions["setter"]
+    unpublished = replace(fn, params=(fn.params[0], replace(fn.params[1], passing=None)))
+    result = summarize_function(unpublished, bodies["setter"], definitions)
+    assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary parameter passing unpublished"
 
 
 @pytest.mark.parametrize(("name", "expected"), [

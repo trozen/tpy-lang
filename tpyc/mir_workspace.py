@@ -10,7 +10,7 @@ from .thir.validate import _iter_children
 from .mir.call_contract import MIRSummaryResult, MIRSummaryState
 from .mir.definitions import MIRDefinitions
 from .mir.lower import lower_function
-from .mir.nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered
+from .mir.nodes import MIRBodyId, MIRFunction, MIRNotCovered
 from .mir.summaries import summarize_function
 
 
@@ -61,7 +61,7 @@ def analyze_call_workspace(functions: tuple[tuple[MIRBodyId, th.THIRFunction], .
     while ready:
         key = ready.popleft()
         body, fn = declarations[key]
-        result = lower_function(fn, body, kind=MIRBodyKind.FREE_FUNCTION,
+        result = lower_function(fn, body,
                                 definitions=definitions, summaries=MappingProxyType(summaries))
         bodies[body] = result
         summaries[key] = (MIRSummaryResult.opaque(result.reason) if isinstance(result, MIRNotCovered)

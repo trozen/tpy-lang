@@ -22,10 +22,14 @@ def builtin_function(key: str): ...
 # generator/async frame's for-loop binds the element instead of taking its
 # address. It goes away once the runtime picks that binding from the
 # iterator's reference type (TODO.md: "Remove `_iter_yields_ref_tuple_proxies`").
+# Function-level `transient=True` (here and on @cpp_template): the bound C++
+# reads or writes only its arguments (as their declared mutability allows),
+# retains nothing after return or raise, reaches no other TPy storage and
+# runs no user code. @pure implies it. Each use is an audit of the binding.
 @builtin_decorator("tpy.extern.native")
 def native(name: str = "", function: bool = False, binding: str = "",
            cpp_return_type: type | None = None, indirecting: bool = False,
-           borrowing_view: bool = False,
+           borrowing_view: bool = False, transient: bool = False,
            _iter_yields_ref_tuple_proxies: bool = False): ...
 
 @builtin_decorator("tpy.extern.export")
@@ -34,7 +38,7 @@ def export(name: str = "", binding: str = ""): ...
 # Prefer @native over @cpp_template -- use only when @native can't express the
 # call (e.g. wrapping in a constructor, type cast, or non-trivial expression).
 @builtin_decorator("tpy.extern.cpp_template")
-def cpp_template(template: str): ...
+def cpp_template(template: str, transient: bool = False): ...
 
 @builtin_decorator("tpy.extern.value_ptr_coercion")
 def value_ptr_coercion(): ...

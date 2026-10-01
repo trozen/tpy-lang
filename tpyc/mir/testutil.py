@@ -269,7 +269,7 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     reference = read(stmt.target)
                     assert isinstance(reference, Reference)
                 else:
-                    assert slots[stmt.target.root].value_kind is MIRValueKind.RECORD_STORAGE
+                    assert slots[stmt.target.root].value_kind is MIRValueKind.OWNED
                     if stmt.target.root in values:
                         # Validation admits repeated root writes only for reusable backing.
                         reference = values[stmt.target.root]

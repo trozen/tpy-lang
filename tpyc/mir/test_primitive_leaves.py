@@ -16,7 +16,7 @@ from .coverage import slot_representation
 from .dependencies import _leaves
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBodyKind, MIRCompare, MIRConstant, MIRFunction, MIRNotCovered, MIROp,
+    MIRAssign, MIRBodyId, MIRCall, MIRCompare, MIRConstant, MIRFunction, MIRNotCovered, MIROp,
     MIRPrint, MIRSlotKind, MIRStorageDuration, MIRTupleElement, MIRUnionLayout, MIRValueKind,
 )
 from .payload_lifetime import inspect_payload_lifetimes
@@ -219,7 +219,7 @@ def _compile_source(source: str):
     functions = {fn.name: fn for fn in ctx.thir_functions.values()}
     with compiler.mir_analysis(((entry, ctx),)) as mir:
         bodies = {name: lower_function(fn, MIRBodyId("leaves", name), definitions=mir.definitions,
-                                      summaries=mir.workspace.summaries, kind=MIRBodyKind.FREE_FUNCTION)
+                                      summaries=mir.workspace.summaries)
                   for name, fn in functions.items()}
         for ctor in ctx.thir_constructors.values():
             bodies[ctor.record_name] = lower_constructor(ctor, MIRBodyId("leaves", ctor.record_name),
@@ -246,8 +246,8 @@ def excluded():
 def test_every_primitive_leaf_position_is_covered(artifacts) -> None:
     _, bodies, _ = artifacts
     for name, body in bodies.items():
-        # A caller of a raising body waits on a summary with exit semantics.
-        assert isinstance(body, MIRFunction) != (name == "calls_arithmetic"), (name, body)
+        # A caller of a raising body consumes its summary's exit fact.
+        assert isinstance(body, MIRFunction), (name, body)
 
 
 def test_enum_values_are_inert_leaves(artifacts) -> None:
@@ -284,6 +284,13 @@ def test_primitive_operations_lower_to_raising_ops(artifacts) -> None:
     with pytest.raises(OverflowError):
         execute(fn, 2**62, 4)
     assert execute(artifacts[1]["negate"], 2.5) == -2.5
+    # No fact says an operation cannot raise, so claiming it is refused.
+    damaged = replace(fn, blocks=tuple(replace(b, statements=tuple(
+        replace(s, value=replace(s.value, may_raise=False))
+        if isinstance(s, MIRAssign) and isinstance(s.value, MIROp) else s for s in b.statements))
+        for b in fn.blocks))
+    with pytest.raises(MIRValidationError, match="primitive operation must be a possible exceptional exit"):
+        validate_function(damaged)
 
 
 def test_aggregate_parameters_keep_their_models(artifacts) -> None:
@@ -312,24 +319,37 @@ def test_print_reads_its_leaf_arguments(artifacts) -> None:
     assert output == [(1, 2.5, "c", True, 3, 0.5, 1, 2.5)]
 
 
-def test_raising_and_printing_bodies_publish_opaque_summaries(artifacts) -> None:
+def test_raising_bodies_summarize_their_exit_and_printing_stays_opaque(artifacts) -> None:
     _, bodies, summaries = artifacts
-    assert summaries["pure"].state is MIRSummaryState.KNOWN
-    assert summaries["arithmetic"].state is MIRSummaryState.OPAQUE
-    assert summaries["arithmetic"].reason == "summary raising operation"
+    assert summaries["pure"].state is MIRSummaryState.KNOWN and summaries["pure"].summary.normal_return_only
+    # A checked operation may raise: the summary says so rather than going opaque.
+    assert summaries["arithmetic"].state is MIRSummaryState.KNOWN
+    assert summaries["arithmetic"].summary.normal_return_only is False
+    assert bodies["arithmetic"].exceptional_exits and not bodies["pure"].exceptional_exits
     assert summaries["prints"].reason == "summary output effect"
+    # Formatting allocates, so a print is a possible exceptional exit.
+    assert bodies["prints"].exceptional_exits is True
+    with pytest.raises(MIRValidationError, match="exceptional exit fact mismatch"):
+        validate_function(replace(bodies["prints"], exceptional_exits=False))
     assert isinstance(bodies["calls_pure"], MIRFunction)
-    # A caller of a body that may raise needs a summary with exit semantics.
+    # The caller's call mirrors the consumed summary and feeds the caller's own exit fact.
+    caller = bodies["calls_arithmetic"]
+    call, = (s.value for b in caller.blocks for s in b.statements
+             if isinstance(s, MIRAssign) and isinstance(s.value, MIRCall))
+    assert call.may_raise and caller.exceptional_exits
+    assert summaries["calls_arithmetic"].summary.normal_return_only is False
+    damaged = replace(caller, blocks=tuple(replace(b, statements=tuple(
+        replace(s, value=replace(s.value, may_raise=False))
+        if isinstance(s, MIRAssign) and isinstance(s.value, MIRCall) else s for s in b.statements))
+        for b in caller.blocks))
+    with pytest.raises(MIRValidationError, match="call exit fact mismatch"):
+        validate_function(damaged)
     functions, _, _ = artifacts
-    caller = lower_function(functions["calls_arithmetic"], MIRBodyId("leaves", "caller"),
-                            kind=MIRBodyKind.FREE_FUNCTION, summaries={})
-    assert isinstance(caller, MIRNotCovered) and caller.reason == "call needs finalized known summary"
+    unscheduled = lower_function(functions["calls_arithmetic"], MIRBodyId("leaves", "caller"), summaries={})
+    assert isinstance(unscheduled, MIRNotCovered) and unscheduled.reason == "call needs finalized known summary"
 
 
 @pytest.mark.parametrize("name,reason", [
-    ("text", "unsupported parameter type"),
-    ("big", "unsupported parameter type"),
-    ("big_compare", "unsupported parameter type"),
     ("pointer", "unsupported parameter type"),
     ("view", "unsupported parameter type"),
     ("owned", "unsupported parameter type"),
@@ -338,13 +358,18 @@ def test_raising_and_printing_bodies_publish_opaque_summaries(artifacts) -> None
     ("record_print", "unsupported expression form"),
     ("tuple_print", "print argument needs a scalar leaf"),
     ("optional_print", "print argument needs a scalar leaf"),
-    ("text_print", "unsupported expression"),
     ("enum_equal", "uncertified binary operation"),
     ("enum_less", "unsupported metadata: left_cast"),
 ])
 def test_non_leaf_types_stay_not_covered(excluded, name: str, reason: str) -> None:
     body = excluded[1][name]
     assert isinstance(body, MIRNotCovered) and reason in body.reason, body
+
+
+@pytest.mark.parametrize("name", ["text", "big", "big_compare", "text_print"])
+def test_owned_leaf_bodies_are_covered_since_b2(excluded, name: str) -> None:
+    # str and BigInt are owned leaves (tpyc/mir/test_owned_leaves.py), no longer outside the vocabulary.
+    assert isinstance(excluded[1][name], MIRFunction), excluded[1][name]
 
 
 def test_conversion_around_a_comparison_is_not_covered(artifacts) -> None:
@@ -364,19 +389,19 @@ def test_conversion_around_a_comparison_is_not_covered(artifacts) -> None:
     wrapped = replace(target, resolved=replace(target.resolved, promotion=target.resolved.method))
     assert not wrapped.certified_op
     body = replace(fn, body=(*fn.body[:-1], replace(ret, value=wrapped)))
-    result = lower_function(body, MIRBodyId("leaves", "wrapped"), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(body, MIRBodyId("leaves", "wrapped"))
     assert isinstance(result, MIRNotCovered) and result.reason == "uncertified binary operation"
 
 
 def test_literal_ranges_are_per_type() -> None:
     ret = th.THIRReturn(th.THIRLiteral(UINT8, 300))
     fn = th.THIRFunction("f", (), UINT8, (ret,), th.THIRFunctionLayout())
-    result = lower_function(fn, MIRBodyId("leaves", "f"), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("leaves", "f"))
     assert isinstance(result, MIRNotCovered) and result.reason == "unsupported literal value"
     x = th.THIRName(UINT8, "x")
     compare = th.THIRBinOp(BOOL, x, "<", th.THIRLiteral(IntLiteralType(-1), -1), None)
     fn = th.THIRFunction("g", (th.THIRParam("x", UINT8, passing=ParamPassing.VALUE),), BOOL, (th.THIRReturn(compare),), th.THIRFunctionLayout())
-    result = lower_function(fn, MIRBodyId("leaves", "g"), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("leaves", "g"))
     assert isinstance(result, MIRNotCovered) and result.reason == "unsupported literal value"
 
 
@@ -494,7 +519,7 @@ def test_native_container_of_float_records(artifacts) -> None:
     param = next(s for s in fn.slots if s.name == "ps")
     assert param.value_kind is MIRValueKind.BORROWED_CONTAINER
     element = param.container_layout.element
-    assert element.kind is MIRValueKind.BORROWED_RECORD and element.type.name == "Point"
+    assert element.kind is MIRValueKind.BORROWED and element.type.name == "Point"
     point, = (r for r in fn.records if r.type == element.type)
     assert [f.type for f in point.fields] == [FLOAT, INT64]
 

@@ -10,7 +10,7 @@ from ..thir.validate import THIRValidationError, validate_function as validate_t
 from ..type_def_registry import ParamPassing
 from ..typesys import INT32, TupleType
 from .lower import lower_function
-from .nodes import MIRBodyId, MIRBodyKind, MIRFieldId, MIRFunction, MIRNotCovered
+from .nodes import MIRBodyId, MIRFieldId, MIRFunction, MIRNotCovered
 from .testutil import Reference, TupleValue, execute
 from .validate import MIRValidationError, validate_function
 
@@ -96,7 +96,7 @@ def artifacts() -> Artifacts:
 
 
 def lower(fn: th.THIRFunction) -> MIRFunction:
-    result = lower_function(fn, MIRBodyId("tuple_parameters", fn.name), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("tuple_parameters", fn.name))
     assert isinstance(result, MIRFunction), result
     return result
 
@@ -165,8 +165,7 @@ def test_parameter_facts_reach_method_and_constructor(artifacts: Artifacts) -> N
 def test_owned_tuple_parameters_remain_uncovered(artifacts: Artifacts, name: str) -> None:
     functions, _ = artifacts
     assert functions[name].params[0].tuple_layout is None
-    assert isinstance(lower_function(functions[name], MIRBodyId("tuples", name),
-                                    kind=MIRBodyKind.FREE_FUNCTION), MIRNotCovered)
+    assert isinstance(lower_function(functions[name], MIRBodyId("tuples", name)), MIRNotCovered)
 
 
 def test_readonly_auto_copy_fact_cannot_increase_access(artifacts: Artifacts) -> None:
@@ -174,7 +173,7 @@ def test_readonly_auto_copy_fact_cannot_increase_access(artifacts: Artifacts) ->
     # Auto preserves const pointers; the existing local fact loses that capability.
     # BUGS.md#readonly-auto-tuple-copy-fact
     fn = functions["readonly_copy"]
-    result = lower_function(fn, MIRBodyId("tuples", fn.name), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("tuples", fn.name))
     assert isinstance(result, MIRNotCovered)
     assert result.reason == "payload copy type or access mismatch"
 
@@ -186,7 +185,7 @@ def test_capture_representation_and_readonly_are_verified(artifacts: Artifacts) 
     bad = replace(fn, body=(replace(decl, init=replace(decl.init, deref=False)), *fn.body[1:]))
     with pytest.raises(THIRValidationError, match="storage borrow disagrees"):
         validate_thir(bad)
-    assert isinstance(lower_function(bad, MIRBodyId("tuples", "bad"), kind=MIRBodyKind.FREE_FUNCTION), MIRNotCovered)
+    assert isinstance(lower_function(bad, MIRBodyId("tuples", "bad")), MIRNotCovered)
     mir = lower(fn)
     holder = next(slot for slot in mir.slots if slot.name == "saved")
     with pytest.raises(MIRValidationError, match="borrow increases access"):
@@ -198,14 +197,12 @@ def test_parameter_layout_is_required_and_cannot_increase_access(artifacts: Arti
     fn = functions["readonly_capture"]
     param = fn.params[0]
     missing = replace(fn, params=(replace(param, tuple_layout=None), *fn.params[1:]))
-    assert isinstance(lower_function(missing, MIRBodyId("tuples", "missing"),
-                                    kind=MIRBodyKind.FREE_FUNCTION), MIRNotCovered)
+    assert isinstance(lower_function(missing, MIRBodyId("tuples", "missing")), MIRNotCovered)
     layout = replace(param.tuple_layout, elements=(replace(param.tuple_layout.elements[0], readonly=False),))
     bad = replace(fn, params=(replace(param, tuple_layout=layout), *fn.params[1:]))
     with pytest.raises(THIRValidationError, match="invalid tuple member fact"):
         validate_thir(bad)
-    assert isinstance(lower_function(bad, MIRBodyId("tuples", "bad"),
-                                    kind=MIRBodyKind.FREE_FUNCTION), MIRNotCovered)
+    assert isinstance(lower_function(bad, MIRBodyId("tuples", "bad")), MIRNotCovered)
 
 
 def test_empty_tuple_parameter_at_internal_boundary() -> None:

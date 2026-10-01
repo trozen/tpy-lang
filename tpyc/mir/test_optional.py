@@ -11,7 +11,7 @@ from ..thir.validate import THIRValidationError, validate_function as validate_t
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBodyId, MIRBodyKind, MIRFieldId, MIRFunction,
+    MIRAssign, MIRBlock, MIRBodyId, MIRFieldId, MIRFunction,
     MIRNotCovered, MIROptionalConstruct, MIROptionalCopy, MIRPlace, MIRReturn,
 )
 from .testutil import Heap, OptionalValue, Reference, execute
@@ -123,7 +123,7 @@ def artifacts() -> Artifacts:
 
 
 def lower(fn: th.THIRFunction) -> MIRFunction:
-    result = lower_function(fn, MIRBodyId("optionals", fn.name), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("optionals", fn.name))
     assert isinstance(result, MIRFunction), result
     return result
 
@@ -192,7 +192,7 @@ def test_shared_parameter_and_declaration_producers(artifacts: Artifacts) -> Non
         assert next(p for p in body.params if p.name == "a").optional_layout is not None
         decl = next(stmt for stmt in body.body if isinstance(stmt, th.THIRVarDecl) and stmt.name == "saved")
         assert decl.optional_layout is not None and decl.init.optional_read is not None
-    result = lower_function(method, MIRBodyId("optionals", "observe"), kind=MIRBodyKind.METHOD)
+    result = lower_function(method, MIRBodyId("optionals", "observe"))
     assert isinstance(result, MIRFunction)
     value = MIRFieldId(method.receiver.type, "value")
     assert execute(result, Reference(1), OptionalValue(Reference(1)), heap={1: {value: 1}}) == 9
@@ -204,8 +204,7 @@ def test_missing_read_or_binding_fact_is_uncovered(artifacts: Artifacts) -> None
     for bad_decl in (replace(decl, optional_layout=None),
                      replace(decl, init=replace(decl.init, optional_read=None))):
         bad = replace(fn, body=(bad_decl, *fn.body[1:]))
-        assert isinstance(lower_function(bad, MIRBodyId("optionals", fn.name),
-                                        kind=MIRBodyKind.FREE_FUNCTION), MIRNotCovered)
+        assert isinstance(lower_function(bad, MIRBodyId("optionals", fn.name)), MIRNotCovered)
 
 
 @pytest.mark.parametrize("annotation,reason", [
@@ -241,8 +240,7 @@ class Child(Cell):
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "excluded")
     assert fn.params[0].optional_layout is None
-    assert isinstance(lower_function(fn, MIRBodyId("optionals", "excluded"),
-                                    kind=MIRBodyKind.FREE_FUNCTION), MIRNotCovered)
+    assert isinstance(lower_function(fn, MIRBodyId("optionals", "excluded")), MIRNotCovered)
 
 
 @pytest.mark.parametrize("change", ["type", "access", "form", "checked"])
@@ -258,8 +256,7 @@ def test_contradictory_optional_facts_are_rejected(artifacts: Artifacts, change:
     else:
         decl = replace(decl, init=replace(decl.init, opt_deref_check=True))
     bad = replace(fn, body=(decl, *fn.body[1:]))
-    assert isinstance(lower_function(bad, MIRBodyId("optionals", bad.name),
-                                    kind=MIRBodyKind.FREE_FUNCTION), MIRNotCovered)
+    assert isinstance(lower_function(bad, MIRBodyId("optionals", bad.name)), MIRNotCovered)
 
 
 def test_thir_rejects_readonly_capability_increase(artifacts: Artifacts) -> None:
@@ -278,8 +275,7 @@ def unchecked(a: Cell | None) -> int32:
 """)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "unchecked")
-    assert isinstance(lower_function(fn, MIRBodyId("optionals", fn.name),
-                                    kind=MIRBodyKind.FREE_FUNCTION), MIRNotCovered)
+    assert isinstance(lower_function(fn, MIRBodyId("optionals", fn.name)), MIRNotCovered)
 
 
 def test_internal_record_member_assembly(artifacts: Artifacts) -> None:

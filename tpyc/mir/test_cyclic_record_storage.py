@@ -10,7 +10,7 @@ from ..thir.validate import validate_function as validate_thir
 from .definitions import MIRDefinitions
 from .lower import lower_function
 from .nodes import (
-    MIRBodyId, MIRBodyKind, MIRCopy, MIRDeref, MIRFunction, MIRGoto, MIRMove,
+    MIRBodyId, MIRCopy, MIRDeref, MIRFunction, MIRGoto, MIRMove,
     MIRNotCovered, MIRPlace, MIRRecordWrite, MIRRecordWriteMode, MIRStorageDuration,
     MIRTupleConstruct,
 )
@@ -72,7 +72,7 @@ def transferred(source: tuple[th.THIRFunction, MIRDefinitions], move: bool,
 
 
 def lower(fn: th.THIRFunction, definitions: MIRDefinitions) -> MIRFunction:
-    result = lower_function(fn, MIRBodyId("cyclic", fn.name), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("cyclic", fn.name),
                             definitions=definitions)
     assert isinstance(result, MIRFunction), result
     return result
@@ -102,14 +102,14 @@ def test_lowering_requires_positive_scoped_copy_fact(source: tuple[th.THIRFuncti
     loop = fn.body[3]
     local = replace(loop.body[0], storage_placement=None)
     fn = replace(fn, body=(*fn.body[:3], replace(loop, body=(local, *loop.body[1:])), fn.body[-1]))
-    result = lower_function(fn, MIRBodyId("cyclic", "missing"), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("cyclic", "missing"),
                             definitions=source[1])
     assert isinstance(result, MIRNotCovered) and result.reason == "loop copy or move needs scoped or hoisted storage"
 
 
 def test_readonly_move_stays_uncovered(source: tuple[th.THIRFunction, MIRDefinitions]) -> None:
     fn = transferred(source, True, readonly=True)
-    result = lower_function(fn, MIRBodyId("cyclic", "readonly"), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(fn, MIRBodyId("cyclic", "readonly"),
                             definitions=source[1])
     assert isinstance(result, MIRNotCovered) and result.reason == "move needs fixed movable owned local"
 

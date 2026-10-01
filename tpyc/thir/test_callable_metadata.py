@@ -8,12 +8,15 @@ from pathlib import Path
 import pytest
 
 from ..mir.lower import lower_function
-from ..mir.nodes import MIRBodyId, MIRBodyKind, MIRNotCovered
+from ..mir.nodes import MIRBodyId, MIRNotCovered
 from ..parse.nodes import TpyCall, TpyName, TpyVarDecl
 from ..sema.analyzer import SemanticAnalyzer
 from ..sema.context import FunctionTrackingState
 from ..sema.reach_analysis import _iter_typed_children
-from ..typesys import BOOL, INT32, MutationCallEdge, NominalType, OwnType, ReadonlyType, TupleType, unwrap_ref_type
+from ..type_def_registry import ParamPassing
+from ..typesys import (
+    BOOL, INT32, MutationCallEdge, NominalType, OwnType, ReadonlyType, Representation, TupleType, unwrap_ref_type,
+)
 from . import nodes as th
 from .lower.callables import resolved_callee
 from .testutil import _compile, _entry
@@ -89,7 +92,9 @@ def test_aliases_reexports_and_namespaces_keep_declaration_identity(artifacts: A
     assert facts[3].identity == th.THIRFunctionIdentity("other", "choose")
     assert facts[4] == functions["choose"].resolved_callee
     assert facts[4].identity == th.THIRFunctionIdentity("main", "choose")
-    assert facts[0].signature == th.THIRCallableSignature((BOOL, INT32), INT32)
+    assert facts[0].signature == th.THIRCallableSignature(
+        (BOOL, INT32), INT32, passings=(ParamPassing.VALUE, ParamPassing.VALUE),
+        return_representation=Representation.STORAGE)
     assert "custom_helpers" in nodes[0].callee_cpp
     assert "custom_entry" in nodes[-1].callee_cpp
     assert calls(functions["shadow"])[0].resolved_callee is None
@@ -98,7 +103,7 @@ def test_aliases_reexports_and_namespaces_keep_declaration_identity(artifacts: A
 def test_callee_metadata_is_not_call_effect_coverage(artifacts: Artifacts) -> None:
     functions, _, _, _ = artifacts
     fn = functions["run"]
-    result = lower_function(fn, MIRBodyId("test", "run"), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("test", "run"))
     assert isinstance(result, MIRNotCovered) and result.node_kind == "THIRCall"
 
 

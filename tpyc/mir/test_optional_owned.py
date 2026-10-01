@@ -14,7 +14,7 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBodyKind, MIRConstruct, MIRDeref, MIRFunction, MIRNotCovered,
+    MIRAssign, MIRBodyId, MIRConstruct, MIRDeref, MIRFunction, MIRNotCovered,
     MIROptionalConstruct, MIROptionalPayload, MIRPlace, MIRRecordWriteMode,
 )
 from .storage import MIRStorageEvents, analyze_storage
@@ -142,7 +142,6 @@ def artifacts() -> Artifacts:
 
 def lower(fn: th.THIRFunction, constructors: tuple[th.THIRConstructor, ...]) -> MIRFunction | MIRNotCovered:
     return lower_function(fn, MIRBodyId("optional_owned", fn.name),
-                          kind=MIRBodyKind.METHOD if fn.receiver is not None else MIRBodyKind.FREE_FUNCTION,
                           definitions=MIRDefinitions(constructors))
 
 
@@ -315,14 +314,6 @@ def test_inline_slot_without_storage_verdict_stays_uncovered(artifacts: Artifact
     result = lower(fn, artifacts[1])
     assert isinstance(result, MIRNotCovered) and "unsupported optional reseat" in result.reason
 
-
-@pytest.mark.parametrize("kind", [MIRBodyKind.MODULE, MIRBodyKind.CLOSURE, MIRBodyKind.GENERATOR,
-                                 MIRBodyKind.ASYNC, MIRBodyKind.GENERIC])
-def test_storage_facts_do_not_admit_unsupported_bodies(artifacts: Artifacts, kind: MIRBodyKind) -> None:
-    fn = artifacts[0]["retained"]
-    result = lower_function(fn, MIRBodyId("optional_owned", fn.name), kind=kind,
-                            definitions=MIRDefinitions(artifacts[1]))
-    assert isinstance(result, MIRNotCovered) and result.reason == "unsupported body kind"
 
 
 def test_upcast_constructor_does_not_claim_plain_payload_ownership() -> None:

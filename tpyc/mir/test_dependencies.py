@@ -14,7 +14,7 @@ from .dependencies import MIRDependencies, MIRReferent, analyze_dependencies, du
 from .liveness import MIRPoint, analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow,
     MIRBranch, MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFieldId,
     MIRFunction, MIRGoto, MIRIsAlternative, MIRIsPresent, MIRMove, MIRNotCovered,
     MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
@@ -35,7 +35,7 @@ LAYOUT = MIRRecordLayout(CELL, (FIELD,), True, True)
 
 def reference(sid: MIRSlotId, *, param: bool = False, readonly: bool = False) -> MIRSlot:
     return MIRSlot(sid, CELL, MIRSlotKind.PARAMETER if param else MIRSlotKind.LOCAL,
-                   form=Form.BORROW, value_kind=MIRValueKind.BORROWED_RECORD, readonly=readonly)
+                   form=Form.BORROW, value_kind=MIRValueKind.BORROWED, readonly=readonly)
 
 
 def analyze(fn: MIRFunction) -> MIRDependencies:
@@ -70,7 +70,7 @@ def test_alias_snapshot_survives_source_reseat_and_last_use() -> None:
 
 @pytest.mark.parametrize("shape", ["tuple", "optional", "union"])
 def test_aggregate_copy_retains_original_payload(shape: str) -> None:
-    member = MIRTupleElement(CELL, MIRValueKind.BORROWED_RECORD)
+    member = MIRTupleElement(CELL, MIRValueKind.BORROWED)
     if shape == "tuple":
         wrapper = MIRSlot(X, TupleType((CELL, INT32)), MIRSlotKind.LOCAL,
                           value_kind=MIRValueKind.TUPLE,
@@ -81,7 +81,7 @@ def test_aggregate_copy_retains_original_payload(shape: str) -> None:
     elif shape == "optional":
         wrapper = MIRSlot(X, OptionalType(CELL), MIRSlotKind.LOCAL,
                           value_kind=MIRValueKind.OPTIONAL,
-                          optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED_RECORD))
+                          optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
         scalar = MIRSlot(Z, BOOL, MIRSlotKind.TEMPORARY)
         initial, copy, reseat = MIROptionalConstruct(P), MIROptionalCopy(X), MIROptionalConstruct()
         path = (MIROptionalPayload(),)
@@ -89,7 +89,7 @@ def test_aggregate_copy_retains_original_payload(shape: str) -> None:
         other = NominalType("Other", _module_qname="dependencies.Other")
         wrapper = MIRSlot(X, UnionType((CELL, other)), MIRSlotKind.LOCAL,
                           value_kind=MIRValueKind.UNION, union_layout=MIRUnionLayout((
-                              member, MIRTupleElement(other, MIRValueKind.BORROWED_RECORD))))
+                              member, MIRTupleElement(other, MIRValueKind.BORROWED))))
         scalar = MIRSlot(Z, BOOL, MIRSlotKind.TEMPORARY)
         initial, copy, reseat = MIRUnionConstruct(0, P), MIRUnionCopy(X), MIRUnionConstruct(0, Q)
         path = (MIRUnionPayload(0),)
@@ -113,7 +113,7 @@ def test_aggregate_copy_retains_original_payload(shape: str) -> None:
 
 def test_local_storage_copy_move_and_replacement_keep_distinct_origins() -> None:
     storage = MIRSlot(STORE, CELL, MIRSlotKind.TEMPORARY, form=Form.STORAGE,
-                      value_kind=MIRValueKind.RECORD_STORAGE, storage_duration=MIRStorageDuration.BODY)
+                      value_kind=MIRValueKind.OWNED, storage_duration=MIRStorageDuration.BODY)
     third = MIRSlotId(B, 9)
     slots = (MIRSlot(P, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), reference(X), reference(Y), reference(Z),
              storage, replace(storage, id=STORE2), replace(storage, id=third))
@@ -138,7 +138,7 @@ def test_local_storage_copy_move_and_replacement_keep_distinct_origins() -> None
 
 
 def test_tuple_leaves_and_parameter_payloads_keep_separate_origins() -> None:
-    layout = MIRTupleLayout((MIRTupleElement(CELL, MIRValueKind.BORROWED_RECORD),) * 2)
+    layout = MIRTupleLayout((MIRTupleElement(CELL, MIRValueKind.BORROWED),) * 2)
     pair = MIRSlot(X, TupleType((CELL, CELL)), MIRSlotKind.LOCAL,
                    value_kind=MIRValueKind.TUPLE, tuple_layout=layout)
     slots = (reference(P, param=True), reference(Q, param=True), pair,
@@ -158,7 +158,7 @@ def test_tuple_leaves_and_parameter_payloads_keep_separate_origins() -> None:
 
 def test_record_union_extraction_survives_switch_to_other_alternative() -> None:
     other = NominalType("Other", _module_qname="dependencies.Other")
-    layout = MIRUnionLayout(tuple(MIRTupleElement(t, MIRValueKind.BORROWED_RECORD) for t in (CELL, other)))
+    layout = MIRUnionLayout(tuple(MIRTupleElement(t, MIRValueKind.BORROWED) for t in (CELL, other)))
     wrapper = MIRSlot(X, UnionType((CELL, other)), MIRSlotKind.LOCAL,
                       value_kind=MIRValueKind.UNION, union_layout=layout)
     first = MIRPlace(X, (MIRUnionPayload(0),))
@@ -212,7 +212,7 @@ def test_recursive_field_graph_is_rejected_before_unbounded_path_growth(readonly
 
 def test_missing_and_malformed_backing_facts_fail_explicitly() -> None:
     storage = MIRSlot(STORE, CELL, MIRSlotKind.TEMPORARY, form=Form.STORAGE,
-                      value_kind=MIRValueKind.RECORD_STORAGE)
+                      value_kind=MIRValueKind.OWNED)
     fn = MIRFunction(B, VoidType(), (storage, MIRSlot(P, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)), (
         MIRBlock(A, (MIRAssign(MIRPlace(STORE), MIRConstruct((P,))),), MIRReturn()),), A, records=(LAYOUT,))
     result = analyze_dependencies(fn, analyze_liveness(fn))
@@ -349,8 +349,7 @@ def test_real_producer_stamps_storage_duration_and_constructor_entry() -> None:
     entry = _entry(modules)
     (_header, source), ctx = compiler.generate_code_and_thir(entry)
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    bodies = {node.name: lower_function(thir, MIRBodyId("producer", node.name),
-                kind=MIRBodyKind.METHOD if thir.receiver else MIRBodyKind.FREE_FUNCTION, definitions=definitions)
+    bodies = {node.name: lower_function(thir, MIRBodyId("producer", node.name), definitions=definitions)
               for node, thir in ctx.thir_functions.items()}
     for node, ctor in ctx.thir_constructors.items():
         bodies[node.name] = lower_constructor(ctor, MIRBodyId("producer", "ctor"), definitions=definitions)
@@ -360,7 +359,7 @@ def test_real_producer_stamps_storage_duration_and_constructor_entry() -> None:
         if fn.receiver_init is not None:
             assert result.entry_active == {MIRPlace(fn.receiver_init.receiver): external(fn.receiver_init.receiver)}
     retained = bodies["retained"]
-    roots = [s for s in retained.slots if s.value_kind is MIRValueKind.RECORD_STORAGE]
+    roots = [s for s in retained.slots if s.value_kind is MIRValueKind.OWNED]
     assert len(roots) == 2 and all(s.storage_duration is MIRStorageDuration.BODY for s in roots)
     # Branch OWN backing must be hoisted before the conditional, not scoped to it.
     body = source[source.index(" retained("):].split("\n}\n", 1)[0]
@@ -386,4 +385,4 @@ def test_real_producer_stamps_storage_duration_and_constructor_entry() -> None:
     with pytest.raises(MIRValidationError, match="caller duration requires borrowed scalar"):
         validate_function(bad)
     assert all(s.storage_duration is None for fn in bodies.values() for s in fn.slots
-               if s.value_kind is MIRValueKind.BORROWED_RECORD)
+               if s.value_kind is MIRValueKind.BORROWED)

@@ -590,6 +590,25 @@ COERCIONS: list[Coercion] = [
     ),
 ]
 
+# The runtime-checked BigInt -> fixed-width narrowing THIR lowering inserts
+# itself at an index it must narrow (`(i).to_fixed_check<int32_t>()`). Sema
+# never resolves it, so it stays out of COERCIONS; it is declared here so its
+# facts have the same home as every sema rule's.
+BIGINT_NARROW = Coercion(
+    name="bigint_narrow",
+    from_type=is_big_int_type,
+    to_type=is_fixed_int_type,
+    builds_fresh_value=True,
+)
+
+_RULES_BY_NAME = {rule.name: rule for rule in (*COERCIONS, BIGINT_NARROW)}
+
+
+def coercion_rule(name: str) -> Optional[Coercion]:
+    """The declared rule a lowered coercion names, or None for a tag no rule
+    declares."""
+    return _RULES_BY_NAME.get(name)
+
 
 def resolve_coercion(actual: TpyType, expected: TpyType,
                      ctx: Optional[CoercionContext],

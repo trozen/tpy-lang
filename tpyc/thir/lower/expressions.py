@@ -7,7 +7,7 @@ only from the node arm being lowered.
 from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import field, fields as dataclass_fields, replace
-from .callables import resolved_callee
+from .callables import resolved_callee, stub_callee
 from .storage import borrowed_record, direct_field, full_expression_record, global_name_binding, module_global_binding, optional_layout, tuple_layout, union_layout
 from .captures import capture_facts
 from ... import qnames
@@ -9176,6 +9176,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 callee=e.func_name,
                 args=tuple(lowered_args),
                 cpp_template=template_fi.cpp_template,
+                stub_callee=stub_callee(template_fi, rtype, arity=len(e.args)),
                 constructs=True,
                 loc=loc,
             )
@@ -9338,6 +9339,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             resolved_callee=(resolved_callee(fi, analyzer, arity=len(e.args))
                              if k is not None and k[0] in ("plain", "imported")
                              and not e.inferred_type_args else None),
+            stub_callee=(stub_callee(fi, rtype, arity=len(e.args))
+                         if rtype is not None else None),
             native_name=native_name,
             cpp_template=cpp_template,
             callee_cpp=callee_cpp,
@@ -10080,6 +10083,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 callee_cpp=callee_cpp,
                 cpp_template=mk[1] if mk[0] == "template" else None,
                 template_args_cpp=mk_targs,
+                # Explicit template args belong to a generic callee, never a
+                # stub whose declared facts are closed.
+                stub_callee=(stub_callee(mfi, rtype, arity=len(e.args))
+                             if rtype is not None and mk_targs is None else None),
                 constructs=_callee_is_type_initializer(mfi),
                 form=_viewfam_result_form(mk_str),
                 loc=loc,

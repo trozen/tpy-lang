@@ -113,6 +113,12 @@ class FloatTraits:
     """Floating-point traits: width (32 or 64)."""
     bits: int
 
+    @property
+    def significand_bits(self) -> int:
+        """IEEE 754 binary32 / binary64 precision: every integer of at most
+        this many bits converts to the type exactly."""
+        return 24 if self.bits == 32 else 53
+
 
 @dataclass(frozen=True)
 class EnumInfo:
@@ -229,11 +235,27 @@ class TypeDef:
     # borrow can point into, and it passes and returns by value: a loan can
     # neither start, pass through nor end at it (`typesys.loan_class`).
     loan_inert: bool = False
+    # A value owns an opaque buffer and nothing else: it holds no borrow, a
+    # compiler-introduced borrow can point into its storage, and copying,
+    # moving or destroying it runs no hook and has no effect a program can
+    # observe beyond allocation (`typesys.loan_class`).
+    owned_leaf: bool = False
+    # Copying an owned leaf can throw a C++ exception (a standard
+    # container's `bad_alloc`), which a bare `except:` catches. A type whose
+    # allocation failure is a panic declares False (docs/EXCEPTION_DESIGN.md
+    # "MemoryError").
+    # Fails closed: a type whose copies cannot throw declares False itself.
+    copy_may_raise: bool = True
+    # The runtime's comparison operators accept every fixed-width int
+    # operand, so a comparison sema leaves to the bare C++ operator between
+    # this type and a fixed-width int is the runtime's own code.
+    compares_fixed_ints: bool = False
     # Every operator dunder the type's stub declares is a primitive
-    # operation: it reads its operands by value, allocates and retains
-    # nothing and runs no user code, though it may raise (checked
-    # arithmetic). Printing a value goes through the runtime's scalar
-    # formatter, so no user method runs there either.
+    # operation: it reads its operands, retains nothing and runs no user
+    # code, though it may raise (checked arithmetic) and may allocate a
+    # fresh result (allocation failure follows `copy_may_raise`). Printing a
+    # value goes through the runtime's formatter, so no user method runs
+    # there either.
     primitive_ops: bool = False
     # The Python value of the type's value-initialized storage (`T{}`), for
     # a primitive whose zero a fact must name; None when not declared.
@@ -1149,6 +1171,11 @@ def _populate() -> None:
         param_cpp_formatter=lambda args: "const ::tpy::BigInt&",
         param_passing=ParamPassing.CONST_REF,
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
+        owned_leaf=True, primitive_ops=True, compares_fixed_ints=True, zero_value=0,
+        # Declared, not defaulted: BigInt's own allocation failure is a panic,
+        # though `from_str` still allocates through a throwing vector
+        # (BUGS.md#bigint-from-str-bad-alloc-throws).
+        copy_may_raise=False,
     ))
 
     # Floats.
@@ -1197,6 +1224,7 @@ def _populate() -> None:
         param_cpp_formatter=lambda args: "std::string_view",
         param_passing=ParamPassing.VIEW,
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
+        owned_leaf=True, primitive_ops=True, copy_may_raise=True, zero_value="",
         element_of=_char_elem,
     ))
     register(TypeDef(
@@ -1205,6 +1233,7 @@ def _populate() -> None:
         param_cpp_formatter=lambda args: "const ::tpy::String&",
         param_passing=ParamPassing.CONST_REF,
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
+        owned_leaf=True, primitive_ops=True, copy_may_raise=True, zero_value="",
         element_of=_char_elem,
     ))
     register(TypeDef(
@@ -1237,6 +1266,7 @@ def _populate() -> None:
         param_cpp_formatter=lambda args: "::tpy::BytesView",
         param_passing=ParamPassing.VIEW,
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
+        owned_leaf=True, primitive_ops=True, copy_may_raise=True, zero_value=b"",
         element_of=_u8_elem,
     ))
     register(TypeDef(

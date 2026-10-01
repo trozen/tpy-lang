@@ -16,6 +16,7 @@ from .dependencies import MIRReferent
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRConstruct, MIRGoto,
     MIRPlace, MIRRecordWriteMode, MIRRegionId, MIRReturn, MIRTupleIndex, MIRUnionPayload, MIRValueKind,
+    function_body_kind,
 )
 from .region_flow import MIRRegionFlow
 from .scope_lifetime import analyze_scope_ends
@@ -158,7 +159,7 @@ def paired() -> bool:
 
 def _request(artifacts: Artifacts, fn: th.THIRFunction | th.THIRConstructor) -> MIRStorageRequest:
     kind = (MIRBodyKind.CONSTRUCTOR if isinstance(fn, th.THIRConstructor) else
-            MIRBodyKind.METHOD if fn.receiver is not None else MIRBodyKind.FREE_FUNCTION)
+            function_body_kind(fn))
     name = fn.record_name if isinstance(fn, th.THIRConstructor) else fn.name
     return MIRStorageRequest(fn, MIRBodyId("main", name), kind, artifacts[2], artifacts[1].summaries)
 
@@ -211,7 +212,7 @@ def test_full_expression_backings_keep_their_actual_region(
         place = result.backings[backing.node]
         slot = slots[place.root]
         block, write = writes[place]
-        assert not place.projections and slot.value_kind is MIRValueKind.RECORD_STORAGE
+        assert not place.projections and slot.value_kind is MIRValueKind.OWNED
         assert isinstance(slot.storage_duration, MIRRegionId) and slot.storage_duration.index != 0
         assert slot.storage_duration == slot.residence == block.region
         assert write.storage_write.mode is MIRRecordWriteMode.INITIALIZE_REGION
@@ -289,7 +290,7 @@ def test_full_expression_missing_or_pruned_backing_cannot_certify(
         source = _with_body(source, (replace(source.body[0], value=th.THIRLiteral(BOOL, True)), *source.body))
     request = _request(expression_artifacts, source)
     if mutation == "missing":
-        lowered = lowering.lower_function_storage(source, request.body, kind=request.kind,
+        lowered = lowering.lower_function_storage(source, request.body,
                                                   definitions=request.definitions, summaries=request.summaries)
         first, second = source.storage_facts.backings
         mapping = MappingProxyType(IdentityMap(((first.node, lowered.backings[first.node]),)))
@@ -429,10 +430,15 @@ def test_missing_backing_facts_are_an_invariant_error(artifacts: Artifacts, name
         certify_thir_storage(_request(artifacts, replace(fn, storage_facts=stale)))
 
 
-def test_wrong_constructor_kind_is_an_invariant_error(artifacts: Artifacts) -> None:
+def test_wrong_request_kind_is_an_invariant_error(artifacts: Artifacts) -> None:
     ctor = next(c for c in artifacts[0].thir_constructors.values() if c.record_name == "Caller")
-    with pytest.raises(MIRValidationError, match="kind differs"):
+    with pytest.raises(MIRValidationError, match="kind differs from its constructor"):
         certify_thir_storage(replace(_request(artifacts, ctor), kind=MIRBodyKind.FREE_FUNCTION))
+    # A function's kind is its own (`function_body_kind`); a request cannot re-label it.
+    fn = next(f for f in artifacts[0].thir_functions.values() if f.receiver is None)
+    for kind in (MIRBodyKind.METHOD, MIRBodyKind.CONSTRUCTOR, MIRBodyKind.GENERATOR):
+        with pytest.raises(MIRValidationError, match="kind differs from its function"):
+            certify_thir_storage(replace(_request(artifacts, fn), kind=kind))
 
 
 def test_repeated_activation_boundary_does_not_swallow_malformed_mir(artifacts: Artifacts, monkeypatch) -> None:
@@ -546,7 +552,7 @@ def test_local_alias_requires_ordinary_storage_root(artifacts: Artifacts, name: 
     assert result.certifies(request, source, result.function)
     assert not result.backings and not result.evidence.explicit_roots
     root, = result.evidence.required
-    assert next(slot for slot in result.function.slots if slot.id == root).value_kind is MIRValueKind.RECORD_STORAGE
+    assert next(slot for slot in result.function.slots if slot.id == root).value_kind is MIRValueKind.OWNED
     assert all(not origin.external and origin.place.root == root
                for origins in result.evidence.origins.values() for origin in origins)
     obligation, = source.storage_facts.obligations
@@ -614,7 +620,7 @@ def test_repeated_sink_identity_needs_every_occurrence(artifacts: Artifacts, kin
 def test_missing_mapping_cannot_reuse_a_partial_proof(artifacts: Artifacts, monkeypatch) -> None:
     source = _thir(artifacts, "chain")
     request = _request(artifacts, source)
-    lowered = lowering.lower_function_storage(source, request.body, kind=request.kind,
+    lowered = lowering.lower_function_storage(source, request.body,
                                               definitions=request.definitions, summaries=request.summaries)
     omitted = source.storage_facts.obligations[1].sink
     mapping = IdentityMap((stmt, points) for stmt, points in lowered.operations.items() if stmt is not omitted)

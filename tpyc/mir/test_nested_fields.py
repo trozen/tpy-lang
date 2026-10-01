@@ -12,7 +12,7 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRDeref, MIRField, MIRFieldId,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRDeref, MIRField, MIRFieldId,
     MIRFunction, MIRNotCovered, MIROptionalConstruct, MIROptionalLayout,
     MIROptionalPayload, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleElement,
     MIRUnionConstruct, MIRUnionLayout, MIRUnionPayload, MIRValueKind,
@@ -157,7 +157,7 @@ def artifacts() -> Artifacts:
 
 
 def lower(fn: th.THIRFunction) -> MIRFunction:
-    result = lower_function(fn, MIRBodyId("nested", fn.name), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("nested", fn.name))
     assert isinstance(result, MIRFunction), result
     return result
 
@@ -261,13 +261,13 @@ def test_captured_field_survives_wrapper_replacement(artifacts: Artifacts, union
         wrapper = MIRSlot(wrapper_id, UnionType((NoneType(), param.type)), MIRSlotKind.LOCAL,
                           value_kind=MIRValueKind.UNION,
                           union_layout=MIRUnionLayout((None, MIRTupleElement(
-                              param.type, MIRValueKind.BORROWED_RECORD))))
+                              param.type, MIRValueKind.BORROWED))))
         construct, clear = MIRUnionConstruct(1, param.id), MIRUnionConstruct(0)
         payload = MIRUnionPayload(1)
     else:
         wrapper = MIRSlot(wrapper_id, OptionalType(param.type), MIRSlotKind.LOCAL,
                           value_kind=MIRValueKind.OPTIONAL,
-                          optional_layout=MIROptionalLayout(param.type, MIRValueKind.BORROWED_RECORD))
+                          optional_layout=MIROptionalLayout(param.type, MIRValueKind.BORROWED))
         construct, clear = MIROptionalConstruct(param.id), MIROptionalConstruct()
         payload = MIROptionalPayload()
     block = fn.blocks[0]
@@ -290,7 +290,7 @@ def test_borrow_facts_reach_sibling_producers(artifacts: Artifacts) -> None:
     assert functions["method"].body[0].storage_borrow is not None
     observer = next(ctor for ctor in constructors if ctor.record_name == "Observer")
     assert any(getattr(stmt, "storage_borrow", None) is not None for stmt in observer.body)
-    result = lower_function(functions["method"], MIRBodyId("nested", "method"), kind=MIRBodyKind.METHOD)
+    result = lower_function(functions["method"], MIRBodyId("nested", "method"))
     assert isinstance(result, MIRFunction)
     _, _, _, heap = objects(functions)
     assert execute(result, Reference(1), heap=heap) == 8
@@ -299,7 +299,7 @@ def test_borrow_facts_reach_sibling_producers(artifacts: Artifacts) -> None:
 @pytest.mark.parametrize("name", ["replace_field", "owning"])
 def test_nested_owning_operations_remain_uncovered(artifacts: Artifacts, name: str) -> None:
     functions, constructors = artifacts
-    result = lower_function(functions[name], MIRBodyId("nested", name), kind=MIRBodyKind.FREE_FUNCTION,
+    result = lower_function(functions[name], MIRBodyId("nested", name),
                             definitions=MIRDefinitions(constructors))
     assert isinstance(result, MIRNotCovered)
     assert result.reason == ("unsupported record fields" if name == "owning"

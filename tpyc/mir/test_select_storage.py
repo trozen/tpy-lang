@@ -220,7 +220,7 @@ def test_missing_select_root_does_not_reuse_argument_proof(
         artifacts: Artifacts, monkeypatch: pytest.MonkeyPatch) -> None:
     source = _thir(artifacts, "mixed")
     request = _request(artifacts, source)
-    lowered = lowering.lower_function_storage(source, request.body, kind=request.kind,
+    lowered = lowering.lower_function_storage(source, request.body,
                                               definitions=request.definitions, summaries=request.summaries)
     mapping = MappingProxyType(IdentityMap((node, place) for node, place in lowered.backings.items()
                                            if not isinstance(node, th.THIRSlotEmplace)))
@@ -270,7 +270,7 @@ def test_missing_operation_does_not_reuse_select_storage_proof(
         artifacts: Artifacts, monkeypatch: pytest.MonkeyPatch) -> None:
     source = _thir(artifacts, "forward")
     request = _request(artifacts, source)
-    lowered = lowering.lower_function_storage(source, request.body, kind=request.kind,
+    lowered = lowering.lower_function_storage(source, request.body,
                                               definitions=request.definitions, summaries=request.summaries)
     alias = source.body[1]
     mapping = MappingProxyType(IdentityMap((node, points) for node, points in lowered.operations.items()
@@ -378,7 +378,7 @@ def test_retained_holders_track_the_actual_select_root(artifacts: Artifacts, sha
     if shape == "record":
         path = MIRPlace(holder.id)
     else:
-        borrowed = MIRTupleElement(holder.type, MIRValueKind.BORROWED_RECORD)
+        borrowed = MIRTupleElement(holder.type, MIRValueKind.BORROWED)
         wrapper_id = MIRSlotId(function.id, max(slots, key=lambda sid: sid.index).index + 1)
         capture = []
         extra_slots = []
@@ -400,7 +400,7 @@ def test_retained_holders_track_the_actual_select_root(artifacts: Artifacts, sha
         elif shape == "optional":
             wrapper = MIRSlot(wrapper_id, OptionalType(holder.type), MIRSlotKind.LOCAL,
                               value_kind=MIRValueKind.OPTIONAL,
-                              optional_layout=MIROptionalLayout(holder.type, MIRValueKind.BORROWED_RECORD),
+                              optional_layout=MIROptionalLayout(holder.type, MIRValueKind.BORROWED),
                               residence=holder.residence)
             capture.append(MIRAssign(MIRPlace(wrapper_id), MIROptionalConstruct(holder.id)))
             path = MIRPlace(wrapper_id, (MIROptionalPayload(),))
@@ -408,7 +408,7 @@ def test_retained_holders_track_the_actual_select_root(artifacts: Artifacts, sha
             other = NominalType("Other", _module_qname="select.Other")
             wrapper = MIRSlot(wrapper_id, UnionType((holder.type, other)), MIRSlotKind.LOCAL,
                               value_kind=MIRValueKind.UNION,
-                              union_layout=MIRUnionLayout((borrowed, MIRTupleElement(other, MIRValueKind.BORROWED_RECORD))),
+                              union_layout=MIRUnionLayout((borrowed, MIRTupleElement(other, MIRValueKind.BORROWED))),
                               residence=holder.residence)
             capture.append(MIRAssign(MIRPlace(wrapper_id), MIRUnionConstruct(0, holder.id)))
             path = MIRPlace(wrapper_id, (MIRUnionPayload(0),))

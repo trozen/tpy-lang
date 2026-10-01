@@ -11,7 +11,7 @@ from ...typesys import (
     NominalType, OptionalType, ReadonlyType, TupleType, TpyType,
     UnionType, is_void_like_type, unwrap_readonly, unwrap_ref_type,
 )
-from ..scalar_leaves import leaf_constant, storage_leaf
+from ..scalar_leaves import leaf_constant, leaf_global, storage_leaf
 from ..nodes import (
     Form, THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldAccess, THIRFieldIdentity, THIRName,
     THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout, THIRUnionLayout,
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 def global_name_binding(name: str, typ: TpyType, lc: '_LowerCtx') -> THIRGlobalBinding | None:
     analyzer = lc.analyzer
     if (not lc.global_binding_scope or lc.top_level_scope or lc.capture_funcs or name in lc.prescan.param_names
-            or not storage_leaf(typ) or not lc.prescan.binds_global(name)
+            or not leaf_global(typ) or not lc.prescan.binds_global(name)
             or name not in analyzer.ctx.top_level_decls or name in lc.prescan.native_globals):
         return None
     declared = analyzer.ctx.global_scope.lookup(name)
@@ -44,7 +44,7 @@ def global_name_binding(name: str, typ: TpyType, lc: '_LowerCtx') -> THIRGlobalB
 def module_global_binding(module: str, name: str, typ: TpyType,
                           analyzer: 'SemanticAnalyzer') -> THIRGlobalBinding | None:
     info = analyzer.registry.get_module(module)
-    if not storage_leaf(typ) or info is None or info.module_attributes is None:
+    if not leaf_global(typ) or info is None or info.module_attributes is None:
         return None
     cell = info.module_attributes.get(name)
     variable = info.variables.get(name)

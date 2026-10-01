@@ -10,7 +10,7 @@ from ..thir.validate import THIRValidationError, validate_function as validate_t
 from ..typesys import BOOL, INT32, INT32_MIN, INT32_MAX
 from .dump import dump_function
 from .lower import lower_function
-from .nodes import MIRBodyId, MIRBodyKind, MIRFieldId, MIRFunction, MIRNotCovered, MIRValueKind
+from .nodes import MIRBodyId, MIRFieldId, MIRFunction, MIRNotCovered, MIRValueKind
 from .testutil import Reference, UnionValue, execute
 
 
@@ -140,7 +140,7 @@ def artifacts() -> Artifacts:
 
 
 def lower(fn: th.THIRFunction) -> MIRFunction:
-    result = lower_function(fn, MIRBodyId("unions", fn.name), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("unions", fn.name))
     assert isinstance(result, MIRFunction), result
     return result
 
@@ -241,7 +241,7 @@ def test_method_admission_and_shared_constructor_facts(artifacts: Artifacts) -> 
     functions, constructors = artifacts
     method = functions["read"]
     assert method.params[0].union_layout is not None
-    result = lower_function(method, MIRBodyId("unions", "method"), kind=MIRBodyKind.METHOD)
+    result = lower_function(method, MIRBodyId("unions", "method"))
     assert isinstance(result, MIRFunction)
     value = MIRFieldId(method.receiver.type, "value")
     assert execute(result, Reference(1), union_arg(result, 1, "Cell", Reference(1)),
@@ -259,14 +259,14 @@ def test_deferred_union_families_remain_uncovered(annotation: str) -> None:
                                  f"def excluded(a: {annotation}) -> int32:\n    return 1\n")
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "excluded")
-    assert isinstance(lower_function(fn, MIRBodyId("unions", "excluded"), kind=MIRBodyKind.FREE_FUNCTION), MIRNotCovered)
+    assert isinstance(lower_function(fn, MIRBodyId("unions", "excluded")), MIRNotCovered)
 
 
 def test_missing_and_contradictory_union_facts(artifacts: Artifacts) -> None:
     fn = artifacts[0]["scalar"]
     param = fn.params[0]
     missing = replace(fn, params=(replace(param, union_layout=None), *fn.params[1:]))
-    assert isinstance(lower_function(missing, MIRBodyId("unions", "missing"), kind=MIRBodyKind.FREE_FUNCTION), MIRNotCovered)
+    assert isinstance(lower_function(missing, MIRBodyId("unions", "missing")), MIRNotCovered)
     bad_layout = replace(param.union_layout, elements=(INT32, BOOL))
     bad = replace(fn, params=(replace(param, union_layout=bad_layout), *fn.params[1:]))
     with pytest.raises(THIRValidationError):
@@ -285,7 +285,7 @@ def test_selection_and_construction_facts_are_required(artifacts: Artifacts, com
         branch = body[1]
         body[1] = replace(branch, then_body=(replace(branch.then_body[0], union_extraction=None), *branch.then_body[1:]))
     bad = replace(fn, body=tuple(body))
-    assert isinstance(lower_function(bad, MIRBodyId("unions", "missing"), kind=MIRBodyKind.FREE_FUNCTION), MIRNotCovered)
+    assert isinstance(lower_function(bad, MIRBodyId("unions", "missing")), MIRNotCovered)
 
 
 @pytest.mark.parametrize("body,reason", [
@@ -298,7 +298,7 @@ def test_filed_codegen_defects_cannot_acquire_mir_coverage(body: str, reason: st
     compiler, modules = _compile(SOURCE + "\n" + body)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "excluded")
-    result = lower_function(fn, MIRBodyId("unions", "excluded"), kind=MIRBodyKind.FREE_FUNCTION)
+    result = lower_function(fn, MIRBodyId("unions", "excluded"))
     assert isinstance(result, MIRNotCovered) and reason in result.reason
 
 

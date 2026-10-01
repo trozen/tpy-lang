@@ -12,7 +12,7 @@ from .dependencies import analyze_dependencies, dump_dependencies
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
 from .liveness import analyze_liveness, dump_liveness
-from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered
+from .nodes import MIRBodyId, MIRFunction, MIRNotCovered
 from .storage import analyze_storage, dump_storage
 from .retention import analyze_retention, dump_retention
 from .payload_lifetime import dump_payload_ends, dump_payload_inspection, inspect_payload_lifetimes
@@ -104,10 +104,9 @@ def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
                 if fn is None:
                     missing(body, func)
                 else:
-                    kind = MIRBodyKind.METHOD if owner is not None else MIRBodyKind.FREE_FUNCTION
                     cached = workspace.bodies.get(body) if workspace is not None else None
                     rendered(cached if cached is not None else lower_function(
-                        fn, body, kind=kind, definitions=definitions,
+                        fn, body, definitions=definitions,
                         summaries=workspace.summaries if workspace is not None else None))
         else:
             missing(body, func)

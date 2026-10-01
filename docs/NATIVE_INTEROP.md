@@ -27,6 +27,7 @@ from tpy.extern import native, export
 | `@native("factory", function=True)` on `__init__` -- factory-style constructor | **Done** |
 | `@native("MyArena", indirecting=True)` -- attest heap indirection for cycle detection | **Done** |
 | `@native("MyCursor", borrowing_view=True)` -- declare a value type's values borrow handles (lifetime-checked) | **Done** |
+| `@native("clock", transient=True)` / `@cpp_template("...", transient=True)` -- declare a binding that touches only its arguments and retains nothing | **Done** |
 | `native_field("cpp_name")` -- per-field C++ rename on `@native` classes | **Done** |
 | `@native` enum -- import C++ `enum class` | **Done** |
 | `native_member("cpp_name")` -- per-member C++ rename on `@native` enums | **Done** |
@@ -312,6 +313,25 @@ every other native template keeps `T` (`Bag[readonly[Node]]` renders
 `my::Bag<Node>`): a storage template owns its elements, and C++ containers
 and allocators reject a const element type. The readonly-ness of a storage
 template's element is enforced by sema alone.
+
+### Declaring a transient binding: `transient=True`
+
+A function or method binding whose C++ touches nothing but its arguments
+declares it on the binding itself, `@native` or `@cpp_template`:
+
+```python
+@native("tpy::time_time", transient=True)
+def time() -> float: ...
+```
+
+The `transient` binding fact promises that the bound C++ reads or writes
+only its arguments as their declared mutability says, retains nothing after
+return or raise, reaches no other TPy storage and runs no user code. `pure`
+implies it. It is published as a stub callee's `TRANSIENT` contract for
+MIR's stub call contract; sema does not read it. Each use is an audit of
+the binding. The kwarg is a bool literal; it is rejected on a class-level
+`@native` (it describes a call, not a type's values) and on a binding
+that carries a TPy body.
 
 ### Narrowing C++ returns: `cpp_return_type=T`
 
@@ -631,8 +651,8 @@ These are orthogonal to the import/export system and remain unchanged:
 
 | Decorator | Purpose |
 |-----------|---------|
-| `cpp_template("...")` | Inline C++ template expansion |
-| `native_preserves_refs` | Marks native method as not invalidating iterators |
+| `cpp_template("...")` | Inline C++ template expansion; takes `transient=True` like `@native` (see "Declaring a transient binding") |
+| `pure` (from `tpy`) | No non-local mutation, no I/O, nothing retained after return or raise; implies `readonly`. Read by sema's borrow-argument check, mutation call edges, the with-exit and loop-hold write checks (`sema/loop_frames.py`) and `sema/receiver_calls.call_mutates_receiver`, and published as a stub callee's `PURE` contract for MIR's stub call contract, which admits it only at inert or owned-leaf arguments of builtin TypeDefs (a protocol or callable parameter bound to user code refuses: `@pure` was never audited for "runs no user code") || `native_preserves_refs` | Marks native method as not invalidating iterators |
 | `copy_returns_warn` | Marks an `Own[V]` accessor that copies where its CPython namesake aliases; sema warns at call sites (silence with `copy()`) |
 | `value_ptr_coercion` | Type coercion annotation |
 | `virtual_raise` | Class marker: its hand-written C++ `__raise__` dispatches (is not `throw *this`), so `raise X(args)` routes through it instead of the fresh-throw peephole. Not inherited. Used by `OSError`'s errno -> subclass mapping |

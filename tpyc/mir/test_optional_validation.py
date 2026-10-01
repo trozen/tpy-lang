@@ -121,7 +121,7 @@ def test_unconditional_payload_access_is_rejected() -> None:
     replace(SLOTS[0], optional_layout=None),
     replace(SLOTS[0], optional_layout=MIROptionalLayout(BOOL)),
     replace(SLOTS[0], optional_layout=MIROptionalLayout(INT32, readonly=True)),
-    replace(SLOTS[0], optional_layout=MIROptionalLayout(INT32, MIRValueKind.RECORD_STORAGE)),
+    replace(SLOTS[0], optional_layout=MIROptionalLayout(INT32, MIRValueKind.OWNED)),
     replace(SLOTS[0], type=OptionalType(INT32, force_pointer_repr=True)),
     replace(SLOTS[0], form=Form.BORROW),
 ])

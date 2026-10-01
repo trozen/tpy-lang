@@ -16,7 +16,7 @@ from .dependencies import _dependencies
 from .liveness import _liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRBranch,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch,
     MIRConstant, MIRConstruct, MIRDeref, MIREdge, MIRField, MIRFieldId, MIRFunction, MIRGoto,
     MIRIsPresent, MIROptionalConstruct, MIROptionalLayout, MIRPlace, MIRPoint, MIRRead,
     MIRRecordLayout, MIRRecordStorageInit, MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode,
@@ -195,7 +195,7 @@ def artifacts() -> Artifacts:
     workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
     bodies = {body.declaration.split("@")[0]: fn for body, fn in workspace.bodies.items()}
     method = next(fn for fn in ctx.thir_functions.values() if fn.name == "escape")
-    bodies["escape"] = lower_function(method, MIRBodyId("main", "escape"), kind=MIRBodyKind.METHOD,
+    bodies["escape"] = lower_function(method, MIRBodyId("main", "escape"),
                                       definitions=definitions, summaries=workspace.summaries)
     ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Observer")
     bodies["Observer"] = lower_constructor(ctor, MIRBodyId("main", "Observer"), definitions=definitions,
@@ -204,7 +204,7 @@ def artifacts() -> Artifacts:
 
 
 def _storage(fn: MIRFunction) -> frozenset[MIRSlotId]:
-    return frozenset(s.id for s in fn.slots if s.value_kind is MIRValueKind.RECORD_STORAGE)
+    return frozenset(s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
 
 
 def _named(fn: MIRFunction, sid: MIRSlotId) -> str | None:
@@ -278,7 +278,7 @@ def _cell(definitions: MIRDefinitions, name: str = "Cell") -> tuple[NominalType,
 
 
 def _ref(sid: MIRSlotId, typ: NominalType, kind: MIRSlotKind, residence: MIRRegionId | None = None) -> MIRSlot:
-    return MIRSlot(sid, typ, kind, form=Form.BORROW, value_kind=MIRValueKind.BORROWED_RECORD,
+    return MIRSlot(sid, typ, kind, form=Form.BORROW, value_kind=MIRValueKind.BORROWED,
                    readonly=True, residence=residence)
 
 
@@ -292,7 +292,7 @@ def activation(definitions: MIRDefinitions, *, retain: bool, optional: bool = Fa
     """Each iteration constructs a fresh region activation of one static backing."""
     cell, layout = _cell(definitions)
     field = layout.fields[0]
-    backing = MIRSlot(BACKING, cell, MIRSlotKind.LOCAL, form=Form.STORAGE, value_kind=MIRValueKind.RECORD_STORAGE,
+    backing = MIRSlot(BACKING, cell, MIRSlotKind.LOCAL, form=Form.STORAGE, value_kind=MIRValueKind.OWNED,
                       storage_duration=INNER, residence=INNER,
                       record_storage=MIRRecordStorageKind.OPTIONAL if optional else MIRRecordStorageKind.DIRECT)
     read = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(SAVED, (MIRDeref(), field))))
@@ -444,7 +444,7 @@ R_ENTRY, R_LOCAL_ARM, R_OWNER_ARM = (MIRBlockId(RETURN, i) for i in range(3))
 def returning(definitions: MIRDefinitions, *, escape: bool) -> MIRFunction:
     cell, layout = _cell(definitions)
     region = MIRRegionId(RETURN, 0)
-    storage = MIRSlot(R_LOCAL, cell, MIRSlotKind.LOCAL, form=Form.STORAGE, value_kind=MIRValueKind.RECORD_STORAGE,
+    storage = MIRSlot(R_LOCAL, cell, MIRSlotKind.LOCAL, form=Form.STORAGE, value_kind=MIRValueKind.OWNED,
                       storage_duration=MIRStorageDuration.BODY, residence=region)
     once = MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE)
     local_arm = MIRBorrow(MIRPlace(R_LOCAL)) if escape else MIRAlias(R_OWNER)
@@ -497,7 +497,7 @@ def test_absent_payload_needs_a_positive_selection_fact(artifacts: Artifacts) ->
     entry = fn.blocks[0]
     fn = replace(fn, slots=(*fn.slots, MIRSlot(
         maybe, OptionalType(cell), MIRSlotKind.LOCAL, value_kind=MIRValueKind.OPTIONAL,
-        optional_layout=MIROptionalLayout(cell, MIRValueKind.BORROWED_RECORD), residence=region),
+        optional_layout=MIROptionalLayout(cell, MIRValueKind.BORROWED), residence=region),
         MIRSlot(guard, BOOL, MIRSlotKind.LOCAL, residence=region)), blocks=(replace(entry, statements=(
             *entry.statements, MIRAssign(MIRPlace(maybe), MIROptionalConstruct()),
             MIRAssign(MIRPlace(guard), MIRIsPresent(maybe)))), *fn.blocks[1:]))

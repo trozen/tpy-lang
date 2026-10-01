@@ -24,10 +24,10 @@ MEMBER = MIRField(MIRFieldId(CELL, "value"), INT32)
 LAYOUT = MIRRecordLayout(CELL, (MEMBER,), True, True)
 SLOTS = (
     MIRSlot(N, INT32, MIRSlotKind.LOCAL),
-    MIRSlot(S, CELL, MIRSlotKind.TEMPORARY, form=Form.STORAGE, value_kind=MIRValueKind.RECORD_STORAGE),
-    MIRSlot(P, CELL, MIRSlotKind.LOCAL, form=Form.BORROW, value_kind=MIRValueKind.BORROWED_RECORD),
-    MIRSlot(T, CELL, MIRSlotKind.TEMPORARY, form=Form.STORAGE, value_kind=MIRValueKind.RECORD_STORAGE),
-    MIRSlot(Q, CELL, MIRSlotKind.LOCAL, form=Form.BORROW, value_kind=MIRValueKind.BORROWED_RECORD),
+    MIRSlot(S, CELL, MIRSlotKind.TEMPORARY, form=Form.STORAGE, value_kind=MIRValueKind.OWNED),
+    MIRSlot(P, CELL, MIRSlotKind.LOCAL, form=Form.BORROW, value_kind=MIRValueKind.BORROWED),
+    MIRSlot(T, CELL, MIRSlotKind.TEMPORARY, form=Form.STORAGE, value_kind=MIRValueKind.OWNED),
+    MIRSlot(Q, CELL, MIRSlotKind.LOCAL, form=Form.BORROW, value_kind=MIRValueKind.BORROWED),
     MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL),
     MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
 )

@@ -10,7 +10,7 @@ from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch,
     MIREdge, MIRFunction, MIRGoto, MIRIsPresent, MIRReturn,
     MIROptionalConstruct, MIROptionalPayload, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
 )
@@ -146,8 +146,7 @@ def late_bodies() -> tuple[dict[str, MIRFunction], str]:
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
     bodies = {}
     for node, fn in ctx.thir_functions.items():
-        result = lower_function(fn, MIRBodyId("late", node.name), definitions=definitions,
-                                kind=MIRBodyKind.METHOD if fn.receiver else MIRBodyKind.FREE_FUNCTION)
+        result = lower_function(fn, MIRBodyId("late", node.name), definitions=definitions)
         assert isinstance(result, MIRFunction), (node.name, result)
         bodies[node.name] = result
     for ctor in ctx.thir_constructors.values():
