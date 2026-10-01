@@ -11,10 +11,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ci-probe
-  cancel-in-progress: false
-
 jobs:
   linux-gcc14:
     runs-on: ubuntu-latest
