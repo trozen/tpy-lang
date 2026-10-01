@@ -85,6 +85,24 @@ int32_t pick(int32_t a) {
     return a;
 }
 
+// def count(xs: list[int32]) -> int32:
+//     return len(xs)
+int32_t count(const std::vector<int32_t>& xs) {
+    return ::tpy::__len__(xs);
+}
+
+// def mk(xs: list[int32]) -> Own[list[int32]]:
+//     return [xs[0], 9]
+std::vector<int32_t> mk(const std::vector<int32_t>& xs) {
+    return {::tpy::__getitem__(xs, 0), 9};
+}
+
+// def union_tag(x: UA | UB) -> int32:
+//     return x.v if isinstance(x, UA) else -x.v
+int32_t union_tag(::tpy::Union<const UA*, const UB*> x) {
+    return ((std::holds_alternative<const UA*>(x)) ? ((*std::get<const UA*>(x)).v) : (::tpy::neg_check<int32_t>((*std::get<const UB*>(x)).v)));
+}
+
 // def view_of_borrow() -> None:
 //     # A view of a field read through a borrow-returning call lives as long
 //     # as the receiver.
@@ -154,6 +172,9 @@ void lambda_reads() {
 //     built.show()
 //     closed = Closed(Pt(2), 6, 0, "tt", b"bb", False)
 //     closed.show()
+//     pl = Placed(3, 0, [5])
+//     pl.show()
+//     pl.fill()
 //     d = Derived("a string long enough to leave the small buffer")
 //     print("ctor.base", d.a == d.b, len(d.a), d.c, d.d)
 //     r = Reads()
@@ -171,6 +192,9 @@ void ctor_writes() {
     built.show();
     Closed closed = Closed(Pt(2), 6, 0, "tt", ::tpy::bytes_literal("bb", 2), false);
     closed.show();
+    Placed pl = Placed(3, 0, {5});
+    pl.show();
+    pl.fill();
     Derived d = Derived("a string long enough to leave the small buffer");
     std::cout << "ctor.base" << " " << ::tpy::print_bool((d.a == d.b)) << " " << ::tpy::__len__(d.a) << " " << d.c << " " << d.d << "\n";
     Reads r = Reads();
@@ -488,6 +512,60 @@ Built::Built(int32_t n, Src& s, ::tpy::Any p, std::string_view text, P&& own, bo
     this->flat = Flat(__tmp_1);
     int32_t k = (::tpy::mul_check<int32_t>(n, 2));
     this->late = k;
+}
+
+// def __init__(self, n: int32, a: int32, src: list[int32]) -> None:
+//     # ctor: a comprehension whose element hoists an argument temp keeps
+//     # it inside its own loop body, so the init stays a member-init.
+//     self.ks = [count([i]) for i in range(n)]  # tpyc: ok
+//     # ctor: a comprehension whose SOURCE hoists an argument temp needs
+//     # the statement before it -- the init becomes a body assignment.
+//     self.ys = [x for x in mk([1, 2])]  # tpyc: ok
+//     # ctor: an argument temp, bare and under a call-shaped argument, and
+//     # a tuple literal holding an `or` operand -- all body assignments.
+//     self.n = count([1, 2])  # tpyc: ok
+//     self.n2 = count(mk([1]))  # tpyc: ok
+//     self.t = (pick(a) or 1, 2)  # tpyc: ok
+//     # ctor: a select whose fresh left operand is held once, and a record
+//     # rvalue lifted into a union parameter -- both body assignments.
+//     self.zs = mk(src) or [1]  # tpyc: ok
+//     self.u = union_tag(UA(a + 4))  # tpyc: ok
+//     self.xs = []
+Placed::Placed(int32_t n, int32_t a, const std::vector<int32_t>& src) : ks(({
+    std::vector<int32_t> __result;
+    const int32_t __stop_0 = n;
+    if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
+    for (int32_t i = 0; i < __stop_0; ++i) {
+        std::vector<int32_t> __tmp_1 = {i};
+        __result.push_back(::tpyapp::main::count(__tmp_1));
+    }
+    std::move(__result);
+})) {
+    std::vector<int32_t> __tmp_2 = {1, 2};
+    this->ys = ({
+        std::vector<int32_t> __result;
+        auto __obj_1 = ::tpyapp::main::mk(__tmp_2);
+        __result.reserve(static_cast<std::size_t>(__obj_1.size()));
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            int32_t x = *__beg_1;
+            __result.push_back(x);
+        }
+        std::move(__result);
+    });
+    std::vector<int32_t> __tmp_3 = {1, 2};
+    this->n = ::tpyapp::main::count(__tmp_3);
+    std::vector<int32_t> __tmp_4 = {1};
+    std::vector<int32_t> __tmp_5 = ::tpyapp::main::mk(__tmp_4);
+    this->n2 = ::tpyapp::main::count(__tmp_5);
+    auto&& __tmp_6 = ::tpyapp::main::pick(a);
+    this->t = std::tuple<int32_t, int32_t>{(__tmp_6 ? __tmp_6 : 1), 2};
+    auto&& __tmp_7 = ::tpyapp::main::mk(src);
+    this->zs = ((::tpy::__len__(__tmp_7) != 0) ? std::move(__tmp_7) : std::vector<int32_t>{1});
+    UA __tmp_8 = UA((::tpy::add_check<int32_t>(a, 4)));
+    this->u = ::tpyapp::main::union_tag(::tpy::Union<const UA*, const UB*>{&__tmp_8});
+    this->xs = std::vector<int32_t>{};
 }
 
 // def __init__(self, pt: Pt | None, k: int32, a: int32, t: str,

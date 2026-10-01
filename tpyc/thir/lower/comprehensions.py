@@ -90,6 +90,7 @@ from .context import (
     _ExprUse,
     _LowerCtx,
     SinkPos,
+    SlotPlacement,
 )
 from .expressions import (
     _lower_checked_container_elem,
@@ -1270,62 +1271,75 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
             for leaked in set(body_declared) - pre:
                 declared[leaked] = body_declared[leaked]
             _witness("comp.filter_walrus_leak")
-        value_moved = False
-        if route.kind == "dict":
-            kt = _comp_result_type(init.result_key_type, analyzer)
-            vt = _comp_result_type(init.result_value_type, analyzer)
-            container = (f"::tpy::ordered_map<{lc.render_type(kt)}, "
-                         f"{lc.render_type(vt)}>")
-            element = None
-            if route.owns_elements:
-                # The value is the last sink (a bare owned loop var moves
-                # unconditionally); the key is earlier, so it moves only when
-                # it is itself the last use (the ordinary last-use gate). When
-                # the value moves, the key is sequenced into `__dk_N` first at
-                # emit.
-                key = _lower_owned_comp_sink(init.key_expr, kt, lc,
-                                             body_declared, gen,
-                                             is_last_sink=False)
-                value = _lower_owned_comp_sink(init.value_expr, vt, lc,
-                                               body_declared, gen,
-                                               is_last_sink=True)
-                value_moved = isinstance(value, THIRMove)
+        # The element and the filters render inside the loop body, which
+        # flushes their temps per iteration, so they sit in a statement
+        # even when the comprehension itself does not (a ctor member-init).
+        # A dict's key and value have no such flush (the emit drains
+        # nothing around `insert_or_assign`), and a filter walrus above
+        # leaks its decl to the enclosing statement: both stay under the
+        # enclosing placement. A filter walrus never reaches a member-init:
+        # it binds a body local, so the readiness demote
+        # (`CTOR_DEMOTE_BINDS_LOCAL`) has already moved such an init to the
+        # body.
+        outer_placement = lc.placement
+        with lc.placement_scope(SlotPlacement.STATEMENT):
+            value_moved = False
+            if route.kind == "dict":
+                with lc.placement_scope(outer_placement):
+                    kt = _comp_result_type(init.result_key_type, analyzer)
+                    vt = _comp_result_type(init.result_value_type, analyzer)
+                    container = (f"::tpy::ordered_map<{lc.render_type(kt)}, "
+                                 f"{lc.render_type(vt)}>")
+                    element = None
+                    if route.owns_elements:
+                        # The value is the last sink (a bare owned loop var moves
+                        # unconditionally); the key is earlier, so it moves only when
+                        # it is itself the last use (the ordinary last-use gate). When
+                        # the value moves, the key is sequenced into `__dk_N` first at
+                        # emit.
+                        key = _lower_owned_comp_sink(init.key_expr, kt, lc,
+                                                     body_declared, gen,
+                                                     is_last_sink=False)
+                        value = _lower_owned_comp_sink(init.value_expr, vt, lc,
+                                                       body_declared, gen,
+                                                       is_last_sink=True)
+                        value_moved = isinstance(value, THIRMove)
+                    else:
+                        # The body runs once per iteration: a name bound outside it
+                        # is never moved there, whatever its last use says.
+                        with lc.moves_only(()):
+                            key = _lower_container_elem(init.key_expr, kt, lc,
+                                                        body_declared)
+                            value = _lower_comp_container_elem(
+                                init.value_expr, vt, lc, body_declared,
+                                typed_brace=True)
             else:
-                # The body runs once per iteration: a name bound outside it
-                # is never moved there, whatever its last use says.
+                elem_t = _comp_result_type(init.result_elem_type, analyzer)
+                cpp_elem = lc.render_type(elem_t)
+                container = (f"std::vector<{cpp_elem}>" if route.kind == "list"
+                             else f"::tpy::ordered_set<{cpp_elem}>")
+                if route.owns_elements:
+                    element = _lower_owned_comp_sink(
+                        init.element_expr, elem_t, lc, body_declared, gen,
+                        is_last_sink=True)
+                else:
+                    # Element temps flush PER-ITERATION into the loop body (the
+                    # emit's element checkpoint/flush_since window), so the
+                    # list/set element is a flushable position:
+                    # `take(Probe(c, i))`-style arg temps hoist right above
+                    # push_back.
+                    # Dict key/value sinks keep the default (no emit window
+                    # there).
+                    with lc.moves_only(()):
+                        element = _lower_comp_container_elem(
+                            init.element_expr, elem_t, lc, body_declared,
+                            allow_temps=True)
+                key = value = None
+            if conditions_lowered is None:
                 with lc.moves_only(()):
-                    key = _lower_container_elem(init.key_expr, kt, lc,
-                                                body_declared)
-                    value = _lower_comp_container_elem(
-                        init.value_expr, vt, lc, body_declared,
-                        typed_brace=True)
-        else:
-            elem_t = _comp_result_type(init.result_elem_type, analyzer)
-            cpp_elem = lc.render_type(elem_t)
-            container = (f"std::vector<{cpp_elem}>" if route.kind == "list"
-                         else f"::tpy::ordered_set<{cpp_elem}>")
-            if route.owns_elements:
-                element = _lower_owned_comp_sink(
-                    init.element_expr, elem_t, lc, body_declared, gen,
-                    is_last_sink=True)
-            else:
-                # Element temps flush PER-ITERATION into the loop body (the
-                # emit's element checkpoint/flush_since window), so the
-                # list/set element is a flushable position:
-                # `take(Probe(c, i))`-style arg temps hoist right above
-                # push_back.
-                # Dict key/value sinks keep the default (no emit window
-                # there).
-                with lc.moves_only(()):
-                    element = _lower_comp_container_elem(
-                        init.element_expr, elem_t, lc, body_declared,
-                        allow_temps=True)
-            key = value = None
-        if conditions_lowered is None:
-            with lc.moves_only(()):
-                conditions_lowered = tuple(
-                    _lower_truthy(c, lc, body_declared, temps_ok=True)
-                    for c in gen.conditions)
+                    conditions_lowered = tuple(
+                        _lower_truthy(c, lc, body_declared, temps_ok=True)
+                        for c in gen.conditions)
     range_start = range_stop = None
     start_lit = stop_lit = False
     iterable = None

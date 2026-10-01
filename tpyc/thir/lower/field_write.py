@@ -267,8 +267,8 @@ def _lower_class_const(stmt: TpyAssign, plan: _ClassConstPlan,
             _flush_witness(
                 "flush.field_write",
                 _lower_expr(stmt.value, lc, declared,
-                            use=replace(slot, result=_ExprResultUse.STORAGE,
-                                         allow_temps=True))),
+                            use=replace(slot,
+                                        result=_ExprResultUse.STORAGE))),
             plan.ftype, lc),
         recv_eval=recv_eval, recv_wrap=recv_wrap, loc=loc)
 
@@ -394,8 +394,7 @@ def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan,
         return _value_moved(
             _lower_expr(stmt.value, lc, declared,
                         use=replace(slot, pos=_value_sink_pos(slot),
-                                    forms=_NO_FORMS,
-                                    allow_temps=_temps_ok(slot)),
+                                    forms=_NO_FORMS),
                         field_owned_str_ok=True,
                         allow_unrouted_name=True),
             plan.ftype, slot, loc)
@@ -403,8 +402,7 @@ def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan,
         _witness("field_write.bytes")
         bval = _lower_expr(stmt.value, lc, declared,
                            use=replace(slot, pos=_value_sink_pos(slot),
-                                       forms=_NO_FORMS,
-                                       allow_temps=_temps_ok(slot)),
+                                       forms=_NO_FORMS),
                            field_owned_str_ok=True,
                            allow_unrouted_name=True)
         if bval.form is Form.BORROW:
@@ -428,8 +426,7 @@ def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan,
         _flush_witness(
             "flush.field_write",
             _lower_expr(stmt.value, lc, declared,
-                        use=replace(slot, result=_ExprResultUse.STORAGE,
-                                    allow_temps=_temps_ok(slot)),
+                        use=replace(slot, result=_ExprResultUse.STORAGE),
                         allow_unrouted_name=True,
                         # A source typed as the value-repr Optional itself is
                         # consumed WHOLE (the `std::optional<T>` member
@@ -750,13 +747,6 @@ def _self_described_brace(value: THIRExpr, slot_t: TpyType,
     return replace(value, typed_brace_cpp=lc.render_type(slot_t))
 
 
-def _temps_ok(slot: _ExprUse) -> bool:
-    """Whether the source may hoist a declaration before its statement: a
-    field write is a statement; a member-init has none, and admits one only
-    on the probe that decides whether its source needs one."""
-    return slot.placement is SlotPlacement.STATEMENT or slot.allow_temps
-
-
 def _is_direct_init(slot: _ExprUse) -> bool:
     return (slot.dest is not None
             and slot.dest.construct is SlotConstruct.DIRECT_INIT)
@@ -809,8 +799,8 @@ def _storage_use(slot: _ExprUse, member_t: TpyType, analyzer) -> _ExprUse:
         `T*` / pointer variant it is, never dereffed.
 
     STORAGE result: the slot owns what it is handed, so a by-value call
-    result lands whole; `allow_temps`: a field write is a statement, so an
-    argument temp hoists before it."""
+    result lands whole. The right to hoist an argument temp is the slot
+    contract's (`field_slot_use`), carried through unchanged."""
     ptr_opt = (isinstance(member_t, OptionalType)
                and member_t.uses_pointer_repr())
     ptr_union = _eligible_ptr_union(member_t, analyzer) is not None
@@ -825,7 +815,7 @@ def _storage_use(slot: _ExprUse, member_t: TpyType, analyzer) -> _ExprUse:
         forms = forms | _ONLY_BTUPLE_SLOT
     return replace(slot, result=_ExprResultUse.STORAGE,
                    pos=SinkPos.FIELD_WRITE, forms=forms,
-                   allow_temps=_temps_ok(slot), slot_target=member_t)
+                   slot_target=member_t)
 
 
 def _borrow_tuple(node: THIRExpr) -> bool:
@@ -1191,9 +1181,7 @@ _FAMILIES: list[tuple[Callable, Callable, bool]] = [
 
 
 def _field_slot(stmt: TpyAssign, lc: _LowerCtx, declared: dict[str, TpyType],
-                construct: SlotConstruct,
-                placement: SlotPlacement = SlotPlacement.STATEMENT
-                ) -> _ExprUse:
+                construct: SlotConstruct) -> _ExprUse:
     """The write's slot contract, settled from the DECLARED slot before any
     family classifies: a flow-narrowed `Optional` field reads as its inner,
     but it still stores the optional."""
@@ -1206,7 +1194,7 @@ def _field_slot(stmt: TpyAssign, lc: _LowerCtx, declared: dict[str, TpyType],
         t = lc.analyzer.get_expr_type(stmt.target)
         decl_slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
                      if t is not None else None)
-    return field_slot_use(decl_slot, construct, placement=placement)
+    return field_slot_use(decl_slot, construct)
 
 
 def _slot_type(slot: _ExprUse) -> 'TpyType | None':
@@ -1244,30 +1232,31 @@ def lower_field_write(stmt: TpyAssign, lc: _LowerCtx,
 
 
 def lower_member_init_value(stmt: TpyAssign, lc: _LowerCtx,
-                            declared: dict[str, TpyType], *,
-                            temps_probe: bool = False) -> THIRExpr:
+                            declared: dict[str, TpyType]) -> THIRExpr:
     """The value of a ctor member-init `f(<value>)`: the same families as a
     field write, over a slot that DIRECT-initializes and has no statement
-    to hoist a temporary before. `temps_probe` admits the temporaries
-    anyway, to learn whether the source needs one (the caller then demotes
-    the init to the body)."""
-    slot = _field_slot(stmt, lc, declared, SlotConstruct.DIRECT_INIT,
-                       SlotPlacement.NO_FLUSH_POINT)
-    if temps_probe:
-        slot = replace(slot, allow_temps=True)
-    loc = getattr(stmt, "loc", None)
-    arg = copy_call_arg(_peel_coerce(stmt.value), lc.analyzer)
-    if arg is not None and not is_rvalue_source(lc.analyzer, arg):
-        # A direct-init copy-constructs from an existing object already, so
-        # an explicit `copy(x)` adds nothing: the member-init is `f(x)`.
-        # A fresh argument keeps its copy row, which constructs it in place.
-        stmt = replace(stmt, value=arg)
-    for classify, lower, _target_first in _FAMILIES:
-        plan = classify(stmt, slot, lc, declared, lc.pointers)
-        if plan is not None:
-            return lower(stmt, plan, slot, lc, declared, loc)
-    note_detail("assign.field_write_shape")
-    raise ThirUnsupported(stmt_reject_reason(stmt))
+    to hoist a temporary before. The whole lowering runs under a
+    NO_FLUSH_POINT scope (`SlotPlacement`), so an operand anywhere in the
+    source -- including the tuple and comprehension rows that bypass
+    `_lower_expr` -- that would hoist a declaration raises a
+    `no_flush`-marked reject, and the caller demotes the init to the ctor
+    body, where a statement hosts it."""
+    slot = _field_slot(stmt, lc, declared, SlotConstruct.DIRECT_INIT)
+    with lc.placement_scope(SlotPlacement.NO_FLUSH_POINT):
+        loc = getattr(stmt, "loc", None)
+        arg = copy_call_arg(_peel_coerce(stmt.value), lc.analyzer)
+        if arg is not None and not is_rvalue_source(lc.analyzer, arg):
+            # A direct-init copy-constructs from an existing object
+            # already, so an explicit `copy(x)` adds nothing: the
+            # member-init is `f(x)`. A fresh argument keeps its copy row,
+            # which constructs it in place.
+            stmt = replace(stmt, value=arg)
+        for classify, lower, _target_first in _FAMILIES:
+            plan = classify(stmt, slot, lc, declared, lc.pointers)
+            if plan is not None:
+                return lower(stmt, plan, slot, lc, declared, loc)
+        note_detail("assign.field_write_shape")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
 
 
 def _value_sink_pos(slot: _ExprUse) -> SinkPos:

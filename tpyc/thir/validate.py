@@ -84,6 +84,7 @@ from .nodes import (
     THIRStubCallee, THIRStubContract, THIRStubIdentity,
     THIRLambda, THIRNestedDef, THIRClosureIdentity, THIRClosureKind,
     THIRCapture, THIRCaptureSlot, THIRCaptureSourceKind, THIRCaptureRelation,
+    THIRComprehension, hoists_declaration,
 )
 from .temp_plan import if_chain
 
@@ -1031,6 +1032,21 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # ctor's directly -- no intermediate THIRCtorCall node carries them.)
         _walk_arg_list(owner, node.args, return_type, argtemp_ok=True)
         return
+    if isinstance(node, THIRComprehension):
+        # The element and the filters render inside the loop body, which
+        # flushes their temps per iteration (`checkpoint` / `flush_since`
+        # around the insert and the `if`), so they are flushable positions
+        # whatever the comprehension sits in. The source, the range bounds
+        # and a dict's key / value have no flush of their own: they keep
+        # the enclosing right.
+        own_flush = _own_flush_children(node)
+        for child in own_flush:
+            _walk(owner, child, return_type, argtemp_ok=True)
+        for child in _iter_children(node):
+            if not any(child is c for c in own_flush):
+                _walk(owner, child, return_type, argtemp_ok=argtemp_ok,
+                      eager_only=eager_only)
+        return
     if isinstance(node, THIRIfExpr):
         # Ternary ARMS evaluate lazily: only a NON-DEFERRING temp may hoist
         # there, hoisted eagerly at the statement; a deferring temp would
@@ -1129,6 +1145,30 @@ def validate_function(fn: THIRFunction) -> None:
         _walk(fn.name, stmt, fn.return_type)
 
 
+def _own_flush_children(node: THIRNode) -> 'tuple[THIRNode, ...]':
+    """The children of `node` that flush their own temps: a comprehension's
+    element and filters render inside its loop body, which drains them per
+    iteration. A dict's key and value get no such flush."""
+    if not isinstance(node, THIRComprehension):
+        return ()
+    return (((node.element,) if node.element is not None else ())
+            + tuple(node.conditions))
+
+
+def _check_no_statement_temp(owner: str, node: THIRNode) -> None:
+    """A member-init or base-init cell runs before the ctor body, so no
+    statement exists to host a hoisted declaration: lowering demotes an
+    init whose source needs one. A comprehension's element and filters
+    flush inside its own loop body and are skipped; a lambda body is not
+    a flush region, so it is walked."""
+    if hoists_declaration(node):
+        _fail(owner, node, "statement temp in a member-init / base-init cell")
+    skip = _own_flush_children(node)
+    for child in _iter_children(node):
+        if not any(child is c for c in skip):
+            _check_no_statement_temp(owner, child)
+
+
 def validate_constructor(ctor: THIRConstructor) -> None:
     owner = f"{ctor.record_name}.__init__"
     for param in ctor.params:
@@ -1150,6 +1190,7 @@ def validate_constructor(ctor: THIRConstructor) -> None:
                 ctor.record_layout is None
                 or mil.field_identity not in ctor.record_layout.fields):
             _fail(owner, mil.value, "member identity disagrees with record layout")
+        _check_no_statement_temp(owner, mil.value)
         _walk(owner, mil.value)
         if (mil.value.form is Form.BORROW
                 and _pointer_lifted_storage(mil.value.result_type)):
@@ -1158,6 +1199,7 @@ def validate_constructor(ctor: THIRConstructor) -> None:
                   "convert)")
     for base in ctor.base_inits:
         for arg in base.args:
+            _check_no_statement_temp(owner, arg)
             _walk(owner, arg)
     for stmt in ctor.body:
         _walk(owner, stmt)

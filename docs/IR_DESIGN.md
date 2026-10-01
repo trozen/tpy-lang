@@ -924,6 +924,29 @@ The field-write sink (`thir/lower/field_write.py`) decides its render from
 -- the whole-binding read, the pointer-slot lift, the global-slot use, the
 view shim's param type -- is the residue the TODO entry's step (e) names.
 
+The PLACEMENT half of the slot contract -- whether a statement exists to
+hoist a declaration before -- is a fact about the whole expression tree
+under a sink, and `_ExprUse` is deliberately not propagated into
+subexpressions, so the contract only DECLARES it (`SlotPlacement` on the
+use) and the lowering context carries it as a scope
+(`_LowerCtx.placement_scope`): the member-init value, the base-init
+arguments and a lambda body open the no-statement scope, a comprehension
+body reopens the statement one (its element temps flush inside its own
+loop). The sink's flush GRANT (`allow_temps`) is a different fact the
+admission rows keep reading unchanged; the scope answers one
+question, "may a declaration be hoisted here", asked where a node whose
+render hoists one is created (`_hoisted`, over one node-kind predicate
+the validator shares), where a select would emplace a slot, and where an optional iterator temp is a render
+choice. A creation with no statement raises a reject marked `no_flush`;
+the ctor driver reads that mark as "demote to the body" and any other
+reject as a reject, so one lowering settles the verdict. A creator that
+bypasses the factory fails the validator loudly rather than demoting --
+closing that class needs the hoist decided on the node kind, not at the
+creation site, and is open. The
+invariant -- a member-init or base-init cell holds no statement temp
+outside an inner flush region -- is the validator's, not a scan the
+lowering re-runs.
+
 Not yet honest, and named so: a record borrow-returning call stays `VALUE`
 (MIR's `_borrowed_expression` asserts a call is tagged `VALUE`, and a
 `@property` getter's storage-reference result is lifted through a

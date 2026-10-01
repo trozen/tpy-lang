@@ -1,3 +1,3 @@
-main.py:375: warning: copies str into field; use copy() to make this explicit
-main.py:473: warning: copies str into field; use copy() to make this explicit
-main.py:502: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:444: warning: copies str into field; use copy() to make this explicit
+main.py:542: warning: copies str into field; use copy() to make this explicit
+main.py:571: warning: copies list[int32] into owned storage; use copy() to make this explicit

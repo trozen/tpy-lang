@@ -15,6 +15,10 @@ namespace tpyapp::main {
 //     self.xs = [n] + [3]  # tpyc: ok
 //     self.xs.append(8)
 //     self.show("gen.writes")
+//     # generator method: a container literal whose element hoists an
+//     # argument temp before the write.
+//     self.xs = [count([n, n]), 7]  # tpyc: ok
+//     print("gen.literal_arg_temp", self.xs)
 //     # generator method: a frame-local list at its last use moves in; the
 //     # field is then the only owner.
 //     ys = [n, 30]
@@ -41,6 +45,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_writes::__next
         __self.xs = (::tpy::list_concat(std::vector<int32_t>{n}, std::vector<int32_t>{3}));
         __self.xs.push_back(8);
         __self.show("gen.writes");
+        std::vector<int32_t> __tmp_1 = {n, n};
+        __self.xs = {::tpyapp::main::count(__tmp_1), 7};
+        std::cout << "gen.literal_arg_temp" << " " << ::tpy::ListPrinter(__self.xs) << "\n";
         ys.emplace(std::vector<int32_t>{n, 30});
         (*ys).push_back(31);
         __self.xs = std::move((*ys));
