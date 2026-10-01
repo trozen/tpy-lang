@@ -10,6 +10,7 @@ import functools
 import hashlib
 import json
 import os
+import ast
 import atexit
 import re
 import contextlib
@@ -65,7 +66,8 @@ from tpyc.build.third_party import (
     resolve_build_plan, ThirdPartyMode, THIRD_PARTY_MODES, known_lib_names,
 )
 from tpyc.thir.faces import THIR_FACES
-from tpyc.mir.collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
+from tpyc.mir.collect import MIRBodyVerdict, MIRLineFacts, MIRVerdictStatus, enumerate_bodies, line_facts
+from tpyc.mir.nodes import MIRBodyId, MIRValueKind
 
 # Default options for tests: emit source comments for easier debugging
 TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True, comment_line_numbers=False)
@@ -817,6 +819,9 @@ class CompileResult:
     # The entry module's MIR verdicts per (def line, bare name), for # tpyc: mir/mir_summary.
     # A tuple: one def can emit several bodies (the clone pair of an @auto_readonly method).
     mir_verdicts: dict[tuple[int, str], tuple[MIRBodyVerdict, ...]] | None = None
+    # The entry module's per-line MIR facts per body (None for a body that did not
+    # lower), for the # tpyc: mir_owned/mir_borrowed/mir_borrows/mir_copy/mir_write family.
+    mir_line_facts: dict[MIRBodyId, MIRLineFacts | None] | None = None
     # Linker flags from # tpy: link() directives
     link_flags: list[str] = field(default_factory=list)
     # Third-party (link_third_party) build inputs: include dirs for the C
@@ -1028,8 +1033,10 @@ def _failed(compiler, error_line: str) -> CompileResult:
     return CompileResult(success=False, diagnostics="\n".join(lines) + "\n")
 
 
-def _mir_verdicts(compiler, local_contexts, entry_module) -> dict[tuple[int, str], tuple[MIRBodyVerdict, ...]]:
-    """MIR over the case's own modules, the program `--dump-mir` sees.
+def _mir_verdicts(compiler, local_contexts, entry_module) -> tuple[
+        dict[tuple[int, str], tuple[MIRBodyVerdict, ...]], dict[MIRBodyId, MIRLineFacts | None]]:
+    """MIR over the case's own modules, the program `--dump-mir` sees, with
+    the entry module's per-line facts.
 
     Runs for every case, annotated or not, so a MIR exception surfaces on the
     whole corpus; it propagates as the case's failure (with its traceback),
@@ -1037,6 +1044,7 @@ def _mir_verdicts(compiler, local_contexts, entry_module) -> dict[tuple[int, str
     and MIR is not part of it. Refusal, incompleteness and conflicts are
     verdicts, checked only where an annotation asks."""
     verdicts: dict[tuple[int, str], tuple[MIRBodyVerdict, ...]] = {}
+    facts: dict[MIRBodyId, MIRLineFacts | None] = {}
     try:
         with compiler.mir_analysis(local_contexts) as mir:
             for mod, ctx in local_contexts:
@@ -1044,11 +1052,13 @@ def _mir_verdicts(compiler, local_contexts, entry_module) -> dict[tuple[int, str
                                           compiler.thir_reject_by_node, mir.workspace)
                 if mod is entry_module:
                     verdicts = key_mir_verdicts(bodies)
+                    # Field kinds read this compilation's TypeDefs, so the facts are taken here.
+                    facts = {verdict.body: line_facts(verdict) for verdict in bodies}
     except (CompileError, SemanticError, ParseError, CodeGenError) as e:
         # The caller's handlers turn these four into a failed compile with a
         # diagnostic; a MIR failure must stay a test failure.
         raise AssertionError(f"MIR raised a compiler error: {e!r}") from e
-    return verdicts
+    return verdicts, facts
 
 
 def key_mir_verdicts(bodies) -> dict[tuple[int, str], tuple[MIRBodyVerdict, ...]]:
@@ -1174,7 +1184,7 @@ def compile_with_diagnostics(
         # Read after the library emit so a library module's faces count too.
         record_thir_faces(compiler._thir_face_witnesses)
 
-        mir_verdicts = _mir_verdicts(compiler, local_contexts, entry_module)
+        mir_verdicts, mir_line_facts = _mir_verdicts(compiler, local_contexts, entry_module)
 
         # Return paths for the entry point module
         layout = BuildLayout(output_dir, entry_module.name)
@@ -1220,6 +1230,7 @@ def compile_with_diagnostics(
                              send_sync_facts=send_sync_facts,
                              frame_facts=frame_facts,
                              mir_verdicts=mir_verdicts,
+                             mir_line_facts=mir_line_facts,
                              link_flags=link_flags,
                              third_party_include_dirs=list(tp_plan.extra_include_dirs),
                              third_party_link_flags=list(tp_plan.extra_link_flags),
@@ -2445,8 +2456,9 @@ def error_case_annotation_problems(src_dir: Path) -> list[str]:
     never lowered, a line before it renders into no snapshot. `warning` and
     `error` legs are not vacuous (they fail when unobserved), so only `ok` is
     refused -- and at least one `error` leg must name the rejection. `mir(...)`
-    / `mir_summary(...)` are refused for the same reason: nothing reaches MIR
-    in a case that does not compile."""
+    / `mir_summary(...)` and the line-level facts (`mir_owned(...)`, ...) are
+    refused for the same reason: nothing reaches MIR in a case that does not
+    compile."""
     has_error_annotation = False
     vacuous_ok: list[str] = []
     vacuous_mir: list[str] = []
@@ -2457,7 +2469,9 @@ def error_case_annotation_problems(src_dir: Path) -> list[str]:
                 has_error_annotation = True
             elif ann.level == "ok":
                 vacuous_ok.append(f"{src_file.name}:{ann.line}")
-        vacuous_mir.extend(f"{src_file.name}:{ann.line}" for ann in parse_mir_annotations(source))
+        mir_lines = {ann.line for ann in parse_mir_annotations(source)}
+        mir_lines.update(ann.line for ann in parse_mir_fact_annotations(source))
+        vacuous_mir.extend(f"{src_file.name}:{line}" for line in sorted(mir_lines))
     problems: list[str] = []
     if not has_error_annotation:
         problems.append(
@@ -2472,7 +2486,7 @@ def error_case_annotation_problems(src_dir: Path) -> list[str]:
             "drop the leg with a pointer to where it is already pinned.")
     if vacuous_mir:
         problems.append(
-            "'# tpyc: mir(...)' / 'mir_summary(...)' in an error case asserts "
+            "'# tpyc: mir(...)' / 'mir_summary(...)' / 'mir_<fact>(...)' in an error case asserts "
             "nothing -- compilation stops at the first error, so no body "
             "reaches MIR: "
             + ", ".join(vacuous_mir)
@@ -3109,6 +3123,202 @@ def validate_mir_annotations(
                 continue
             body = f" ({verdict.body.declaration})" if len(bodies) > 1 else ""
             errors.append(f"Line {ann.line}: expected {spelled} for '{fn_name}'{body} but {problem}")
+    return errors
+
+
+@dataclass
+class MirFactAnnotation:
+    """`# tpyc: mir_owned(x)` and its siblings on a statement line: an exact
+    MIR fact about the statements on that line (`MIRLineFacts`)."""
+    line: int
+    family: str  # the item name, known or not
+    text: str  # the item as written, for messages
+    # The held or written name, and for mir_borrows the referent set; None
+    # when the item is malformed (`problem` says why).
+    name: str | None
+    referents: tuple[str, ...] = ()
+    problem: str | None = None
+
+
+_MIR_FACT_FAMILIES = ("mir_borrowed", "mir_borrows", "mir_copy", "mir_owned", "mir_write")
+_MIR_FACT_START_RE = re.compile(r'\b(mir_\w+)\(')
+# A source name, optionally under a selector, then the binding line that tells
+# apart storages one name bound (`r@13`), then field and member projections.
+_MIR_FACT_NAME_RE = re.compile(r'(?:(param|local)\(\s*(\w+)\s*\)|(\w+))(@\d+)?((?:\.\w+|\[\w+\])*)')
+
+
+def _mir_fact_item(line: int, family: str, args: str) -> MirFactAnnotation:
+    text = f"{family}({args.strip()})"
+    def malformed(why: str) -> MirFactAnnotation:
+        return MirFactAnnotation(line, family, text, None, problem=why)
+
+    if family not in _MIR_FACT_FAMILIES:
+        return malformed(f"unknown {family}(...); expected one of {', '.join(_MIR_FACT_FAMILIES)}")
+    if '/' in args:
+        return malformed(f"{family} takes no /regex/: MIR facts are exact")
+    parts = [part.strip() for part in args.split(',')]
+    arity = 2 if family == "mir_borrows" else 1
+    if len(parts) != arity or not all(parts):
+        shape = "(holder, referent|referent...)" if arity == 2 else "(name)"
+        return malformed(f"{family} takes {shape}")
+    if not _MIR_FACT_NAME_RE.fullmatch(parts[0]):
+        return malformed(f"'{parts[0]}' is no name, param(name), local(name) or a field path of one")
+    referents: list[str] = []
+    if arity == 2:
+        for token in (t.strip() for t in parts[1].split('|')):
+            if token != "static" and not _MIR_FACT_NAME_RE.fullmatch(token):
+                return malformed(f"'{token}' is no referent: a name, a field path or static")
+            referents.append(token)
+    return MirFactAnnotation(line, family, text, parts[0], tuple(referents))
+
+
+def parse_mir_fact_annotations(source: str) -> list[MirFactAnnotation]:
+    """Parse the line-level MIR fact items (every `mir_<x>(...)` but
+    mir_summary) from inline `# tpyc:` comments; an unknown or malformed item
+    is kept with its problem, so a misspelling fails instead of passing."""
+    annotations = []
+    comment_re = re.compile(r'#\s*tpyc:(.*)$')
+    for lineno, line in enumerate(source.splitlines(), start=1):
+        if line.lstrip().startswith('#'):
+            continue
+        comment = comment_re.search(line)
+        if not comment:
+            continue
+        tail = comment.group(1)
+        for match in _MIR_FACT_START_RE.finditer(tail):
+            family = match.group(1)
+            if family == "mir_summary":
+                continue
+            # Selectors nest parentheses inside the item.
+            depth, end = 1, match.end()
+            while end < len(tail) and depth:
+                depth += {'(': 1, ')': -1}.get(tail[end], 0)
+                end += 1
+            if depth:
+                annotations.append(MirFactAnnotation(lineno, family, tail[match.start():].strip(), None,
+                                                     problem="unbalanced parentheses"))
+                continue
+            annotations.append(_mir_fact_item(lineno, family, tail[match.end():end - 1]))
+    return annotations
+
+
+def _enclosing_def(tree: ast.Module, line: int) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
+    """The innermost def whose body spans `line`."""
+    found = None
+    for node in ast.walk(tree):
+        if (isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.lineno <= line <= (node.end_lineno or node.lineno)
+                and (found is None or node.lineno > found.lineno)):
+            found = node
+    return found
+
+
+def _resolve_mir_name(token: str, facts: MIRLineFacts) -> tuple[str | None, str | None]:
+    """The canonical `MIRLineFacts` spelling of an annotation name, or why it
+    has none. A bare name with slots under two selectors is refused, never
+    guessed."""
+    if token == "static":
+        return token, None
+    match = _MIR_FACT_NAME_RE.fullmatch(token)
+    assert match is not None
+    selector, selected, bare, binding, path = match.groups()
+    path = (binding or "") + path
+    name = selected or bare
+    spellings = facts.names.get(name)
+    if not spellings:
+        return None, f"no slot named '{name}'"
+    if selector is not None:
+        if selector not in spellings:
+            return None, f"no {'parameter' if selector == 'param' else 'local'} named '{name}'"
+        return spellings[selector] + path, None
+    if len(spellings) > 1:
+        both = " and ".join(sorted(spellings.values()))
+        return None, f"'{name}' names {both} (ambiguous: use {' or '.join(sorted(spellings.values()))})"
+    return next(iter(spellings.values())) + path, None
+
+
+def _mir_fact_problem(ann: MirFactAnnotation, facts: MIRLineFacts) -> str | None:
+    """Why `facts` do not satisfy `ann`, or None when they do."""
+    assert ann.name is not None
+    name, problem = _resolve_mir_name(ann.name, facts)
+    if problem is not None:
+        return problem
+    referents: set[str] = set()
+    for token in ann.referents:
+        resolved, problem = _resolve_mir_name(token, facts)
+        if problem is not None:
+            return problem
+        referents.add(resolved)
+    if ann.line not in facts.lines:
+        return f"no MIR statement on line {ann.line}"
+    line = ann.line
+    match ann.family:
+        case "mir_owned" | "mir_borrowed" | "mir_copy":
+            writes = facts.writes.get((line, name), ())
+            if not writes:
+                return f"no MIR statement on line {line} writes {name}"
+            if ann.family == "mir_copy":
+                return None if any(w.copy for w in writes) else f"no write of {name} on line {line} is a copy"
+            want = MIRValueKind.OWNED if ann.family == "mir_owned" else MIRValueKind.BORROWED
+            kinds = sorted({w.kind.name.lower() if w.kind is not None else "no value kind" for w in writes})
+            return None if all(w.kind is want for w in writes) else f"MIR writes {name} as {', '.join(kinds)}"
+        case "mir_write":
+            if facts.events_gap is not None:
+                return f"storage not covered: {facts.events_gap}"
+            if facts.events.get((line, name)):
+                return None
+            others = sorted(spelled for (at, spelled) in facts.events if at == line)
+            return (f"no write event on line {line} replaces {name}"
+                    + (f" (events replace {', '.join(others)})" if others else ""))
+        case _:  # mir_borrows
+            if facts.borrows_gap is not None:
+                return f"dependencies not covered: {facts.borrows_gap}"
+            if name not in facts.holders:
+                return f"{name} holds no loan"
+            states = facts.borrows.get((line, name), ())
+            if not states:
+                return f"no reachable MIR statement on line {line}"
+            wrong = [s for s in states if s.referents != referents]
+            if not wrong:
+                return None
+            return "; ".join(f"{name} borrows {{{'|'.join(sorted(s.referents))}}} after line {line} in bb{s.block}"
+                             for s in wrong)
+
+
+def validate_mir_fact_annotations(
+    src_file: Path,
+    verdicts: dict[tuple[int, str], tuple[MIRBodyVerdict, ...]],
+    facts: dict[MIRBodyId, MIRLineFacts | None],
+) -> list[str]:
+    """Validate the line-level MIR fact family against the facts of every body
+    the enclosing def emits; the fact must hold in each. Returns list of
+    validation errors."""
+    source = src_file.read_text()
+    annotations = parse_mir_fact_annotations(source)
+    if not annotations:
+        return []
+    tree = ast.parse(source)
+    errors = []
+    for ann in annotations:
+        if ann.problem is not None:
+            errors.append(f"Line {ann.line}: {ann.text}: {ann.problem}")
+            continue
+        node = _enclosing_def(tree, ann.line)
+        if node is None:
+            errors.append(f"Line {ann.line}: {ann.text} is not inside a def")
+            continue
+        bodies = verdicts.get((node.lineno, node.name), ())
+        if not bodies:
+            errors.append(f"Line {ann.line}: no MIR body recorded for '{node.name}'")
+            continue
+        for verdict in bodies:
+            body_facts = facts.get(verdict.body)
+            problem = (f"body not lowered: {verdict.reason}" if body_facts is None
+                       else _mir_fact_problem(ann, body_facts))
+            if problem is None:
+                continue
+            body = f" ({verdict.body.declaration})" if len(bodies) > 1 else ""
+            errors.append(f"Line {ann.line}: expected {ann.text} in '{node.name}'{body} but {problem}")
     return errors
 
 

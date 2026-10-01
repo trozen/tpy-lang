@@ -15,8 +15,9 @@ from tpyc.typesys import (
     PtrType, ReadonlyType, RefType, Representation, TupleType, TypeParamRef, UnionType,
     certified_primitive_comparison, certified_primitive_op, is_inert_leaf, is_owned_leaf, loan_class,
     passing_representation, return_representation, unwrap_readonly, unwrap_ref_type,
+    BYTES_FAMILY, STR_FAMILY, view_family_of, view_owned_leaf,
 )
-from tpyc.thir.scalar_leaves import owned_constant, owned_leaf, storage_leaf
+from tpyc.thir.scalar_leaves import owned_constant, owned_leaf, storage_leaf, view_compatible, view_leaf
 from tpyc.thir.testutil import _compile, _entry
 
 PRIMITIVES = (*ALL_FIXED_INTS, FLOAT, FLOAT32, BOOL, CHAR)
@@ -380,9 +381,8 @@ def test_certified_primitive_op():
     assert certified_primitive_op(_method("tpy.int32", BIGINT), (INT32,), BIGINT)
     assert not certified_primitive_op(_method(None, INT32), (INT32, INT32), INT32)
     assert not certified_primitive_op(None, (INT32, INT32), INT32)
-    # A view result or operand, and a reference-type operand, are not leaves.
+    # A view result and a reference-type operand are not leaves.
     assert not certified_primitive_op(_method("builtins.str", STRVIEW), (STR, INT32), STRVIEW)
-    assert not certified_primitive_op(_method("builtins.str", STRING), (STRVIEW, STR), STRING)
     assert not certified_primitive_op(_method("builtins.bytes", BYTES), (BYTES, BYTEARRAY), BYTES)
 
 
@@ -390,7 +390,6 @@ def test_certified_primitive_comparison():
     for typ in (*PRIMITIVES, *OWNED):
         assert certified_primitive_comparison(typ, typ)
     assert not certified_primitive_comparison(INT32, INT64)
-    assert not certified_primitive_comparison(STRVIEW, STRVIEW)
     # BigInt's runtime compares every fixed-width int, and an int literal.
     for fixed in ALL_FIXED_INTS:
         assert certified_primitive_comparison(BIGINT, fixed) and certified_primitive_comparison(fixed, BIGINT)
@@ -401,3 +400,32 @@ def test_certified_primitive_comparison():
     assert not certified_primitive_comparison(STR, INT32)
     assert not certified_primitive_comparison(STR, IntLiteralType(1))
     assert not certified_primitive_comparison(STR, STRING)
+
+
+def test_views_resolve_to_their_family_and_read_through_it():
+    # The borrowing-view fact is the compiled stub's, so the view rules read it
+    # under the compilation that registered it.
+    compiler, _ = _record_types()
+    span = NominalType("Span", (INT32,), _module_qname="tpy.Span")
+    with activate_compiler(compiler):
+        # Every runtime member resolves to its family, the view included.
+        for member in (STR, STRING, STRVIEW):
+            assert view_family_of(member) is STR_FAMILY
+        for member in (BYTES, BYTEARRAY, BYTESVIEW):
+            assert view_family_of(member) is BYTES_FAMILY
+        assert view_family_of(INT32) is None and view_family_of(span) is None
+        # Only the view of an owned-leaf family reads a leaf through its borrow.
+        assert view_owned_leaf(STRVIEW) == STR and view_owned_leaf(BYTESVIEW) == BYTES
+        assert all(view_owned_leaf(t) is None for t in (STR, STRING, BYTEARRAY, span))
+        assert view_leaf(STRVIEW) and view_leaf(BYTESVIEW) and not view_leaf(STR) and not view_leaf(span)
+        # A view holder takes its family's owned leaves and views; bytearray is a reference type.
+        assert all(view_compatible(STRVIEW, t) for t in (STR, STRING, STRVIEW))
+        assert view_compatible(BYTESVIEW, BYTES) and not view_compatible(BYTESVIEW, BYTEARRAY)
+        assert not view_compatible(STRVIEW, BYTES) and not view_compatible(STR, STR)
+        # A view operand is read through the borrow it holds; a view result is still no leaf.
+        assert certified_primitive_op(_method("builtins.str", STRING), (STRVIEW, STR), STRING)
+        assert not certified_primitive_op(_method("builtins.str", STRVIEW), (STRVIEW, INT32), STRVIEW)
+        assert certified_primitive_comparison(STRVIEW, STRVIEW)
+        assert certified_primitive_comparison(STRVIEW, STR) and certified_primitive_comparison(BYTESVIEW, BYTES)
+        assert not certified_primitive_comparison(STRVIEW, STRING)
+        assert not certified_primitive_comparison(STRVIEW, BYTESVIEW)

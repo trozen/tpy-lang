@@ -11,7 +11,7 @@ from ...typesys import (
     NominalType, OptionalType, ReadonlyType, TupleType, TpyType,
     UnionType, is_void_like_type, unwrap_readonly, unwrap_ref_type,
 )
-from ..scalar_leaves import leaf_constant, leaf_global, storage_leaf
+from ..scalar_leaves import leaf_constant, leaf_global, owned_leaf, storage_leaf
 from ..nodes import (
     Form, THIRAliasBinding, THIRBorrowedRecord, THIRExpr, THIRFieldAccess, THIRFieldIdentity, THIRName,
     THIROptionalLayout, THIRRecordLayout, THIRSubscript, THIRTupleLayout, THIRUnionLayout,
@@ -309,7 +309,7 @@ def direct_field(expr: TpyFieldAccess,
         return None
     info = analyzer.registry.get_record_for_type(reference.type)
     member = next((f for f in info.fields if f.name == expr.field), None)
-    if member is None or (not storage_leaf(member.type)
+    if member is None or (not storage_leaf(member.type) and not owned_leaf(member.type)
                           and borrowed_record(member.type, False, analyzer) is None):
         return None
     return THIRFieldIdentity(reference.type, member.name, member.type)

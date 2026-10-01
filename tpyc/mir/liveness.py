@@ -101,7 +101,7 @@ def _liveness(prepared: MIRPrepared) -> MIRLiveness:
     entry = incoming[fn.entry]
     if fn.receiver_init is not None:
         entry = close(entry | {fn.receiver_init.receiver} | {
-            v for v in fn.receiver_init.fields if isinstance(v, MIRSlotId)})
+            member.source for member in fn.receiver_init.fields if isinstance(member.source, MIRSlotId)})
     return MIRLiveness(fn, MappingProxyType(incoming), MappingProxyType(outgoing),
                        MappingProxyType(points), entry)
 

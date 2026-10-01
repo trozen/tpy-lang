@@ -273,13 +273,13 @@ def test_all_source_positions_preserve_cpp_without_preparation(monkeypatch: pyte
     return cell.value == read(Cell(value))
 ''', "named argument crosses unproven evaluation order", None),
     ('''class Wide:
-    text: str
-    def __init__(self, text: str):
-        self.text = text
+    pair: tuple[int32, int32]
+    def __init__(self, value: int32):
+        self.pair = (value, value)
 def ignore_wide(cell: Wide) -> int32:
     return 0
 def rejected() -> int32:
-    return ignore_wide(Wide("text"))
+    return ignore_wide(Wide(1))
 ''', "summary record: unsupported record fields", "ignore_wide"),
     ('''class Hook:
     value: int32

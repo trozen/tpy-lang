@@ -1380,7 +1380,7 @@ Existing defects remain in BUGS.md; this section groups the architectural work.
 
 - **[cleanup] Pin the moved reject tag for `SpanIter` / dict-view frame params.** The one `is_borrowing_view_type` arm in `_res_param_ok` admits `SpanIter[T]` and the three dict views at the frame-PARAM gate; they then reject at the CALL SITE arg shape. The verdict is unchanged (reject before, reject after), but the tag moved from `res.param_type:*` to `call.arg_shape.*` and no corpus case observes either. Add a section to an existing `error_` case rather than a case per family member. Surfaced by /tpy-ready on the borrowing-view frame-param slice.
 - **[harness] An `error_` case whose sources are all frontend-plugin files cannot exist.** `error_case_annotation_problems` and the per-file annotation validation in `tests/test_case.py` both glob `src/*.py`, so a `tests/cases/pascal/error_*` case fails the gate with "Error test must have at least one '# tpyc: error(...)' annotation" -- there is no `.py` file to carry the leg, and an annotation in the `.pas` is never read. That is why the driver-error regression is pinned as a harness test (`tests/test_failure_reporting.py`) rather than a case. Fix shape: read the case's plugin-extension sources too (the registry knows the extensions) and settle how a `# tpyc:` annotation is spelled inside a plugin language's comment syntax -- a design call, not a mechanical widening. Surfaced by /tpy-ready on the driver-diagnostic harness fix.
-- **[harness] The comp-only fact annotations are silently vacuous in an `error_` case.** `error_case_annotation_problems` refuses `ok` and `mir(...)` / `mir_summary(...)` there, but `type`, `non_null` / `nullable`, `bounds_*`, `div_*`, `cast_*`, `is_send` / `is_sync` and `frame_*` are still accepted and never validated (`tests/test_case.py` reads those facts only off a successful compile). Generalize the gate: refuse every fact annotation in an error case with the `ok` wording, after moving the existing legs to a normal case (one today: `type(readonly[Point])` in `readonly/error_auto_readonly_result_mutate`). A second vacuous position: every fact annotation, `mir(...)` included, is read from the entry module's `main.py` only, so one written in a helper module of a multi-module case is silently ignored. Surfaced adding the `mir(...)` annotations.
+- **[harness] The comp-only fact annotations are silently vacuous in an `error_` case.** `error_case_annotation_problems` refuses `ok`, `mir(...)` / `mir_summary(...)` and the line-level `mir_*` fact family there, but `type`, `non_null` / `nullable`, `bounds_*`, `div_*`, `cast_*`, `is_send` / `is_sync` and `frame_*` are still accepted and never validated (`tests/test_case.py` reads those facts only off a successful compile). Generalize the gate: refuse every fact annotation in an error case with the `ok` wording, after moving the existing legs to a normal case (one today: `type(readonly[Point])` in `readonly/error_auto_readonly_result_mutate`). A second vacuous position: every fact annotation, `mir(...)` and the `mir_*` facts included, is read from the entry module's `main.py` only, so one written in a helper module of a multi-module case is silently ignored. Surfaced adding the `mir(...)` annotations.
 - **[cleanup] `tpyc/codegen_cpp/functions.py` carries five inline copies of the `default_emittable` / `default_to_cpp` suffix pairing.** Lines ~470, ~481, ~511, ~564 and ~618 each spell the same `if emit_defaults and defaults and default_emittable(...): part += f" = {default_to_cpp(...)}"` pair, so the param-index-to-slot mapping and the "is it emittable" question are re-derived per signature emitter. The resumable emitter consolidated exactly this into one `_default_suffix` helper (`tpyc/codegen_cpp/gen_async.py`), which is what let the factory declaration and the frame constructor carry byte-identical default sets by construction; the same helper shape is wanted here so the five plain-signature emitters cannot drift either. No behavior change -- verify with the corpus byte-diff. Surfaced by /tpy-review of the resumable-factory default fix.
 - **[cleanup -- HARDER THAN IT LOOKS] The `nonstmt_borrow_bindings` override in the borrow snapshot is LOAD-BEARING, not a redundant epicycle.** An aliasing match-capture of an lvalue subject records a stmt-borrow (`sema/match.py`) AND adds the name to `nonstmt_borrow_bindings`, which `analyzer.py`'s function-end snapshot OR's back in to cancel the `nonstmt_bound_names` exclusion. It LOOKS like add-to-exclusion-then-cancel, but the override is function-level on purpose: the match-arm codegen emits the capture *unconditionally in borrow form* (`q = &subject`), so the variable's single C++ declaration must stay pointer form for the WHOLE function -- even if the same name is later bound by an owned `with...as` / for-loop var (which re-adds it to `nonstmt_bound_names`). A naive cleanup that drops the override (or lets the later owned binding win) makes the decl owned (`Box q`) while the arm still binds a borrow -> the two disagree and codegen reads garbage. Verified: removing the override regresses `tests/cases/match/borrow_capture_then_with_rebind` from `99/7/99` to `0/7/0`. A real cleanup must unify the match-arm capture's emitted FORM with the variable's decl form (make the arm defer to owned when the name is later owned-bound, accepting the copy/parity implications), not just simplify the snapshot bookkeeping -- bigger work, likely IR-era (the place/loan model makes "this name's form" a single fact). Surfaced by /tpy-review (test-coverage) of the attempted cleanup, which a regression test caught. The guard test now exists.
 - **[codegen readability] `print(v)` of a narrowed `str|None`/`bytes|None` name renders `print_optional_val(v)` instead of dereferencing the proven-non-None value.** The print path (`tpyc/codegen_cpp/builtins.py` ~332) branches on `get_resolved_type(arg)` -- the *declared* Optional type -- not the sema-narrowed analyzed type, so inside `if a is not None:` a `print(a)` still routes through `print_optional_val`. NOT a defect: output is correct (the optional is present, so the value prints). Cleanliness only -- a narrowed NAME arg could deref + print directly, but the fix must preserve the deliberate field-case `print_optional_val` (field storage stays `std::optional<T>`). Sibling of the (now-fixed) dict-value narrowing skip, same root (declared-vs-narrowed type at a value sink). Surfaced fixing the dict-value narrowed-Optional bug. **Stopped 2026-09-28:** dropping the print-specific rows (the `_print_optval_opt` locals arm and two dead rows in `_print_arg_ok`) and reading the narrowed name generically renders `std::cout << (*a)` correctly for str, scalar, `String`, walrus and frame locals, but breaks three shapes: a None-narrowed name has no generic read (`control_flow/elif_arm_bound_local` and `inference/reassign_numeric_widen` reject at `print.arg.other_nonetype_name`), BUGS.md#async-await-bound-narrowed-optional-read-bare surfaces as a compile error, and tuple/`Span` inners mis-render because the print name arm keys on the declared type. Keying that arm on the narrowed read type instead would also newly admit narrowed value records, which is its own decision.
@@ -1670,8 +1670,8 @@ alongside related feature work; only the big-rock deferrals live here.
   order" -- B1 loan classification of representations (landed: every
   loan-inert primitive and enum value is a leaf), B2 owned leaves (landed:
   BigInt, str, String and bytes as owned storage and readonly parameter
-  borrows, stub contracts, raising and cyclic summaries) then views as
-  places, B3 containers and iterators,
+  borrows, stub contracts, raising and cyclic summaries) and views as
+  places (landed), B3 containers and iterators,
   cleanup, B4 generator/async frames; B5 call summaries alongside; B6 advisory
   checker and authority transition. Lifetime/loan bugs tagged `deferred: MIR`
   in BUGS.md wait on it. The history below records the landed increments.
@@ -1689,19 +1689,20 @@ alongside related feature work; only the big-rock deferrals live here.
   storage state is (NO_PROOF_REQUIRED, NO_FACTS, NOT_COVERED alike), so a
   body slipping from no-proof-required to a storage gap keeps its pin --
   either a `mir_storage(state)` item or `covered` refusing the gap states.
-  The verdict family pins the OUTCOME per body; MIR's facts (slot kinds,
-  what a place borrows at a point, copies and in-place writes, where a loan
-  ends) are pinned only by the unit files' dump-line and slot assertions.
-  A line-level fact family (`mir_owned(x)`, `mir_borrowed(x)`,
-  `mir_borrows(x, s)`, `mir_copy(x)`, `mir_write(x)`, later a loan end and
-  a conflict site) is designed WITH the views half, whose shapes produce
-  those facts in volume, and moves the remaining unit pins into the cases.
-  **B2 second half, views as places** (next): StrView / BytesView locals
-  and their sources, slices, view returns and their origins, view fields;
-  owned-leaf record fields and constructor initializers (a callee's field
-  write can invalidate a forwarded borrow, so they land with the
-  replacement-conflict check over call writes); the first str conflicts
-  (`view_return_escape`, `view_source_mutation`, `temporary_borrow`).
+  The verdict family pins the OUTCOME per body. The line-level fact family
+  (landed with the views half) pins MIR's facts per statement line:
+  `mir_owned(x)`, `mir_borrowed(x)`, `mir_borrows(x, a|b)`, `mir_copy(x)`
+  and `mir_write(x)`, with `param(x)` / `local(x)` selectors for a name
+  that has two slots, all read off one producer (`collect.line_facts`).
+  Deferred: a loan-end item and a conflict site selector; a condensed
+  `--dump-mir` rendering of the same facts hooks into `dump_codegen_mir`
+  via `line_facts`. Unit files keep what the family cannot express (copy
+  source and `may_raise`, passings, init vs replacement modes, regions,
+  operation order, absence of copies).
+  **B2 second half, views as places** (landed): view holders, owned-leaf
+  fields with member-init and call writes, str conflicts as existing kinds
+  (B2 contract's Views / Field / Conflict naming rules); case
+  `tests/cases/mir/views_as_places`.
   **B2 follow-ups** (sliced out or found while landing it):
   - Owned leaves inside tuple / Optional / union members and native
     container elements (with B3); `bytearray` (a reference type: alias
@@ -1710,11 +1711,30 @@ alongside related feature work; only the big-rock deferrals live here.
     events; module init is not lowered);
     `String` in-place methods beyond `+=` and every `THIRMethodCall` on an
     owned leaf (receiver effects, B3); f-strings.
-  - A `String` bound as `str` (`string_to_str`, a passthrough: the C++
-    passes a view of the `String` at a parameter and copies at an owning
-    sink) refuses at every sink ("conversion aliases its source"); the
-    views half models the parameter case as a borrow and the owning sink
-    as a copy, keyed on the sink.
+  - View FIELDS refuse as "record holds a borrow": storing a view in a
+    record is a retention effect, reading one needs the field's loan (B3).
+  - Method calls have no summary, so `r.rename(s)` stays opaque while the
+    free-function `rename(r, s)` publishes its field write (B3/B5).
+  - Stepped slices refuse ("stepped slice"): fresh owned and allocating,
+    but `MIROp` takes one or two operands.
+  - A reassigned explicit view parameter (`v: StrView; v = w`) refuses
+    ("reassigned view parameter"): reseating a VALUE-passed loan.
+  - Structured return origins (B5): a view result rooted in a global or a
+    static literal lowers but its summary is opaque ("view result origin
+    outside the parameters"), since `summary.returns` holds parameters only.
+  - The private-write summary rule is implemented but invisible: a body
+    with local record storage stays OPAQUE ("summary storage or value
+    shape").
+  - View-producing if-expressions refuse as "unsupported owned-leaf
+    expression"; a view returned by a method call refuses as "unsupported
+    view source".
+  - Owned-leaf fields still refuse: constructor-argument temporaries
+    outside a declaration, `readonly[str]` fields, BORROW-form field reads;
+    a lent holder overlapping the call's own field write
+    (`rename(r, r.name)`) is not checked (the holder is dead after it).
+  - A view or str bound in an `if` arm is hoisted by THIR and refuses as
+    "missing or inconsistent hoisted binding facts" (plain owned-leaf
+    hoists too).
   - `THIRCoerce.conversion_refusal` keys "the result is a new value" on
     the render's `wrap` template; the declared fact is
     `Coercion.builds_fresh_value`, which `fixed_int_to_bigint`,
@@ -1739,11 +1759,55 @@ alongside related feature work; only the big-rock deferrals live here.
   - `TypeDef.is_borrowing_view` is latched through the
     `_dynamic_attached_qnames` holdout, so a per-test compiler reset
     changes the answer for `StrView` mid-test (`tpyc/mir/test_stub_calls.py`
-    computes the verdict inside its fixture); the holdout's removal fixes it.
+    computes the verdict inside its fixture, `tpyc/mir/test_views.py` and
+    `tpyc/mir/test_fields.py` re-latch in theirs); the holdout's removal
+    fixes it.
   - Sema accepts every comparison it cannot resolve to a dunder and leaves
     the verdict to C++ (`sema/expressions.py`, the comparison arm); THIR's
     reject gate refuses unlike builtin pairs, so nothing is silent, but the
     acceptance should be sema's.
+  - Precision: distinct external roots are assumed to alias, so every
+    two-field setter (`ssl.SSLContext.load_cert_chain`) gets a
+    `replacement` conflict; the body cannot tell, only a caller can. Design
+    (B5/B6): the conflict record carries its alias BASIS (same root: the
+    body wrote the storage it views, certain; two external roots: possible),
+    an advisory checker reports only certain ones in the body, and a
+    possible one becomes a summary PRECONDITION ("parameter `s` must not
+    view field `name` of parameter `r`") the caller discharges from its
+    argument origins -- `f(r, r.name[3:])` violates it, `f(r, "x")`
+    satisfies it, an unknown origin passes the obligation up -- the mirror
+    of `summary.returns`. The true positive this keeps is
+    `BUGS.md#param-view-of-replaced-field`; sema today never considers the
+    aliasing and compiles it silently.
+  - `--dump-mir` prints no section for the return-escapes analysis.
+  - `mir_write` cannot name a call-write replacement event: the line-fact
+    producer reads `events.writes` only and needs retention's inventory
+    (writes and call writes) to see one.
+  - Bytes twins still unpinned in `tests/cases/mir/views_as_places` (the
+    family path is one rule, so each is a cheap section when a bytes shape
+    regresses): an owned-sink copy, an explicit `BytesView` parameter, the
+    last-use no-conflict shape, a parameter read after a field write, a
+    bytes field read and write.
+  - `retention`'s replacement inventory (`replaced`, engagement-filtered)
+    and `collect.line_facts`'s write events are kept in step by the shared
+    `INITIALIZING_WRITES` set only; `collect` also counts unengaged
+    `OPTIONAL_ASSIGN` writes -- one inventory function both read.
+  - Refusal reasons still live but unpinned: "view
+    local" / "view return" for an Optional or tuple member holding a view,
+    "owned-leaf record field" for a `readonly[str]` field, "conversion
+    aliases its source" at MIR level; and the reachable defensive reasons
+    "slice bound needs a fixed-width int" and "unsupported view parameter
+    passing".
+  - Design: four sites test the "trailing owned-leaf field place" shape
+    with different questions (`validate.owned_leaf_place_type`,
+    `storage.storage_destination`, `retention._replaced_leaf`,
+    `collect._written_kind`); a shared `owned_leaf_field(place)` helper
+    when the next consumer appears.
+  - Dedup: `Coverage.check` splits `call_contract.borrowed_result_of` by
+    hand; `_view_holder_fact` (lower) and `call_contract.view_result`
+    both build `THIRBorrowedRecord(typ, True)`; `coercions._any_storage_form`
+    inlines the
+    `VIEW_TYPE_FAMILIES` lookup `typesys.view_family_of` does.
   **B1 follow-ups** (the leaf vocabulary's facts still decided twice):
   - (i) The parameter renderers (`to_cpp_param` / `to_cpp_const_param` and
     `gen_params`) should read `TpyType.param_passing`, so passing is decided

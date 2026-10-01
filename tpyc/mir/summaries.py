@@ -1,14 +1,14 @@
 """Local effect/exit evidence from validated MIR, without callee scheduling."""
 
 from ..thir import nodes as th
-from ..thir.scalar_leaves import owned_value_type, storage_leaf
+from ..thir.scalar_leaves import owned_leaf, owned_value_type, storage_leaf, view_leaf
 from ..typesys import unwrap_readonly, unwrap_ref_type
 from .call_contract import (
     BORROWING_PASSINGS, MIRCallSummary, MIRGlobalId, MIRParameterBinding, MIRParameterWrite, MIRSummaryResult,
-    MIRSummaryState, summary_problem,
+    MIRSummaryState, borrowed_result_of, summary_problem,
 )
 from .call_effects import resolve_call_writes
-from .coverage import MIRUnsupported, owned_borrow, owned_storage, scalar_slot
+from .coverage import MIRUnsupported, leaf_borrow, owned_storage, scalar_slot, view_holder
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, analyze_dependencies, resolve_referents
 from .liveness import analyze_liveness
@@ -17,7 +17,7 @@ from .nodes import (
     MIRField, MIRFunction, MIRNot, MIRNotCovered, MIROp, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRReturn,
     MIRPlace, MIRSlotKind, MIRValueKind, statement_call,
 )
-from .validate import validate_function
+from .validate import owned_leaf_place_type, validate_function
 
 
 def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
@@ -33,7 +33,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
     callee = declaration.resolved_callee
     if (callee is None or body.kind is not MIRBodyKind.FREE_FUNCTION
             or declaration.receiver is not None or body.receiver_init is not None
-            or body.borrowed_result != callee.signature.borrowed_result
+            or body.borrowed_result != borrowed_result_of(callee.signature)
             or callee.signature.return_type != body.return_type):
         return MIRSummaryResult.opaque("summary definition or result contract mismatch")
     params = tuple(s for s in body.slots if s.kind is MIRSlotKind.PARAMETER)
@@ -45,14 +45,16 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         if param.passing is None:
             return MIRSummaryResult.opaque("summary parameter passing unpublished")
         owned = owned_value_type(param.type)
+        view = view_holder(slot)
         if (slot.name != param.name or slot.passing is not param.passing
                 or slot.type != (owned if owned is not None else unwrap_readonly(unwrap_ref_type(param.type)))
-                or (slot.value_kind is MIRValueKind.BORROWED and owned is None
+                or (slot.value_kind is MIRValueKind.BORROWED and owned is None and not view
                     and (param.borrowed_record is None
                          or slot.readonly != param.borrowed_record.readonly))):
             return MIRSummaryResult.opaque("summary parameter binding mismatch")
+        # An owned leaf at a borrowing passing and a view are lent, read-only.
         readonly = (param.borrowed_record.readonly if param.borrowed_record is not None
-                    else owned is not None and param.passing in BORROWING_PASSINGS)
+                    else view or owned is not None and param.passing in BORROWING_PASSINGS)
         bindings.append(MIRParameterBinding(slot.type, param.passing, readonly, param.borrowed_record))
     slots = {s.id: s for s in body.slots}
     global_reads: set[MIRGlobalId] = set()
@@ -62,6 +64,9 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             global_reads.add(slot.global_id)
         match slot.value_kind:
             case MIRValueKind.SCALAR if scalar_slot(slot):
+                pass
+            case MIRValueKind.BORROWED if view_holder(slot):
+                # A view holds a loan on owned-leaf storage, which has no definition to verify.
                 pass
             case MIRValueKind.BORROWED:
                 try:
@@ -87,8 +92,12 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             return "summary missing write origin"
         for origin in origins:
             path = origin.place.projections
+            if not origin.external and slots[origin.place.root].value_kind is MIRValueKind.OWNED:
+                # A write into the body's own storage: nothing the caller can observe.
+                continue
             if (not origin.external or origin.place.root not in parameters or len(path) != 1
-                    or not isinstance(path[0], MIRField) or not storage_leaf(path[0].type)):
+                    or not isinstance(path[0], MIRField)
+                    or not (storage_leaf(path[0].type) or owned_leaf(path[0].type))):
                 return "summary unsupported write origin"
             field = path[0]
             if field not in definitions.get(declaration, field.id.owner).layout.fields:
@@ -104,8 +113,15 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                 origins = resolve_referents(MIRPlace(block.terminator.value), state, slots)
                 if not origins:
                     return MIRSummaryResult.opaque("summary missing return origin")
+                view = view_leaf(body.borrowed_result.type)
                 for origin in origins:
-                    if (not origin.external or origin.place.root not in parameters or origin.place.projections):
+                    if view:
+                        # Return origins name parameters only: a view of a parameter's
+                        # field returns as the parameter, which is a safe over-approximation;
+                        # a global, a static literal or the body's own storage has no index.
+                        if not origin.external or origin.place.root not in parameters:
+                            return MIRSummaryResult.opaque("view result origin outside the parameters")
+                    elif not origin.external or origin.place.root not in parameters or origin.place.projections:
                         return MIRSummaryResult.opaque("summary unsupported return origin")
                     returns.add(parameters[origin.place.root])
         for index, stmt in enumerate(block.statements):
@@ -124,9 +140,11 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             target = slots[stmt.target.root]
             if target.kind is MIRSlotKind.GLOBAL:
                 return MIRSummaryResult.opaque("summary global access")
-            # A write event is admitted only on the body's own owned-leaf storage,
-            # which no caller-visible place reaches.
-            if stmt.storage_write is not None and (stmt.target.projections or not owned_storage(target)):
+            # A write event is admitted on the body's own owned-leaf storage,
+            # which no caller-visible place reaches, and on an owned-leaf
+            # field, whose write origin is published below.
+            leaf_place = owned_leaf_place_type(stmt.target, slots) is not None
+            if stmt.storage_write is not None and not leaf_place:
                 return MIRSummaryResult.opaque("summary storage operation")
             if stmt.target.projections:
                 origins = resolve_referents(stmt.target, state, slots)
@@ -138,8 +156,9 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     pass
                 case MIRConstant() | MIRCompare() | MIRNot() | MIROp() | MIRRangeAdvance():
                     pass
-                case MIRCopy() | MIRBorrow() if owned_storage(target) or owned_borrow(target):
-                    # Reads of an owned leaf into the body's own storage or holders.
+                case MIRCopy() | MIRBorrow() if leaf_place or owned_storage(target) or leaf_borrow(target):
+                    # Reads of an owned leaf into the body's own storage, a
+                    # field's buffer, or holders (view holders included).
                     pass
                 case MIRRead(source=source):
                     # Scalar field reads are safe on a live borrowed record;

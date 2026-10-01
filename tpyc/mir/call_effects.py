@@ -13,13 +13,19 @@ from .nodes import (
 from .validate import MIRValidationError, validate_function
 
 
+def call_write_places(call: MIRCall) -> tuple[MIRPlace, ...]:
+    """The caller's places a call may write: each summarized field write on
+    a parameter, at the record its argument holder points at."""
+    return tuple(MIRPlace(call.arguments[write.parameter], (MIRDeref(), *(
+        MIRField(MIRFieldId(f.owner, f.name), f.type) for f in write.path)))
+        for write in sorted(call.summary.writes, key=lambda w: (w.parameter, tuple(f.name for f in w.path))))
+
+
 def resolve_call_writes(call: MIRCall, state: MIRReferents,
                         slots: Mapping[MIRSlotId, MIRSlot]) -> frozenset[MIRReferent] | None:
     """None means an effect has no proven origin, not that the call is harmless."""
     result: set[MIRReferent] = set()
-    for write in call.summary.writes:
-        place = MIRPlace(call.arguments[write.parameter], (MIRDeref(), *(
-            MIRField(MIRFieldId(f.owner, f.name), f.type) for f in write.path)))
+    for place in call_write_places(call):
         origins = resolve_referents(place, state, slots)
         if not origins:
             return None
@@ -58,7 +64,7 @@ def analyze_call_effects(fn: MIRFunction, dependencies: MIRDependencies | MIRNot
 def dump_call_effects(result: MIRCallEffects | MIRNotCovered) -> str:
     if isinstance(result, MIRNotCovered):
         return f"call effects not covered: {result.reason}\n"
-    lines = ["call effects (possible scalar-field writes; no storage replacement)"]
+    lines = ["call effects (possible field writes; owned-leaf fields are replacement events)"]
     for point, writes in result.writes.items():
         places = sorted(_place(r.place) + (" external" if r.external else "") for r in writes)
         lines.append(f"  bb{point.block.index} before {point.index}: writes={{" + ", ".join(places) + "}")

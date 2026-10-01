@@ -44,9 +44,9 @@ void mutable_leaf(const ::tpy::String& s) {
     ::probe_fill(s);
 }
 
-// # free function: a @pure stub returning a view, held in a local
-// def view_result(s: str) -> int32:  # tpyc: mir(uncovered /^view local$/)
-//     v = probe_view(s)
+// # free function: a @pure stub returning a view borrows its lent argument
+// def view_result(s: str) -> int32:  # tpyc: mir(covered)
+//     v = probe_view(s)  # tpyc: mir_borrowed(v) mir_borrows(v, s)
 //     return 1
 int32_t view_result(std::string_view s) {
     std::string_view v = ::probe_view(s);

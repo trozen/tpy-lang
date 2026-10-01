@@ -15,7 +15,7 @@ from ..thir.testutil import _compile, _entry
 from ..thir.validate import _iter_children
 from ..type_def_registry import ParamPassing
 from ..typesys import BIGINT, INT32, STR, TupleType, return_representation
-from .call_contract import MIRGlobalId, MIRSummaryState, stub_summary, summary_problem
+from .call_contract import MIRCallSummary, MIRGlobalId, MIRSummaryState, stub_summary, summary_problem
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, analyze_dependencies
 from .dump import dump_function
@@ -326,10 +326,9 @@ def test_refused_stubs_declare_what_the_gates_read(active) -> None:
     assert calls["mutable_leaf"].signature.passings == (ParamPassing.CONST_REF,)
     assert calls["mutable_leaf"].readonly == (False,)
     assert calls["record_len"].contract is th.THIRStubContract.PURE
-    # A view result is refused from the declaration, whatever the caller does with it.
+    # A view result may borrow every argument the stub lends, from the declaration alone.
     assert calls["view_result"].contract is th.THIRStubContract.PURE
-    assert active.view_verdict == "stub view result"
-    assert isinstance(active.bodies["view_result"], MIRNotCovered)
+    assert isinstance(active.view_verdict, MIRCallSummary) and active.view_verdict.returns == frozenset({0})
 
 
 def test_stub_summary_admission_gates(active) -> None:

@@ -48,6 +48,7 @@ from conftest import (
     validate_send_sync_annotations,
     validate_frame_annotations,
     validate_mir_annotations,
+    validate_mir_fact_annotations,
     error_case_annotation_problems,
     fail_annotations,
     check_or_update,
@@ -270,6 +271,10 @@ def test_case(case_dir, main_src, request):
             errs = validate_mir_annotations(main_src, result.mir_verdicts)
             if errs:
                 pytest.fail("\n".join(errs), pytrace=False)
+            if result.mir_line_facts is not None:
+                errs = validate_mir_fact_annotations(main_src, result.mir_verdicts, result.mir_line_facts)
+                if errs:
+                    pytest.fail("\n".join(errs), pytrace=False)
 
     # ----- EXEC PHASE ---------------------------------------------------------
 

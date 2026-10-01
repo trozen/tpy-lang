@@ -3,7 +3,7 @@
 from ..type_def_registry import float_traits_of, int_traits_of, type_def_of, zero_value_of
 from ..typesys import (
     NominalType, OwnType, Representation, TpyType, is_inert_leaf, is_owned_leaf, is_primitive_owned_leaf,
-    unwrap_readonly,
+    unwrap_readonly, view_family_of, view_owned_leaf,
 )
 
 
@@ -27,6 +27,26 @@ def primitive_owned_leaf(typ: object) -> bool:
     (`typesys.is_primitive_owned_leaf`): a certified operation reads it
     through a borrow, and the runtime prints it."""
     return owned_leaf(typ) and is_primitive_owned_leaf(typ)
+
+
+def view_leaf(typ: object) -> bool:
+    """Whether `typ` is a borrowing view over an owned leaf
+    (`typesys.view_owned_leaf`: `StrView`, `BytesView`). MIR holds one as a
+    readonly borrowed holder typed by the view, whose referents are the
+    owned-leaf storage it reads; a Span or dict view is no such leaf."""
+    return isinstance(typ, NominalType) and not typ.type_args and view_owned_leaf(typ) is not None
+
+
+def view_compatible(holder: object, source: object) -> bool:
+    """Whether a view holder of type `holder` may hold a borrow of a
+    `source` value: `holder` is its family's view type (`view_leaf`) and
+    `source` is a member of the same family that is an owned leaf (the
+    family's owned type or an owned sibling such as `String`; `bytearray`
+    is a reference type and stays out) or the family's view type itself."""
+    if not view_leaf(holder) or not isinstance(source, NominalType):
+        return False
+    family = view_family_of(holder)
+    return view_family_of(source) is family and (owned_leaf(source) or source == family.view_type)
 
 
 def leaf_global(typ: object) -> bool:

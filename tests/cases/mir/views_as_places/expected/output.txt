@@ -1,0 +1,36 @@
+view_param: 3
+slice_local: 2
+slice_bounds: 3
+slice_of_owned: 3
+literal_view: 5
+view_return: yz
+view_return_caller: 2
+owned_from_view: bc
+explicit_view_param: pq
+string_as_str_param: 4
+string_as_str_sink: ab
+bytes_slice: 2
+stepped: 3
+span_param: 4
+reassigned_param: 2
+loop_rebind: 3
+live_conflict: 2
+last_use: 5
+live_conflict_bytes: 2
+bytes_twins: 6
+returns_global_view: static global
+Rec: 4 name
+rename_m: 7
+Holder: held
+read_len: 7 read_copy: renamed
+write_field: w+ write_then_reuse: 2
+field_view: 2
+forwarded_write: fw
+field_view_then_write: 2 later
+sibling: 12
+local_record: 2
+forwarded_then_reuse: 3
+method_view: 2
+ctor_from_view: 2 ctor_from_string: 3
+method_write: mw
+lit_then_write: 3 x

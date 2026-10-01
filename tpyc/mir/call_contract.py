@@ -7,7 +7,7 @@ from ..thir.nodes import (
     THIRBorrowedRecord, THIRCallableSignature, THIRFieldIdentity, THIRFunctionIdentity, THIRResolvedCallee,
     THIRStubCallee, THIRStubContract, THIRStubIdentity,
 )
-from ..thir.scalar_leaves import owned_value_type, record_type, storage_leaf
+from ..thir.scalar_leaves import owned_leaf, owned_value_type, record_type, storage_leaf, view_compatible, view_leaf
 from ..type_def_registry import ParamPassing
 from ..typesys import (
     ReadonlyType, RefType, Representation, TpyType, VoidType, is_owned_leaf, is_protocol_type,
@@ -82,12 +82,33 @@ class MIRCallSummary:
     @property
     def borrowed_result(self) -> THIRBorrowedRecord | None:
         """What a call's result borrows through `returns`: a user callee's
-        declared borrowed record, or a readonly borrow of a stub's owned-leaf
+        declared borrowed record or view result (`borrowed_result_of`), a
+        stub's view result, or a readonly borrow of a stub's owned-leaf
         result when the stub lends it arguments. None for a fresh result."""
         if isinstance(self.callee, THIRStubCallee):
+            if (view := view_result(self.callee.signature.return_type)) is not None:
+                return view
             owned = owned_value_type(self.callee.signature.return_type)
             return THIRBorrowedRecord(owned, True) if owned is not None and self.returns else None
-        return self.callee.signature.borrowed_result
+        return borrowed_result_of(self.callee.signature)
+
+
+def view_result(typ: TpyType) -> THIRBorrowedRecord | None:
+    """The holder a view-returning callee hands its caller: a readonly
+    borrow typed by the view (`view_leaf`), returned as a VIEW. None for
+    any other result."""
+    if view_leaf(typ) and return_representation(typ) is Representation.VIEW:
+        return THIRBorrowedRecord(typ, True)
+    return None
+
+
+def borrowed_result_of(signature: THIRCallableSignature) -> THIRBorrowedRecord | None:
+    """The borrowed result a signature returns: THIR's borrowed record, or
+    a view result. One fact for the body's `MIRFunction.borrowed_result`
+    and its callers' summaries."""
+    if signature.borrowed_result is not None:
+        return signature.borrowed_result
+    return view_result(signature.return_type)
 
 
 def parameter_binding_problem(typ: TpyType, binding: 'MIRParameterBinding') -> str | None:
@@ -111,6 +132,10 @@ def parameter_binding_problem(typ: TpyType, binding: 'MIRParameterBinding') -> s
         if not (binding.passing in BORROWING_PASSINGS and binding.readonly
                 or binding.passing in OWNING_PASSINGS and not binding.readonly):
             return "unsupported owned-leaf call parameter"
+    elif view_leaf(bare):
+        # A view passed by value hands the callee the caller's loan, which it reads only.
+        if not (binding.passing is ParamPassing.VALUE and binding.readonly):
+            return "unsupported view call parameter"
     elif binding.readonly or not storage_leaf(typ, passing_representation(binding.passing)):
         return "unsupported scalar call parameter"
     return None
@@ -122,6 +147,8 @@ def result_problem(typ: TpyType, ref: THIRBorrowedRecord | None) -> str | None:
         return (None if storage_leaf(typ, return_representation(typ)) or isinstance(typ, VoidType)
                 or return_representation(typ) is Representation.STORAGE and is_owned_leaf(typ)
                 else "unsupported return type")
+    if isinstance(ref, THIRBorrowedRecord) and view_leaf(ref.type):
+        return None if view_result(typ) == ref else "invalid borrowed result"
     if (not isinstance(ref, THIRBorrowedRecord) or type(ref.readonly) is not bool
             or not isinstance(typ, (RefType, ReadonlyType))
             or not record_type(ref.type)
@@ -179,6 +206,9 @@ def stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
         # or keep the caller's storage.
         if owned is not None and passing in BORROWING_PASSINGS and readonly:
             binding = MIRParameterBinding(owned, passing, True)
+        elif view_leaf(unwrap_readonly(typ)) and passing is ParamPassing.VALUE:
+            # A view lends what it views; it cannot write through it.
+            binding = MIRParameterBinding(unwrap_readonly(typ), passing, True)
         elif storage_leaf(typ) and passing is ParamPassing.VALUE:
             binding = MIRParameterBinding(typ, passing, False)
         else:
@@ -189,14 +219,21 @@ def stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
         bindings.append(binding)
     result = signature.return_type
     representation = signature.return_representation
+    lent = frozenset(i for i, b in enumerate(bindings) if b.readonly)
+    if view_result(result) is not None:
+        # A view result may borrow every argument the call lends, and only
+        # those: with none lent its origin is outside the call.
+        if not lent:
+            return "stub view result has no lent origin"
+        return MIRCallSummary(callee, tuple(bindings), frozenset(range(len(bindings))), frozenset(), frozenset(),
+                              lent, frozenset(), False, frozenset())
     if representation in (Representation.VIEW, Representation.REFERENCE):
         return "stub view result"
     owned_result = owned_value_type(result)
     if not (isinstance(result, VoidType) or storage_leaf(result, representation)
             or owned_result is not None and representation is Representation.STORAGE):
         return "unsupported stub result type"
-    returns = (frozenset(i for i, b in enumerate(bindings) if b.readonly)
-               if owned_result is not None else frozenset())
+    returns = lent if owned_result is not None else frozenset()
     return MIRCallSummary(callee, tuple(bindings), frozenset(range(len(bindings))), frozenset(), frozenset(),
                           returns, frozenset(), False, frozenset())
 
@@ -227,7 +264,7 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
                                                           and isinstance(g.name, str) and g.name)
                    for g in summary.global_reads)):
         return "invalid call summary identity or facts"
-    if (result_problem(signature.return_type, signature.borrowed_result) is not None
+    if (result_problem(signature.return_type, borrowed_result_of(signature)) is not None
             or len(summary.parameters) != len(signature.param_types)
             or summary.reads != frozenset(range(len(summary.parameters)))
             or not isinstance(summary.writes, frozenset)
@@ -238,13 +275,20 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
         problem = parameter_binding_problem(typ, binding)
         if problem is not None:
             return problem
-    result = signature.borrowed_result
+    result = borrowed_result_of(signature)
     if (result is None and summary.returns or result is not None and not summary.returns):
         return "missing or unexpected return origins"
     for index in summary.returns:
         if not 0 <= index < len(summary.parameters):
             return "invalid return parameter"
-        source = summary.parameters[index].borrowed_record
+        binding = summary.parameters[index]
+        if view_leaf(result.type):
+            # A view result borrows what a lent parameter of its family reaches.
+            if not (binding.readonly and binding.borrowed_record is None
+                    and view_compatible(result.type, binding.type)):
+                return "unsupported return origin type or access"
+            continue
+        source = binding.borrowed_record
         if source is None or source.type != result.type or source.readonly and not result.readonly:
             return "unsupported return origin type or access"
     for write in summary.writes:
@@ -255,7 +299,8 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
         ref = summary.parameters[write.parameter].borrowed_record
         field = write.path[0]
         if (ref is None or ref.readonly or not isinstance(field, THIRFieldIdentity)
-                or field.owner != ref.type or not field.name or not storage_leaf(field.type)):
+                or field.owner != ref.type or not field.name
+                or not (storage_leaf(field.type) or owned_leaf(field.type))):
             return "unsupported call write field or access"
     # The callee's published passings and its body's bindings are one fact.
     if signature.passings is None:

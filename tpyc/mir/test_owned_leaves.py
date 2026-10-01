@@ -1024,7 +1024,7 @@ def test_validator_rejects_damaged_owned_leaf_values(lowered_active) -> None:
     literals = lowered_active.bodies["literal_arguments"]
     is_static = lambda s: (isinstance(s, MIRAssign) and isinstance(s.value, MIRConstant)
                            and s.value.value == "lit")
-    with pytest.raises(MIRValidationError, match="static literal needs a borrowed temporary of its type"):
+    with pytest.raises(MIRValidationError, match="static literal needs a borrowed holder of its type"):
         validate_function(_replace_first(literals, is_static, lambda s: replace(s, value=MIRConstant(b"lit"))))
 
 

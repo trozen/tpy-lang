@@ -23,7 +23,7 @@ int32_t text_of_scalar(int32_t i);
 void mut_ref(Rec& r);
 // def mutable_leaf(s: String) -> None:  # tpyc: mir(uncovered /^stub parameter is not a readonly leaf$/)
 void mutable_leaf(const ::tpy::String& s);
-// def view_result(s: str) -> int32:  # tpyc: mir(uncovered /^view local$/)
+// def view_result(s: str) -> int32:  # tpyc: mir(covered)
 int32_t view_result(std::string_view s);
 // def main() -> None:
 void main();

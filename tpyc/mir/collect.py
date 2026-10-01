@@ -13,23 +13,29 @@ from ..sema.analyzer import SemanticAnalyzer
 from ..thir.lower import iter_module_callables, iter_module_constructors
 from ..thir.nodes import THIRConstructor, THIRFunction, THIRFunctionIdentity
 from ..thir.reject import is_bodyless_binding
-from ..typesys import TpyType
+from ..thir.scalar_leaves import owned_leaf, record_type, storage_leaf
+from ..typesys import TpyType, unwrap_readonly
 from .call_contract import MIRSummaryResult
 from .call_effects import MIRCallEffects, analyze_call_effects, dump_call_effects
 from .definitions import MIRDefinitions
-from .dependencies import MIRDependencies, analyze_dependencies, dump_dependencies
+from .dependencies import MIRDependencies, MIRReferent, _leaves, analyze_dependencies, dump_dependencies
 from .dump import dump_function
-from .liveness import MIRLiveness, analyze_liveness, dump_liveness
+from .liveness import MIRLiveness, MIRPoint, analyze_liveness, dump_liveness
 from .lower import lower_constructor, lower_function
-from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, function_body_kind
+from .nodes import (
+    MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRContainerElements, MIRContainerStructure,
+    MIRCopy, MIRDeref, MIRField, MIRFunction, MIRMemberInitMode, MIRNotCovered, MIROptionalPayload, MIRPlace,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleIndex, MIRUnionPayload, MIRValueKind,
+    function_body_kind, statement_target,
+)
 from .payload_lifetime import (
     MIRPayloadInspection, dump_payload_ends, dump_payload_inspection, inspect_payload_lifetimes,
 )
-from .retention import MIRRetention, analyze_retention, dump_retention
+from .retention import INITIALIZING_WRITES, MIRRetention, analyze_retention, dump_retention, static_referent
 from .scope_lifetime import MIRScopeInspection, dump_scope_ends, dump_scope_inspection, inspect_scope_lifetimes
 from .storage import MIRStorageEvents, analyze_storage, dump_storage
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
-from .storage_evidence import MIRStorageVerdict
+from .storage_evidence import MIRStorageConflict, MIRStorageVerdict, analyze_return_escapes
 from ..mir_workspace import MIRCallWorkspace
 
 
@@ -114,7 +120,8 @@ class MIRBodySource:
 
 @dataclass(frozen=True, eq=False)
 class MIRAnalyses:
-    """The analyses `--dump-mir` prints over one lowered body."""
+    """The analyses the verdict runs over one lowered body (`--dump-mir`
+    prints all but the return escapes)."""
     liveness: MIRLiveness
     dependencies: MIRDependencies | MIRNotCovered
     events: MIRStorageEvents | MIRNotCovered
@@ -122,13 +129,15 @@ class MIRAnalyses:
     effects: MIRCallEffects | MIRNotCovered
     retention: MIRRetention | MIRNotCovered
     payload: MIRPayloadInspection
+    escapes: tuple[MIRStorageConflict, ...] | MIRNotCovered
 
     @property
     def gaps(self) -> tuple[tuple[str, MIRNotCovered], ...]:
         staged = (("dependencies", self.dependencies), ("scope ends", self.scope.ends),
                   ("scope conflicts", self.scope.conflicts), ("payload ends", self.payload.ends),
                   ("payload conflicts", self.payload.conflicts), ("storage", self.events),
-                  ("call effects", self.effects), ("retention", self.retention))
+                  ("call effects", self.effects), ("retention", self.retention),
+                  ("return escapes", self.escapes))
         return tuple((name, result) for name, result in staged if isinstance(result, MIRNotCovered))
 
     @property
@@ -142,6 +151,8 @@ class MIRAnalyses:
             found.append("replacement")
         if self.scope.freshness:
             found.append("stale_alias")
+        if not isinstance(self.escapes, MIRNotCovered) and self.escapes:
+            found.append("return_escape")
         return tuple(found)
 
 
@@ -151,7 +162,8 @@ def analyze_body(fn: MIRFunction) -> MIRAnalyses:
     events = analyze_storage(fn)
     return MIRAnalyses(liveness, dependencies, events, inspect_scope_lifetimes(fn),
                        analyze_call_effects(fn, dependencies),
-                       analyze_retention(fn, liveness, dependencies, events), inspect_payload_lifetimes(fn))
+                       analyze_retention(fn, liveness, dependencies, events), inspect_payload_lifetimes(fn),
+                       analyze_return_escapes(fn, dependencies))
 
 
 @dataclass(frozen=True)
@@ -351,6 +363,206 @@ def enumerate_bodies(module: TpyModule, analyzer: SemanticAnalyzer, ctx: CodeGen
     `Compiler.mir_analysis`: lowering reads the compilation's TypeDefs."""
     return tuple(verdict_of(source, definitions, workspace)
                  for source in enumerate_body_sources(module, analyzer, ctx, module_name, reasons))
+
+
+# --- line facts -------------------------------------------------------------------
+
+_SELECTORS = {MIRSlotKind.PARAMETER: "param", MIRSlotKind.LOCAL: "local", MIRSlotKind.GLOBAL: "global"}
+
+
+@dataclass(frozen=True)
+class MIRLineWrite:
+    """One statement on a source line writing a named place."""
+    block: int
+    # The written place's value kind: a slot's own, a wrapper member's, OWNED
+    # for record or owned-leaf storage (a field, or what a holder points at),
+    # SCALAR for an inert-leaf field; None for a place with neither.
+    kind: MIRValueKind | None
+    copy: bool  # the written value is a `MIRCopy`
+
+
+@dataclass(frozen=True)
+class MIRLineReferents:
+    """A holder's possible referents after the last statement of a line in one block."""
+    block: int
+    referents: frozenset[str]
+
+
+@dataclass(frozen=True)
+class MIRLineFacts:
+    """The per-line MIR facts of one lowered body, keyed by (line, spelling).
+
+    A spelling is a source name plus field and member projections
+    (`self.name`, `t[0]`, `xs[elements]`); dereferences are not spelled. A
+    name whose slots sit under two selectors (a reassigned `str` parameter
+    owns a LOCAL slot beside its PARAMETER one) is spelled `param(s)` /
+    `local(s)`. A referent is spelled by its root's name -- a borrowed
+    parameter's external referent by the parameter, a global's by the global
+    -- or `static` for a literal; storage with no name of its own (a
+    constructed temporary) takes the name of the first named slot that
+    borrows it whole, the binding that introduced it, suffixed `@<line>` of
+    that binding when the name binds several such storages."""
+    body: MIRBodyId
+    # Each source name's selectors ("param", "local", "global") to its canonical spelling.
+    names: Mapping[str, Mapping[str, str]]
+    # Canonical spellings that hold loans: a holder slot and each of its leaves.
+    holders: frozenset[str]
+    lines: frozenset[int]
+    # Every write of a named place by a statement on the line, over all blocks.
+    writes: Mapping[tuple[int, str], tuple[MIRLineWrite, ...]]
+    # The non-initializing record-write modes on the line, by destination storage.
+    events: Mapping[tuple[int, str], tuple[str, ...]]
+    # A holder's referents per block holding a statement on the line.
+    borrows: Mapping[tuple[int, str], tuple[MIRLineReferents, ...]]
+    # The analysis gap that leaves `borrows` / `events` unknown, else None.
+    borrows_gap: str | None = None
+    events_gap: str | None = None
+
+
+def _spell(place: MIRPlace, roots: Mapping[MIRSlotId, str]) -> str | None:
+    root = roots.get(place.root)
+    if root is None:
+        return None
+    text = root
+    for projection in place.projections:
+        match projection:
+            case MIRField(id=field):
+                text += f".{field.name}"
+            case MIRTupleIndex(index=index):
+                text += f"[{index}]"
+            case MIROptionalPayload():
+                text += "[payload]"
+            case MIRUnionPayload(alternative=alternative):
+                text += f"[alt{alternative}]"
+            case MIRContainerStructure():
+                text += "[structure]"
+            case MIRContainerElements():
+                text += "[elements]"
+            case MIRDeref():
+                pass
+    return text
+
+
+def _written_kind(place: MIRPlace, slot: MIRSlot) -> MIRValueKind | None:
+    match place.projections:
+        case ():
+            return slot.value_kind
+        case (MIRTupleIndex(index=index),) if slot.tuple_layout is not None:
+            return slot.tuple_layout.elements[index].kind
+        case (MIROptionalPayload(),) if slot.optional_layout is not None:
+            return slot.optional_layout.kind
+        case (*_, MIRDeref()):
+            # Whole storage a holder points at: storage_destination's replacement.
+            return MIRValueKind.OWNED
+        case (*_, MIRField(type=field_type)):
+            typ = unwrap_readonly(field_type)
+            if owned_leaf(typ) or record_type(typ):
+                return MIRValueKind.OWNED
+            return MIRValueKind.SCALAR if storage_leaf(typ) else None
+    return None
+
+
+def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
+    """The per-line facts of a lowered body, None for a body that did not
+    lower. Reads the analyses the verdict already ran, never re-lowers; runs
+    under the compilation (field kinds read its TypeDefs)."""
+    fn, analyses = verdict.function, verdict.analyses
+    if fn is None or analyses is None:
+        return None
+    slots = {slot.id: slot for slot in fn.slots}
+    by_name: dict[str, dict[str, list[MIRSlotId]]] = {}
+    for slot in fn.slots:
+        selector = _SELECTORS.get(slot.kind)
+        if selector is not None and slot.name is not None:
+            by_name.setdefault(slot.name, {}).setdefault(selector, []).append(slot.id)
+    names = {name: {selector: name if len(selectors) == 1 else f"{selector}({name})" for selector in selectors}
+             for name, selectors in by_name.items()}
+    named = {sid: names[name][selector]
+             for name, selectors in by_name.items() for selector, ids in selectors.items() for sid in ids}
+    bindings: dict[MIRSlotId, tuple[str, int | None]] = {}
+    for block in fn.blocks:
+        for stmt in block.statements:
+            if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRBorrow)
+                    and not stmt.value.source.projections and not stmt.target.projections
+                    and stmt.target.root in named and stmt.value.source.root not in named
+                    and stmt.value.source.root not in bindings):
+                bindings[stmt.value.source.root] = (named[stmt.target.root], stmt.loc.line if stmt.loc else None)
+    bound = [name for name, _line in bindings.values()]
+    storage = dict(named)
+    for root, (name, line) in bindings.items():
+        # A name rebound to fresh storage names several objects; the binding line tells them apart.
+        storage[root] = name if bound.count(name) == 1 else f"{name}@{line}"
+
+    def referent(ref: MIRReferent) -> str:
+        if static_referent(ref):
+            return "static"
+        return _spell(ref.place, storage) or f"%{ref.place.root.index}"
+
+    events = analyses.events
+    modes = ({} if isinstance(events, MIRNotCovered)
+             else {point: stmt.storage_write.mode for point, stmt in events.writes.items()})
+    lines: set[int] = set()
+    last: dict[tuple[int, MIRBlockId], int] = {}
+    writes: dict[tuple[int, str], list[MIRLineWrite]] = {}
+    replaced: dict[tuple[int, str], list[str]] = {}
+    for block in fn.blocks:
+        for index, stmt in enumerate(block.statements):
+            if stmt.loc is None:
+                continue
+            line = stmt.loc.line
+            lines.add(line)
+            last[(line, block.id)] = index
+            target = statement_target(stmt)
+            if target is None:
+                continue
+            if (spelled := _spell(target, named)) is not None:
+                copy = isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCopy)
+                writes.setdefault((line, spelled), []).append(
+                    MIRLineWrite(block.id.index, _written_kind(target, slots[target.root]), copy))
+            mode = modes.get(MIRPoint(block.id, index))
+            if mode is not None and mode not in INITIALIZING_WRITES and (spelled := _spell(target, storage)) is not None:
+                replaced.setdefault((line, spelled), []).append(mode.name.lower())
+
+    if fn.receiver_init is not None:
+        # The receiver's entry initialization carries no CFG statement; its
+        # members' source lines are the constructor's field writes.
+        receiver = slots[fn.receiver_init.receiver]
+        layout = next((r for r in fn.records if r.type == receiver.type), None)
+        if layout is not None and receiver.id in named:
+            for member, field in zip(fn.receiver_init.fields, layout.fields):
+                if member.loc is None:
+                    continue
+                lines.add(member.loc.line)
+                spelled = f"{named[receiver.id]}.{field.id.name}"
+                kind = MIRValueKind.SCALAR if member.mode is MIRMemberInitMode.SCALAR else MIRValueKind.OWNED
+                writes.setdefault((member.loc.line, spelled), []).append(
+                    MIRLineWrite(fn.entry.index, kind, member.mode is MIRMemberInitMode.COPY))
+
+    dependencies = analyses.dependencies
+    leaves: dict[str, list[MIRPlace]] = {}
+    borrows: dict[tuple[int, str], list[MIRLineReferents]] = {}
+    if not isinstance(dependencies, MIRNotCovered):
+        for slot in fn.slots:
+            if slot.id not in named:
+                continue
+            for leaf in _leaves(slot):
+                leaves.setdefault(named[slot.id], []).append(leaf)
+                if leaf.projections:
+                    leaves.setdefault(_spell(leaf, named), []).append(leaf)
+        for (line, block_id), index in last.items():
+            state = dependencies.referents.get(MIRPoint(block_id, index + 1))
+            if state is None:
+                continue  # an unreachable block has no dependency state
+            for spelled, held in leaves.items():
+                refs = frozenset(referent(ref) for leaf in held for ref in state.get(leaf, ()))
+                borrows.setdefault((line, spelled), []).append(MIRLineReferents(block_id.index, refs))
+    return MIRLineFacts(
+        verdict.body, names, frozenset(leaves), frozenset(lines),
+        {key: tuple(found) for key, found in writes.items()},
+        {key: tuple(found) for key, found in replaced.items()},
+        {key: tuple(found) for key, found in borrows.items()},
+        borrows_gap=dependencies.reason if isinstance(dependencies, MIRNotCovered) else None,
+        events_gap=events.reason if isinstance(events, MIRNotCovered) else None)
 
 
 # --- the dump ---------------------------------------------------------------------

@@ -14,8 +14,8 @@ class Rec:
     name: str
     count: int32
 
-    # constructor: owned-leaf record fields are not lowered yet
-    def __init__(self, name: str, count: int32):  # tpyc: mir(uncovered /^unsupported record fields$/)
+    # constructor: the str field is initialized by a copy of the view parameter (may raise)
+    def __init__(self, name: str, count: int32):  # tpyc: mir(covered)
         self.name = name
         self.count = count
 
@@ -259,20 +259,20 @@ def conditional_hoist() -> None:  # tpyc: mir(conflict /^replacement$/)
     print("conditional_hoist:", saved.x, saved.y)
 
 
-# refused: a view local
-def view_local(s: str) -> int32:  # tpyc: mir(uncovered /^view local$/)
-    v = s[1:]
+# covered: a view local borrows the parameter it slices
+def view_local(s: str) -> int32:  # tpyc: mir(covered)
+    v = s[1:]  # tpyc: mir_borrowed(v) mir_borrows(v, s)
     return 1
 
 
-# refused: an owned-leaf record field read
-def str_field(r: Rec) -> bool:  # tpyc: mir(uncovered /^owned-leaf record field$/)
+# covered: an owned-leaf field read is a borrow of the field place
+def str_field(r: Rec) -> bool:  # tpyc: mir(covered)
     return r.name == "x"
 
 
-# refused: an owned-leaf record field write
-def str_field_write(r: Rec, s: str) -> None:  # tpyc: mir(uncovered /^owned-leaf record field$/)
-    r.name = s
+# covered: an owned-leaf field write is a replacement event on the field place
+def str_field_write(r: Rec, s: str) -> None:  # tpyc: mir(covered)
+    r.name = s  # tpyc: mir_write(r.name)
 
 
 # refused: an owned-leaf global write
@@ -281,8 +281,8 @@ def global_write() -> None:  # tpyc: mir(uncovered /^owned-leaf global write$/)
     G = "new"
 
 
-# refused: a view return
-def view_return(s: str) -> StrView:  # tpyc: mir(uncovered /^view return$/)
+# covered: a view result borrows the parameter (summary returns={0})
+def view_return(s: str) -> StrView:  # tpyc: mir(covered) mir_summary(known)
     return s
 
 
@@ -296,8 +296,8 @@ def global_copy() -> int32:  # tpyc: mir(uncovered /^unsupported owned-leaf expr
     return takes_own(G)
 
 
-# refused: no MIR place holds a view, so the conversion handing the view result to `takes` is refused
-def view_caller(s: str) -> int32:  # tpyc: mir(uncovered /^unsupported coercion$/)
+# covered: the view result of `view_return` is lent to `takes` without a copy
+def view_caller(s: str) -> int32:  # tpyc: mir(covered)
     return takes(view_return(s))
 
 
@@ -321,9 +321,9 @@ def no_init(flag: bool) -> int:  # tpyc: mir(uncovered /^owned-leaf declaration 
     return n
 
 
-# refused: the concatenation's String is rendered in place as the str local
-def string_as_str(s: str) -> str:  # tpyc: mir(uncovered /^conversion aliases its source$/)
-    t = s + "x"
+# covered: the String local is read in place as a str at the return (a copy at the owning sink)
+def string_as_str(s: str) -> str:  # tpyc: mir(covered)
+    t = s + "x"  # tpyc: mir_owned(t)
     return t
 
 

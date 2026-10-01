@@ -9,7 +9,7 @@ import pytest
 
 from ..type_def_registry import ParamPassing
 from ..typesys import (
-    BOOL, BYTES, CHAR, FLOAT, FLOAT32, INT32, STR, STRVIEW, UINT8, FloatLiteralType, IntLiteralType, NominalType,
+    BOOL, BYTES, CHAR, FLOAT, FLOAT32, INT32, STR, STRING, STRVIEW, UINT8, FloatLiteralType, IntLiteralType, NominalType,
     certified_primitive_op, certified_primitive_subscript,
 )
 from .scalar_leaves import converted_literal, leaf_constant
@@ -305,6 +305,8 @@ def test_a_passthrough_into_an_owned_leaf_aliases_its_source():
     coerce, = (c for c in _nodes(_lower("string_str"), th.THIRCoerce) if c.coercion_name == "string_to_str")
     assert coerce.wrap is None and not coerce.certified_conversion
     assert coerce.conversion_refusal == "conversion aliases its source"
+    # The alias is the String's own storage read as its family's owned type.
+    assert coerce.owned_passthrough
 
 
 def test_literal_and_view_coercions_are_not_certified_conversions():
@@ -318,6 +320,11 @@ def test_literal_and_view_coercions_are_not_certified_conversions():
     assert th.THIRCoerce(STR, th.THIRName(CHAR, "c"), "char_to_str", wrap="f({0})").certified_conversion
     # A tag no rule declares is refused.
     assert not th.THIRCoerce(STR, name, "strlit_overload_pin").certified_conversion
+    # Only a read into the family's owned type is the source's own storage:
+    # a view target renders a view, and `str -> String` materializes at a parameter.
+    assert not th.THIRCoerce(STRVIEW, name, "str_to_strview").owned_passthrough
+    assert not th.THIRCoerce(STRING, name, "str_to_string").owned_passthrough
+    assert not th.THIRCoerce(STR, th.THIRName(CHAR, "c"), "char_to_borrowed_str").owned_passthrough
 
 
 def test_element_reads_of_owned_leaves_are_certified():
