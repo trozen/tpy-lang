@@ -55,8 +55,9 @@ jobs:
         run: |
           set -o pipefail
           start=$(date +%s)
-          uv run pytest --cxx=gcc-14 --force-exec --no-cpy --junitxml=junit-linux-gcc14.xml \
-            -p no:cacheprovider -q 2>&1 | grep -v "^tpy| thir faces" | tail -30
+          PYTHONUNBUFFERED=1 uv run pytest --cxx=gcc-14 --force-exec --no-cpy \
+            --junitxml=junit-linux-gcc14.xml -p no:cacheprovider -v 2>&1 \
+            | tee suite-linux-gcc14.log | grep --line-buffered -v "^tpy| thir faces"
           echo "SUITE WALL: $(( $(date +%s) - start ))s"
       - name: Cache sizes
         if: always()
@@ -75,7 +76,9 @@ jobs:
         if: always()
         with:
           name: junit-linux-gcc14
-          path: junit-linux-gcc14.xml
+          path: |
+            junit-linux-gcc14.xml
+            suite-linux-gcc14.log
           retention-days: 7
 
   macos-native:
@@ -110,8 +113,9 @@ jobs:
         run: |
           set -o pipefail
           start=$(date +%s)
-          uv run pytest --force-exec --junitxml=junit-macos.xml \
-            -p no:cacheprovider -q 2>&1 | grep -v "^tpy| thir faces" | tail -30
+          PYTHONUNBUFFERED=1 uv run pytest --force-exec --junitxml=junit-macos.xml \
+            -p no:cacheprovider -v 2>&1 \
+            | tee suite-macos.log | grep --line-buffered -v "^tpy| thir faces"
           echo "SUITE WALL: $(( $(date +%s) - start ))s"
       - name: Cache sizes
         if: always()
@@ -130,5 +134,7 @@ jobs:
         if: always()
         with:
           name: junit-macos
-          path: junit-macos.xml
+          path: |
+            junit-macos.xml
+            suite-macos.log
           retention-days: 7
