@@ -5,76 +5,70 @@ namespace tpyapp::main {
 
 double G{};
 
-// def test_int_widen() -> None:
-//     a = int32(1)  # tpyc: type(int64)
-//     a = int64(2)  # tpyc: type(int64)
+// def test_int_widen(a64: int64) -> None:
+//     a = 1  # tpyc: type(int64)
+//     a = a64  # tpyc: type(int64)
 //     print("int_widen", a)
-void test_int_widen() {
+void test_int_widen(int64_t a64) {
     int64_t a = 1;
-    a = 2;
+    a = a64;
     std::cout << "int_widen" << " " << a << "\n";
 }
 
-// def test_float_widen() -> None:
-//     b = float32(1.5)  # tpyc: type(float)
-//     b = 2.5  # tpyc: type(float)
-//     print("float_widen", b)
-void test_float_widen() {
-    double b = 1.5f;
-    b = 2.5;
-    std::cout << "float_widen" << " " << ::tpy::print_float(b) << "\n";
-}
-
-// def test_float_stays_float() -> None:
+// def test_float_stays_float(f32: float32) -> None:
 //     c = 1.5  # tpyc: type(float)
-//     c = float32(1.0)  # tpyc: type(float)
+//     c = f32  # tpyc: type(float)
 //     print("float_stays", c)
-void test_float_stays_float() {
+void test_float_stays_float(float f32) {
     double c = 1.5;
-    c = static_cast<double>(1.0f);
+    c = static_cast<double>(f32);
     std::cout << "float_stays" << " " << ::tpy::print_float(c) << "\n";
 }
 
 // def test_bigint_absorbs_fixedint() -> None:
-//     d = int32(1)  # tpyc: type(int)
+//     d = 1  # tpyc: type(int)
 //     d = int(2)  # tpyc: type(int)
 //     print("bigint", d)
 void test_bigint_absorbs_fixedint() {
-    ::tpy::BigInt d = 1;
+    ::tpy::BigInt d = ::tpy::BigInt(1);
     d = ::tpy::BigInt(2);
     std::cout << "bigint" << " " << d << "\n";
 }
 
-// def test_unsigned_to_wider_signed() -> None:
-//     e = uint8(1)  # tpyc: type(int32)
-//     e = int32(2)  # tpyc: type(int32)
+// def test_unsigned_joins_default(u8: uint8) -> None:
+//     # a uint8 value widens into the int32 the literal gives
+//     e = 1  # tpyc: type(int32)
+//     e = u8  # tpyc: type(int32)
 //     print("unsigned", e)
-void test_unsigned_to_wider_signed() {
+void test_unsigned_joins_default(uint8_t u8) {
     int32_t e = 1;
-    e = 2;
+    e = static_cast<int32_t>(u8);
     std::cout << "unsigned" << " " << e << "\n";
 }
 
-// def test_uint32_to_int64() -> None:
-//     g = uint32(1)  # tpyc: type(int64)
-//     g = int64(2)  # tpyc: type(int64)
-//     print("uint32", g)
-void test_uint32_to_int64() {
+// def test_order_free_join(u32: uint32, a64: int64) -> None:
+//     # int32 and uint32 have no common type, but int64 holds both
+//     g = 1  # tpyc: type(int64)
+//     g = u32  # tpyc: type(int64)
+//     g = a64  # tpyc: type(int64)
+//     print("order_free", g)
+void test_order_free_join(uint32_t u32, int64_t a64) {
     int64_t g = 1;
-    g = 2;
-    std::cout << "uint32" << " " << g << "\n";
+    g = static_cast<int64_t>(u32);
+    g = a64;
+    std::cout << "order_free" << " " << g << "\n";
 }
 
-// def test_branch_int_widen(c: bool) -> None:
-//     # int32 and int64 bindings in two arms still join to the wider integer
-//     h = int32(1)  # tpyc: type(int64)
+// def test_branch_int_widen(c: bool, a64: int64) -> None:
+//     # an int64 binding in one arm widens the literal-seeded local
+//     h = 1  # tpyc: type(int64)
 //     if c:
-//         h = int64(7)  # tpyc: ok
+//         h = a64  # tpyc: ok
 //     print("branch_int", h)
-void test_branch_int_widen(bool c) {
+void test_branch_int_widen(bool c, int64_t a64) {
     int64_t h = 1;
     if (c) {
-        h = 7;
+        h = a64;
     }
     std::cout << "branch_int" << " " << h << "\n";
 }
@@ -265,13 +259,12 @@ void test_captured_none_seed() {
 
 // G: float = 1.5
 //
-// test_int_widen()
-// test_float_widen()
-// test_float_stays_float()
+// test_int_widen(2)
+// test_float_stays_float(1.0)
 // test_bigint_absorbs_fixedint()
-// test_unsigned_to_wider_signed()
-// test_uint32_to_int64()
-// test_branch_int_widen(True)
+// test_unsigned_joins_default(2)
+// test_order_free_join(1, 2)
+// test_branch_int_widen(True, 7)
 // test_declared_float_local(True)
 // test_declared_float_param(1.5)
 // test_declared_float_nonlocal(2.5)
@@ -290,13 +283,12 @@ void __tpy_init() {
     initialized = true;
 
     G = 1.5;
-    ::tpyapp::main::test_int_widen();
-    ::tpyapp::main::test_float_widen();
-    ::tpyapp::main::test_float_stays_float();
+    ::tpyapp::main::test_int_widen(2);
+    ::tpyapp::main::test_float_stays_float(1.0f);
     ::tpyapp::main::test_bigint_absorbs_fixedint();
-    ::tpyapp::main::test_unsigned_to_wider_signed();
-    ::tpyapp::main::test_uint32_to_int64();
-    ::tpyapp::main::test_branch_int_widen(true);
+    ::tpyapp::main::test_unsigned_joins_default(2);
+    ::tpyapp::main::test_order_free_join(1, 2);
+    ::tpyapp::main::test_branch_int_widen(true, 7);
     ::tpyapp::main::test_declared_float_local(true);
     ::tpyapp::main::test_declared_float_param(1.5);
     ::tpyapp::main::test_declared_float_nonlocal(2.5);

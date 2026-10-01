@@ -7,36 +7,12 @@
 
 namespace tpyapp::main {
 
-enum class Color : int32_t {
-    Red = 0,
-    Green = 1,
-};
-
-} // namespace tpyapp::main
-
-template<>
-struct tpy::EnumUtil<::tpyapp::main::Color> {
-    static constexpr std::string_view type_name = "Color";
-    static std::string_view name(::tpyapp::main::Color e);
-    static const std::array<::tpyapp::main::Color, 2> members;
-    static ::tpyapp::main::Color from_value(int32_t v);
-    static ::tpyapp::main::Color from_name(std::string_view s);
-    static std::optional<::tpyapp::main::Color> try_parse(std::string_view s);
-};
-
-namespace tpyapp::main {
-
-inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
-}
-
 inline constexpr std::string_view __name__ = "__main__";
 
 // def widen() -> int:
 ::tpy::BigInt widen();
-// def subscript_positions(data: str, xs: list[int32],
-//                         d: dict[int32, int32]) -> None:
-void subscript_positions(std::string_view data, std::vector<int32_t>& xs, ::tpy::ordered_map<int32_t, int32_t>& d);
+// def subscript_positions(data: str, xs: list[int32]) -> None:
+void subscript_positions(std::string_view data, std::vector<int32_t>& xs);
 // def value_positions(data: str) -> None:
 void value_positions(std::string_view data);
 // def main() -> None:

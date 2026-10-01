@@ -49,7 +49,7 @@ __coro_add_one add_one(::tpy::BigInt n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         c.reset();
-        total = ::tpy::add_check<int32_t>(total, (__await_lift_0).to_fixed_check<int32_t>());
+        total = (total) + (__await_lift_0);
         __state = S_JOIN_0;
         continue;
     }

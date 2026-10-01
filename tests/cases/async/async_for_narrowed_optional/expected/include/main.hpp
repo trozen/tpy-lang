@@ -61,7 +61,7 @@ struct __coro_count_chars {
 struct __coro_main_coro {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    int32_t total;
+    ::tpy::BigInt total;
     ::tpy::BigInt v;
     std::string __coro_arg_1;
     ::tpy::BigInt __await_lift_0;

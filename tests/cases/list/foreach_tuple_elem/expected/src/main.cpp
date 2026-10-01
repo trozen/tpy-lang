@@ -46,7 +46,7 @@ void dump_items(const ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>& d) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& t = *__beg_0;
-        acc = ((::tpy::BigInt(acc)) + (std::get<0>(t)));
+        acc = ((acc) + (std::get<0>(t)));
     }
     return acc;
 }

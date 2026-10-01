@@ -72,7 +72,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& b = ::tpy::unwrap_ref(*__r_1);
-            total = ((::tpy::BigInt(total)) + (b.val));
+            total = ((total) + (b.val));
         }
     }
     std::cout << "boxes" << " " << total << "\n";

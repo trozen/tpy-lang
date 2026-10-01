@@ -15,6 +15,9 @@ from ..typesys import (
     unwrap_readonly, resolve_int_literals,
 )
 from .overloads import type_matches_numeric, type_matches_strict
+from ..coercions import (resolve_coercion, context_free_wrap_template,
+                         int_literal_fits_fixed_int)
+from ..type_def_registry import is_fixed_int_type
 from tpyc import modules as builtin_modules
 
 if TYPE_CHECKING:
@@ -74,11 +77,35 @@ DUNDER_CPP_TEMPLATES: dict[str, str] = {
 }
 
 
+# Every dunder the resolver below dispatches an operator to. Not the
+# codegen friend-shim tables: a use renders the dunder without its template
+# argument whether it goes through a friend operator (`+`, `==`, `+` with
+# the record on the right) or a direct call (`+=`, `//`, unary `-`), and
+# `readonly_form_t<C>` cannot be deduced at either, so a user method among
+# all of these with a type parameter of its own fails the C++ build.
+OPERATOR_DUNDERS: frozenset[str] = frozenset(
+    list(builtin_modules.BINOP_TO_METHOD.values())
+    + list(builtin_modules.BINOP_TO_RMETHOD.values())
+    + list(builtin_modules.AUGOP_TO_IMETHOD.values())
+    + list(builtin_modules.UNARYOP_TO_METHOD.values()))
+
+
 def _substitute_type_params(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
     """Substitute TypeParamRef instances in a type according to subst map."""
     if isinstance(typ, TypeParamRef) and typ.name in subst:
         return subst[typ.name]
     return typ.map_inner_types(lambda t: _substitute_type_params(t, subst))
+
+
+def _literal_beside(t: TpyType, effective: TpyType, other: TpyType,
+                    other_effective: TpyType) -> TpyType:
+    """The effective type of operand `t` next to `other`: an int literal
+    beside a fixed int it fits is of that fixed type."""
+    t, other = unwrap_ref_type(t), unwrap_ref_type(other)
+    if (not isinstance(other, IntLiteralType)
+            and int_literal_fits_fixed_int(t, other_effective)):
+        return other_effective
+    return effective
 
 
 class OperatorResolver:
@@ -177,24 +204,37 @@ class OperatorResolver:
         self, overloads: list[FunctionInfo], arg_type: TpyType,
         type_subst: dict[str, TpyType],
         protocol_checker: ProtocolChecker | None = None,
-    ) -> FunctionInfo | None:
-        """Find an overload matching arg_type, substituting type params first."""
+    ) -> tuple[FunctionInfo, dict[str, TpyType]] | None:
+        """Find an overload matching arg_type, substituting the receiver's
+        type params first; a type param of the method's own is bound from
+        the operand as a call binds it from its argument. Returns the method
+        with the substitution to apply to it."""
         for method in overloads:
             if len(method.params) == 1:
-                _, param_type = method.params[0]
-                param_type = unwrap_ref_type(param_type)
+                param = method.params[0]
+                param_type = unwrap_ref_type(param.type)
                 if type_subst:
                     param_type = _substitute_type_params(param_type, type_subst)
+                own_params = [tp for tp in method.type_params if tp not in type_subst]
+                if own_params:
+                    view = dc_replace(method, params=[dc_replace(param, type=param_type)],
+                                      type_params=own_params)
+                    bound = self.type_ops.infer_type_params_for_function(
+                        view, [arg_type],
+                        protocol_checker or self.protocols.type_conforms_to_protocol)
+                    if bound is not None:
+                        return method, {**type_subst, **bound}
+                    continue
                 if (type_matches_strict(arg_type, param_type, protocol_checker)
                         or type_matches_numeric(arg_type, param_type)):
-                    return method
+                    return method, type_subst
         return None
 
     def _make_resolved(
         self, method: FunctionInfo, type_subst: dict[str, TpyType],
         receiver_type: TpyType, loc_node, left_wrapper: str = "{expr}",
         right_wrapper: str = "{expr}", is_reverse: bool = False,
-        promotion: FunctionInfo | None = None,
+        promotion: FunctionInfo | None = None, widens_operand: bool = False,
     ) -> ResolvedBinop:
         """Create ResolvedBinop with type params substituted in method signature."""
         # Bound check before substitution rewrites `method` (bounds are on the
@@ -238,6 +278,7 @@ class OperatorResolver:
             is_reverse=is_reverse,
             receiver_type=receiver_type,
             promotion=promotion,
+            widens_operand=widens_operand,
         )
 
     def resolve_binop(
@@ -257,6 +298,10 @@ class OperatorResolver:
         2. If left has __int__ returning right's type, promote left and use right's __add__
         3. right.__radd__(left) - reverse operator
         4. If right has __int__ returning left's type, promote right and use left's __add__
+        5. Two fixed ints of different types: the operand a slot of the other's
+           type would accept converts, and the wider type's operator applies
+           (arithmetic and bitwise only: shifts' counts do not widen into the
+           left type, and comparisons compare mixed widths already)
         """
         method_name = builtin_modules.BINOP_TO_METHOD.get(op)
         rmethod_name = builtin_modules.BINOP_TO_RMETHOD.get(op)
@@ -267,6 +312,11 @@ class OperatorResolver:
         # PendingListType -> ListType)
         left_effective = self.get_effective_type_for_binop(left_type)
         right_effective = self.get_effective_type_for_binop(right_type)
+        # A literal has no width of its own: beside a fixed int it is that
+        # type, so the fixed side's operator applies whichever side the
+        # literal is on (`1 << k` with `k: int64` shifts an int64).
+        left_effective = _literal_beside(left_type, left_effective, right_type, right_effective)
+        right_effective = _literal_beside(right_type, right_effective, left_type, left_effective)
 
         left_record = self.ctx.registry.get_record_for_type(left_effective)
         right_record = self.ctx.registry.get_record_for_type(right_effective)
@@ -287,8 +337,8 @@ class OperatorResolver:
         # 1. Try direct: left.__add__(right)
         if left_record:
             overloads = left_record.get_method_overloads(method_name)
-            if method := self._find_matching_overload(overloads, right_arg, left_subst, pc):
-                return self._make_resolved(method, left_subst, left_effective, loc_node)
+            if found := self._find_matching_overload(overloads, right_arg, left_subst, pc):
+                return self._make_resolved(*found, left_effective, loc_node)
 
         # 2. Try promoting left to right's type via __int__
         if left_record and right_record:
@@ -299,9 +349,9 @@ class OperatorResolver:
                 # Check if promoted type matches right's type
                 if self.ctx.registry.get_record_for_type(promoted_type) == right_record:
                     right_overloads = right_record.get_method_overloads(method_name)
-                    if method := self._find_matching_overload(right_overloads, right_arg, right_subst, pc):
+                    if found := self._find_matching_overload(right_overloads, right_arg, right_subst, pc):
                         return self._make_resolved(
-                            method, right_subst, right_effective, loc_node,
+                            *found, right_effective, loc_node,
                             left_wrapper=int_method.cpp_template or "{expr}",
                             promotion=int_method,
                         )
@@ -309,9 +359,9 @@ class OperatorResolver:
         # 3. Try reverse: right.__radd__(left)
         if right_record and rmethod_name:
             overloads = right_record.get_method_overloads(rmethod_name)
-            if method := self._find_matching_overload(overloads, left_arg, right_subst, pc):
+            if found := self._find_matching_overload(overloads, left_arg, right_subst, pc):
                 return self._make_resolved(
-                    method, right_subst, right_effective, loc_node, is_reverse=True,
+                    *found, right_effective, loc_node, is_reverse=True,
                 )
 
         # 4. Try promoting right to left's type via __int__, then use left's operator
@@ -323,14 +373,45 @@ class OperatorResolver:
                 # Check if promoted type matches left's type
                 if self.ctx.registry.get_record_for_type(promoted_type) == left_record:
                     left_overloads = left_record.get_method_overloads(method_name)
-                    if method := self._find_matching_overload(left_overloads, promoted_type, left_subst, pc):
+                    if found := self._find_matching_overload(left_overloads, promoted_type, left_subst, pc):
                         return self._make_resolved(
-                            method, left_subst, left_effective, loc_node,
+                            *found, left_effective, loc_node,
                             right_wrapper=int_method.cpp_template or "{expr}",
                             promotion=int_method,
                         )
 
+        # 5. Mixed fixed-width ints: operators use the slot relation, so the
+        # conversion is the coercion row's own render. Comparisons (no
+        # reflected dunder) already compare mixed widths natively.
+        if rmethod_name and op not in ("<<", ">>"):
+            if wrap := self._fixed_int_widening_wrap(right_effective, left_effective):
+                overloads = left_record.get_method_overloads(method_name) if left_record else []
+                if found := self._find_matching_overload(overloads, left_effective, left_subst, pc):
+                    return self._make_resolved(
+                        *found, left_effective, loc_node,
+                        right_wrapper=wrap, widens_operand=True,
+                    )
+            elif wrap := self._fixed_int_widening_wrap(left_effective, right_effective):
+                overloads = right_record.get_method_overloads(method_name) if right_record else []
+                if found := self._find_matching_overload(overloads, right_effective, right_subst, pc):
+                    return self._make_resolved(
+                        *found, right_effective, loc_node,
+                        left_wrapper=wrap, widens_operand=True,
+                    )
+
         return None
+
+    @staticmethod
+    def _fixed_int_widening_wrap(narrow: TpyType, wide: TpyType) -> str | None:
+        """The `{expr}` template converting fixed int `narrow` to fixed int
+        `wide` when a `wide` slot would accept it, else None."""
+        if not (is_fixed_int_type(narrow) and is_fixed_int_type(wide)):
+            return None
+        coercion = resolve_coercion(narrow, wide, None)
+        if coercion is None or not coercion.widening_safe:
+            return None
+        template = context_free_wrap_template(coercion, narrow, wide)
+        return template.replace("{0}", "{expr}") if template else None
 
     def resolve_aug_inplace(
         self, target_type: TpyType, op: str, value_type: TpyType,
@@ -358,13 +439,13 @@ class OperatorResolver:
         overloads = record.get_method_overloads(method_name)
         # Try builtin methods with cpp_template first
         builtin_overloads = [m for m in overloads if m.cpp_template]
-        if method := self._find_matching_overload(builtin_overloads, value_arg, type_subst, pc):
-            return self._make_resolved(method, type_subst, target_effective, loc_node)
+        if found := self._find_matching_overload(builtin_overloads, value_arg, type_subst, pc):
+            return self._make_resolved(*found, target_effective, loc_node)
 
         # Then try user-defined methods (no cpp_template)
         user_overloads = [m for m in overloads if not m.cpp_template]
-        if method := self._find_matching_overload(user_overloads, value_arg, type_subst, pc):
-            return self._make_resolved(method, type_subst, target_effective, loc_node)
+        if found := self._find_matching_overload(user_overloads, value_arg, type_subst, pc):
+            return self._make_resolved(*found, target_effective, loc_node)
 
         return None
 

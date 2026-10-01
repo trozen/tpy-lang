@@ -1,5 +1,5 @@
-# A nested def (or a lambda / generator expression, recorded the same way) reads
-# an inferred local at its type then; a later binding may not widen that type.
+# A nested def (or a lambda / generator expression) reads a literal-seeded
+# local at the type its stores so far give; a later binding may not widen it.
 from tpy import int64
 
 
@@ -7,8 +7,8 @@ def widen(big: int64) -> None:
     x = 3
     def g() -> None:
         print(x + 1)
-    # the wider binding after the capture: annotate `x: int64` before the def
-    x = big  # tpyc: error(/'x' is read by nested function 'g' at line 8 while it has type int32, so this binding cannot make it int64; annotate its first binding before line 8: x: int64/)
+    # the wider binding after the capture: annotate `x: int64` instead
+    x = big  # tpyc: error(/'x' was used as int32 at line 8 \(read by the nested function 'g'\), and this value is int64; annotate its first binding: x: int64 = 3/)
     g()
 
 

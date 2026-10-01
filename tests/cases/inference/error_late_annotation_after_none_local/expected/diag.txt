@@ -1,1 +1,1 @@
-main.py:12: error: Assignment to 'x' is incompatible with later annotation 'Point' at line 13: Type mismatch: expected Point, got None
+main.py:18: error: 'x' is already bound at line 16; an annotation goes on the first binding

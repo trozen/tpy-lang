@@ -5,15 +5,15 @@ namespace tpyapp::containers {
 
 
 ::tpy::BigInt sum_list(const std::vector<::tpy::BigInt>& xs) {
-    int32_t s = 0;
+    ::tpy::BigInt s = ::tpy::BigInt(0);
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const ::tpy::BigInt& x = *__beg_0;
-        s = ::tpy::add_check<int32_t>(s, (x).to_fixed_check<int32_t>());
+        s = (s) + (x);
     }
-    return ::tpy::BigInt(s);
+    return s;
 }
 
 std::vector<::tpy::BigInt> doubled(const std::vector<::tpy::BigInt>& xs) {
@@ -53,15 +53,15 @@ std::vector<std::string> shout(const std::vector<std::string>& words) {
 }
 
 ::tpy::BigInt dict_sum(const ::tpy::ordered_map<std::string, ::tpy::BigInt>& d) {
-    int32_t s = 0;
+    ::tpy::BigInt s = ::tpy::BigInt(0);
     auto __obj_0 = ::tpy::dict_values(d);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const ::tpy::BigInt& v = *__beg_0;
-        s = ::tpy::add_check<int32_t>(s, (v).to_fixed_check<int32_t>());
+        s = (s) + (v);
     }
-    return ::tpy::BigInt(s);
+    return s;
 }
 
 ::tpy::ordered_map<std::string, ::tpy::BigInt> histogram(const std::vector<std::string>& words) {

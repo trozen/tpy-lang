@@ -1,0 +1,1 @@
+main.py:18: error: 'n' was used as int64 at line 14 (read by the nested function 'show'), and this value is int; annotate its first binding: n: int = 0

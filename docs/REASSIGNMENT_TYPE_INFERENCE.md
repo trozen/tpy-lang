@@ -12,7 +12,7 @@ Status: In Progress
 | Chained call anchoring (`x=None; x=get_factory().create()`) | Done |
 | `bool`/`Bool` annotation normalization | Done |
 | Bare `x=None` without anchor emits inference error | Done |
-| Late annotation retro-validation in local scopes | Done |
+| Late annotation in local scopes: refused, an annotation goes on the first binding (`docs/LANGUAGE_FEATURES.md`, "Numeric widening across reassignments") | Done |
 | Late annotation retro-validation for top-level globals | Done |
 | Numeric lattice helper scaffolding for future numeric families | Done |
 | Augmented assignment policy (`x=0; x += int32(5)` does not anchor; emits warning) | Done |
@@ -224,8 +224,10 @@ must live in sema and track types/locations.
 ### 2. Analyze Writes and Resolve Authoritative Type
 
 For each variable history:
-1. If any annotated write exists, pick authoritative type from annotation
-   (latest in source order), and retro-validate earlier writes against it.
+1. In a function, an annotation goes on the first binding and a later one is
+   refused. At module level, if any annotated write exists, pick the
+   authoritative type from the annotation (latest in source order), and
+   retro-validate earlier writes against it.
 2. Otherwise, fold writes with inference merge lattice.
 3. On failure, emit deterministic diagnostic with conflicting types and source
    locations.
@@ -257,7 +259,8 @@ Add snippet tests covering:
 2. literal anchoring to `int32`
 3. int/float rebind refused
 4. bool/numeric mismatch
-5. late-annotation valid and invalid retro-check cases
+5. late annotation: refused in a function; valid and invalid retro-check
+   cases at module level
 6. optional annotation compatibility
 
 No snapshot updates for existing tests should be done without explicit review if

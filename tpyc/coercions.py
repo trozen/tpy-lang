@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Optional
@@ -14,7 +15,7 @@ from .typesys import (
     VIEW_TYPE_FAMILIES,
 )
 from .type_def_registry import (
-    is_array, is_span, is_list, is_dict, is_set, int_traits_of,
+    is_array, is_span, is_list, is_dict, is_set, int_traits_of, float_traits_of,
     is_fixed_int_type, is_big_int_type, is_float64_type, is_float32_type,
     is_float_category, is_bool_type,
     is_char_type, is_str_type, is_string_type, is_str_view_type,
@@ -57,7 +58,7 @@ def _int_type_param_match(actual: TpyType, expected: TpyType) -> bool:
     return isinstance(actual, TypeParamRef) and actual.kind == TypeParamKind.INT
 
 
-def _int_literal_fits_fixed_int(lit: TpyType, target: TpyType) -> bool:
+def int_literal_fits_fixed_int(lit: TpyType, target: TpyType) -> bool:
     """check_range for int_literal_to_fixed_int: literal value (if known) must
     fit in the target fixed-int's range."""
     if not isinstance(lit, IntLiteralType):
@@ -66,6 +67,37 @@ def _int_literal_fits_fixed_int(lit: TpyType, target: TpyType) -> bool:
     if tr is None:
         return False
     return lit.value is None or (tr.min_value <= lit.value <= tr.max_value)
+
+
+def float_literal_fits_float(lit: TpyType, target: TpyType) -> bool:
+    """check_range for float_literal_to_float32: a known finite literal
+    value must round to a finite value of the target float type; an
+    infinite or NaN one stays what it is."""
+    if not isinstance(lit, FloatLiteralType):
+        return False
+    tr = float_traits_of(target)
+    if tr is None:
+        return False
+    v = lit.value
+    if v is None or math.isinf(v) or math.isnan(v):
+        return True
+    return not math.isinf(tr.rounded(v))
+
+
+def literal_range_error(lit: TpyType, target: TpyType) -> str:
+    """The refusal of a literal a range-checked row does not fit (its
+    `check_range`): the literal as written, sign included, and the target's
+    range, from its traits."""
+    if isinstance(lit, FloatLiteralType):
+        ftr = float_traits_of(target)
+        assert ftr is not None and lit.value is not None
+        hi = ftr.spell(ftr.max_finite)
+        return (f"Float literal {lit.value!r} is outside {target} range "
+                f"[-{hi}, {hi}]")
+    itr = int_traits_of(target)
+    assert itr is not None and isinstance(lit, IntLiteralType)
+    return (f"Integer literal {lit.value} is outside {target} range "
+            f"[{itr.min_value}, {itr.max_value}]")
 
 
 def _is_safe_widening(actual: TpyType, expected: TpyType) -> bool:
@@ -218,7 +250,7 @@ COERCIONS: list[Coercion] = [
         name="int_literal_to_fixed_int",
         from_type=_is(IntLiteralType),
         to_type=is_fixed_int_type,
-        check_range=_int_literal_fits_fixed_int,
+        check_range=int_literal_fits_fixed_int,
     ),
 
     # Integer literal to BigInt (always valid)
@@ -294,6 +326,7 @@ COERCIONS: list[Coercion] = [
         name="float_literal_to_float32",
         from_type=_is(FloatLiteralType),
         to_type=is_float32_type,
+        check_range=float_literal_fits_float,
         codegen=lambda e, _a, _b, _c: e,  # identity: gen_expr provides 'f' suffix
     ),
 

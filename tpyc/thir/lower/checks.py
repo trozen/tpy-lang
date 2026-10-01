@@ -338,7 +338,6 @@ from .predicates import (
     _range_counter_type,
     _runtime_bigint,
     _narrow_key_type,
-    _NARROW_UNMIRRORED,
     _scalar_pass_through_slot,
     _range_object_value,
     _slice_object_type,
@@ -3286,8 +3285,7 @@ def _user_record_setitem_ok(
     # can observe the two parting, since a divergence here emits byte-identical
     # C++, so the gate itself is the pin. Like the read
     # side, it runs UNCONDITIONALLY: the disposition keys the BigInt half on
-    # the DECLARED type, so a per-occurrence pre-test would short-circuit past
-    # it for a composite over a retro-widened local.
+    # the DECLARED type, which a per-occurrence pre-test would not read.
     idx_ok = ((_resolved_scalar(idx_type, analyzer)
                and _bigint_index_disposition(
                        sub.index, analyzer.get_expr_type(sub.obj),
@@ -12077,9 +12075,12 @@ def _pre_generic_slot_family(req: _ArgReq) -> 'bool | None':
             if isinstance(lit, (TpyIntLiteral, TpyFloatLiteral,
                                 TpyBoolLiteral)):
                 return _rvalue_ok()
-            if isinstance(a, TpyName):
-                return ((a.name != "self" and a.name in locals_
-                         and _resolved_scalar(locals_.get(a.name), analyzer))
+            # A scalar NAME, bare or converted into a wider joined slot
+            # (`pick(a64, b32)` -> `static_cast<int64_t>(b32)`): either way a
+            # value into the by-value slot.
+            if isinstance(lit, TpyName):
+                return ((lit.name != "self" and lit.name in locals_
+                         and _resolved_scalar(locals_.get(lit.name), analyzer))
                         or note_detail("call.generic_arg_shape"))
             # A scalar-typed call rvalue (`pair(float64(2.5), x)`) renders
             # inline at a value-typed slot; the scalar-ctor arm folds it.
@@ -15592,8 +15593,6 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
         if t is None:
             return _FSTRING_INELIGIBLE
         bigint_key = _narrow_key_type(a, declared, analyzer)
-        if bigint_key is _NARROW_UNMIRRORED:
-            return _FSTRING_INELIGIBLE
         ctmpl = container_to_str_template(t)
         if ctmpl is not None:
             # Containers (tuple/list/span/dict/set) render via the runtime
@@ -15625,9 +15624,7 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
                 row = "::tpy::float_to_str({0})"
         elif _runtime_bigint(bigint_key, analyzer) and not has_spec:
             # A runtime BigInt formats via `.to_string()`, keyed on the
-            # DECLARED type (`is_runtime_bigint`) -- a
-            # retro-widened literal-seeded local takes this row even though
-            # sema types the occurrence int32. Placed ahead of the
+            # DECLARED type (`is_runtime_bigint`). Placed ahead of the
             # 8-bit-int and enum casts.
             _witness("narrow.fstring_arg")
             row = "({0}).to_string()"

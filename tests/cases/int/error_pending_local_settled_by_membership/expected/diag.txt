@@ -1,0 +1,1 @@
+main.py:12: error: 'p' was used as int32 at line 10 (an operand of 'in'), and this value is int; annotate its first binding: p: int = 0

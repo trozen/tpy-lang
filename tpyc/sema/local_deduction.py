@@ -10,8 +10,8 @@ from __future__ import annotations
 from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING, Callable
 
-from ..coercions import CoercionContext, resolve_coercion
-from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction, TpyListRepeat
+from ..coercions import CoercionContext
+from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction, TpyListRepeat, TpyAugAssign
 from ..parse.nodes import (TpyStrLiteral, TpyBytesLiteral, TpySubscript, TpyFieldAccess,
                            TpyBinOp, TpyIfExpr, TpyNamedExpr, TpyArrayLiteral,
                            TpyVarDecl, TpyNoneLiteral, TpyTupleLiteral)
@@ -22,6 +22,7 @@ from ..typesys import (
     DictLiteralInfo,
     make_dict,
     FloatLiteralType,
+    is_float_type,
     IntLiteralType,
     ListLiteralInfo,
     make_list,
@@ -33,6 +34,7 @@ from ..typesys import (
     OptionalType,
     OwnType,
     PendingDictType,
+    PendingNumType,
     PendingListType,
     PendingSetType,
     PendingStrType,
@@ -66,23 +68,23 @@ from ..diagnostics import SemanticError
 from .type_join import (InferredJoin, JoinOutcome, descend,
                         find_int_float_mix, flipped, join_inferred_value_types,
                         numeric_kind, peel_value,
-                        python_type_name, rebind_mix_message,
-                        usage_mix_message)
-from .numeric_lattice import (
-    fixed_int_range_contains, merge_literal_seed_target,
-    numeric_info, widen_numeric_types,
-)
+                        annotate_first_binding, operand_spelling,
+                        python_type_name, rebind_mix_message, usage_mix_message,
+                        wider_store_message)
+from .numeric_lattice import narrows_into, numeric_info, widen_numeric_types
+from .pending_num import contains_pending_num
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_list, is_fixed_int_type, is_big_int_type,
     is_str_type, is_str_view_type, is_bytes_type, is_bytes_view_type,
     is_enum_type,
     is_borrowing_view_type,
+    int_traits_of,
 )
 
 if TYPE_CHECKING:
     from .compatibility import TypeCompatibility
     from .context import SemanticContext
-    from ..parse.nodes import SourceLocation
+    from .pending_num import PendingNums
 
 
 def is_enum_name_read(expr: 'TpyExpr', ctx: 'SemanticContext') -> bool:
@@ -273,6 +275,8 @@ class LocalTypeDeduction:
     def __init__(self, ctx: SemanticContext, compat: TypeCompatibility):
         self.ctx = ctx
         self.compat = compat
+        # Set after construction (it is built from compat)
+        self.pend: 'PendingNums'
 
     # ------------------------------------------------------------------
     # Reassignment inference (moved from ReassignmentInference)
@@ -288,11 +292,6 @@ class LocalTypeDeduction:
     def record_write(self, name: str, rhs_expr: TpyExpr, rhs_type: TpyType) -> None:
         """Record assignment history for potential later retro-validation."""
         self.ctx.func.write_history.setdefault(name, []).append((rhs_type, rhs_expr))
-        if isinstance(rhs_type, IntLiteralType) and rhs_type.value is not None:
-            self.ctx.func.literal_values.setdefault(name, []).append(rhs_type.value)
-        elif name in self.ctx.func.literal_values:
-            # Non-literal write ends literal-only tracking for narrowing decisions.
-            self.ctx.func.literal_values.pop(name, None)
 
     def retro_validate_against_annotation(
         self,
@@ -347,43 +346,7 @@ class LocalTypeDeduction:
         """
         resolved = self._resolve_reassignment_target_type_raw(
             name, existing_type, init_type, init_expr, aug_op, site)
-        self.refuse_captured_retype(name, existing_type, resolved,
-                                    init_expr, site)
         return collapse_tuple_own_elements(resolved)
-
-    def refuse_captured_retype(self, name: str, existing_type: TpyType,
-                               resolved: TpyType, init_expr: TpyExpr | None,
-                               site: TpyStmt | None) -> None:
-        """Refuse a binding that changes the type of a local some nested
-        def, lambda or generator expression already reads, or of the
-        enclosing local a `nonlocal` binding writes. That body was analyzed
-        and emitted at the old type, so it would compute in the narrower
-        type over the wider value. A None-typed local becoming Optional is
-        exempt: a body can only have used it as None, which the Optional
-        still answers."""
-        func = self.ctx.func
-        site_info = func.capture_sites.get(name)
-        through_nonlocal = name in func.current_nonlocal_names
-        if site_info is None and not through_nonlocal:
-            return
-        before = unwrap_readonly(existing_type)
-        after = unwrap_readonly(resolved)
-        if before == after or isinstance(
-                before, (NoneType, IntLiteralType, FloatLiteralType)):
-            return
-        was, now = python_type_name(before), python_type_name(after)
-        if through_nonlocal:
-            msg = (f"'{name}' has type {was} in the enclosing function, and "
-                   f"this 'nonlocal' binding would make it {now}; annotate "
-                   f"its first binding there: {name}: {now}")
-        else:
-            line, reader = site_info
-            at = f" at line {line}" if line is not None else ""
-            before_line = f" before line {line}" if line is not None else ""
-            msg = (f"'{name}' is read by {reader}{at} while it has type "
-                   f"{was}, so this binding cannot make it {now}; annotate "
-                   f"its first binding{before_line}: {name}: {now}")
-        raise self.ctx.error(msg, init_expr if init_expr is not None else site)
 
     def _resolve_reassignment_target_type_raw(
         self,
@@ -397,10 +360,15 @@ class LocalTypeDeduction:
         """Resolve target type for an unannotated reassignment write."""
         declared = self.declared_slot_type(name, existing_type)
         if declared is not None:
+            if self.is_annotated_slot(name):
+                self.refuse_wider_rebind(name, declared, init_type,
+                                         init_expr, aug_op, site)
             return declared
 
-        # Resolve float literals to float64 before any widening logic
-        if isinstance(init_type, FloatLiteralType):
+        # A float literal converts into a float local as an int literal
+        # converts into an int one; anywhere else it is a `float`.
+        if (isinstance(init_type, FloatLiteralType)
+                and not is_float_type(existing_type)):
             init_type = FLOAT
 
         self.refuse_int_float_rebind(name, existing_type, init_type,
@@ -420,35 +388,109 @@ class LocalTypeDeduction:
         if isinstance(existing_type, OptionalType):
             return existing_type
 
-        # Literal-seeded default (ctx.default_int_type) may be refined by
-        # explicit later writes (e.g., BigInt/int64 anchors).
-        if name in self.ctx.func.literal_default_vars:
-            merged = merge_literal_seed_target(existing_type, init_type, self.ctx.func.literal_values.get(name, []))
-            if merged is not None:
-                if (
-                    is_fixed_int_type(existing_type)
-                    and isinstance(init_type, IntLiteralType)
-                    and is_big_int_type(merged)
-                    and init_expr is not None
-                    and init_type.value is not None
-                ):
-                    self.ctx.warning(
-                        f"Integer literal {init_type.value} is outside default {existing_type} range; "
-                        "promoting variable to int (BigInt).",
-                        init_expr,
-                    )
-                if not isinstance(init_type, IntLiteralType):
-                    self.ctx.func.literal_default_vars.discard(name)
-                return merged
-            self.ctx.func.literal_default_vars.discard(name)
-            return existing_type
-
-        # Numeric widening: different numeric types widen to the wider type.
+        # One type per local: a function local keeps the type of its first
+        # binding and a narrower value converts into it. (A local whose
+        # first binding is a bare literal is a pending local and never gets
+        # here.)
+        # Module-level variables still join their bindings.
+        module_level = (self.ctx.func.current_function is None
+                        or self.ctx.is_top_level)
+        if module_level and self._literal_outgrows(existing_type, init_type):
+            return self.ctx.default_int_for_literal(
+                init_type, warn_node=init_expr, rebinding=True)
         widened = widen_numeric_types(existing_type, init_type)
-        if widened is not None:
-            return widened
+        if widened is not None and widened != existing_type:
+            if module_level:
+                return widened
+            self.refuse_wider_rebind(name, existing_type, init_type,
+                                     init_expr, aug_op, site)
 
         return existing_type
+
+    def _literal_outgrows(self, existing_type: TpyType,
+                          init_type: TpyType) -> bool:
+        """An int literal the default-int variable it is bound to cannot
+        hold."""
+        if (not isinstance(init_type, IntLiteralType) or init_type.value is None
+                or existing_type != self.ctx.default_int_type):
+            return False
+        tr = int_traits_of(existing_type)
+        return tr is not None and not tr.min_value <= init_type.value <= tr.max_value
+
+    def refuse_wider_rebind(
+        self, name: str, existing_type: TpyType, value_type: TpyType,
+        value_expr: TpyExpr | None, aug_op: str | None,
+        site: TpyStmt | TpyExpr | None,
+    ) -> None:
+        """Refuse a binding whose value is wider than the numeric type the
+        local took from its first binding; a narrower or equal one passes.
+        Widening the local would retype every read already analyzed."""
+        widened = widen_numeric_types(existing_type, value_type)
+        if widened is None or widened == existing_type:
+            return
+        func = self.ctx.func
+        if aug_op is not None and value_expr is None and isinstance(site, TpyAugAssign):
+            value_expr = site.value
+        if self.is_annotated_slot(name):
+            # A declared slot takes what converts into it without narrowing
+            # (an `int` by a checked conversion), as an annotated one does.
+            narrows = narrows_into(existing_type, value_type)
+            if not narrows and self.compat.is_type_compatible(
+                    value_type, existing_type):
+                return
+            line = self.annotation_line(name)
+            at = f" (line {line})" if line is not None else ""
+            wide = python_type_name(widened)
+            declare = f"annotate it {wide} there: {name}: {wide} = ..."
+            spelled = (operand_spelling(value_expr)
+                       if value_expr is not None and aug_op is None
+                       and narrows else None)
+            fix = (f"write {python_type_name(existing_type)}({spelled}) to "
+                   f"narrow it, or {declare}" if spelled is not None
+                   else declare)
+            raise self.ctx.error(
+                wider_store_message(name, existing_type, widened, fix, at=at,
+                                    declared=True, aug_op=aug_op,
+                                    aug_value=value_expr),
+                site if site is not None else value_expr)
+        decl = func.var_decl_by_name.get(name)
+        line = getattr(getattr(decl, "loc", None), "line", None)
+        at = f" (line {line})" if line is not None else ""
+        there = ""
+        if name in func.current_nonlocal_names:
+            at, there = " in the enclosing function", " there"
+        if name in func.loop_vars:
+            what = "result" if aug_op is not None else "value"
+            fix = f"bind the {python_type_name(widened)} {what} to a new name"
+        else:
+            fix = annotate_first_binding(name, widened, there=there)
+        raise self.ctx.error(
+            wider_store_message(name, existing_type, widened, fix, at=at,
+                                aug_op=aug_op, aug_value=value_expr),
+            site if site is not None else value_expr)
+
+    def is_annotated_slot(self, name: str) -> bool:
+        """Whether an annotation declares the slot a store into `name`
+        reaches -- this function's, or the enclosing function's or the
+        module's through `nonlocal` / `global` -- rather than a parameter
+        or the slot's bindings."""
+        func = self.ctx.func
+        if name in func.authoritative_types:
+            return True
+        if name in func.current_nonlocal_names:
+            return name in func.enclosing_annotation_lines
+        if name in func.global_declarations:
+            return name in self.ctx.preregistered_globals
+        return False
+
+    def annotation_line(self, name: str) -> int | None:
+        """The line of the annotation `is_annotated_slot` found."""
+        func = self.ctx.func
+        if name in func.authoritative_types:
+            return func.authoritative_type_lines.get(name)
+        if name in func.current_nonlocal_names:
+            return func.enclosing_annotation_lines.get(name)
+        return self.ctx.top_level_decls.get(name)
 
     def declared_slot_type(self, name: str,
                            existing_type: TpyType) -> TpyType | None:
@@ -525,76 +567,6 @@ class LocalTypeDeduction:
                     else None)
         return None
 
-    def literal_retro_candidate(
-        self, name: str, actual: TpyType, expected: TpyType,
-    ) -> tuple[TpyType, list[int]] | None:
-        """Probe whether `name` is a literal-seeded local that could in
-        principle retro-widen to `expected`. Returns (unwrapped target,
-        recorded literal values) when the gate passes; None otherwise.
-        Callers decide what to do based on whether the recorded values
-        fit the target -- promote (try_retro_widen_literal_arg) or raise
-        a range error (TypeCompatibility._maybe_raise_literal_local_range).
-
-        Standard fixed-int widening (int32->int64 etc.) already has a
-        Coercion entry, so we only step in when the directional COERCIONS
-        table has nothing for actual->target. widen_numeric_types is a
-        symmetric common-merge predicate (int32+uint8 -> int32 either
-        order) and would mis-gate this.
-        """
-        if name not in self.ctx.func.literal_default_vars:
-            return None
-        target = unwrap_qualifiers(expected)
-        if not is_fixed_int_type(actual) or not is_fixed_int_type(target):
-            return None
-        if actual == target:
-            return None
-        if resolve_coercion(actual, target, CoercionContext.ARG) is not None:
-            return None
-        return target, self.ctx.func.literal_values.get(name, [])
-
-    def try_retro_widen_literal_arg(
-        self,
-        name: str,
-        actual: TpyType,
-        expected: TpyType,
-        call_loc: 'SourceLocation | None',
-    ) -> TpyType | None:
-        """Retro-widen a literal-seeded local to a fixed-int target slot.
-
-        Fires when every recorded literal value fits `target`. Mutates the
-        var's declared type in place across var_types, declared_var_types,
-        scope, and namespace -- subsequent expression analysis in the same
-        function sees the new type, and codegen reads it through
-        var_types[decl]. Returns the new (unwrapped) target on
-        success; None when the gate fails or some recorded value is out
-        of range.
-        """
-        cand = self.literal_retro_candidate(name, actual, expected)
-        if cand is None:
-            return None
-        target, values = cand
-        if not values:
-            return None
-        if not all(fixed_int_range_contains(target, v) for v in values):
-            return None
-        var_decl = self.ctx.func.var_decl_by_name.get(name)
-        if var_decl is None:
-            return None
-        self.ctx.var_types[var_decl] = target
-        for key in list(self.ctx.declared_var_types):
-            if key[1] == name:
-                self.ctx.declared_var_types[key] = target
-        if self.ctx.func.current_scope is not None:
-            self.ctx.func.current_scope.set_existing(name, target)
-        if self.ctx.func.current_ns is not None:
-            self.ctx.func.current_ns.update_variable_type_recursive(name, target)
-        self.ctx.func.literal_default_vars.discard(name)
-        # Always record the promotion even when no loc is available (synthetic
-        # nodes from macros etc.), so the staleness-refresh in _analyze_assign
-        # has a consistent signal; the hint formatter guards against None.
-        self.ctx.func.retro_widened_locs[name] = call_loc
-        return target
-
     def check_conflicting_annotation(
         self,
         name: str,
@@ -635,7 +607,6 @@ class LocalTypeDeduction:
         if line is not None:
             self.ctx.func.authoritative_type_lines[name] = line
         self.ctx.func.unresolved_none_vars.discard(name)
-        self.ctx.func.literal_default_vars.discard(name)
 
     # ------------------------------------------------------------------
     # List literal deduction (moved from ListLiteralTracker)
@@ -2016,6 +1987,8 @@ class LocalTypeDeduction:
         4. Resolve pending str types (StrView vs str)
         5. Check unresolved pending generic instances (error if any)
         """
+        func = self.ctx.func.current_function
+        self.pend.settle_all(getattr(func, "body", None))
         self._check_unresolved_none_inference()
         self._resolve_pending_list_types()
         self._resolve_pending_dict_and_set_types()
@@ -2025,6 +1998,8 @@ class LocalTypeDeduction:
         self._finalize_pending_in_bindings()
         self._finalize_arm_decl_types()
         self._check_unresolved_pending_generics()
+        self.pend.assert_settled(getattr(func, "body", None))
+        self.pend.drop_cells()
 
     def _finalize_arm_decl_types(self) -> None:
         """Give the binding that declares a name in each arm of a
@@ -2094,6 +2069,13 @@ class LocalTypeDeduction:
             for binding in ns.all_bindings().values():
                 if binding.kind is BindingKind.VARIABLE and binding.type is not None:
                     binding.type = self._deep_resolve_pending(binding.type)
+        # A pending number is bound in the function's own scope too (its
+        # parents are the enclosing function's, settled on their own).
+        scope = self.ctx.func.current_scope
+        if scope is not None and scope is not self.ctx.global_scope:
+            for name, typ in scope.bindings.items():
+                if isinstance(typ, TpyType) and contains_pending_num(typ):
+                    scope.bindings[name] = self.pend.finalize(typ)
 
         if self.ctx.is_top_level:
             # An inferred top-level binding is recorded in `global_scope`
@@ -2145,6 +2127,8 @@ class LocalTypeDeduction:
         `settle_views` also resolves a PendingViewType leaf, to its family's
         owned type when unresolved -- for callers running after view
         resolution."""
+        if isinstance(typ, PendingNumType):
+            return self.pend.concrete(typ)
         if settle_views and isinstance(typ, PendingViewType):
             info = self.ctx.view_vars(typ.family).get(typ.var_id)
             return (info.resolved_type if info is not None and info.resolved_type

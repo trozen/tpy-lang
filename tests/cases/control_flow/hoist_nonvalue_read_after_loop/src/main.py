@@ -663,10 +663,11 @@ def two_loop_int_widths(n: int32) -> None:
     print("two_loop_int_widths", x)
 
 
-# ... the same over two spelled widths.
+# ... the same over a literal and a spelled width: the literal-seeded local
+# is the type its stores give.
 def two_loop_int_widen(n: int32) -> None:
     for i in range(2):
-        x = int32(1)  # tpyc: ok
+        x = 1  # tpyc: type(int64)
     for j in range(n):
         x = int64(1099511627776)
     print("two_loop_int_widen", x)

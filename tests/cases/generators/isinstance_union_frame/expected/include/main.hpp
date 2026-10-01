@@ -62,7 +62,7 @@ struct __gen_run : public ::tpy::next_iter_mixin<__gen_run, ::tpy::BigInt> {
     ::tpy::frame_slot<std::vector<::tpy::Union<Emit, Push>>> work;
     ::tpy::BigInt n;
     ::tpy::frame_slot<::tpy::Union<Emit, Push>> t;
-    int32_t total;
+    ::tpy::BigInt total;
 
     enum : int32_t {
         S_INITIAL = 0,

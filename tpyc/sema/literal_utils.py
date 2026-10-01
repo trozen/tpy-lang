@@ -10,6 +10,7 @@ from ..parse import (
     TpyUnaryOp, TpyCoerce,
 )
 from ..type_def_registry import is_char_type
+from ..prescan import literal_constant
 from ..typesys import (
     ALL_FIXED_INTS, BOOL, BYTES, FloatLiteralType, IntLiteralType, LiteralValue,
     LiteralTag, NONE, STR, TpyType, is_any_str_type,
@@ -56,10 +57,12 @@ def const_expr_type(expr: TpyExpr) -> 'TpyType | None':
         return STR
     if isinstance(expr, TpyBytesLiteral):
         return BYTES
+    # An integer constant over literals folds as analyze_expr folds it.
+    const = literal_constant(expr)
+    if const is not None and not const.is_float and const.value is not None:
+        return IntLiteralType(const.value)
     if isinstance(expr, TpyUnaryOp) and expr.op == "-":
         inner = const_expr_type(expr.operand)
-        if isinstance(inner, IntLiteralType) and inner.value is not None:
-            return IntLiteralType(-inner.value)
         if isinstance(inner, FloatLiteralType) and inner.value is not None:
             return FloatLiteralType(-inner.value)
         return None

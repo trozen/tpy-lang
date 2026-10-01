@@ -11,7 +11,7 @@ from typing import Callable, Iterable, Literal, Sequence, TYPE_CHECKING
 
 from ..typesys import peel_value_readonly
 from ..typesys import (
-    TpyType, IntLiteralType, FloatLiteralType, RecordInfo, disambiguated_pair,
+    TpyType, IntLiteralType, FloatLiteralType, PendingNumType, RecordInfo, disambiguated_pair,
     NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_const, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType, unify_literal_types,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, AnyType, OptionalType, UnionType, VoidType,
     ReadonlyType, unwrap_readonly, unwrap_qualifiers, is_any_str_type, PendingStrType, PendingViewType,
@@ -61,7 +61,8 @@ from ..namespace import BindingKind, NameBinding
 from .frame_traits import build_closure_frame
 from ..coercions import CoercionContext, resolve_coercion
 from ..prescan import (
-    _expr_to_narrowing_key, bound_names_of, storage_spelling, walrus_names_of)
+    _expr_to_narrowing_key, bound_names_of, fold_int_constant,
+    int_constant_too_wide, storage_spelling, walrus_names_of)
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
 from .context import PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
@@ -71,7 +72,9 @@ from ..value_category import (is_rvalue_source, async_result_aliases,
 from .alias_rebind import bind_kind_of
 from .compatibility import TupleSink
 from .narrowing import NarrowingTracker, deref_view_narrowed, truthy_operands
-from .numeric_lattice import widen_numeric_types
+from .numeric_lattice import widen_numeric_types, join_numeric, smallest_common_int
+from .pending_num import (PendingNums, is_numeric_slot, is_pending_num,
+                          pending_join, strip_int, value_family)
 from .type_join import (InferredJoin, JoinOutcome, declared_float_slot,
                         peel_value,
                         find_int_float_mix, flipped,
@@ -188,15 +191,17 @@ def _rebound_in(stmts: list[TpyStmt]) -> set[str]:
     return names
 
 
-def _nested_def_free_names(func: TpyFunction) -> set[str]:
-    """Names a nested def's body reads from the scope the `def` is written in.
+def _nested_def_free_names(func: TpyFunction,
+                           into_lambdas: bool = False) -> set[str]:
+    """Names a nested def's body reads from the scope the `def` is written in
+    (`into_lambdas`: its lambdas' bodies too).
 
     A binding of its own -- a parameter, an assignment, a loop variable --
     shadows the enclosing name and is not such a read. A `nonlocal` target is
     not counted here either: the caller has the authoritative set and adds it
     back, because it is a write THROUGH to the enclosing binding.
     """
-    return (_collect_body_name_refs(func.body)
+    return (_collect_body_name_refs(func.body, into_lambdas=into_lambdas)
             - {p for p, _ in func.params}
             - _collect_body_local_defs(func.body))
 
@@ -301,6 +306,51 @@ class _LambdaResultMismatch(SemanticError):
         self.body_type = body_type
 
 
+_COMPARE_OPS = ("==", "!=", "<", ">", "<=", ">=")
+# The binary operators whose operand a pending number may be: typed per
+# `_pending_binop_result` and resolved at the settle.
+_PENDING_NUM_BINOPS = frozenset((*_COMPARE_OPS, "+", "-", "*", "//", "%", "&",
+                                 "|", "^", "**", "<<", ">>", "div"))
+
+
+def _use_as_part_of(parent: TpyExpr, child: TpyExpr) -> str:
+    """How `parent` uses its operand `child`, for a diagnostic."""
+    if isinstance(parent, TpyMethodCall):
+        return (f"the receiver of '.{parent.method}()'" if parent.obj is child
+                else f"an argument to '.{parent.method}()'")
+    if isinstance(parent, TpyCall):
+        name = parent.maybe_func_name
+        return f"an argument to '{name}()'" if name else "a call argument"
+    if isinstance(parent, TpyArrayLiteral):
+        return "a list element"
+    if isinstance(parent, TpyListRepeat):
+        return ("a list repetition count" if parent.count is child
+                else "a list element")
+    if isinstance(parent, TpySetLiteral):
+        return "a set element"
+    if isinstance(parent, TpyTupleLiteral):
+        return "a tuple element"
+    if isinstance(parent, TpyDictLiteral):
+        return ("a dict key" if any(k is child for k in parent.keys)
+                else "a dict value")
+    if isinstance(parent, TpyIfExpr):
+        return ("a conditional expression's test" if parent.condition is child
+                else "a conditional expression arm")
+    if isinstance(parent, TpyNamedExpr):
+        return "the value of ':='"
+    if isinstance(parent, (TpyListComprehension, TpySetComprehension,
+                           TpyDictComprehension, TpyGeneratorExpression)):
+        return "a comprehension"
+    if isinstance(parent, TpySubscript):
+        return ("a subscript key" if parent.index is child
+                else "a subscripted value")
+    if isinstance(parent, TpyBinOp):
+        return f"an operand of '{op_spelling(parent.op)}'"
+    if isinstance(parent, TpyUnaryOp):
+        return f"an operand of '{op_spelling(parent.op)}'"
+    return "this use"
+
+
 class ExpressionAnalyzer:
     """Core expression analysis."""
 
@@ -324,6 +374,12 @@ class ExpressionAnalyzer:
         self.calls = calls
         self.methods = methods
         self.scopes: ScopeTracker | None = None
+        # Set after construction, as the statement analyzer is.
+        self.pend: PendingNums
+        # The expressions whose analysis is open, innermost last: what a
+        # forced pending read is part of (`describe_pending_use`).
+        self._expr_stack: list[TpyExpr] = []
+        self.describe_statement_use: Callable[[], str] = lambda: "this use"
 
     def set_scopes(self, scopes: ScopeTracker) -> None:
         """Set scope tracker (available once StatementAnalyzer is created)."""
@@ -368,6 +424,18 @@ class ExpressionAnalyzer:
         """
         if isinstance(arg, TpyStarUnpack):
             return self._unpack_star_element_type(arg, SlotHint.of(hint))
+        return self.analyze_expr_with_hint(arg, hint)
+
+    def analyze_arg_at_param(self, arg: TpyExpr, hint: TpyType,
+                             declared: TpyType) -> TpyType:
+        """`analyze_expr_with_hint` for an argument to one resolved callee.
+        `declared` is the parameter's type as the callee spells it: at a
+        numeric one that names no type parameter, a pending number passes
+        and converts there once its function settles."""
+        if (is_numeric_slot(declared)
+                and not contains_type_param(declared)):
+            with self.pend.sink(arg):
+                return self.analyze_expr_with_hint(arg, hint)
         return self.analyze_expr_with_hint(arg, hint)
 
     def _unpack_star_element_type(
@@ -481,7 +549,43 @@ class ExpressionAnalyzer:
                 call)
 
     def analyze_expr(self, expr: TpyExpr) -> TpyType:
-        """Analyze an expression and return its type."""
+        """Analyze an expression and return its type.
+
+        A pending numeric type (`tpyc/sema/pending_num.py`) reaches only
+        the consumer that asked for one, by naming the node it analyzes
+        (`PendingNums.sink`); any other gets the local settled first."""
+        self._expr_stack.append(expr)
+        try:
+            typ = self._analyze_expr_raw(expr)
+        finally:
+            self._expr_stack.pop()
+        return self._pending_gate(expr, typ)
+
+    def _pending_gate(self, expr: TpyExpr, typ: TpyType) -> TpyType:
+        """The forcing chokepoint of both expression entry points. The pass
+        is keyed on node identity: a consumer that re-analyzes a copy or a
+        rewrite of the node it named loses the pass and settles the local."""
+        if not is_pending_num(typ):
+            return typ
+        current = self.pend.current(typ)
+        if current is not typ:
+            self.ctx.set_expr_type(expr, current)
+            return current
+        if self.ctx.pending_ok_node is expr:
+            return typ
+        return self.pend.force(expr, typ)
+
+    def describe_pending_use(self, expr: TpyExpr) -> str:
+        """What the consumer of `expr` uses it as, for the diagnostic of a
+        later store the use keeps from widening the local: the innermost
+        expression under analysis that holds `expr`, else the statement."""
+        for parent in reversed(self._expr_stack):
+            if parent is expr:
+                continue
+            return _use_as_part_of(parent, expr)
+        return self.describe_statement_use()
+
+    def _analyze_expr_raw(self, expr: TpyExpr) -> TpyType:
         own = self.ctx.slot_hint_at(expr)
         if own is not None and own.is_fill and self._fill_types(expr):
             # What the literal or empty constructor leaves open -- its
@@ -726,6 +830,15 @@ class ExpressionAnalyzer:
 
     def _analyze_expr_under_hint(self, expr: TpyExpr,
                                  slot: SlotHint) -> TpyType:
+        self._expr_stack.append(expr)
+        try:
+            typ = self._analyze_expr_under_hint_raw(expr, slot)
+        finally:
+            self._expr_stack.pop()
+        return self._pending_gate(expr, typ)
+
+    def _analyze_expr_under_hint_raw(self, expr: TpyExpr,
+                                     slot: SlotHint) -> TpyType:
         slot = slot.map(unwrap_ref_type)
         type_hint = slot.type
 
@@ -1477,6 +1590,9 @@ class ExpressionAnalyzer:
             if expr.op in ("&&", "||"):
                 with self._forward_fill(expr, e):
                     return self.analyze_expr(e)
+            if expr.op in _PENDING_NUM_BINOPS:
+                with self.pend.sink(e):
+                    return self.analyze_expr(e)
             return self.analyze_expr(e)
         left_type = operand(expr.left)
         if expr.op in ("&&", "||"):
@@ -1500,11 +1616,20 @@ class ExpressionAnalyzer:
         elif expr.cond_right:
             self.ctx.cond_operand_depth += 1
             try:
-                right_type = self.analyze_expr(expr.right)
+                right_type = operand(expr.right)
             finally:
                 self.ctx.cond_operand_depth -= 1
         else:
-            right_type = self.analyze_expr(expr.right)
+            right_type = operand(expr.right)
+        if expr.op in _PENDING_NUM_BINOPS and (
+                is_pending_num(left_type) or is_pending_num(right_type)):
+            deferred = self._pending_binop(expr, left_type, right_type)
+            if isinstance(deferred, tuple):
+                left_type, right_type = deferred
+            elif deferred is not None:
+                return deferred
+            left_type = self.pend.current(left_type)
+            right_type = self.pend.current(right_type)
 
         # Preserve declared Optional/Union type for identity checks when flow
         # narrowing resolved an expression to its inner type.
@@ -1741,33 +1866,11 @@ class ExpressionAnalyzer:
             # unsigned), but the result rarely matches user intent on negative
             # values. Codegen routes these through std::cmp_* so the answer is
             # mathematically correct; warn here so the user can choose to
-            # cast explicitly if they care about readability. Skipped when
-            # either side is still literal-seeded -- retro-widening may yet
-            # resolve the operand to a compatible type.
-            if (not self._is_literal_seed_operand(expr.left)
-                    and not self._is_literal_seed_operand(expr.right)
-                    and is_fixed_int_type(left_effective)
-                    and is_fixed_int_type(right_effective)):
-                lt = int_traits_of(left_effective)
-                rt = int_traits_of(right_effective)
-                if lt is not None and rt is not None and lt.signed != rt.signed:
-                    self.ctx.warning(
-                        f"comparison between signed and unsigned integer types "
-                        f"('{left_effective}' and '{right_effective}'); "
-                        f"cast one operand to make the type intent explicit",
-                        expr,
-                    )
+            # cast explicitly if they care about readability.
+            self._warn_mixed_sign_compare(expr, left_effective, right_effective)
             # Validate that user record types support the comparison
             self._validate_comparison(expr, left_effective, right_effective)
-            # Resolve comparison method (__eq__, __lt__, etc.) for codegen.
-            if result := self.operators.resolve_binop(left_effective, expr.op, right_effective, loc_node=expr):
-                expr.resolved_binop = result
-            elif expr.op == "!=":
-                # No __ne__: fall back to negated __eq__ when the method
-                # can't use raw C++ != (e.g. native freestanding function).
-                if result := self.operators.resolve_binop(left_effective, "==", right_effective, loc_node=expr):
-                    if result.method.native_function:
-                        expr.resolved_binop = result
+            self._resolve_comparison(expr, left_effective, right_effective)
             return BOOL
 
         # Membership operators (in, not in) return Bool
@@ -1957,7 +2060,13 @@ class ExpressionAnalyzer:
                     expr.resolved_binop = result
                     return result.method.return_type
                 return FLOAT
-            literal_result = self._try_eval_int_literal_binop(expr.op, left_effective.value, right_effective.value)
+            literal_result = fold_int_constant(expr.op, left_effective.value, right_effective.value)
+            if literal_result is None and int_constant_too_wide(
+                    expr.op, left_effective.value, right_effective.value):
+                # Too wide to fold here: an `int`, computed at run time.
+                if result := self.operators.resolve_binop(BIGINT, expr.op, BIGINT, loc_node=expr):
+                    expr.resolved_binop = result
+                return BIGINT
             resolved_int = (
                 self.ctx.default_int_for_literal(IntLiteralType(literal_result))
                 if literal_result is not None
@@ -2048,6 +2157,141 @@ class ExpressionAnalyzer:
             expr.loc,
         )
 
+    def _warn_mixed_sign_compare(self, expr: TpyBinOp, left: TpyType,
+                                 right: TpyType) -> None:
+        if not (is_fixed_int_type(left) and is_fixed_int_type(right)):
+            return
+        lt = int_traits_of(left)
+        rt = int_traits_of(right)
+        if lt is not None and rt is not None and lt.signed != rt.signed:
+            self.ctx.warning(
+                f"comparison between signed and unsigned integer types "
+                f"('{left}' and '{right}'); "
+                f"cast one operand to make the type intent explicit",
+                expr,
+            )
+
+    def _resolve_comparison(self, expr: TpyBinOp, left: TpyType,
+                            right: TpyType) -> None:
+        """The comparison method (__eq__, __lt__, etc.) codegen renders."""
+        if result := self.operators.resolve_binop(left, expr.op, right, loc_node=expr):
+            expr.resolved_binop = result
+        elif expr.op == "!=":
+            # No __ne__: fall back to negated __eq__ when the method
+            # can't use raw C++ != (e.g. native freestanding function).
+            if result := self.operators.resolve_binop(left, "==", right, loc_node=expr):
+                if result.method.native_function:
+                    expr.resolved_binop = result
+
+    def _pending_binop(self, expr: TpyBinOp, left_type: TpyType,
+                       right_type: TpyType,
+                       ) -> TpyType | tuple[TpyType, TpyType] | None:
+        """Type a binary operation over a pending numeric operand and defer
+        choosing its operator to the settle. Against a record's one operator
+        method, the operand is an argument to its parameter: the operand
+        pair to analyze the ordinary way comes back, the conversion into the
+        parameter deferred. None when the pair has neither typing, after
+        settling the pending operands so the ordinary analysis goes on over
+        concrete types."""
+        # The late resolution reads the operands exactly as the typing does.
+        lt, rt = (self.pend.literal_operand(strip_int(t))
+                  for t in (left_type, right_type))
+        result = self.pending_binop_result(expr.op, lt, rt, expr)
+        if result is None:
+            as_arg = self._pending_dunder_operand(expr, lt, rt)
+            if as_arg is not None:
+                return as_arg
+            what = f"an operand of '{op_spelling(expr.op)}'"
+            for e, t in ((expr.left, lt), (expr.right, rt)):
+                if isinstance(t, PendingNumType):
+                    self.pend.force(e, t, what)
+            return None
+        if expr.op in ("//", "%"):
+            # A range fact reads the flow state of this point, not the settle's.
+            self._check_divisor_non_zero(expr)
+        self.pend.defer(expr, (lt, rt),
+                        lambda ts: self._resolve_binop_late(expr, *ts, result))
+        return result
+
+    def _pending_dunder_operand(self, expr: TpyBinOp, lt: TpyType,
+                                rt: TpyType) -> tuple[TpyType, TpyType] | None:
+        """(left, right) with the pending side replaced by the numeric
+        parameter of the other side's operator method, as the ordinary
+        resolution picks it at the type the pending side has so far; its
+        conversion into that parameter is deferred as an argument's is. None
+        when that resolution finds no such method."""
+        pending_left = isinstance(lt, PendingNumType)
+        record_side = unwrap_readonly(rt if pending_left else lt)
+        if not (isinstance(record_side, NominalType)
+                and record_side.is_user_record):
+            return None
+        pending, operand = ((lt, expr.left) if pending_left
+                            else (rt, expr.right))
+        known = self.pend.known_type(pending)
+        resolved = (self.operators.resolve_binop(known, expr.op, record_side,
+                                                 loc_node=expr)
+                    if pending_left else
+                    self.operators.resolve_binop(record_side, expr.op, known,
+                                                 loc_node=expr))
+        if resolved is None or len(resolved.method.params) != 1:
+            return None
+        param = resolved.method.params[0].type
+        if not is_numeric_slot(param) or contains_type_param(param):
+            return None
+        self.pend.check(pending, param, f"operand of '{op_spelling(expr.op)}'",
+                        CoercionContext.ARG, operand)
+        return (param, rt) if pending_left else (lt, param)
+
+    def pending_binop_result(self, op: str, lt: TpyType, rt: TpyType,
+                             loc_node: TpyExpr | TpyStmt) -> TpyType | None:
+        """The type of `lt op rt` with one side pending, None when the pair
+        is not two numbers. A comparison is a bool as ever; any other
+        operation is typed by its operator, resolved the ordinary way at the
+        types the operands have so far -- and a result in the family of a
+        pending operand stays pending, the wider of the operands, so it
+        follows them as they settle."""
+        other = rt if isinstance(lt, PendingNumType) else lt
+        if value_family(other) is None:
+            return None
+        if op in _COMPARE_OPS:
+            return BOOL
+        lt, rt = self.pend.literal_operand(lt), self.pend.literal_operand(rt)
+        resolved = self.operators.resolve_binop(
+            self.pend.known_type(lt), op, self.pend.known_type(rt),
+            loc_node=loc_node)
+        if resolved is None:
+            return None
+        result = strip_int(resolved.method.return_type)
+        pending_families = {t.is_float for t in (lt, rt)
+                            if isinstance(t, PendingNumType)}
+        if value_family(result) not in pending_families:
+            return result
+        if resolved.result_ignores_operand:
+            receiver, operand = (rt, lt) if resolved.is_reverse else (lt, rt)
+            # A literal receiver took the operand's type, which it follows.
+            return operand if isinstance(receiver, IntLiteralType) else receiver
+        return pending_join(lt, rt)
+
+    def _resolve_binop_late(self, expr: TpyBinOp, left: TpyType,
+                            right: TpyType, typed: TpyType) -> None:
+        """The operator of a binary operation whose pending operands have
+        settled, chosen as the ordinary analysis would have. Its result has
+        to be the type the operation was typed with, which its consumers
+        already took."""
+        if expr.op in _COMPARE_OPS:
+            self._warn_mixed_sign_compare(expr, left, right)
+            self._resolve_comparison(expr, left, right)
+            return
+        result = self.operators.resolve_binop(left, expr.op, right, loc_node=expr)
+        if result is None:
+            raise self.ctx.error(
+                f"Invalid operand types for '{op_spelling(expr.op)}': "
+                f"{left} and {right}", expr)
+        self.pend.check_late_result(expr, f"'{op_spelling(expr.op)}'",
+                                    result.method.return_type, typed)
+        expr.resolved_binop = result
+        self.ctx.expr_types[expr] = result.method.return_type
+
     def _check_subscript_bounds_safe(self, expr: TpySubscript) -> None:
         """Set bounds_safe when the index is provably in [0, len(obj))."""
         index = expr.index
@@ -2086,47 +2330,6 @@ class ExpressionAnalyzer:
         for sub_expr, sub_type in ((expr.left, left_type), (expr.right, right_type)):
             mark_pending_list_mutated(self.ctx, sub_expr, sub_type)
 
-    def _try_eval_int_literal_binop(self, op: str, left: int | None, right: int | None) -> int | None:
-        """Best-effort constant evaluation for int literal binops."""
-        if left is None or right is None:
-            return None
-        try:
-            if op == "+":
-                return left + right
-            if op == "-":
-                return left - right
-            if op == "*":
-                return left * right
-            if op == "//":
-                if right == 0:
-                    return None
-                return left // right
-            if op == "%":
-                if right == 0:
-                    return None
-                return left % right
-            if op == "**":
-                if right < 0 or right > 10000:
-                    return None
-                return left ** right
-            if op == "<<":
-                if right < 0 or right > 10000:
-                    return None
-                return left << right
-            if op == ">>":
-                if right < 0:
-                    return None
-                return left >> right
-            if op == "&":
-                return left & right
-            if op == "|":
-                return left | right
-            if op == "^":
-                return left ^ right
-        except (OverflowError, ValueError):
-            return None
-        return None
-
     def _analyze_chained_compare(self, expr: TpyChainedCompare) -> TpyType:
         """Analyze a chained comparison (a < b < c, etc.)."""
         pairs: list[TpyBinOp] = []
@@ -2143,8 +2346,29 @@ class ExpressionAnalyzer:
 
     def _analyze_unaryop(self, expr: TpyUnaryOp) -> TpyType:
         """Analyze a unary operation."""
-        operand_type = (self.analyze_condition(expr.operand) if expr.op == "!"
-                        else self.analyze_expr(expr.operand))
+        if expr.op == "!":
+            operand_type = self.analyze_condition(expr.operand)
+        else:
+            with self.pend.sink(expr.operand):
+                operand_type = self.analyze_expr(expr.operand)
+            if is_pending_num(operand_type):
+                pending = strip_int(operand_type)
+                # Typed by its operator at the type the operand has so far;
+                # a result of the operand's family stays pending with it.
+                resolved = self.operators.resolve_unaryop(
+                    self.pend.known_type(pending), expr.op, loc_node=expr)
+                if resolved is None:
+                    operand_type = self.pend.force(
+                        expr.operand, pending,
+                        f"an operand of '{op_spelling(expr.op)}'")
+                else:
+                    result = strip_int(resolved.method.return_type)
+                    typed = (pending if value_family(result) == pending.is_float
+                             else result)
+                    self.pend.defer(
+                        expr, (pending,),
+                        lambda ts: self._resolve_unaryop_late(expr, ts[0], typed))
+                    return typed
         effective_type = unwrap_ref_type(operand_type)
         if isinstance(effective_type, OwnType):
             effective_type = effective_type.wrapped
@@ -2180,6 +2404,11 @@ class ExpressionAnalyzer:
             if expr.op in ("-", "+"):
                 if result := self.operators.resolve_unaryop(effective_type, expr.op, loc_node=expr):
                     expr.resolved_unaryop = result
+                # A negated literal is the negative literal, so a range check
+                # judges and names the value as written.
+                if (expr.op == "-" and isinstance(effective_type, FloatLiteralType)
+                        and effective_type.value is not None):
+                    return FloatLiteralType(-effective_type.value)
                 return effective_type
 
         # IntEnum: unary negation returns the underlying integer type
@@ -2199,11 +2428,11 @@ class ExpressionAnalyzer:
                     expr.resolved_unaryop = result
                 return effective_type
             if expr.op == "~":
-                # Bitwise not on literal - treat as int32
-                # Still resolve for codegen
+                # Still resolve for codegen (needs cpp template)
                 if result := self.operators.resolve_unaryop(effective_type, expr.op, loc_node=expr):
                     expr.resolved_unaryop = result
-                return INT32
+                inv = ~effective_type.value if effective_type.value is not None else None
+                return IntLiteralType(inv)
 
         # Use registry for unary operators
         if result := self.operators.resolve_unaryop(effective_type, expr.op, loc_node=expr):
@@ -2212,23 +2441,21 @@ class ExpressionAnalyzer:
 
         raise self.ctx.error(f"Invalid operand type for unary '{op_spelling(expr.op)}': {operand_type}", expr)
 
+    def _resolve_unaryop_late(self, expr: TpyUnaryOp, operand: TpyType,
+                              typed: TpyType) -> None:
+        result = self.operators.resolve_unaryop(operand, expr.op, loc_node=expr)
+        if result is None:
+            raise self.ctx.error(
+                f"Invalid operand type for unary '{op_spelling(expr.op)}': "
+                f"{operand}", expr)
+        self.pend.check_late_result(expr, f"unary '{op_spelling(expr.op)}'",
+                                    result.method.return_type, typed)
+        expr.resolved_unaryop = result
+        self.ctx.expr_types[expr] = result.method.return_type
+
     def _is_user_record_type(self, typ: TpyType) -> bool:
         """Check if a type is a user-defined record (not a builtin container)."""
         return isinstance(typ, NominalType) and typ.is_record and typ.is_user_record
-
-    def _is_literal_seed_operand(self, operand: TpyExpr) -> bool:
-        """True when ``operand`` is still pending literal-driven type resolution.
-
-        Two cases: an analyzer-level ``IntLiteralType`` (the operand is itself a
-        literal), or a ``TpyName`` whose local is in ``literal_default_vars``
-        (literal-seeded local awaiting retro-widen). Used to suppress the
-        mixed-sign-comparison warning before sema has finalised the type --
-        the operand may yet resolve to a same-sign type.
-        """
-        if isinstance(self.ctx.get_expr_type(operand), IntLiteralType):
-            return True
-        return (isinstance(operand, TpyName)
-                and operand.name in self.ctx.func.literal_default_vars)
 
     def _validate_comparison(self, expr: TpyBinOp, left_type: TpyType, right_type: TpyType) -> None:
         """Error when comparing user record types that lack the relevant dunder."""
@@ -2828,6 +3055,37 @@ class ExpressionAnalyzer:
             CoercionContext.INIT,
             target_is_storage_form=target_is_storage_form)
 
+    def _join_fixed_int_peers(
+        self, nodes: list[TpyExpr], types: list[TpyType],
+        expected: TpyType | None, ctx_label: str,
+    ) -> TpyType | None:
+        """The join of a container literal's scalar fixed-int peers of
+        different widths, each narrower peer converted into it at the literal
+        (as an annotated wider element type converts it); None, touching
+        nothing, unless every peer is a fixed int or an int literal and two
+        widths differ. A tuple peer keeps its per-element types."""
+        fixed = [t for t in types if is_fixed_int_type(t)]
+        if len(set(fixed)) < 2 or not all(
+                is_fixed_int_type(t) or isinstance(t, IntLiteralType)
+                for t in types):
+            return None
+        if expected is not None and is_fixed_int_type(expected):
+            fixed.append(expected)
+        # Over the whole set, not folded pairwise into the per-element
+        # unify: `(int8, uint8, int16)` joins although its first pair has no
+        # common type.
+        join = join_numeric(fixed)
+        if join is None:
+            return None
+        self._materialize_fresh_value_elements(nodes, types, join, ctx_label)
+        # A widening C++ applies implicitly leaves the node as it is, and the
+        # helper retypes only a node it wrapped; every fixed peer widens into
+        # the join, so each is of the join's type from here.
+        for i, t in enumerate(types):
+            if is_fixed_int_type(t):
+                types[i] = join
+        return join
+
     def _materialize_fresh_value_elements(
         self, nodes: list[TpyExpr], types: list[TpyType],
         expected: TpyType | None, ctx_label: str,
@@ -2997,6 +3255,10 @@ class ExpressionAnalyzer:
             # Inferred mode: check all elements against first element's type
             first_type = elem_types[0]
             # Keep IntLiteralType so array can coerce to either int32 or BigInt based on context
+            int_join = self._join_fixed_int_peers(
+                expr.elements, elem_types, None, "array literal element")
+            if int_join is not None:
+                first_type = int_join
 
             for i, elem_type in enumerate(elem_types[1:], 2):
                 # Literal-aware unification (int/float literals, tuples, nested
@@ -3026,10 +3288,15 @@ class ExpressionAnalyzer:
                 if elem_type != first_type:
                     ft = self._user_type_name(first_type)
                     et = self._user_type_name(elem_type)
+                    common = smallest_common_int(first_type, elem_type)
+                    advice = (f"; convert to one type, e.g. "
+                              f"{python_type_name(common)}(...) "
+                              f"on each element" if common is not None
+                              else f". Use a type annotation like "
+                                   f"list[{ft} | {et}]")
                     raise self.ctx.error(
                         f"List literal has mixed types: element {i} is {et}, "
-                        f"but earlier elements are {ft}. "
-                        f"Use a type annotation like list[{ft} | {et}]", expr
+                        f"but earlier elements are {ft}{advice}", expr
                     )
 
         # Only user-written literals warn: a macro/compiler-synthesized literal
@@ -3803,7 +4070,10 @@ class ExpressionAnalyzer:
                         f"Dict literal key {i} has type {act_s}, "
                         f"incompatible with annotated key type {exp_s}", expr)
         else:
-            key_type = key_types[0]
+            key_type = self._join_fixed_int_peers(
+                expr.keys, key_types, expected_key, "dict literal key")
+            if key_type is None:
+                key_type = key_types[0]
             for i, kt in enumerate(key_types[1:], 2):
                 verdict = join_inferred_value_types(
                     key_type, kt, self._unify_literal_types)
@@ -3849,7 +4119,11 @@ class ExpressionAnalyzer:
                         f"Dict literal value {i} has type {act_s}, "
                         f"incompatible with annotated value type {exp_s}", expr)
         else:
-            value_type = value_types[0]
+            value_type = self._join_fixed_int_peers(
+                expr.values, value_types, expected_value,
+                "dict literal value")
+            if value_type is None:
+                value_type = value_types[0]
             for i, vt in enumerate(value_types[1:], 2):
                 # Literal-aware unification; the demotion hook converges jagged
                 # pending-list values -- bare or wrapped in a tuple/dict -- to one
@@ -3947,7 +4221,11 @@ class ExpressionAnalyzer:
                         f"incompatible with annotated element type {exp_s}", expr,
                     )
         else:
-            elem_type = elem_types[0]
+            elem_type = self._join_fixed_int_peers(
+                expr.elements, elem_types, expected_elem,
+                "set literal element")
+            if elem_type is None:
+                elem_type = elem_types[0]
             for i, et in enumerate(elem_types[1:], 2):
                 verdict = join_inferred_value_types(
                     elem_type, et, self._unify_literal_types)
@@ -4091,6 +4369,12 @@ class ExpressionAnalyzer:
         body_names = collect_name_refs(expr.element_expr)
         for cond in gen.conditions:
             body_names |= collect_name_refs(cond)
+        # Its body is analyzed under a function state of its own; its loop
+        # variables only shadow an enclosing name.
+        self.pend.settle_names(
+            body_names - {n for n in (gen.unpack_vars or [gen.var])
+                          if n is not None},
+            expr, "read by a generator expression")
         body_names |= {n for n in (gen.unpack_vars or [gen.var]) if n is not None}
 
         def fresh(base: str) -> str:
@@ -4223,9 +4507,6 @@ class ExpressionAnalyzer:
                 self.ctx.set_expr_type(read, captured)
             func.params.append((read.name, captured))
         func.capture_params = tuple(captures)
-        for name in captures:
-            self.ctx.func.capture_sites.setdefault(
-                name, (loc.line if loc else None, "a generator expression"))
         # The frame iterates the source through its own param while the body
         # may name the same container itself -- a capture, or a module global
         # it reads directly; the loop's loan on the param alone would not see
@@ -4778,7 +5059,16 @@ class ExpressionAnalyzer:
                 raise self.ctx.error(
                     f"TypedDict '{actual_obj.name}' has no key '{key}'", expr.index)
 
-        index_type = self.analyze_expr(expr.index)
+        # An index into a builtin sequence converts to its index type,
+        # whatever its width; a key or a user `__getitem__` argument needs
+        # its type now.
+        builtin_sequence = (
+            not isinstance(actual_obj, (PendingDictType, NominalType))
+            or (isinstance(actual_obj, NominalType) and not actual_obj.is_user_record
+                and not is_dict(actual_obj)
+                and actual_obj.get_element_type() is not None))
+        with self.pend.sink(expr.index if builtin_sequence else None):
+            index_type = self.analyze_expr(expr.index)
 
         # Dict subscript: d[key] -> V (key can be non-integer). The key is only
         # looked up, so a readonly key (e.g. one bound from iterating a readonly
@@ -5037,7 +5327,9 @@ class ExpressionAnalyzer:
         stepped = sl.step is not None
         for bound, label in ((sl.lower, "start"), (sl.upper, "stop"), (sl.step, "step")):
             if bound is not None:
-                bound_type = self.analyze_expr(bound)
+                # A bound is converted into the slice, whatever its width.
+                with self.pend.sink(bound):
+                    bound_type = self.analyze_expr(bound)
                 if not is_any_int_type(bound_type):
                     raise self.ctx.error(
                         f"Slice {label} must be an integer type, got {bound_type}", bound
@@ -5165,8 +5457,12 @@ class ExpressionAnalyzer:
         """
         for part in expr.parts:
             if isinstance(part, TpyFStringValue):
-                part_type = self.analyze_expr(part.expr)
-                if for_fstr:
+                # Any int renders; a format spec, or a macro formatting the
+                # value per type, needs the width now.
+                with self.pend.sink(part.expr if part.format_spec is None
+                                    and not for_fstr else None):
+                    part_type = self.analyze_expr(part.expr)
+                if for_fstr or is_pending_num(part_type):
                     continue
                 resolved = unwrap_readonly(part_type)
                 if isinstance(resolved, OwnType):
@@ -5246,6 +5542,11 @@ class ExpressionAnalyzer:
             )
 
         expr.inferred_param_types = list(fn_type.param_types)
+        # A lambda's reads of the enclosing locals are captures, typed where
+        # the lambda is written.
+        self.pend.settle_names(
+            collect_name_refs(expr.body, into_lambdas=True)
+            - set(expr.param_names), expr, "captured by a lambda")
 
         # Save outer scope locals for capture filtering
         outer_locals = set(self.ctx.func.definitely_assigned)
@@ -5274,9 +5575,6 @@ class ExpressionAnalyzer:
         free_names = collect_name_refs(expr.body)
         captured = sorted((free_names - param_set) & outer_locals)
         expr.captured_names = captured
-        for name in captured:
-            self.ctx.func.capture_sites.setdefault(
-                name, (expr.loc.line if expr.loc else None, "a lambda"))
         # Callable context: captures must be by value (std::function can escape).
         # Fn (template) stays inline; captures by reference are safe.
         if isinstance(fn_type, CallableType) and not fn_type.is_template:

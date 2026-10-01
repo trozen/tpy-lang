@@ -85,14 +85,14 @@ def abs(x: float) -> float: ...
 @dispatch
 @pure
 @readonly
-@native("std::min")
-def min(a: int32, b: int32) -> int32: ...
+@cpp_template("::std::min<{T}>({0}, {1})")
+def min[T: AnyFixedInt](a: T, b: T) -> T: ...
 
 @dispatch
 @pure
 @readonly
-@native("tpy::min3")
-def min(a: int32, b: int32, c: int32) -> int32: ...
+@cpp_template("::tpy::min3<{T}>({0}, {1}, {2})")
+def min[T: AnyFixedInt](a: T, b: T, c: T) -> T: ...
 
 @dispatch
 @pure
@@ -134,14 +134,14 @@ def min[T, K: Comparable](a: T, b: T, c: T, key: Fn[[T], K]) -> T: ...
 @dispatch
 @pure
 @readonly
-@native("std::max")
-def max(a: int32, b: int32) -> int32: ...
+@cpp_template("::std::max<{T}>({0}, {1})")
+def max[T: AnyFixedInt](a: T, b: T) -> T: ...
 
 @dispatch
 @pure
 @readonly
-@native("tpy::max3")
-def max(a: int32, b: int32, c: int32) -> int32: ...
+@cpp_template("::tpy::max3<{T}>({0}, {1}, {2})")
+def max[T: AnyFixedInt](a: T, b: T, c: T) -> T: ...
 
 @dispatch
 @pure

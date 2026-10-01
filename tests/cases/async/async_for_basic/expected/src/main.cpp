@@ -50,13 +50,13 @@ namespace tpyapp::main {
         }
     }
     case S_JOIN_1: {
-        s = ::tpy::add_check<int32_t>(s, (x).to_fixed_check<int32_t>());
+        s = (s) + (x);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_2: {
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(s);
+        ::tpy::BigInt __tpy_async_ret = std::move(s);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

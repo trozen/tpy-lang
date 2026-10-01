@@ -4,6 +4,6 @@ from tpy import int32
 
 def test() -> None:
     y: int32 = 10
-    y *= 1.5  # tpyc: error(/Type mismatch.*expected int32/)
+    y *= 1.5  # tpyc: error(/'y' is declared int32 \(line 6\) and 'y \*= 1\.5' produces float/)
 
 test()

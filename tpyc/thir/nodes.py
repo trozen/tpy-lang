@@ -494,8 +494,10 @@ class THIRBinOp(THIRExpr):
         operation over leaves (`typesys.certified_primitive_op`). A
         promotion counts as a certified conversion of one operand
         (`promoted_operand`) feeding the operator; any other conversion
-        around the operator refuses it: an uncertified promotion, an operand
-        cast, or a template that replaces the resolved one."""
+        around the operator refuses it: the widening cast of a narrower
+        fixed-int operand (`ResolvedBinop.widens_operand`), an uncertified
+        promotion, an operand cast, or a template that replaces the
+        resolved one."""
         if (self.left_cast is not None or self.right_cast is not None
                 or self.template_override is not None):
             return False
@@ -504,6 +506,8 @@ class THIRBinOp(THIRExpr):
             return (self.op in COMPARISON_OPS
                     and certified_primitive_comparison(self.left.result_type, self.right.result_type)
                     and is_inert_leaf(self.result_type))
+        if rb.widens_operand:
+            return False
         operands = [self.left.result_type, self.right.result_type]
         if rb.promotion is not None:
             side = self.promoted_operand

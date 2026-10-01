@@ -1,1 +1,1 @@
-main.py:6: error: Operator '+=' is not supported between int16 and int64
+main.py:7: error: 'i' is declared int16 and keeps its declared type, but this '+=' produces int64; convert explicitly: i = int16(i + ...)

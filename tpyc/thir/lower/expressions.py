@@ -420,7 +420,6 @@ from .predicates import (
     _select_node,
     _declared_type,
     _narrow_key_type,
-    _NARROW_UNMIRRORED,
     _peel_coerce,
     _type_family_tag,
     _plain_member_call_markers_ok,
@@ -2331,16 +2330,11 @@ def _lower_slice_bound(b: 'TpyExpr | None', lc: '_LowerCtx',
     `std::optional<int>` members either way, so a runtime-BigInt bound
     appends the `.to_fixed_check<int32_t>()` narrow (non-literal only -- the
     gate rejects literal BigInt bounds, whose render is ill-formed). The
-    BigInt test keys on the DECLARED type, like `is_runtime_bigint`.
-    A composite over a retro-widened local has no mirrored render, so it
-    rejects; the enclosing statement composes the tag."""
+    BigInt test keys on the DECLARED type, like `is_runtime_bigint`."""
     if b is None:
         return None
     analyzer = lc.analyzer
     key = _narrow_key_type(b, declared, analyzer)
-    if key is _NARROW_UNMIRRORED:
-        note_detail("slice.bound_widened_local")
-        raise ThirUnsupported("expr.subscript", detail=True)
     lowered = _lower_expr(b, lc, declared)
     if not _runtime_bigint(key, analyzer):
         return lowered
@@ -4359,8 +4353,6 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # (an int literal stays bare -- the literal exemption).
             pt = unwrap_readonly(e.resolved_contains.params[0].type)
             needle_key = _narrow_key_type(e.left, declared, analyzer)
-            if needle_key is _NARROW_UNMIRRORED:
-                reject()
             if (is_fixed_int_type(pt)
                     and not isinstance(e.left, TpyIntLiteral)
                     and _runtime_bigint(needle_key, analyzer)):
@@ -4769,15 +4761,12 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # `_convert_to_fixed_int_arg` at the resolved binop's PARAM slot:
             # a BigInt operand against a declared fixed-int param takes the
             # checked narrow (an int literal stays bare). The BigInt test keys
-            # on the DECLARED type, so a retro-widened literal-seeded local
-            # narrows here too.
+            # on the DECLARED type.
             _pside = e.left if e.resolved_binop.is_reverse else e.right
             _pslot = lslot if e.resolved_binop.is_reverse else rslot
             _pt = unwrap_readonly(_pslot) if _pslot is not None else None
             if is_fixed_int_type(_pt) and not isinstance(_pside, TpyIntLiteral):
                 _pkey = _narrow_key_type(_pside, declared, analyzer)
-                if _pkey is _NARROW_UNMIRRORED:
-                    reject()
                 if is_big_int_type(_pkey):
                     _narrowed = THIRCoerce(
                         result_type=_pt,
@@ -8374,11 +8363,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 note_detail("call.enum_from_value.shape")
                 raise ThirUnsupported(call_reject_reason("expr.call"))
             enum_arg_type = analyzer.get_expr_type(e.args[0])
-            # The narrow keys on the DECLARED type (`is_runtime_bigint`), so a
-            # retro-widened literal-seeded local narrows here too.
             enum_narrow_key = _narrow_key_type(e.args[0], declared, analyzer)
             if (not _resolved_scalar(enum_arg_type, analyzer)
-                    or enum_narrow_key is _NARROW_UNMIRRORED
                     or (_runtime_bigint(enum_narrow_key, analyzer)
                         and _const_index(
                             _unwrap_lit_coerce(e.args[0])) is not None)):

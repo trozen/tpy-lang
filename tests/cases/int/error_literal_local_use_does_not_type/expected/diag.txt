@@ -1,0 +1,1 @@
+main.py:14: error: Type mismatch in argument 'x': expected uint64, got int32; 'a' takes its type from the values stored in it, not from its uses: annotate its first binding: a: uint64 = 0

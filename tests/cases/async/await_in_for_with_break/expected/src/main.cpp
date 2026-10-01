@@ -52,7 +52,7 @@ __coro_value value(::tpy::BigInt n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        total = ((::tpy::BigInt(total)) + (__await_lift_0));
+        total = ((total) + (__await_lift_0));
         __state = S_JOIN_0;
         continue;
     }

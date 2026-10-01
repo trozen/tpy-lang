@@ -758,7 +758,8 @@ Top-level analyzers (one module each):
 `init_tracker`, `scope_tracker`, `iter_loans`, `flow_facts`, `value_range`,
 `numeric_lattice`, `mutation_propagation`, `method_expansion`,
 `macros`, `builder_trace`, `function_macros`, `reach_analysis`,
-`frame_traits`, `frame_close`, `loop_frames`, `own_copy`, `slot_hint`, `context`.
+`frame_traits`, `frame_close`, `loop_frames`, `own_copy`, `slot_hint`,
+`pending_num`, `context`.
 Error classes live in `tpyc/diagnostics.py` (see "Compilation pipeline").
 
 `frame_close` decides, per generator or coroutine function, whether closing
@@ -824,6 +825,51 @@ field/method chain (and not via a direct import), the chain of
 native-module headers it depends on is emitted into the consumer
 header. Native-to-native chains are followed explicitly in codegen
 since natives have no `.hpp` to chain through.
+
+`pending_num` owns the type of a literal-seeded function local (integer or
+float), the one numeric fact sema decides after the fact rather than in
+source order. The prescan decides it by each local's FIRST BINDING
+(`scan_first_bindings`): one statement, or the sibling arms of one
+`if` / `match` / `try` that each bind the name the statement did not see
+bound. It records those first-binding groups once, per function
+(`ScanResult.first_bindings`, kept as
+`FunctionTrackingState.first_bindings`), and the pending locals
+(`scan_pending_num_locals`) are those whose first binding stores a bare
+literal and that no excluded form also binds (a loop target, a tuple
+unpack, a walrus, `with` / `except` / `match` bindings, a nested `def`,
+`nonlocal` / `global`, an annotation); a local first bound to a value has that value's type, a numeric
+type constructor call included, so there is no declaration resolver. The
+same table refuses an annotation that stands past a local's first binding
+(`StatementAnalyzer._refuse_later_annotation`). Each pending one gets
+a cell on the context (not on the function state, so a settle inside a
+rolled-back overload trial stays made) that collects the types stored in it,
+and its reads are typed `PendingNumType`. A group of sibling arms shares one
+cell, typed arms included (a derived cell whose evidence is the arms'
+values; a later store must fit it), so the arm read first does not fix the
+type; `PendingNums.check_arm_group` is the group's verdict -- the typed arms
+join, and a bare-literal arm beside them is refused unless the family default
+widens into their join -- run when the cell settles and again at
+`settle_all`, where every arm has been seen. The type reaches only a consumer
+that asked for it by naming the node it analyzes (`PendingNums.sink`,
+checked at both expression entry points in `expressions`); every other
+consumer settles the local on the spot. Operators and conversions over a
+pending value are recorded as `DeferredIntOp`s and resolved through the
+ordinary `OperatorResolver` / `check_type_compatible` once their operands
+settle; `LocalTypeDeduction.resolve_all` settles the rest and rewrites every
+recorded type, so nothing after sema sees a pending one.
+
+Who owns what: the prescan decides which locals are pending, before the
+body is analyzed. The `SemanticContext` holds the cells
+(`pending_num_cells`), so a settle made inside an overload trial outlives
+its rollback, as the scope it publishes to does. The per-function state
+(`FunctionTrackingState`) holds the deferred operations
+(`pending_num_deferred`) and the conversion placeholders that settled to no
+conversion (`pending_num_splices`); a trial snapshots and restores them with
+the rest of that state, so they resolve only outside a trial
+(`SemanticContext.trial_depth`) -- a resolution inside one would be rolled
+back and replayed. At the end, `settle_all` splices the empty placeholders
+out of the body, checking that each was found, and `assert_settled` refuses a
+body that still holds an unfilled one.
 
 `slot_hint` holds the type-hint value. A `SlotHint` has one of two kinds:
 DECLARED (the source states the slot's type; it converts an int into a float)

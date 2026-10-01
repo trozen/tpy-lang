@@ -45,27 +45,19 @@ bool same_sign_unsigned(uint32_t a, uint32_t b) {
     return (a < b);
 }
 
-// # Negative case: literal-seeded local that retro-widens to match the
-// # unsigned target must NOT warn at the comparison site. The arg slot
-// # `take_u64(offset)` locks the seed to uint64 so by the end of body
-// # analysis offset is uint64 and `offset < limit` is same-sign.
-// def take_u64(x: uint64) -> uint64:
-//     return x
-uint64_t take_u64(uint64_t x) {
-    return x;
-}
-
-// def literal_seed(limit: uint64) -> uint64:
-//     offset = 0
-//     while offset < limit:  # tpyc: ok
-//         offset = take_u64(offset) + 1
-//     return offset
-uint64_t literal_seed(uint64_t limit) {
-    uint64_t offset = 0;
-    while ((offset < limit)) {
-        offset = (::tpy::add_check<uint64_t>(::tpyapp::main::take_u64(offset), 1));
+// # A literal-seeded local compares at the type its stores give, decided after
+// # the comparison is read: `k` is int64, so the comparison with a uint32 warns.
+// def literal_seed(limit: uint32) -> int64:
+//     k = 0
+//     while k < limit:  # tpyc: warning(/comparison between signed and unsigned.*int64.*uint32.*cast one operand/)
+//         k = k + int64(1)
+//     return k
+int64_t literal_seed(uint32_t limit) {
+    int64_t k = 0;
+    while (::std::cmp_less(k, limit)) {
+        k = (::tpy::add_check<int64_t>(k, 1));
     }
-    return offset;
+    return k;
 }
 
 // def main() -> None:
@@ -75,7 +67,7 @@ uint64_t literal_seed(uint64_t limit) {
 //     print(equality_too(int32(0), uint32(0)))
 //     print(same_sign_signed(1, 2))
 //     print(same_sign_unsigned(uint32(1), uint32(2)))
-//     print(literal_seed(uint64(3)))
+//     print(literal_seed(3))
 void main() {
     std::cout << ::tpy::print_bool(::tpyapp::main::same_rank(-1, 1)) << "\n";
     std::cout << ::tpy::print_bool(::tpyapp::main::diff_rank_signed_smaller(0, 1)) << "\n";

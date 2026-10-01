@@ -1,44 +1,45 @@
-# Numeric widening across reassignments: integers widen to the wider integer and
-# floats to the wider float; an int and a float never join (a local has one numeric
-# type -- inference/error_rebind_int_float), except through a declared float slot.
+# Numeric widening across reassignments: a local whose first binding is a
+# bare integer literal is widened by the typed values stored in it; a local
+# first bound to a typed value keeps that type and converts a narrower value
+# (int/error_typed_local_rebind_wider refuses a wider one). An int and a float
+# never join (a local has one numeric type -- inference/error_rebind_int_float),
+# except through a declared float slot. The typed values come from parameters.
 from typing import Callable
 from tpy import int32, int64, uint8, uint32, float32, Own
 
-def test_int_widen() -> None:
-    a = int32(1)  # tpyc: type(int64)
-    a = int64(2)  # tpyc: type(int64)
+def test_int_widen(a64: int64) -> None:
+    a = 1  # tpyc: type(int64)
+    a = a64  # tpyc: type(int64)
     print("int_widen", a)
 
-def test_float_widen() -> None:
-    b = float32(1.5)  # tpyc: type(float)
-    b = 2.5  # tpyc: type(float)
-    print("float_widen", b)
-
-def test_float_stays_float() -> None:
+def test_float_stays_float(f32: float32) -> None:
     c = 1.5  # tpyc: type(float)
-    c = float32(1.0)  # tpyc: type(float)
+    c = f32  # tpyc: type(float)
     print("float_stays", c)
 
 def test_bigint_absorbs_fixedint() -> None:
-    d = int32(1)  # tpyc: type(int)
+    d = 1  # tpyc: type(int)
     d = int(2)  # tpyc: type(int)
     print("bigint", d)
 
-def test_unsigned_to_wider_signed() -> None:
-    e = uint8(1)  # tpyc: type(int32)
-    e = int32(2)  # tpyc: type(int32)
+def test_unsigned_joins_default(u8: uint8) -> None:
+    # a uint8 value widens into the int32 the literal gives
+    e = 1  # tpyc: type(int32)
+    e = u8  # tpyc: type(int32)
     print("unsigned", e)
 
-def test_uint32_to_int64() -> None:
-    g = uint32(1)  # tpyc: type(int64)
-    g = int64(2)  # tpyc: type(int64)
-    print("uint32", g)
+def test_order_free_join(u32: uint32, a64: int64) -> None:
+    # int32 and uint32 have no common type, but int64 holds both
+    g = 1  # tpyc: type(int64)
+    g = u32  # tpyc: type(int64)
+    g = a64  # tpyc: type(int64)
+    print("order_free", g)
 
-def test_branch_int_widen(c: bool) -> None:
-    # int32 and int64 bindings in two arms still join to the wider integer
-    h = int32(1)  # tpyc: type(int64)
+def test_branch_int_widen(c: bool, a64: int64) -> None:
+    # an int64 binding in one arm widens the literal-seeded local
+    h = 1  # tpyc: type(int64)
     if c:
-        h = int64(7)  # tpyc: ok
+        h = a64  # tpyc: ok
     print("branch_int", h)
 
 def test_declared_float_local(c: bool) -> None:
@@ -143,13 +144,12 @@ def test_captured_none_seed() -> None:
     x = 5  # tpyc: ok
     g()
 
-test_int_widen()
-test_float_widen()
-test_float_stays_float()
+test_int_widen(2)
+test_float_stays_float(1.0)
 test_bigint_absorbs_fixedint()
-test_unsigned_to_wider_signed()
-test_uint32_to_int64()
-test_branch_int_widen(True)
+test_unsigned_joins_default(2)
+test_order_free_join(1, 2)
+test_branch_int_widen(True, 7)
 test_declared_float_local(True)
 test_declared_float_param(1.5)
 test_declared_float_nonlocal(2.5)

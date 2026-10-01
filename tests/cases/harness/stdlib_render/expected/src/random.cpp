@@ -328,7 +328,7 @@ uint32_t Random::_genrand_uint32() {
 //         result = result | (int(self._genrand_uint32()) << (32 * i))
 //         i += 1
 //     last_k: int32 = k - 32 * i
-//     last_word: uint32 = self._genrand_uint32() >> uint32(32 - last_k)
+//     last_word: uint32 = self._genrand_uint32() >> (32 - last_k)
 //     result = result | (int(last_word) << (32 * i))
 //     return result
 ::tpy::BigInt Random::getrandbits(int32_t k) {
@@ -346,7 +346,7 @@ uint32_t Random::_genrand_uint32() {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     int32_t last_k = (::tpy::sub_check<int32_t>(k, (::tpy::mul_check<int32_t>(32, i))));
-    uint32_t last_word = (::tpy::rshift_check<uint32_t>(this->_genrand_uint32(), ::tpy::int_cast_check<uint32_t>((::tpy::sub_check<int32_t>(32, last_k)))));
+    uint32_t last_word = (::tpy::rshift_check<uint32_t>(this->_genrand_uint32(), (::tpy::sub_check<int32_t>(32, last_k))));
     result = ((result) | (((::tpy::BigInt(static_cast<uint64_t>(last_word))) << (::tpy::BigInt((::tpy::mul_check<int32_t>(32, i)))))));
     return result;
 }
@@ -452,7 +452,7 @@ int32_t Random::randrange(int32_t start, int32_t stop, int32_t step) {
 //         shift_base: int32 = 32 - rem * 8
 //         j: int32 = 0
 //         while j < rem:
-//             out.append(uint8((w >> uint32(shift_base + j * 8)) & 0xFF))
+//             out.append(uint8((w >> (shift_base + j * 8)) & 0xFF))
 //             j += 1
 //     return bytes(out)
 ::tpy::Bytes Random::randbytes(int32_t n) {
@@ -476,7 +476,7 @@ int32_t Random::randrange(int32_t start, int32_t stop, int32_t step) {
         int32_t shift_base = (::tpy::sub_check<int32_t>(32, (::tpy::mul_check<int32_t>(rem, 8))));
         int32_t j = 0;
         while ((j < rem)) {
-            out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint32_t>((::tpy::rshift_check<uint32_t>(w, ::tpy::int_cast_check<uint32_t>((::tpy::add_check<int32_t>(shift_base, (::tpy::mul_check<int32_t>(j, 8))))))) & 255))));
+            out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint32_t>((::tpy::rshift_check<uint32_t>(w, (::tpy::add_check<int32_t>(shift_base, (::tpy::mul_check<int32_t>(j, 8)))))) & 255))));
             j = ::tpy::add_check<int32_t>(j, 1);
         }
     }

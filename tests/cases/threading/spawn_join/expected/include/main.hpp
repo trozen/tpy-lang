@@ -55,15 +55,15 @@ inline Summer::Summer(std::vector<::tpy::BigInt>&& data) : data(std::move(data))
 //     return total
 inline ::tpy::BigInt Summer::run() {
     this->data.push_back(100);
-    int32_t total = 0;
+    ::tpy::BigInt total = ::tpy::BigInt(0);
     auto& __obj_0 = this->data;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const ::tpy::BigInt& v = *__beg_0;
-        total = ::tpy::add_check<int32_t>(total, (v).to_fixed_check<int32_t>());
+        total = (total) + (v);
     }
-    return ::tpy::BigInt(total);
+    return total;
 }
 void __tpy_init();
 } // namespace tpyapp::main

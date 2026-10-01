@@ -53,13 +53,13 @@ namespace tpyapp::main {
         const auto& __tup_1 = __for_tup_0;
         k = std::get<0>(__tup_1);
         sq = std::get<1>(__tup_1);
-        total = ::tpy::add_check<int32_t>(total, (sq).to_fixed_check<int32_t>());
+        total = (total) + (sq);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_2: {
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(total);
+        ::tpy::BigInt __tpy_async_ret = std::move(total);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

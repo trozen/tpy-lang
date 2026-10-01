@@ -21,10 +21,8 @@ bool equality_too(int32_t a, uint32_t b);
 bool same_sign_signed(int32_t a, int32_t b);
 // def same_sign_unsigned(a: uint32, b: uint32) -> bool:
 bool same_sign_unsigned(uint32_t a, uint32_t b);
-// def take_u64(x: uint64) -> uint64:
-uint64_t take_u64(uint64_t x);
-// def literal_seed(limit: uint64) -> uint64:
-uint64_t literal_seed(uint64_t limit);
+// def literal_seed(limit: uint32) -> int64:
+int64_t literal_seed(uint32_t limit);
 // def main() -> None:
 void main();
 

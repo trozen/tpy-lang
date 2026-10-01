@@ -89,7 +89,7 @@ void main() {
     Holder h = Holder();
     h.store(::tpy::bytes_literal_owned("abc", 3));
     std::cout << ::tpy::__len__(h.data) << "\n";
-    int32_t total = 0;
+    ::tpy::BigInt total = ::tpy::BigInt(0);
     {
         ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("Q", 1);
         auto __src_0 = ::tpyapp::main::gen(__tmp_1);
@@ -98,7 +98,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-            total = ::tpy::add_check<int32_t>(total, (v).to_fixed_check<int32_t>());
+            total = (total) + (v);
         }
     }
     std::cout << total << "\n";

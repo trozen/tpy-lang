@@ -46,10 +46,10 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_run::__next__() {
                 auto __end_0 = __obj_0.end();
                 for (; __beg_0 != __end_0; ++__beg_0) {
                     const ::tpy::BigInt& n = *__beg_0;
-                    total = ::tpy::add_check<int32_t>(total, (n).to_fixed_check<int32_t>());
+                    total = (total) + (n);
                 }
                 __state = S_RESUME_0;
-                return ::tpy::BigInt(total);
+                return total;
             } else {
                 auto& __t = std::get<Emit>((*t));
                 __state = S_RESUME_1;

@@ -32,19 +32,13 @@ def same_sign_unsigned(a: uint32, b: uint32) -> bool:
     return a < b  # tpyc: ok
 
 
-# Negative case: literal-seeded local that retro-widens to match the
-# unsigned target must NOT warn at the comparison site. The arg slot
-# `take_u64(offset)` locks the seed to uint64 so by the end of body
-# analysis offset is uint64 and `offset < limit` is same-sign.
-def take_u64(x: uint64) -> uint64:
-    return x
-
-
-def literal_seed(limit: uint64) -> uint64:
-    offset = 0
-    while offset < limit:  # tpyc: ok
-        offset = take_u64(offset) + 1
-    return offset
+# A literal-seeded local compares at the type its stores give, decided after
+# the comparison is read: `k` is int64, so the comparison with a uint32 warns.
+def literal_seed(limit: uint32) -> int64:
+    k = 0
+    while k < limit:  # tpyc: warning(/comparison between signed and unsigned.*int64.*uint32.*cast one operand/)
+        k = k + int64(1)
+    return k
 
 
 def main() -> None:
@@ -54,7 +48,7 @@ def main() -> None:
     print(equality_too(int32(0), uint32(0)))
     print(same_sign_signed(1, 2))
     print(same_sign_unsigned(uint32(1), uint32(2)))
-    print(literal_seed(uint64(3)))
+    print(literal_seed(3))
 
 
 main()

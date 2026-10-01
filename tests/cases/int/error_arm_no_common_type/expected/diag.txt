@@ -1,0 +1,1 @@
+main.py:13: error: 'x' is int8 in one arm (line 10) and uint32 in the other (line 13), which have no common type; annotate x: int64 at line 10

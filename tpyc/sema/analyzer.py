@@ -22,6 +22,7 @@ from ..typesys import (
     contains_type_param,
     BaseInitDuty,
     PendingListType, PendingDictType, PendingSetType, PendingViewType,
+    PendingNumType,
 )
 from ..type_def_registry import is_span, is_varargs, is_spanlike_view
 from ..identity_map import IdentityMap, IdentitySet
@@ -51,6 +52,7 @@ from ..interop.sema_validators import (
 # sink was missed (the dual current_scope/current_ns hand-sync, see TODO).
 _PENDING_LOCAL_TYPES = (
     PendingListType, PendingDictType, PendingSetType, PendingViewType,
+    PendingNumType,
 )
 
 def _find_pending_leaf(typ: 'TpyType') -> 'TpyType | None':
@@ -95,6 +97,7 @@ from .operators import OperatorResolver
 from .compatibility import TypeCompatibility
 from .list_literals import IterableHelper
 from .local_deduction import LocalTypeDeduction
+from .pending_num import PendingNums
 from .protocols import ProtocolChecker
 from .registration import TypeRegistrar
 from .narrowing import NarrowingTracker
@@ -341,6 +344,10 @@ class SemanticAnalyzer:
         self.registrar = TypeRegistrar(self.ctx, self.type_ops, self.protocols, self.compat)
         self.operators = OperatorResolver(self.ctx, self.type_ops, self.protocols)
 
+        self.pend = PendingNums(self.ctx, self.compat)
+        self.compat.pend = self.pend
+        self.deduction.pend = self.pend
+
         # Wire up compatibility's deferred dependencies
         self.compat.type_ops = self.type_ops
         self.compat.protocols = self.protocols
@@ -364,6 +371,9 @@ class SemanticAnalyzer:
             self.ctx, self.type_ops, self.operators, self.protocols, self.compat,
             self.narrowing, self.calls, self.methods,
         )
+        self.expr.pend = self.pend
+        self.calls.pend = self.pend
+        self.pend.describe_use = self.expr.describe_pending_use
         # Complete the back-references
         self.calls.expr = self.expr
         self.calls.methods = self.methods
@@ -376,6 +386,7 @@ class SemanticAnalyzer:
             self.ctx, self.type_ops, self.compat, self.deduction, self.iterable,
             self.protocols, self.narrowing, self.expr,
         )
+        self.stmts.pend = self.pend
         self.expr.set_scopes(self.stmts.scopes)
 
         # Per-function/method pre-scan results (shared with codegen)

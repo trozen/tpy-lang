@@ -17,15 +17,15 @@ namespace tpyapp::main {
     if ((!b.has_value())) {
         return ::tpy::BigInt(-1);
     }
-    int32_t acc = 0;
+    ::tpy::BigInt acc = ::tpy::BigInt(0);
     auto& __obj_0 = (*b);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         uint8_t x = *__beg_0;
-        acc = ::tpy::add_check<int32_t>(acc, (::tpy::BigInt(static_cast<uint64_t>(x))).to_fixed_check<int32_t>());
+        acc = (acc) + (::tpy::BigInt(static_cast<uint64_t>(x)));
     }
-    return ::tpy::BigInt(acc);
+    return acc;
 }
 
 // def sum_chars(s: str | None) -> int:
@@ -126,16 +126,16 @@ namespace tpyapp::main {
     if ((xs == nullptr)) {
         return ::tpy::BigInt(-1);
     }
-    int32_t acc = 0;
+    ::tpy::BigInt acc = ::tpy::BigInt(0);
     auto& __src_0 = (*xs);
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        acc = ::tpy::add_check<int32_t>(acc, (v).to_fixed_check<int32_t>());
+        acc = (acc) + (v);
     }
-    return ::tpy::BigInt(acc);
+    return acc;
 }
 
 // def main() -> None:

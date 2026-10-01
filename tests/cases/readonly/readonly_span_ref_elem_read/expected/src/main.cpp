@@ -16,15 +16,15 @@ namespace tpyapp::main {
 //         t += b.val
 //     return t
 ::tpy::BigInt total(std::span<const Box> xs) {
-    int32_t t = 0;
+    ::tpy::BigInt t = ::tpy::BigInt(0);
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
-        t = ::tpy::add_check<int32_t>(t, (b.val).to_fixed_check<int32_t>());
+        t = (t) + (b.val);
     }
-    return ::tpy::BigInt(t);
+    return t;
 }
 
 // def main() -> None:

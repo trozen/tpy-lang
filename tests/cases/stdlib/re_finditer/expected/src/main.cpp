@@ -32,7 +32,7 @@ void main() {
             std::cout << m.group(0) << " " << m.start() << " " << m.end() << "\n";
         }
     }
-    int32_t total = 0;
+    ::tpy::BigInt total = ::tpy::BigInt(0);
     {
         auto __src_2 = p.finditer("xx 7 yy 88 zz 900");
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -40,7 +40,7 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const auto& m = ::tpy::unwrap_ref(*__r_3);
-            total = ::tpy::add_check<int32_t>(total, (::tpy::BigInt::from_str(m.group(0))).to_fixed_check<int32_t>());
+            total = (total) + (::tpy::BigInt::from_str(m.group(0)));
         }
     }
     std::cout << total << "\n";

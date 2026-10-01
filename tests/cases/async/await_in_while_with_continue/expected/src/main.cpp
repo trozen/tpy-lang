@@ -56,7 +56,7 @@ __coro_value value(::tpy::BigInt n) {
             __state = S_JOIN_0;
             continue;
         } else {
-            total = ((::tpy::BigInt(total)) + (x));
+            total = ((total) + (x));
             __state = S_JOIN_0;
             continue;
         }

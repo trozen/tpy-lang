@@ -25,6 +25,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 #include "core.hpp"
 
 namespace tpy {
@@ -159,36 +160,42 @@ constexpr T neg_check(T a) {
     return -a;
 }
 
-template<typename T>
-constexpr T lshift_check(T a, T b) {
-    if constexpr (std::is_signed_v<T>) {
+// A shift count has a type of its own: it is range-checked in that type, so a
+// count too wide for T (`int8(1) << int64(256)`) panics instead of wrapping
+// into a small one on a conversion.
+template<typename T, bool IsLeft, typename C>
+constexpr int shift_count_check(C b) {
+    static_assert(std::is_integral_v<C>, "shift count must be a fixed-width integer");
+    if constexpr (std::is_signed_v<C>) {
         if (b < 0) {
             raise_value_error("negative shift count");
         }
     }
     constexpr int bits = sizeof(T) * 8;
-    if (b >= static_cast<T>(bits)) {
-        raise_fixedint_overflow("{} overflow in left shift", fixed_int_name<T>());
+    if (std::cmp_greater_equal(b, bits)) {
+        if constexpr (IsLeft) {
+            raise_fixedint_overflow("{} overflow in left shift", fixed_int_name<T>());
+        } else {
+            raise_fixedint_overflow("{} shift count too large", fixed_int_name<T>());
+        }
     }
+    return static_cast<int>(b);
+}
+
+template<typename T, typename C>
+constexpr T lshift_check(T a, C count) {
+    const int b = shift_count_check<T, true>(count);
     using U = std::make_unsigned_t<T>;
-    T result = static_cast<T>(static_cast<U>(a) << static_cast<U>(b));
+    T result = static_cast<T>(static_cast<U>(a) << b);
     if ((result >> b) != a) {
         raise_fixedint_overflow("{} overflow in left shift", fixed_int_name<T>());
     }
     return result;
 }
 
-template<typename T>
-constexpr T rshift_check(T a, T b) {
-    if constexpr (std::is_signed_v<T>) {
-        if (b < 0) {
-            raise_value_error("negative shift count");
-        }
-    }
-    constexpr int bits = sizeof(T) * 8;
-    if (b >= static_cast<T>(bits)) {
-        raise_fixedint_overflow("{} shift count too large", fixed_int_name<T>());
-    }
+template<typename T, typename C>
+constexpr T rshift_check(T a, C count) {
+    const int b = shift_count_check<T, false>(count);
     return a >> b;
 }
 

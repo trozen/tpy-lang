@@ -1,8 +1,6 @@
-# Reassigning a literal-seeded local from a non-literal source clears the
-# seed (see record_write in local_deduction.py); the local is then a
-# regular int32 and a later uint64 use no longer retro-widens. Locks the
-# behavior so a future change can't accidentally widen the retro-widen
-# trigger to cover already-fully-resolved locals.
+# A literal-seeded local takes the type its stores give (int32 here); a
+# uint64 use does not retype it, and no annotation hint is offered, since
+# the int32 value stored in it would not convert into a uint64.
 from tpy import uint64, int32
 
 

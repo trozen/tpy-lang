@@ -1,1 +1,1 @@
-main.py:11: error: 'x' is read by nested function 'g' at line 8 while it has type int32, so this binding cannot make it int64; annotate its first binding before line 8: x: int64
+main.py:11: error: 'x' was used as int32 at line 8 (read by the nested function 'g'), and this value is int64; annotate its first binding: x: int64 = 3

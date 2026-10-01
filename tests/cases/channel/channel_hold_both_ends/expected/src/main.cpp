@@ -54,7 +54,7 @@ namespace tpyapp::main {
             if (__r2.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
             __await_lift_0 = std::move(__r2).value();
             __sub_2.reset();
-            total = ::tpy::add_check<int32_t>(total, (__await_lift_0).to_fixed_check<int32_t>());
+            total = (total) + (__await_lift_0);
             __state = S_JOIN_2;
             continue;
         } catch (const ::tpystd::tpy::channel::ChannelClosed&) {
@@ -78,7 +78,7 @@ namespace tpyapp::main {
     }
     case S_JOIN_1: {
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(total);
+        ::tpy::BigInt __tpy_async_ret = std::move(total);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_3: {

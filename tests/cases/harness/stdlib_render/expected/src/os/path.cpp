@@ -391,7 +391,7 @@ std::string relpath(std::string_view p, std::string_view start) {
     std::vector<std::string> start_parts = ::tpystd::os::path::_split_parts(::tpystd::os::path::abspath(start));
     std::vector<std::string> path_parts = ::tpystd::os::path::_split_parts(::tpystd::os::path::abspath(p));
     int32_t i = 0;
-    int32_t common = ::std::min(::tpy::__len__(start_parts), ::tpy::__len__(path_parts));
+    int32_t common = ::std::min<int32_t>(::tpy::__len__(start_parts), ::tpy::__len__(path_parts));
     while (((i < common) && (::tpy::__getitem__(start_parts, i) == ::tpy::__getitem__(path_parts, i)))) {
         i = ::tpy::add_check<int32_t>(i, 1);
     }

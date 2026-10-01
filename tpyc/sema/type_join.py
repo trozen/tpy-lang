@@ -24,7 +24,8 @@ from ..parse.nodes import (TpyArrayLiteral, TpyDictLiteral, TpyExpr,
                            TpyNamedExpr, TpySetLiteral, TpyTupleLiteral)
 from ..typesys import (BIGINT, IntLiteralType, FloatLiteralType,
                        LiteralType, NominalType, OptionalType, OwnType,
-                       PendingDictType, PendingListType, PendingSetType,
+                       PendingDictType, PendingNumType, PendingListType,
+                       PendingSetType,
                        ReadonlyType, RefType, TpyType, is_float_type,
                        is_integer_type, literal_peer_children,
                        make_dict, make_list, make_set,
@@ -91,6 +92,8 @@ def numeric_kind(t: TpyType) -> NumKind | None:
     t, _ = peel_value(t)
     if isinstance(t, LiteralType):
         t = t.base_type
+    if isinstance(t, PendingNumType):
+        return NumKind.FLOAT if t.is_float else NumKind.INT
     if is_integer_type(t) or isinstance(t, IntLiteralType):
         return NumKind.INT
     if is_float_type(t) or isinstance(t, FloatLiteralType):
@@ -233,7 +236,7 @@ def _as_container(t: TpyType) -> TpyType:
 def operand_spelling(e: TpyExpr) -> str | None:
     """The source spelling of a simple operand -- a name, a field path, a
     numeric literal -- for a rewrite hint; None for anything longer, whose
-    exact text the parse tree does not keep."""
+    exact text the parse tree does not keep, and for a compiler temporary."""
     if isinstance(e, TpyNamedExpr):
         # Spelling the target alone would drop the binding from the rewrite.
         return None
@@ -241,7 +244,12 @@ def operand_spelling(e: TpyExpr) -> str | None:
         return str(e.value)
     if isinstance(e, TpyFloatLiteral):
         return repr(e.value)
-    return storage_spelling(e)
+    spelled = storage_spelling(e)
+    # A name the compiler made (a tuple unpack's element temp) has no
+    # source spelling to rewrite.
+    if spelled is not None and spelled.startswith("__"):
+        return None
+    return spelled
 
 
 def int_literal_spellings(mix: InferredJoin,
@@ -437,6 +445,42 @@ def usage_mix_message(mix: InferredJoin, container: str,
     if mix.nested or annotation is None:
         return head
     return f"{head}, or annotate the container, e.g. {annotation}"
+
+
+def wider_store_message(name: str, was: TpyType, now: TpyType, fix: str, *,
+                        at: str = "", used_as: str | None = None,
+                        declared: bool = False, aug_op: str | None = None,
+                        aug_value: TpyExpr | None = None) -> str:
+    """The refusal of a store whose value is wider than the one type a
+    local or slot has: `'x' is int32 (line 3) and this value is int64;
+    <fix>`. `used_as` names the use that fixed a literal-seeded local's
+    type early, `declared` a slot whose declaration fixes it (written at
+    `at`, when given), `aug_op` an
+    augmented assignment's result rather than a stored value."""
+    was_s, now_s = python_type_name(was), python_type_name(now)
+    if declared and at:
+        head = f"'{name}' is declared {was_s}{at} and"
+    elif declared:
+        head = f"'{name}' is declared {was_s} and keeps its declared type, but"
+    elif used_as is not None:
+        head = f"'{name}' was used as {was_s}{at} ({used_as}), and"
+    else:
+        head = f"'{name}' is {was_s}{at} and"
+    if aug_op is not None:
+        value = operand_spelling(aug_value) if aug_value is not None else None
+        this = (f"'{name} {aug_op}= {value}' produces {now_s}"
+                if value is not None else f"this '{aug_op}=' produces {now_s}")
+    else:
+        this = f"this value is {now_s}"
+    return f"{head} {this}; {fix}"
+
+
+def annotate_first_binding(name: str, typ: TpyType, value: str = "...",
+                           there: str = "") -> str:
+    """The fix a refusal names: the annotation that gives `name` its type
+    at its first binding."""
+    return (f"annotate its first binding{there}: {name}: "
+            f"{python_type_name(typ)} = {value}")
 
 
 def rebind_mix_message(mix: InferredJoin, name: str, new_value: TpyExpr | None,

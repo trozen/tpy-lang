@@ -49,10 +49,10 @@ from tpy.mem import UninitArrayStorage, UninitHeapStorage
 from tpy.unsafe import unsafe_ptr, unsafe_cast, unsafe_load, unsafe_str_from_buf
 from tpy import take_ptr
 
-# Bare `0`/`1` flow through to `size_t` / `uint32_t` PCRE2 args because the
-# compiler treats integer literals (and literal-seeded locals like
-# `offset = 0`) as polymorphic enough to retro-fit unsigned targets when
-# the value provably fits. The remaining `uint64(...)` / `uint32(...)`
+# Bare `0`/`1` flow through to `size_t` / `uint32_t` PCRE2 args because an
+# integer literal adapts to the slot it is passed to when the value fits (a
+# local takes its type from its stores, not from such a use). The remaining
+# `uint64(...)` / `uint32(...)`
 # casts in this file are on `len(...)` results (BigInt) and other typed
 # sources, where a runtime narrowing check is intentional.
 from _bindings import pcre2

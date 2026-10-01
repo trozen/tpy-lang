@@ -10,18 +10,6 @@ namespace tpyapp::main {
     return ::tpy::BigInt(4);
 }
 
-// def needle(b: Bag) -> None:
-//     p = 1
-//     print(p in b)        # __contains__ needle
-//     p = widen()          # the assignment that retro-widens `p` to BigInt
-//     print(p)
-void needle(const Bag& b) {
-    ::tpy::BigInt p = ::tpy::BigInt(1);
-    std::cout << ::tpy::print_bool((b.__contains__((p).to_fixed_check<int32_t>()))) << "\n";
-    p = ::tpyapp::main::widen();
-    std::cout << p << "\n";
-}
-
 // def forward(b: Bag) -> None:
 //     p = 1
 //     print(b + p)         # __add__ argument slot
@@ -46,15 +34,27 @@ void reflected(const Bag& b) {
     std::cout << p << "\n";
 }
 
+// def composite(b: Bag) -> None:
+//     p = 0
+//     print(b + (p + 1))   # __add__ argument slot, over an operation on `p`
+//     p = widen()
+//     print(p)
+void composite(const Bag& b) {
+    ::tpy::BigInt p = ::tpy::BigInt(0);
+    std::cout << ((b) + ((((p) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>())) << "\n";
+    p = ::tpyapp::main::widen();
+    std::cout << p << "\n";
+}
+
 // def main() -> None:
-//     needle(Bag())
 //     forward(Bag())
+//     composite(Bag())
 //     reflected(Bag())
 void main() {
     Bag __tmp_1 = Bag();
-    ::tpyapp::main::needle(__tmp_1);
+    ::tpyapp::main::forward(__tmp_1);
     Bag __tmp_2 = Bag();
-    ::tpyapp::main::forward(__tmp_2);
+    ::tpyapp::main::composite(__tmp_2);
     Bag __tmp_3 = Bag();
     ::tpyapp::main::reflected(__tmp_3);
 }

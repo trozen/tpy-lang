@@ -1,0 +1,1 @@
+main.py:14: error: 'x' is int8 in one arm (line 16) and a bare literal in the other (line 14), so its type depends on which arm is read first; write int8(1), or annotate x: int8 at line 14
