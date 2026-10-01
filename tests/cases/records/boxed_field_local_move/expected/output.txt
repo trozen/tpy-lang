@@ -1,0 +1,3 @@
+free.boxed_local_move 6
+ctor.boxed_local_move 7
+consuming.self_into_field 43

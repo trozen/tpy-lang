@@ -890,6 +890,49 @@ gate's receiver/overload half, and the ordinary admission gates that were not
 reached -- are filed as their own TODO entries; the rest of that count has not
 been audited.
 
+#### The read arms own the form tag (2026-09-30)
+
+A sink reads a source's form off the lowered node; it does not re-derive it
+from the declared type. That holds today for the read arms a field write
+consumes, made honest in one unit:
+
+- the general field-read arm (`_member_read_form`) tags every member with a
+  form axis -- a record, an Optional, a union, a storage tuple -- `STORAGE`,
+  because a member IS the field's own storage, never the `T*` / pointer
+  variant a borrow of the same type is; `_lower_field_source`, the second
+  field-read arm the borrow-local bindings and tuple lifts call, has always
+  tagged `STORAGE`, so the two writers agree -- folding them is open work;
+- the container-subscript arm tags an Optional, union or storage-tuple
+  element `STORAGE`; a record element keeps `BORROW`, the `T&` the dunder
+  yields;
+- one wrapper-level stamp in `_lower_expr` tags a call `STORAGE` when the
+  callee's declared return is `Own[T]` or `Own[T] | None` (the expression
+  type sema stamps has the `Own` stripped) and `BORROW` when the result is a
+  pointer-repr tuple (`std::tuple<..., T*>`). The arms still write the
+  str/bytes view-family half of a call's form themselves; the wrapper adds
+  its axis only where they left `VALUE`, an ordering contract that one
+  `_call_result_form` read by both would remove (TODO).
+
+The name read carries `indirect` beside `deref` (`raw_pointer` = the bare
+`T*`), since `BORROW` spells both `T&` and `T*`. That is representation on an
+expression node, the same exception `deref` already is to "representation
+stays on `THIRVarDecl`". The consuming method's receiver carries the same
+`is_last_use` / `is_movable` stamp a name does.
+
+The field-write sink (`thir/lower/field_write.py`) decides its render from
+`form`, `_node_moves` and `result_type`; what it still asks before lowering
+-- the whole-binding read, the pointer-slot lift, the global-slot use, the
+view shim's param type -- is the residue the TODO entry's step (e) names.
+
+Not yet honest, and named so: a record borrow-returning call stays `VALUE`
+(MIR's `_borrowed_expression` asserts a call is tagged `VALUE`, and a
+`@property` getter's storage-reference result is lifted through a
+`THIRFormConvert` that would become a no-op); a `THIRCtorCall` rvalue stays
+`VALUE` beside the `STORAGE` an `Own[record]` call gets; an all-`Own` tuple
+result has no pointer-repr element and reads as a value; an owned local's
+name read stays `BORROW`. Each is a consumer-visible convention until its
+unit moves it.
+
 ### Form rollout ladder (F1 -> F-final)
 
 The form work is a sub-stream of the THIR migration, sequenced one family/

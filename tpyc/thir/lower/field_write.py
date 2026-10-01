@@ -54,7 +54,6 @@ from ...typesys import (
     TupleType,
     TypeParamRef,
     UnionType,
-    unwrap_optional_own,
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
@@ -384,7 +383,9 @@ def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan,
     # keeps the value past the statement, so the dying-source lend is refused
     # here on purpose, and restating it is what makes the site readable
     # beside the arms that DO hand out a verdict.
-    own_binding = _own_binding(stmt.value, declared)
+    # Every name's read is routed here, the unrouted Own payloads included:
+    # the sink reads the node's move facts (`_value_moved`), so a last use
+    # moves and any other read copies.
     if plan.render is _ValueRender.STR:
         _witness("field_write.str")
         # A field-read source (`self.f = o.name`) is the bare member read
@@ -396,7 +397,7 @@ def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan,
                                     forms=_NO_FORMS,
                                     allow_temps=_temps_ok(slot)),
                         field_owned_str_ok=True,
-                        allow_unrouted_name=own_binding),
+                        allow_unrouted_name=True),
             plan.ftype, slot, loc)
     if plan.render is _ValueRender.BYTES:
         _witness("field_write.bytes")
@@ -405,7 +406,7 @@ def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan,
                                        forms=_NO_FORMS,
                                        allow_temps=_temps_ok(slot)),
                            field_owned_str_ok=True,
-                           allow_unrouted_name=own_binding)
+                           allow_unrouted_name=True)
         if bval.form is Form.BORROW:
             bval = THIRFormConvert(result_type=plan.bytes_ft, value=bval,
                                    form=Form.STORAGE, move=False, loc=loc)
@@ -429,7 +430,7 @@ def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan,
             _lower_expr(stmt.value, lc, declared,
                         use=replace(slot, result=_ExprResultUse.STORAGE,
                                     allow_temps=_temps_ok(slot)),
-                        allow_unrouted_name=own_binding,
+                        allow_unrouted_name=True,
                         # A source typed as the value-repr Optional itself is
                         # consumed WHOLE (the `std::optional<T>` member
                         # copies bare); a narrowed one reads its inner.
@@ -439,15 +440,6 @@ def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan,
                                                         lc.analyzer),
                                            OptionalType)))),
         plan.ftype, lc), plan.ftype, slot, loc)
-
-
-def _own_binding(v: TpyExpr, declared: dict[str, TpyType]) -> bool:
-    """The source NAME's binding is `Own`-declared: the write is its routed
-    read, which moves it at its last use or copies it."""
-    v = _peel_coerce(v)
-    return (isinstance(v, TpyName) and v.name in declared
-            and unwrap_optional_own(unwrap_readonly(unwrap_ref_type(
-                unwrap_send_sync(declared[v.name])))) is not None)
 
 
 def _value_moved(value: THIRExpr, ftype: TpyType, slot: _ExprUse,
@@ -836,45 +828,21 @@ def _storage_use(slot: _ExprUse, member_t: TpyType, analyzer) -> _ExprUse:
                    allow_temps=_temps_ok(slot), slot_target=member_t)
 
 
-def _names_storage(node: THIRExpr) -> bool:
-    """A read that names STORAGE whatever form its read arm tags: a member
-    read names the field's own storage (a whole-Optional field read is
-    tagged VALUE on the str/bytes view axis, which says nothing about the
-    optional), and a container element read the element slot's -- a
-    container stores its elements in storage form."""
-    return (isinstance(node, THIRFieldAccess)
-            or (isinstance(node, THIRSubscript) and node.tuple_index is None))
+def _borrow_tuple(node: THIRExpr) -> bool:
+    """A tuple that arrives in borrow form (`std::tuple<Box, Box*>`): a
+    mixed own / borrow name or call result, whatever its stripped type
+    says. The storage lift converts it; nothing moves it whole."""
+    rt = _storage_type(node.result_type)
+    return node.form is Form.BORROW and isinstance(rt, TupleType)
 
 
-def _mixed_borrow_value(t: 'TpyType | None') -> bool:
-    """A source DECLARED as a mixed own / borrow tuple (`tuple[Own[Box],
-    Box]` -> `std::tuple<Box, Box*>`) arrives in borrow form whatever the
-    stripped type says, so the storage lift converts it."""
-    t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-         if t is not None else None)
-    return isinstance(t, TupleType) and t.is_mixed_own()
-
-
-def _owned_value(t: 'TpyType | None') -> bool:
-    """A source typed `Own[...]` (or `Own[T] | None`) is STORAGE: ownership
-    moves with the value, so what arrives is the built optional / variant /
-    record itself, never the `T*` or pointer variant a borrow of the same
-    type is. The lowered node strips `Own`, so the fact is read off the
-    source's type."""
-    t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-         if t is not None else None)
-    return (isinstance(t, OwnType)
-            or (isinstance(t, OptionalType)
-                and isinstance(unwrap_readonly(t.inner), OwnType)))
-
-
-def _pointer_borrow(node: THIRExpr, lc: _LowerCtx) -> bool:
-    """A source that arrives as a `T*` rather than a reference or a value:
-    an un-dereffed pointer-bound name, or a borrow element of a pointer-repr
-    tuple. Only a lift consumes one whole; every other slot needs the
-    deref the read did not take."""
+def _raw_pointer(node: THIRExpr) -> bool:
+    """A source that arrives as a bare `T*` rather than a reference or a
+    value: a pointer binding read without its deref (`THIRName.raw_pointer`),
+    or a borrow element of a pointer-repr tuple. Only a whole lift consumes
+    one; every other slot needs the deref the read did not take."""
     if isinstance(node, THIRName):
-        return node.name in lc.pointers and not node.deref
+        return node.raw_pointer
     return (isinstance(node, THIRSubscript) and node.tuple_index is not None
             and node.form is Form.BORROW)
 
@@ -933,13 +901,12 @@ def _storage_lift_renders(member_t: TpyType, rt: 'TpyType | None',
         return True
     return (record_like(member_t, analyzer)
             and _absorbs(member_t, rt, lc)
-            and not _pointer_borrow(lowered, lc))
+            and not _raw_pointer(lowered))
 
 
 def _storage_value(lowered: THIRExpr, member_t: TpyType, slot_t: TpyType,
                    param_t: 'TpyType | None', mv: bool, whole: bool,
-                   declared_t: 'TpyType | None', direct: bool,
-                   lc: _LowerCtx, loc) -> THIRExpr:
+                   direct: bool, lc: _LowerCtx, loc) -> THIRExpr:
     """The render of a lowered source at a storage slot, read off the node:
     a move at the last use of an owned name, the borrow->storage lift for a
     borrowed source, the view->owned shim for a borrowed value-optional
@@ -950,11 +917,13 @@ def _storage_value(lowered: THIRExpr, member_t: TpyType, slot_t: TpyType,
 
     `whole`: the source NAME's binding is the slot's own Optional / union,
     read whole -- its node carries the flow-narrowed type, but what it
-    renders is the whole binding. `declared_t`: the source's DECLARED type,
-    which keeps the `Own` markers the node strips -- `Own`-typed storage
-    (`_owned_value`) and a mixed own / borrow tuple (`_mixed_borrow_value`).
-    `direct`: a member-init, whose direct-init
-    constructs an open `T` from the param form itself."""
+    renders is the whole binding. `direct`: a member-init, whose direct-init
+    constructs an open `T` from the param form itself.
+
+    STORAGE on the node is the read arm's word that the source IS storage: a
+    member or element read names its slot's own optional / variant / tuple,
+    an `Own`-declared name or call result owns what it hands over. A mixed
+    own / borrow tuple, whatever its stripped type, arrives BORROW."""
     analyzer = lc.analyzer
     rt = member_t if whole else _storage_type(lowered.result_type)
     if (isinstance(lowered, THIRName) and param_t is not None
@@ -977,15 +946,7 @@ def _storage_value(lowered: THIRExpr, member_t: TpyType, slot_t: TpyType,
         if not direct and isinstance(named, THIRName):
             raise ThirUnsupported(
                 f"field_write.lift.{lowered.form.name.lower()}", detail=True)
-    mixed = _mixed_borrow_value(declared_t)
-    # A record element or member read into an Optional / union MEMBER is a
-    # reference borrow of that record: the member's storage copies it
-    # through the lift below, not as the whole slot's own storage.
-    member_borrow = lowered.form is Form.BORROW and member_t != slot_t
-    stored = not mixed and (lowered.form is Form.STORAGE
-                            or (_names_storage(lowered) and not member_borrow)
-                            or isinstance(rt, NoneType)
-                            or _owned_value(declared_t))
+    stored = lowered.form is Form.STORAGE or isinstance(rt, NoneType)
     if rt == member_t and stored:
         if mv:
             return THIRMove(value=lowered, result_type=member_t,
@@ -995,18 +956,21 @@ def _storage_value(lowered: THIRExpr, member_t: TpyType, slot_t: TpyType,
                 and ((isinstance(member_t, OptionalType)
                       and member_t.uses_pointer_repr())
                      or _eligible_ptr_union(member_t, analyzer) is not None))
-    if (mv and not ptr_lift and not mixed
+    if (mv and not ptr_lift and not _borrow_tuple(lowered)
             and not record_like(member_t, analyzer)
             and not isinstance(member_t, TypeParamRef)
-            and not _pointer_borrow(lowered, lc)
+            and not _raw_pointer(lowered)
             and _absorbs(member_t, rt, lc)):
         # An owned VALUE-typed name at its last use (a tuple / union /
-        # optional local the frame holds by value): it moves in whole.
+        # optional local the frame holds by value): it moves in whole. A
+        # pointer-repr tuple (the mixed own + borrow param, handed over and
+        # movable) is not: its borrowed element must materialize through
+        # the moving lift below.
         return THIRMove(value=lowered, result_type=member_t,
                         form=Form.STORAGE, loc=loc)
-    if (not mv and not ptr_lift and not mixed
+    if (not mv and not ptr_lift
             and not isinstance(member_t, TypeParamRef)
-            and not _pointer_borrow(lowered, lc)
+            and not _raw_pointer(lowered)
             and _absorbs(member_t, rt, lc)
             and (lowered.form is not Form.BORROW
                  or (member_t == slot_t and record_like(member_t, analyzer)))):
@@ -1072,12 +1036,9 @@ def _storage_source(stmt: TpyAssign, st: TpyType, slot: _ExprUse,
     src = peeled if peeled is not None else v
     member_t = _absorbed_member(st, _source_type(src, analyzer), analyzer)
     param_t = None
-    own_binding = False
     whole_binding = False
     if isinstance(src, TpyName) and src.name in declared:
         param_t = _param_declared_type(src.name, lc)
-        own_binding = unwrap_optional_own(unwrap_readonly(unwrap_ref_type(
-            unwrap_send_sync(declared[src.name])))) is not None
         whole_binding = (_storage_type(declared[src.name]) == st
                          and isinstance(st, (OptionalType, UnionType)))
         if whole_binding:
@@ -1101,9 +1062,9 @@ def _storage_source(stmt: TpyAssign, st: TpyType, slot: _ExprUse,
     whole = member_t == st
     lowered = _lower_expr(
         src, lc, declared, use=use,
-        # An owned name's write IS its routed read -- the sink moves it at
-        # its last use or copies it.
-        allow_unrouted_name=own_binding,
+        # An owned name's write IS its routed read -- the sink reads the
+        # node's move facts and moves it at its last use or copies it.
+        allow_unrouted_name=True,
         # A source landing in the slot's own Optional / union is consumed
         # WHOLE: no narrowing deref, no member-typed divergence.
         allow_whole_optional=whole and isinstance(st, OptionalType),
@@ -1116,16 +1077,8 @@ def _storage_source(stmt: TpyAssign, st: TpyType, slot: _ExprUse,
         member_t = _absorbed_member(st, _storage_type(lowered.result_type),
                                     analyzer)
     mv = peeled is None and _node_moves(lowered)
-    # Ownership is DECLARED: on the name's binding, or on the callee's
-    # return; the expression type sema records has the `Own` stripped.
-    fi = getattr(src, "resolved_function_info", None)
-    declared_t = (declared[src.name]
-                  if isinstance(src, TpyName) and src.name in declared
-                  else fi.return_type if fi is not None
-                  else analyzer.get_expr_type(src))
     return _storage_value(lowered, member_t, st, param_t, mv,
-                          whole_binding, declared_t, _is_direct_init(slot),
-                          lc, loc)
+                          whole_binding, _is_direct_init(slot), lc, loc)
 
 
 @dataclass(frozen=True)
@@ -1172,13 +1125,18 @@ def _lower_any_field(stmt: TpyAssign, plan: _AnyFieldPlan,
 
 @dataclass(frozen=True)
 class _ResidualPlan:
-    """The shapes the value family's render rows do not claim but whose
-    predicates admit: a generic record's type-param `T` field (a plain
-    assign whose BORROW->STORAGE convert renders the source bare/moved per
-    instantiation) and the readonly-wrapped borrow-tuple-element edge. Both
-    take the shared tail render; ftype is never Optional or a union here,
-    so it collapses to the bare-copy-vs-FormConvert verdict."""
+    """The slots the earlier families do not claim. `rows`: the shapes the
+    value family's render rows do not claim but whose predicates admit -- a
+    generic record's type-param `T` field (a plain assign whose
+    BORROW->STORAGE convert renders the source bare/moved per instantiation)
+    and the readonly-wrapped borrow-tuple-element edge -- which take the
+    shared tail render (ftype is never Optional or a union there, so it
+    collapses to the bare-copy-vs-FormConvert verdict). Any other slot no
+    family renders (a recursive-alias wrapper, a tuple of type params) takes
+    ONE source, read off the lowered node: a name that moves here relocates
+    in whole (`t(std::move(t))`); every other source rejects by its form."""
     ftype: TpyType
+    rows: bool
 
 
 def _classify_residual(stmt: TpyAssign, slot: _ExprUse,
@@ -1187,48 +1145,33 @@ def _classify_residual(stmt: TpyAssign, slot: _ExprUse,
                        pointers: AbstractSet[str]) -> _ResidualPlan | None:
     analyzer = lc.analyzer
     ftype = _slot_type(slot)
-    if not (_scalar_field_write_ok(stmt, declared, analyzer, pointers, ftype)
+    if (_scalar_field_write_ok(stmt, declared, analyzer, pointers, ftype)
             or _btuple_elem_field_write_ok(stmt, declared, lc, ftype)):
+        return _ResidualPlan(ftype, rows=True)
+    if ftype is None or not _field_receiver_ok(stmt.target, declared,
+                                               analyzer):
         return None
-    return _ResidualPlan(ftype)
+    return _ResidualPlan(ftype, rows=False)
 
 
 def _lower_residual_field(stmt: TpyAssign, plan: _ResidualPlan,
                           slot: _ExprUse, lc: _LowerCtx,
                           declared: dict[str, TpyType], loc) -> THIRExpr:
-    if isinstance(stmt.value, TpyNoneLiteral):
-        return THIRLiteral(result_type=plan.ftype, value=None,
-                           form=Form.STORAGE, loc=loc)
-    return _storage_source(
-        stmt, unwrap_readonly(unwrap_ref_type(unwrap_send_sync(plan.ftype))),
-        slot, lc, declared, loc)
-
-
-@dataclass(frozen=True)
-class _OwnedMovePlan:
-    """A slot no other family renders, written from an `Own`-declared NAME:
-    at its last use the name moves in whole (`t(std::move(t))`), whatever
-    the slot's family -- a recursive-alias wrapper, a tuple of type
-    params."""
-    ftype: TpyType
-
-
-def _classify_owned_move(stmt: TpyAssign, slot: _ExprUse,
-                         lc: _LowerCtx,
-                         declared: dict[str, TpyType],
-                         pointers: AbstractSet[str]) -> _OwnedMovePlan | None:
-    if not (_own_binding(stmt.value, declared)
-            and _field_receiver_ok(stmt.target, declared, lc.analyzer)):
-        return None
-    return _OwnedMovePlan(_slot_type(slot))
-
-
-def _lower_owned_move(stmt: TpyAssign, plan: _OwnedMovePlan,
-                      slot: _ExprUse, lc: _LowerCtx,
-                      declared: dict[str, TpyType], loc) -> THIRExpr:
+    if plan.rows:
+        if isinstance(stmt.value, TpyNoneLiteral):
+            return THIRLiteral(result_type=plan.ftype, value=None,
+                               form=Form.STORAGE, loc=loc)
+        return _storage_source(
+            stmt, unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                plan.ftype))),
+            slot, lc, declared, loc)
     lowered = _lower_expr(stmt.value, lc, declared, use=slot,
                           allow_unrouted_name=True)
-    if not _node_moves(lowered):
+    # A raw `T*` read (a narrowed pointer-bound local) is movable too, but
+    # what moves is the pointee the read did not deref; a borrow tuple's
+    # borrowed element must materialize: no render for either here.
+    if (not _node_moves(lowered) or _raw_pointer(lowered)
+            or _borrow_tuple(lowered)):
         raise ThirUnsupported(
             f"field_write.lift.{lowered.form.name.lower()}", detail=True)
     _witness("field_write.owned_move")
@@ -1244,7 +1187,6 @@ _FAMILIES: list[tuple[Callable, Callable, bool]] = [
     (_classify_storage, _lower_storage_field, False),
     (_classify_any, _lower_any_field, False),
     (_classify_residual, _lower_residual_field, False),
-    (_classify_owned_move, _lower_owned_move, False),
 ]
 
 

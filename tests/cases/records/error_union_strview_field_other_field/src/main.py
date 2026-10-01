@@ -19,7 +19,7 @@ class Label:
 
     def mark(self, obj: Obj) -> None:
         # The view member would point into `obj`.
-        self.view = obj.name  # tpyc: error(/assign\.field_write_shape/)
+        self.view = obj.name  # tpyc: error(/field_write\.lift\.storage/)
 
 
 def main() -> None:

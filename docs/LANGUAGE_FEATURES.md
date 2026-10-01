@@ -343,6 +343,16 @@ container / `Own[T]` param / matching `Own[T] | None` return) via
 value still copies. So `T | None` is the owned-nullable local spelling;
 `Own` is unnecessary (and rejected) on a local.
 
+The same last-use move applies to an owned record local -- a `@nocopy`
+one included -- written into a field whose slot no render family claims
+by type (a `Box[T]` field, a recursive-alias field, a tuple of type
+params): the lowered source's own facts admit it (movable, last use), and
+a live local or any other source there keeps rejecting. A consuming
+method's `self` stored into a field relocates the receiver the same way,
+which is what CPython does (it hands over the very object); the call-site
+rule that such a method takes an OWNED receiver is still missing
+(`BUGS.md#consuming-call-borrowed-receiver-consumed`).
+
 You almost never write or think about this distinction directly --
 the compiler picks the right form per slot and emits the conversions
 silently. This auto-lift runs at any pointer-form consumer site

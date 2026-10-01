@@ -597,6 +597,7 @@ from .expressions import (
     _poly_cast_context,
     _param_declared_type,
     _is_move_source,
+    _node_moves,
     _lower_call_arg,
     _lower_char_targeted,
     _lower_dyn_own_conformer,
@@ -7126,7 +7127,7 @@ def _lower_slice_assign(stmt: TpyAssign, lc: _LowerCtx,
     value = _lower_expr(
         stmt.value, lc, declared,
         use=replace(rhs_use, slot_target=target_type))
-    if _is_move_source(stmt.value, lc):
+    if _node_moves(value):
         value = THIRMove(result_type=value.result_type, value=value,
                          form=value.form, loc=loc)
     # A non-empty array-literal RHS renders `{...}`; the checked helper cannot
@@ -7427,16 +7428,17 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     # An owned return direct-initializes the payload, so a ternary takes its
     # prvalue `?:`. A select's slot is not admitted: inside a nested block the
     # skeleton declares it after the block that uses it.
-    value = _wrap_view_owned_return(
-        _lower_expr(ret.value, lc, declared,
-                    field_prechecked=res_str_field,
-                    use=_ExprUse(result=(_ExprResultUse.BORROW_BIND
-                                         if borrow_self_field
-                                         else _ExprResultUse.STORAGE),
-                                 forms=(_NO_FORMS
-                                        if form is AsyncReturnForm.BORROW
-                                        else _ONLY_SELECT_PRVALUE))),
-        lc, getattr(ret, "loc", None))
+    # The move facts sit on the lowered name, which the view-owned wrap
+    # may enclose.
+    raw_value = _lower_expr(ret.value, lc, declared,
+                            field_prechecked=res_str_field,
+                            use=_ExprUse(result=(_ExprResultUse.BORROW_BIND
+                                                 if borrow_self_field
+                                                 else _ExprResultUse.STORAGE),
+                                         forms=(_NO_FORMS
+                                                if form is AsyncReturnForm.BORROW
+                                                else _ONLY_SELECT_PRVALUE)))
+    value = _wrap_view_owned_return(raw_value, lc, getattr(ret, "loc", None))
     if form is AsyncReturnForm.BORROW:
         # Pointer-payload family (bare reference-type returns): the SELF
         # rung -- `return self` lifts the receiver lvalue
@@ -7475,7 +7477,7 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     # source renders a fresh conversion temp); STORAGE-form slots only
     # (borrow/trait forms alias, which the move gate's form check excludes).
     if (isinstance(ret.value, TpyName)
-            and _is_move_source(ret.value, lc)):
+            and _node_moves(raw_value)):
         vt = lc.analyzer.get_expr_type(ret.value)
         vt = unwrap_readonly(vt) if vt is not None else None
         if vt is not None and wants_move(vt):
@@ -12480,13 +12482,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     _witness("setitem.optional_none")
                 elif not (isinstance(v, TpyName)
                           and v.name not in lc.narrow.narrowed
-                          and _is_borrow_ptr_local(v, declared, lc.pointers)
-                          and not _is_move_source(v, lc)):
+                          and _is_borrow_ptr_local(v, declared, lc.pointers)):
                     note_detail("setitem.optional_value_shape")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 else:
+                    lowered_v = _lower_expr(v, lc, declared)
+                    if _node_moves(lowered_v):
+                        note_detail("setitem.optional_value_shape")
+                        raise ThirUnsupported(stmt_reject_reason(stmt))
                     value = THIRFormConvert(
-                        result_type=eu, value=_lower_expr(v, lc, declared),
+                        result_type=eu, value=lowered_v,
                         form=Form.STORAGE, loc=loc)
                     _witness("setitem.borrow_lift")
             elif _value_opt_callable(eu, analyzer) is not None:
@@ -12606,7 +12611,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     note_detail("setitem.ru_value_shape")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 value = _lower_expr(v, lc, declared)
-                if _is_move_source(v, lc):
+                if _node_moves(value):
                     # A movable wrapper NAME is an insert position like any
                     # other container element: its last use moves, so a
                     # bare render would silently copy.
@@ -12749,11 +12754,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # element directly (bare -- the lift would be ill-formed).
                 v = stmt.value
                 if not (isinstance(v, TpyName) and v.name in declared
-                        and v.name not in lc.pointers
-                        and not _is_move_source(v, lc)):
+                        and v.name not in lc.pointers):
                     note_detail("setitem.union_value_shape")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 lowered = _lower_expr(v, lc, declared)
+                if _node_moves(lowered):
+                    note_detail("setitem.union_value_shape")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
                 if v.name in lc.narrow.narrowed or v.name in lc.inline_narrowed:
                     value = lowered
                 else:
@@ -12794,7 +12801,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                       and not (lc.prescan.has_self and v.name == "self")
                       and vtu == eu):
                     value = _lower_expr(v, lc, declared)
-                    if _is_move_source(v, lc):
+                    if _node_moves(value):
                         value = THIRFormConvert(result_type=eu, value=value,
                                                 form=Form.STORAGE, move=True,
                                                 loc=loc)
@@ -12860,7 +12867,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     elem_t, lc)
                 if (_is_any_type(eu) and isinstance(stmt.value, TpyCoerce)
                         and stmt.value.coercion.name == "into_any"
-                        and _is_move_source(stmt.value, lc)):
+                        # A `copy(name)` source lowers to the same coerced
+                        # name node but copies; only a bare name moves.
+                        and isinstance(_peel_coerce(stmt.value), TpyName)
+                        and _node_moves(value)):
                     # The move peels the coerce: a movable inner name's
                     # last use moves the whole make_any value
                     # (`std::move(::tpy::make_any(n))` -- Any is not
@@ -12869,7 +12879,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                      form=Form.STORAGE, loc=loc)
                 elif (not _owned_copy_sink(value, elem_t, analyzer)
                       and isinstance(stmt.value, TpyName)
-                      and _is_move_source(stmt.value, lc)):
+                      and _node_moves(value)):
                     # The move at the element sink: a movable local's last
                     # use is stolen, not copied. The owned-copy sink below
                     # is the exception at this same position -- there the
@@ -13630,10 +13640,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         stmt.value, declared, pointers):
                     note_detail("return.storage_opt_source")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
-                value = THIRFormConvert(result_type=ret_opt,
-                                        value=_lower_expr(stmt.value, lc, declared),
+                src = _lower_expr(stmt.value, lc, declared)
+                value = THIRFormConvert(result_type=ret_opt, value=src,
                                         form=Form.STORAGE,
-                                        move=_is_move_source(stmt.value, lc), loc=loc)
+                                        move=_node_moves(src), loc=loc)
             return THIRReturn(value=value, loc=loc)
         ret_popt = lc.prescan.ret_ptr_opt
         if stmt.value is not None and ret_popt is not None:
@@ -14331,7 +14341,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     and lc.prescan.ret_record_storage is not None
                     and isinstance(stmt.value, TpyName)
                     and stmt.value.name == lc.self_receiver
-                    and _is_move_source(stmt.value, lc)):
+                    # Reading the receiver has no side effects, so a
+                    # non-moving read is dropped and the arms below
+                    # lower it afresh.
+                    and _node_moves(_sv := _lower_expr(stmt.value, lc,
+                                                       declared))):
                 # `return self` in a CONSUMING method: the receiver is this
                 # frame's own value, so the owning return relocates it
                 # (`return std::move((*this));`) rather than copying. Ahead of
@@ -14339,7 +14353,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # lvalue there; the move fact is sema's (`_is_owned_var`), and
                 # the deref rides the receiver's own read.
                 _witness("ret.self_move")
-                _sv = _lower_expr(stmt.value, lc, declared)
                 return THIRReturn(
                     value=THIRMove(result_type=_sv.result_type, value=_sv,
                                    form=_sv.form, loc=loc),
@@ -14450,7 +14463,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 note_detail("return.ptr_opt_leaf_shape")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             ptr_val = replace(ptr_val, deref=True)
-            if _is_move_source(stmt.value, lc):
+            if _node_moves(ptr_val):
                 ptr_val = THIRMove(result_type=ptr_val.result_type,
                                    value=ptr_val, form=ptr_val.form, loc=loc)
             return THIRReturn(value=ptr_val, loc=loc)
@@ -15051,7 +15064,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             rv_src: THIRExpr = _lower_expr(
                 stmt.value, lc, declared,
                 use=_ExprUse(pos=SinkPos.RETURN))
-            if _is_move_source(stmt.value, lc):
+            if _node_moves(rv_src):
                 rv_src = THIRMove(result_type=rv_src.result_type,
                                   value=rv_src, form=rv_src.form, loc=loc)
             return THIRReturn(value=rv_src, loc=loc)
@@ -15073,7 +15086,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             tp_src: THIRExpr = _lower_expr(
                 stmt.value, lc, declared,
                 use=_ExprUse(pos=SinkPos.RETURN))
-            if _is_move_source(stmt.value, lc):
+            if _node_moves(tp_src):
                 tp_src = THIRMove(result_type=tp_src.result_type,
                                   value=tp_src, form=tp_src.form, loc=loc)
             return THIRReturn(value=tp_src, loc=loc)
@@ -15162,7 +15175,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                      # STORAGE return.
                      or lc.value_opt_bindings.get(stmt.value.name)
                      is ValueOptKind.RECORD)
-                and _is_move_source(stmt.value, lc)):
+                and _node_moves(value)):
             value = THIRMove(result_type=value.result_type, value=value,
                              form=value.form, loc=loc)
         # NB a bytes literal (or bytes value) at a BytesView return arrives

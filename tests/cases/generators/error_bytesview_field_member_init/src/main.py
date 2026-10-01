@@ -10,7 +10,7 @@ class Holder:
 
     def __init__(self, blob: BytesView) -> None:
         # The view parameter is the member-init source.
-        self.blob = blob  # tpyc: error(/assign\.field_write_shape/)
+        self.blob = blob  # tpyc: error(/field_write\.lift\.borrow/)
 
     def chunks(self, size: int32, alt: bool) -> Iterator[bytes]:
         if alt:

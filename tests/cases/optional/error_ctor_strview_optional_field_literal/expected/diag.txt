@@ -1,1 +1,1 @@
-main.py:10: error: in the constructor of 'H': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)
+main.py:10: error: in the constructor of 'H': this construct is not yet supported by C++ code generation (field_write.lift.value)

@@ -577,7 +577,7 @@ class _Coverage:
                 self.global_binding(expr)
                 fresh = False
             case th.THIRName() if expr.global_binding is not None:
-                _plain(expr, {"name", "cpp", "global_binding", "is_last_use", "is_movable"})
+                _plain(expr, {"name", "cpp", "global_binding", "is_last_use", "is_movable", "indirect"})
                 self.global_binding(expr)
                 fresh = False
             case th.THIRName():
@@ -749,7 +749,7 @@ class _Coverage:
 
     def container_name(self, expr: th.THIRExpr) -> th.THIRNativeContainer:
         _require(expr, isinstance(expr, th.THIRName), "container source needs local name")
-        _plain(expr, {"name", "is_last_use", "is_movable", "deref"})
+        _plain(expr, {"name", "is_last_use", "is_movable", "deref", "indirect"})
         fact = self.containers.get(expr.name)
         _require(expr, fact is not None and expr.form is th.Form.BORROW
                  and expr.name not in self.fn.layout.reassigned_locals, "container source needs fixed borrowed binding")
@@ -759,10 +759,10 @@ class _Coverage:
     def reference_name(self, expr: th.THIRExpr) -> str:
         match expr:
             case th.THIRName():
-                _plain(expr, {"name", "is_last_use", "is_movable", "deref"})
+                _plain(expr, {"name", "is_last_use", "is_movable", "deref", "indirect"})
                 name = expr.name
             case th.THIRSelf():
-                _plain(expr, {"deref"})
+                _plain(expr, {"deref", "is_last_use", "is_movable"})
                 _require(expr, self.fn.receiver is not None, "missing receiver fact")
                 _require(expr, expr.form is th.Form.BORROW, "receiver read form")
                 _require(expr, not isinstance(unwrap_ref_type(expr.result_type), ReadonlyType)
@@ -907,7 +907,7 @@ class _Coverage:
         _require(node, len(kinds) == 1 and len(layout.elements) >= 2, "mixed or empty union layout")
 
     def union_name(self, expr: th.THIRName) -> th.THIRUnionLayout:
-        _plain(expr, {"name", "is_last_use", "is_movable", "union_read"})
+        _plain(expr, {"name", "is_last_use", "is_movable", "union_read", "indirect"})
         fact = expr.union_read
         _require(expr, isinstance(fact, th.THIRUnionLayout) and self.unions.get(expr.name) == fact,
                  "missing or inconsistent union read")
@@ -991,7 +991,7 @@ class _Coverage:
                      "unsupported optional payload")
 
     def optional_name(self, expr: th.THIRName, *, extract: bool) -> th.THIROptionalLayout:
-        _plain(expr, {"name", "is_last_use", "is_movable", "deref", "optional_read"})
+        _plain(expr, {"name", "is_last_use", "is_movable", "deref", "indirect", "optional_read"})
         fact = expr.optional_read
         _require(expr, isinstance(fact, th.THIROptionalRead) and fact.extract is extract
                  and expr.name in self.optionals and fact.layout == self.optionals[expr.name],
@@ -1249,7 +1249,7 @@ class _Coverage:
                 _plain(expr, {"cpp", "global_binding"})
                 self.global_binding(expr)
             case th.THIRName() if expr.global_binding is not None:
-                _plain(expr, {"name", "cpp", "global_binding", "is_last_use", "is_movable"})
+                _plain(expr, {"name", "cpp", "global_binding", "is_last_use", "is_movable", "indirect"})
                 self.global_binding(expr)
             case th.THIRName():
                 if expr.name in self.optionals:

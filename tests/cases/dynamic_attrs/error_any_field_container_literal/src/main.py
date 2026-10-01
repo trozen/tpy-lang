@@ -19,7 +19,7 @@ class Holder:
 
 
 def store(h: Holder) -> None:
-    h.payload = [1, 2]  # tpyc: error(/assign.field_write_shape/)
+    h.payload = [1, 2]  # tpyc: error(/field_write\.lift\.value/)
 
 
 def main() -> None:

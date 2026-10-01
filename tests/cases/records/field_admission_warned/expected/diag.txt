@@ -1,17 +1,38 @@
-main.py:43: warning: copies list[int32] into field; use copy() to make this explicit
-main.py:52: warning: copies P into field; use copy() to make this explicit
-main.py:56: warning: copies list[int32] into field; use copy() to make this explicit
-main.py:60: warning: copies list[int32] | None into field; use copy() to make this explicit
-main.py:65: warning: copies P into field; use copy() to make this explicit
-main.py:91: warning: copies P into field; use copy() to make this explicit
-main.py:92: warning: copies P into field; use copy() to make this explicit
+main.py:45: warning: copies list[int32] into field; use copy() to make this explicit
+main.py:54: warning: copies P into field; use copy() to make this explicit
+main.py:58: warning: copies list[int32] into field; use copy() to make this explicit
+main.py:62: warning: copies list[int32] | None into field; use copy() to make this explicit
+main.py:67: warning: copies P into field; use copy() to make this explicit
 main.py:93: warning: copies P into field; use copy() to make this explicit
 main.py:94: warning: copies P into field; use copy() to make this explicit
-main.py:119: warning: copies Item into field; use copy() to make this explicit
-main.py:151: warning: copies P into field; use copy() to make this explicit
-main.py:183: warning: copies P into owned storage; use copy() to make this explicit
-main.py:75: warning: copies P into field; use copy() to make this explicit
-main.py:77: warning: copies list[int32] into field; use copy() to make this explicit
-main.py:136: warning: copies list[int32] into field; use copy() to make this explicit
-main.py:132: warning: Own[list[int32]] param 'p' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:160: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:95: warning: copies P into field; use copy() to make this explicit
+main.py:96: warning: copies P into field; use copy() to make this explicit
+main.py:121: warning: copies Item into field; use copy() to make this explicit
+main.py:153: warning: copies P into field; use copy() to make this explicit
+main.py:185: warning: copies P into owned storage; use copy() to make this explicit
+main.py:361: warning: copies P | None into field; use copy() to make this explicit
+main.py:362: warning: copies P | R into field; use copy() to make this explicit
+main.py:366: warning: copies P | R into field; use copy() to make this explicit
+main.py:401: warning: copies P | None into field; use copy() to make this explicit
+main.py:404: warning: copies P | None into field; use copy() to make this explicit
+main.py:407: warning: copies P | None into field; use copy() to make this explicit
+main.py:410: warning: copies P | None into field; use copy() to make this explicit
+main.py:413: warning: copies P | None into field; use copy() to make this explicit
+main.py:419: warning: copies P | R into field; use copy() to make this explicit
+main.py:422: warning: copies P | R into field; use copy() to make this explicit
+main.py:425: warning: copies P | R into field; use copy() to make this explicit
+main.py:428: warning: copies P | R into field; use copy() to make this explicit
+main.py:431: warning: copies P | R into field; use copy() to make this explicit
+main.py:436: warning: copies P | R into field; use copy() to make this explicit
+main.py:441: warning: copies P | None into field; use copy() to make this explicit
+main.py:445: warning: copies P | R into field; use copy() to make this explicit
+main.py:452: warning: copies P | None into field; use copy() to make this explicit
+main.py:454: warning: copies P | R into field; use copy() to make this explicit
+main.py:77: warning: copies P into field; use copy() to make this explicit
+main.py:79: warning: copies list[int32] into field; use copy() to make this explicit
+main.py:138: warning: copies list[int32] into field; use copy() to make this explicit
+main.py:134: warning: Own[list[int32]] param 'p' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:162: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:470: warning: copies P | None into field; use copy() to make this explicit
+main.py:473: warning: copies P | R into field; use copy() to make this explicit
+main.py:475: warning: copies P | R into field; use copy() to make this explicit

@@ -374,11 +374,22 @@ class THIRName(THIRExpr):
     is_last_use: bool = False
     is_movable: bool = False
     deref: bool = False
+    # The binding is a POINTER (`T*`): stamped by `_lower_expr` from the
+    # pointer set. BORROW spells both `T&` and `T*`, so a consumer that
+    # must not bind a raw pointer bare asks `raw_pointer`.
+    indirect: bool = False
     # An UNPROVEN value-repr Optional[scalar] read consumed as its inner scalar:
     # renders `::tpy::deref_optional_check(name)` -- the runtime-checked
     # unwrap. Mutually exclusive with `deref` (the proven `(*name)` unwrap).
     opt_deref_check: bool = False
     cpp: str | None = None
+
+    @property
+    def raw_pointer(self) -> bool:
+        """The read is the bare `T*`: a pointer binding read without the
+        value-position deref. Only a whole lift consumes one; every other
+        slot needs the deref the read did not take."""
+        return self.indirect and not self.deref
 
 
 @dataclass(frozen=True)
@@ -410,6 +421,10 @@ class THIRSelf(THIRExpr):
 
     deref: bool = False
     cpp: str = "this"
+    # The move facts of a CONSUMING method's receiver (`self: Own[Self]`),
+    # stamped by `_lower_expr` exactly as on a name read.
+    is_last_use: bool = False
+    is_movable: bool = False
 
 
 @dataclass(frozen=True)
@@ -1675,10 +1690,11 @@ class THIRFieldAccess(THIRExpr):
 
     `field_cpp` is the rendered C++ member name (escape + any native rename
     resolved at lowering); `is_arrow` selects `->` over `.` for a pointer/global
-    receiver. `form` is the field's value form -- `STORAGE` for a storage-form
-    `Optional[ref]` field read (the F1 source lifted to a borrow via
-    `THIRFormConvert`). The F1 slice admits only a non-value record reference
-    receiver (`.` access), so `is_arrow` is False there.
+    receiver. `form` is the field's value form: `STORAGE` for every member
+    with a form axis -- a record, an Optional, a union, a storage tuple -- since
+    a member IS the field's own storage (a consumer lifts it to a borrow via
+    `THIRFormConvert`, the F1 `optional_to_ptr` read being the first); the
+    str/bytes view axis for a view-family member; `VALUE` for a value scalar.
 
     `deref_check` wraps the receiver in a runtime null check for an unproven
     `Optional` member access (`::tpy::deref_check(receiver).field`, the
@@ -1754,8 +1770,10 @@ class THIRSubscript(THIRExpr):
 
     Container (list / dict), str-family (`s[i]` -> char), or bytes-family
     (`b[i]` -> uint8) -- a runtime
-    index/key lookup, `form` VALUE (a value-scalar / char element). A str
-    element/value read (`xs[i]` on `list[str]`, `d[k]` on a str-valued dict,
+    index/key lookup, `form` VALUE (a value-scalar / char element), BORROW
+    for a record element (the `T&` the dunder yields), STORAGE for an
+    Optional / union / storage-tuple element (the element slot's own
+    storage). A str element/value read (`xs[i]` on `list[str]`, `d[k]` on a str-valued dict,
     S5) carries its resolved shape instead: BORROW when the read's view var
     resolved `StrView` (drives the S1 owned-sink `std::string(x)` copy),
     STORAGE when it resolved owned (bare -- the `const std::string&` element
