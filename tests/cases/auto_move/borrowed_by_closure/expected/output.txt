@@ -1,1 +1,38 @@
 3
+param_return 4
+indirect 4
+raise 4
+lambda 104
+never_called 1
+return_copies 4
+def_after_return_copies 4 3
+raise_copies 4
+raise_copies 3
+lambda_local 4
+with_exit sees 4
+call_then_rebind 4
+call_then_rebind returns 3
+finally_landing sees 4
+finally_landing returns 1
+via_generator 4
+via_map 4
+via_callee 4
+held_then_rebind 4 3
+chained 3
+held_on_break 3
+held_on_raise 3
+via_property 4
+via_getitem 4
+rebind_after_consume 4
+finally_after_handler 4
+finally_return_defers sees 4
+finally_return_defers 4
+holder sees 4
+del_holder_return done
+holder sees 4
+del_holder_tuple 1
+lambda_same_call 3
+holder sees 3
+del_holder_generic done
+holder sees 4
+del_holder_tuple_name done

@@ -84,7 +84,7 @@ def test_join_lets_unknown_absorb():
 
 _RECORDS = """\
 from typing import Callable, Optional, Protocol
-from tpy import Ptr, ValueType, StrView, int32
+from tpy import Own, Ptr, ValueType, StrView, int32
 
 class Point:
     x: int32
@@ -112,7 +112,8 @@ def use(point: Point, node: Node, label: Label) -> None:
     print(point.x, node.value, label.text)
 
 def shapes(shape: Shape, fn: Callable[[int32], int32], ptr: Ptr[Point], xs: list[int32],
-           table: dict[str, Point], maybe: Optional[Point], either: Point | Node) -> None:
+           table: dict[str, Point], maybe: Optional[Point], either: Point | Node,
+           owned: tuple[Own[Point], Own[Point]], mixed: tuple[Own[Point], Point]) -> None:
     pass
 
 def main() -> None:
@@ -244,7 +245,8 @@ def test_param_passing_matches_structural_param_forms(typ, const):
 @pytest.mark.parametrize("const", [False, True])
 def test_param_passing_matches_compiled_param_forms(const):
     # Pointers, Optional / union over records (the pointer representation),
-    # structural protocols, callables and generic containers.
+    # structural protocols, callables, generic containers and tuples with an
+    # owned element (fully owned or mixed: an ownership transfer either way).
     compiler, modules = _compile(_RECORDS)
     shapes = _entry(modules).analyzer.registry.get_function("shapes")[-1]
     types = [p.type for p in shapes.params]
@@ -256,6 +258,7 @@ def test_param_passing_matches_compiled_param_forms(const):
             assert typ.param_passing(const) is _rendered_passing(typ, const), str(typ)
             passings.add(typ.param_passing(const))
     assert ParamPassing.POINTER in passings
+    assert ParamPassing.OWN in passings
 
 
 @pytest.mark.parametrize("typ", PRIMITIVES, ids=str)

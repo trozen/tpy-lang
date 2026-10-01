@@ -364,6 +364,124 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_orelse_alias::__next__
     __builtin_unreachable();
 }
 
+// # workaround 1 for a rebind after the alias: bind a copy. The copy is detached
+// # from the slot, so a write through it is not seen through `t`, and the
+// # rebind leaves it alone.
+// def copy_alias(c: bool) -> Iterator[int32]:
+//     t = (A(1), A(2))
+//     saved = copy(t[1])  # tpyc: ok
+//     yield saved.x                            # -> S_RESUME_0
+//     saved.x = 5
+//     yield t[1].x                             # -> S_RESUME_1
+//     if c:
+//         t = (A(9), A(8))
+//     yield saved.x                            # -> S_RESUME_2
+//     yield t[1].x                             # -> S_RESUME_3
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_copy_alias::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        t.emplace(std::tuple<A, A>{A(1), A(2)});
+        saved.emplace(A(std::get<1>((*t))));
+        __state = S_RESUME_0;
+        return (*saved).x;
+    }
+    case S_RESUME_0: {  // after: yield saved.x
+        (*saved).x = 5;
+        __state = S_RESUME_1;
+        return std::get<1>((*t)).x;
+    }
+    case S_RESUME_1: {  // after: yield t[1].x
+        if (c) {
+            t.emplace(std::tuple<A, A>{A(9), A(8)});
+        }
+        __state = S_RESUME_2;
+        return (*saved).x;
+    }
+    case S_RESUME_2: {  // after: yield saved.x
+        __state = S_RESUME_3;
+        return std::get<1>((*t)).x;
+    }
+    case S_RESUME_3: {  // after: yield t[1].x
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// # workaround 1 through a record field and a list inside the tuple.
+// def copy_chained(c: bool) -> Iterator[int32]:
+//     t = (H(1), 5)
+//     saved = copy(t[0].xs[1])  # tpyc: ok
+//     saved.x = 50
+//     yield t[0].xs[1].x                         # -> S_RESUME_0
+//     if c:
+//         t = (H(10), 6)
+//     yield saved.x                              # -> S_RESUME_1
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_copy_chained::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        t.emplace(std::tuple<H, int32_t>{H(1), 5});
+        saved.emplace(A(::tpy::__getitem__(std::get<0>((*t)).xs, 1)));
+        (*saved).x = 50;
+        __state = S_RESUME_0;
+        return ::tpy::__getitem__(std::get<0>((*t)).xs, 1).x;
+    }
+    case S_RESUME_0: {  // after: yield t[0].xs[1].x
+        if (c) {
+            t.emplace(std::tuple<H, int32_t>{H(10), 6});
+        }
+        __state = S_RESUME_1;
+        return (*saved).x;
+    }
+    case S_RESUME_1: {  // after: yield saved.x
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// # workaround 2 through a tuple inside a list slot: the alias is taken after
+// # the last rebind, so a write through it is seen through the slot.
+// def list_of_tuples_after_rebind(c: bool) -> Iterator[int32]:
+//     xs = [(A(1), A(2))]
+//     yield xs[0][1].x                                          # -> S_RESUME_0
+//     if c:
+//         xs = [(A(9), A(8))]
+//     saved = xs[0][1]  # tpyc: ok
+//     saved.x = 5
+//     yield xs[0][1].x                                          # -> S_RESUME_1
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_list_of_tuples_after_rebind::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        xs.emplace(std::array<std::tuple<A, A>, 1>{std::tuple<A, A>{A(1), A(2)}});
+        __state = S_RESUME_0;
+        return std::get<1>(::tpy::__getitem__((*xs), 0)).x;
+    }
+    case S_RESUME_0: {  // after: yield xs[0][1].x
+        if (c) {
+            xs.emplace(std::array<std::tuple<A, A>, 1>{std::tuple<A, A>{A(9), A(8)}});
+        }
+        saved = &(std::get<1>(::tpy::__getitem__((*xs), 0)));
+        saved->x = 5;
+        __state = S_RESUME_1;
+        return std::get<1>(::tpy::__getitem__((*xs), 0)).x;
+    }
+    case S_RESUME_1: {  // after: yield xs[0][1].x
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 // # method generator.
 // def walk(self, p: tuple[A, A]) -> Iterator[int32]:
 //     a = p[1]  # tpyc: ok

@@ -699,11 +699,13 @@ class Compiler:
         # `Rec.__init__`).
         self._thir_routed_names: dict[str, frozenset[str]] = {}
         # First-reject slot: the reason and position the reject diagnostic
-        # reports (thir/reject.py).
+        # reports (thir/reject.py), and the reject's own sentence when it
+        # recorded one.
         self._thir_reject_reason: str | None = None
         self._thir_reject_detail: str | None = None
         self._thir_reject_detail_loc: 'SourceLocation | None' = None
         self._thir_reject_loc: 'SourceLocation | None' = None
+        self._thir_reject_message: str | None = None
         # First-reject reason per rejected body, keyed by its AST
         # callable, so `--dump-thir` can name why a lowering raised.
         self._thir_reject_by_node: IdentityMap = IdentityMap()

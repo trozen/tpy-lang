@@ -23,7 +23,7 @@ class H:
 
 def g(c: bool) -> Iterator[int32]:
     t = (H(1), 5)
-    saved = t[0].xs[1]  # tpyc: error(/not yet supported.*res\.alias_bind/)
+    saved = t[0].xs[1]  # tpyc: error(/binding 'saved' to an element inside 't' is not yet supported in a generator.*last reassignment of 't'$/)
     yield saved.x
     if c:
         t = (H(10), 6)

@@ -17,7 +17,7 @@ from ..typesys import (
 )
 from ..parse import TpyCall, TpyMethodCall, TpyProtocol, TpyRecord
 from .. import qnames
-from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError, qualified_cpp_name, expand_cpp_template
+from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError, qualified_cpp_name, expand_cpp_template, forward_param
 from ..type_def_registry import is_str_type, protocol_info_of, is_subtype
 from ..symbol_binding import lookup_imported, SymbolKind
 
@@ -1042,7 +1042,8 @@ class ProtocolGenerator:
 
     def _dynamic_forward_call(self, method_sig: MethodSignature) -> str:
         """Generate the forwarding call expression for an adapter method."""
-        arg_names = [pname for pname, _ in method_sig.params]
+        arg_names = [forward_param(pname, ptype)
+                     for pname, ptype in method_sig.params]
         args_str = ", ".join(arg_names)
 
         # Dunder methods with ::tpy:: free function equivalents

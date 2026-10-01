@@ -1,0 +1,2 @@
+main.py:20: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:28: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit

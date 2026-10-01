@@ -81,9 +81,9 @@ struct __coro_combine {
 //
 //     for x in xs:
 //         stash(b, x)
-//     await asyncio.sleep(0)                           # -> S_RESUME_0
+//     await asyncio.sleep(0)                                                             # -> S_RESUME_0
 //     double()
-//     return b
+//     return b  # tpyc: warning(/copies Box into owned storage/) -- double() captures b
 template <::tpystd::typing::Iterable<int32_t> T_xs>
 ::tpystd::tpy::Poll<Box> __coro_combine<T_xs>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
@@ -111,7 +111,7 @@ template <::tpystd::typing::Iterable<int32_t> T_xs>
         __sub_0.reset();
         double_();
         __state = S_DONE;
-        Box __tpy_async_ret = std::move((*b));
+        Box __tpy_async_ret = (*b);
         return ::tpystd::tpy::Poll<Box>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

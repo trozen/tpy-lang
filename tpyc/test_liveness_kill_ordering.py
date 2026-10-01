@@ -11,7 +11,8 @@ from __future__ import annotations
 
 from tpyc.liveness import analyze_last_uses
 from tpyc.parse.nodes import (
-    TpyExceptHandler, TpyFunction, TpyMethodCall, TpyName, TpyNestedDef,
+    TpyExceptHandler, TpyFunction, TpyLambda, TpyMethodCall, TpyName,
+    TpyNestedDef,
     TpyNoneLiteral,
     TpyPassStmt, TpyRaise, TpyReturn, TpyStmt, TpyTry, TpyVarDecl, TryTier,
 )
@@ -67,16 +68,11 @@ class TestSelfReferentialDefinition:
 
 
 class TestNestedDefCaptures:
-    """A nested def stays callable to the end of the function, so a name it
-    captures is live at and after the def. `captured_names` is empty while this
-    pass runs (sema fills it later), so the arm falls back to the syntactic
-    free-name approximation, which is what keeps a name live ABOVE the def.
-
-    Reads BETWEEN the def and a terminator are not covered: the entry seed is
-    the only thing protecting them and a `return` clears it (BUGS.md). Widening
-    the fix to pin every captured name unconditionally is wrong -- a rebind
-    between the consume and the closure call soundly kills the seed, which
-    `tests/cases/auto_move/closure_capture_reassign_moves` pins."""
+    """A name a nested def or lambda captures is never a last use anywhere in
+    the enclosing body -- before the def, before a `return`, at the `return`,
+    and across a rebind. `captured_names` is empty while this pass runs (sema
+    fills it later), so the captures are the syntactic free-name
+    approximation."""
 
     def test_consume_before_the_def_is_not_last_use(self):
         consumed = TpyName(name="b")
@@ -87,6 +83,58 @@ class TestNestedDefCaptures:
             TpyReturn(value=TpyNoneLiteral()),
         ])
         assert not _is_last_use(marks, consumed)
+
+    def test_consume_after_the_def_before_a_return_is_not_last_use(self):
+        consumed = TpyName(name="b")
+        marks = analyze_last_uses([
+            _decl("b", None),
+            _nested_def("inner", [TpyReturn(value=TpyName(name="b"))]),
+            _decl("c", consumed),
+            TpyReturn(value=TpyName(name="c")),
+        ])
+        assert not _is_last_use(marks, consumed)
+
+    def test_the_returned_name_is_not_last_use(self):
+        returned = TpyName(name="b")
+        marks = analyze_last_uses([
+            _decl("b", None),
+            _nested_def("inner", [TpyReturn(value=TpyName(name="b"))]),
+            TpyReturn(value=returned),
+        ])
+        assert not _is_last_use(marks, returned)
+
+    def test_a_rebind_does_not_lift_the_pin(self):
+        consumed = TpyName(name="b")
+        marks = analyze_last_uses([
+            _decl("b", None),
+            _nested_def("inner", [TpyReturn(value=TpyName(name="b"))]),
+            _decl("c", consumed),
+            _decl("b", None),
+            TpyReturn(value=TpyNoneLiteral()),
+        ])
+        assert not _is_last_use(marks, consumed)
+
+    def test_a_lambda_capture_pins_too(self):
+        consumed = TpyName(name="b")
+        marks = analyze_last_uses([
+            _decl("b", None),
+            _decl("k", TpyLambda(param_names=["v"],
+                                 body=TpyName(name="b"))),
+            _decl("c", consumed),
+            TpyReturn(value=TpyName(name="c")),
+        ])
+        assert not _is_last_use(marks, consumed)
+
+    def test_a_lambda_param_is_not_a_capture(self):
+        consumed = TpyName(name="v")
+        marks = analyze_last_uses([
+            _decl("v", None),
+            _decl("k", TpyLambda(param_names=["v"],
+                                 body=TpyName(name="v"))),
+            _decl("c", consumed),
+            TpyReturn(value=TpyName(name="c")),
+        ])
+        assert _is_last_use(marks, consumed)
 
     def test_a_name_no_nested_def_captures_is_still_movable(self):
         consumed = TpyName(name="b")

@@ -65,7 +65,7 @@ _FRESH_COLLECTION_NODES = (
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
 )
-from ..typesys import IntLiteralType, NominalType, TpyType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, varargs_is_readonly, is_readonly_ptr, VoidType, is_fn_type, is_dyn_protocol, ConcreteFrameType
+from ..typesys import IntLiteralType, NominalType, TpyType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, varargs_is_readonly, is_readonly_ptr, VoidType, is_fn_type, is_dyn_protocol, ConcreteFrameType, param_takes_ownership
 from ..value_category import (async_return_form, AsyncReturnForm,
                               for_source_is_rvalue, frame_factory_callee,
                               iterator_source_callee,
@@ -194,10 +194,11 @@ class _CoroParamKind(IntEnum):
         polls.
     VALUE: value type (or string view) stored by value; field is `T`,
         ctor takes `T x_` and the init moves into the field.
-    POINTER: pointer-form Optional[NonValue] param; field is `T*` (or
-        `const T*`), ctor takes the same. Init is a direct copy -- raw
-        pointers are trivially copyable, so std::move would just add
-        noise.
+    POINTER: a param whose borrow form is made of pointers -- a
+        pointer-form Optional[NonValue] (`T*` / `const T*`), a pointer-variant
+        union, a borrow tuple (`std::tuple<..., T*>`); field and ctor take
+        that form. Init is a direct copy -- pointers are trivially copyable,
+        so std::move would just add noise.
     TYPE_PARAM: TypeParamRef param whose value-vs-reference resolution
         happens at instantiation; field is `::tpy::val_or_ref_t<T>` (T for
         value types, T& for object types), ctor takes
@@ -222,6 +223,12 @@ class _CoroParamKind(IntEnum):
         only the template-header constraint differs (a plain `typename`
         vs a concept) -- mirrors the non-generator Fn handling in
         `functions.py`.
+    OWNED_TUPLE: an ownership-transfer tuple that also holds borrowed
+        elements (`tuple[Own[A], B]`, `param_takes_ownership`). The field is
+        the mixed render `std::tuple<A, B*>` (`const B*` per the same const
+        verdict POINTER reads); like OWNED_VALUE the ctor takes `&&` and
+        moves in and the factory forwards via `std::move(name)`, and like
+        POINTER it borrows: its pointers alias the caller's objects.
     CAPTURE: a lexical capture of a genexpr's function -- an enclosing name
         the body reads. The same deduced `F_<pname>&&` forwarding slot as FN,
         but what it is handed is always an LVALUE, so `F_<pname>` deduces a
@@ -250,12 +257,16 @@ class _CoroParamKind(IntEnum):
     FN = 6
     OWNED_COPY = 7
     CAPTURE = 8
+    OWNED_TUPLE = 9
 
 
 # The kinds whose C++ type is a deduced template arg taken by forwarding
 # reference (`X&&` in the ctor and the factory, `std::forward` into the field).
 _DEDUCED_SLOT_KINDS = (_CoroParamKind.STATIC_PROTOCOL, _CoroParamKind.FN,
                        _CoroParamKind.CAPTURE)
+# The kinds the caller hands over by ownership transfer: the ctor takes `&&`
+# and moves into the field, the factory forwards with `std::move`.
+_MOVED_IN_KINDS = (_CoroParamKind.OWNED_VALUE, _CoroParamKind.OWNED_TUPLE)
 
 
 @dataclass(frozen=True)
@@ -283,7 +294,7 @@ class _CoroParam:
             return f"{self.ctor_param_type}& {self.cpp_name}"
         if self.kind in _DEDUCED_SLOT_KINDS:
             return f"{self.ctor_param_type}&& {self.cpp_name}"
-        if self.kind is _CoroParamKind.OWNED_VALUE:
+        if self.kind in _MOVED_IN_KINDS:
             return f"{self.ctor_param_type} {self.cpp_name}"
         # OWNED_COPY: factory takes the borrow form by value (bare name), same
         # as VALUE; the ctor copies it into the owned field.
@@ -294,7 +305,7 @@ class _CoroParam:
             return f"{self.ctor_param_type}& {self.cpp_name}"
         if self.kind in _DEDUCED_SLOT_KINDS:
             return f"{self.ctor_param_type}&& {self.cpp_name}_"
-        if self.kind is _CoroParamKind.OWNED_VALUE:
+        if self.kind in _MOVED_IN_KINDS:
             return f"{self.ctor_param_type}&& {self.cpp_name}_"
         # VALUE / POINTER / TYPE_PARAM / OWNED_COPY: `_` suffix disambiguates
         # from the field name in the init list.
@@ -611,7 +622,7 @@ class AsyncCoroCodegen:
             ptype_inner = unwrap_ref_type(ptype)
             actual = unwrap_readonly(ptype_inner)
             kind = self._classify_param_kind(ptype)
-            if pname in func.capture_params:
+            if func.is_capture(pname):
                 # A lexical capture: the deduced-type forwarding slot, which an
                 # lvalue argument makes a REFERENCE field of whatever C++ type
                 # the enclosing variable has (its storage form is the enclosing
@@ -659,7 +670,7 @@ class AsyncCoroCodegen:
                 # `_emit_template_header`); stored by value, forwarded via
                 # `F_<pname>&&` -- same shape as STATIC_PROTOCOL.
                 field_type = ctor_type = fn_param_template_name(pname)
-            elif kind is _CoroParamKind.POINTER:
+            elif kind in (_CoroParamKind.POINTER, _CoroParamKind.OWNED_TUPLE):
                 if isinstance(actual, OptionalType) and actual.uses_pointer_repr():
                     field_type = ctor_type = ptype_inner.to_cpp_param_type()
                 elif isinstance(actual, TupleType):
@@ -757,7 +768,8 @@ class AsyncCoroCodegen:
         # VALUE-kind field would store the storage form (std::tuple<..., T>)
         # and silently copy the element where CPython shares it.
         if isinstance(actual, TupleType) and actual.has_pointer_repr_element():
-            return _CoroParamKind.POINTER
+            return (_CoroParamKind.OWNED_TUPLE if param_takes_ownership(ptype)
+                    else _CoroParamKind.POINTER)
         # Own[T] checked before is_value_type(): `OwnType.is_value_type()` is
         # True (Own[T] uses T&& at param boundaries) but the move-only
         # semantics need explicit forwarding, so it can't ride the VALUE path.
@@ -770,9 +782,9 @@ class AsyncCoroCodegen:
     def _param_borrows(self, ptype: 'TpyType') -> bool:
         """True iff a param of this type is captured in the coro frame as a
         borrow (a reference/pointer into the arg) rather than by value -- the
-        REF / POINTER kinds. An rvalue-temporary arg bound to such a param
-        dangles once the suspending `case` block exits unless it is hoisted
-        into a frame field that outlives the sub-coro.
+        REF / POINTER / OWNED_TUPLE kinds. An rvalue-temporary arg bound to
+        such a param dangles once the suspending `case` block exits unless it
+        is hoisted into a frame field that outlives the sub-coro.
 
         TYPE_PARAM (generic-async) is intentionally not treated as borrowing
         here: its value-vs-reference form resolves only at instantiation, so
@@ -785,7 +797,8 @@ class AsyncCoroCodegen:
         pointer-repr one at a reference T (hoisted), so the answer is already
         per instantiation."""
         return self._classify_param_kind(ptype) in (
-            _CoroParamKind.REF, _CoroParamKind.POINTER)
+            _CoroParamKind.REF, _CoroParamKind.POINTER,
+            _CoroParamKind.OWNED_TUPLE)
 
     def _frame_temp_slot(self, ptype: 'TpyType',
                          arg: 'TpyExpr') -> 'TpyType | None':
@@ -881,7 +894,7 @@ class AsyncCoroCodegen:
         """
         return [f"typename {fn_param_template_name(pname)}"
                 for pname, ptype in func.params
-                if pname in func.capture_params
+                if func.is_capture(pname)
                 or is_fn_type(unwrap_readonly(unwrap_ref_type(ptype)))]
 
     def _record_template_args(self, record_name: str | None) -> tuple[str, ...]:
@@ -2782,7 +2795,7 @@ class AsyncCoroCodegen:
             if cparam.kind in _DEDUCED_SLOT_KINDS:
                 parts.append(
                     f"std::forward<{cparam.ctor_param_type}>({cparam.cpp_name})")
-            elif cparam.kind is _CoroParamKind.OWNED_VALUE:
+            elif cparam.kind in _MOVED_IN_KINDS:
                 parts.append(f"std::move({cparam.cpp_name})")
             else:
                 parts.append(cparam.cpp_name)
@@ -3804,7 +3817,8 @@ class AsyncCoroCodegen:
         # instantiation shares the latent frame-move hazard the `begin_end`
         # iterators into such a field already carry.
         borrowed_kinds = (_CoroParamKind.REF, _CoroParamKind.POINTER,
-                          _CoroParamKind.CAPTURE, _CoroParamKind.TYPE_PARAM)
+                          _CoroParamKind.OWNED_TUPLE, _CoroParamKind.CAPTURE,
+                          _CoroParamKind.TYPE_PARAM)
         classified = self._classify_params(func, record_name)
         if record_name:
             classified = classified[1:]

@@ -1,1 +1,45 @@
-main.py:31: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:121: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:112: warning: Own[Point] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:137: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:127: warning: Own[Point] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:149: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:142: warning: Own[Point] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:161: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:154: warning: Own[Point] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:173: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:167: warning: Own[Point] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:183: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:190: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:188: warning: Own[Point] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:203: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:201: warning: Own[Point] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:220: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:214: warning: Own[Point] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:233: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:235: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:226: warning: Own[Point] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:247: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:240: warning: Own[Point] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:262: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:254: warning: Own[Point] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:277: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:269: warning: Own[Point] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:293: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:285: warning: Own[Point] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:309: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:301: warning: Own[Point] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:323: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:315: warning: Own[Point] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:342: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:361: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:381: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:399: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:416: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:429: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:451: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:479: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:491: warning: copies Point into owned storage (tuple element 0); use copy() to make this explicit
+main.py:497: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:509: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:522: warning: copies tuple[Own[Point], Own[Point]] into owned storage; use copy() to make this explicit
+main.py:532: warning: copies Point into owned storage; use copy() to make this explicit

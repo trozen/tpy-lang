@@ -1,8 +1,8 @@
 # A mixed owned+borrow tuple param (tuple[Own[A], A] -- one Own element, one
-# bare reference element aliasing the caller) is excluded from the owned
-# `std::tuple<...>&&` ABI and stays a plain const& borrow with no spurious
-# never-consumed warning. Guards the exclusion; the Own element being received
-# as a borrow rather than honored is a known per-element-ownership gap.
+# bare reference element aliasing the caller) takes the ownership-transfer
+# `std::tuple<A, const A*>&&` ABI of its fully owned twin, the borrowed
+# element a pointer; a body that only reads it warns never-consumed like the
+# twin.
 from tpy import Own, int32
 
 
@@ -13,7 +13,7 @@ class A:
         self.n = n
 
 
-def read_mixed(p: tuple[Own[A], A]) -> int32:  # tpyc: ok
+def read_mixed(p: tuple[Own[A], A]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
     return p[0].n + p[1].n
 
 

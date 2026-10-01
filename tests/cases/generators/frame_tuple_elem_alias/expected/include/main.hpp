@@ -11,6 +11,7 @@
 namespace tpyapp::main {
 
 struct A;
+struct H;
 struct Walker;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -27,6 +28,11 @@ struct __gen_mixed_borrowed_rebound;
 struct __gen_rebind_before_alias;
 struct __gen_alias_after_last_rebind;
 struct __gen_orelse_alias;
+struct __gen_copy_alias;
+struct __gen_copy_chained;
+struct __gen_list_of_tuples_after_rebind;
+struct __coro_co_copy;
+struct __coro_co_alias_after_rebind;
 struct __gen_Walker_walk;
 
 // def ro_param(p: tuple[A, A]) -> Iterator[int32]:
@@ -53,6 +59,16 @@ __gen_rebind_before_alias rebind_before_alias(bool c);
 __gen_alias_after_last_rebind alias_after_last_rebind();
 // def orelse_alias() -> Iterator[int32]:
 __gen_orelse_alias orelse_alias();
+// def copy_alias(c: bool) -> Iterator[int32]:
+__gen_copy_alias copy_alias(bool c);
+// def copy_chained(c: bool) -> Iterator[int32]:
+__gen_copy_chained copy_chained(bool c);
+// def list_of_tuples_after_rebind(c: bool) -> Iterator[int32]:
+__gen_list_of_tuples_after_rebind list_of_tuples_after_rebind(bool c);
+// async def co_copy(c: bool) -> int32:
+__coro_co_copy co_copy(bool c);
+// async def co_alias_after_rebind(b: A, c: bool) -> int32:
+__coro_co_alias_after_rebind co_alias_after_rebind(A& b, bool c);
 // def main() -> None:
 void main();
 
@@ -69,6 +85,22 @@ struct A {
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
     ::tpy::print_object_default(os, "A", obj);
+    return os;
+}
+
+// class H:
+struct H {
+    // xs: list[A]
+    std::vector<A> xs;
+
+    // def __init__(self, i: int32) -> None:
+    H() = default;
+    explicit H(int32_t i);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.H";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const H& obj) {
+    ::tpy::print_object_default(os, "H", obj);
     return os;
 }
 
@@ -113,6 +145,66 @@ struct __coro_co_param {
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_co_param&) {
         return os << "<coroutine co_param>";
+    }
+};
+
+// async def co_copy(c: bool) -> int32:
+struct __coro_co_copy {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    bool c;
+    ::tpy::frame_slot<std::tuple<A, A>> t;
+    ::tpy::frame_slot<A> saved;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_co_copy(bool c_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(std::move(c_)) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_co_copy&) {
+        return os << "<coroutine co_copy>";
+    }
+};
+
+// async def co_alias_after_rebind(b: A, c: bool) -> int32:
+struct __coro_co_alias_after_rebind {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    A& b;
+    bool c;
+    ::tpy::frame_slot<std::tuple<A, A*>> t;
+    A* saved = nullptr;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __coro_co_alias_after_rebind(A& b, bool c_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          b(b),
+          c(std::move(c_)) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_co_alias_after_rebind&) {
+        return os << "<coroutine co_alias_after_rebind>";
     }
 };
 
@@ -400,6 +492,86 @@ struct __gen_orelse_alias : public ::tpy::next_iter_mixin<__gen_orelse_alias, in
     }
 };
 
+// def copy_alias(c: bool) -> Iterator[int32]:
+struct __gen_copy_alias : public ::tpy::next_iter_mixin<__gen_copy_alias, int32_t> {
+    ::tpy::frame_state __state;
+    bool c;
+    ::tpy::frame_slot<std::tuple<A, A>> t;
+    ::tpy::frame_slot<A> saved;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_RESUME_3 = 4,
+        S_DONE = 5,
+    };
+
+    __gen_copy_alias(bool c_)
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_copy_alias& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_copy_alias&) {
+        return os << "<generator copy_alias>";
+    }
+};
+
+// def copy_chained(c: bool) -> Iterator[int32]:
+struct __gen_copy_chained : public ::tpy::next_iter_mixin<__gen_copy_chained, int32_t> {
+    ::tpy::frame_state __state;
+    bool c;
+    ::tpy::frame_slot<std::tuple<H, int32_t>> t;
+    ::tpy::frame_slot<A> saved;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_copy_chained(bool c_)
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_copy_chained& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_copy_chained&) {
+        return os << "<generator copy_chained>";
+    }
+};
+
+// def list_of_tuples_after_rebind(c: bool) -> Iterator[int32]:
+struct __gen_list_of_tuples_after_rebind : public ::tpy::next_iter_mixin<__gen_list_of_tuples_after_rebind, int32_t> {
+    ::tpy::frame_state __state;
+    bool c;
+    ::tpy::frame_slot<std::array<std::tuple<A, A>, 1>> xs;
+    A* saved = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_list_of_tuples_after_rebind(bool c_)
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_list_of_tuples_after_rebind& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_list_of_tuples_after_rebind&) {
+        return os << "<generator list_of_tuples_after_rebind>";
+    }
+};
+
 // def walk(self, p: tuple[A, A]) -> Iterator[int32]:
 struct __gen_Walker_walk : public ::tpy::next_iter_mixin<__gen_Walker_walk, int32_t> {
     ::tpy::frame_state __state;
@@ -435,6 +607,10 @@ inline __gen_Walker_walk Walker::walk(std::tuple<A*, A*> p) const {
 // def __init__(self, x: int32) -> None:
 //     self.x = x
 inline A::A(int32_t x) : x(x) {}
+
+// def __init__(self, i: int32) -> None:
+//     self.xs = [A(i), A(i + 1)]
+inline H::H(int32_t i) : xs(std::vector<A>{A(i), A((::tpy::add_check<int32_t>(i, 1)))}) {}
 
 // def __init__(self) -> None:
 //     self.k = 0

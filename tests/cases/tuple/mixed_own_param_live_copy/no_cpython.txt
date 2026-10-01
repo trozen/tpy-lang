@@ -1,0 +1,4 @@
+Observes the copy the warning declares: a live mixed local passed to a
+tuple[Own[Box], Box] parameter copies its owned element, so the callee's
+write to p[0] does not reach t[0] (TPy 100, CPython 182). The divergence is
+the subject of the case.

@@ -21,8 +21,7 @@ from typing import Callable, Sequence
 
 from ..parse.nodes import (TpyArrayLiteral, TpyDictLiteral, TpyExpr,
                            TpyFloatLiteral, TpyIntLiteral, TpyListRepeat,
-                           TpyNamedExpr, TpySetLiteral, TpyTupleLiteral,
-                           TpyUnaryOp)
+                           TpyNamedExpr, TpySetLiteral, TpyTupleLiteral)
 from ..typesys import (BIGINT, IntLiteralType, FloatLiteralType,
                        LiteralType, NominalType, OptionalType, OwnType,
                        PendingDictType, PendingListType, PendingSetType,
@@ -32,7 +31,7 @@ from ..typesys import (BIGINT, IntLiteralType, FloatLiteralType,
                        resolve_int_literals, unwrap_readonly,
                        unwrap_send_sync)
 from ..value_category import peel_coerce
-from ..prescan import storage_spelling
+from ..prescan import int_literal_spelling, storage_spelling
 
 
 class JoinOutcome(Enum):
@@ -257,7 +256,7 @@ def int_literal_spellings(mix: InferredJoin,
         if leaves is None:
             return None
         for leaf in leaves:
-            s = _int_literal_spelling(leaf)
+            s = int_literal_spelling(leaf)
             if s is None:
                 return None
             if s not in spellings:
@@ -322,16 +321,6 @@ def _left_open(e: TpyExpr, path: tuple[int, ...],
     picked = [c for i, c in children if i == path[0]]
     return bool(picked) and all(
         _left_open(c, path[1:], empty_call) for c in picked)
-
-
-def _int_literal_spelling(e: TpyExpr) -> str | None:
-    e = peel_coerce(e)
-    if isinstance(e, TpyIntLiteral):
-        return str(e.value)
-    if (isinstance(e, TpyUnaryOp) and e.op == "-"
-            and isinstance(peel_coerce(e.operand), TpyIntLiteral)):
-        return f"-{peel_coerce(e.operand).value}"
-    return None
 
 
 def _literal_fix(spellings: list[str]) -> str:

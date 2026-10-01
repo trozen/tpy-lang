@@ -66,6 +66,9 @@ class _Walk:
     # Per try with a finally, the names a `return` leaving through it
     # returns: a deferred one materializes them only after the finally ran.
     returned_through: IdentityMap = field(default_factory=IdentityMap)
+    # Names a nested def or lambda of the body captures: live at every
+    # statement and never a last use (see analyze_last_uses).
+    pinned: frozenset[str] = frozenset()
     # False for the passes that only settle a loop header's live set: they
     # take the same transfers but mark, stamp and hide no alias -- the
     # alias hiding stays out so a source is not moved through a loop body
@@ -84,6 +87,7 @@ def _live_only(w: _Walk, ex: _Exits) -> _Walk:
 def analyze_last_uses(
     stmts: list[TpyStmt],
     alias_sources: dict[str, str] | None = None,
+    pinned: frozenset[str] | None = None,
     captured: frozenset[str] = frozenset(),
 ) -> IdentitySet:
     """Analyze a function body to find last-use sites for auto-move.
@@ -94,9 +98,6 @@ def analyze_last_uses(
 
     When alias_sources is provided (alias_name -> source_name), auto-move of
     a source variable is suppressed if any of its T& aliases are still live.
-    `captured`: for a nested def's body, the enclosing-scope names it reads
-    (`nested_def_free_names`) -- never a last use there.
-
     The analysis is conservative: if unsure, a node is NOT marked as last use.
     A missed optimization is just a copy (same as current behavior).
 
@@ -104,6 +105,13 @@ def analyze_last_uses(
     `TpyForEach.var_live_after` (see _analyze_loop) on the way through -- the
     same live sets answer them, and a body this never walks keeps each
     field's conservative default.
+
+    `pinned` is `closure_pinned_names(stmts)`, for a caller that keeps the
+    set as a fact of the body; computed here when omitted. `captured`: for
+    a nested def's body, the enclosing-scope names it reads
+    (`nested_def_free_names`) -- never a last use there either. The two
+    sets differ in scope: `pinned` is what closures OF this body read,
+    `captured` is what this body, itself a closure, reads from outside.
     """
     source_aliases = _build_source_aliases(alias_sources) if alias_sources else {}
     # Per-alias detachment: aliases created before their source's reassignment
@@ -113,30 +121,29 @@ def analyze_last_uses(
         _compute_alias_detachment(stmts, source_aliases, alias_sources)
         if alias_sources else (set(), {})
     )
-    # A nested def captures by reference and stays callable until function
-    # end, so its captured names are live on every path after (and at) the
-    # def. Seeding them here protects reads AFTER the def site -- the
-    # backward walk only re-adds them when it reaches the def statement,
-    # which protects reads before it. A reassignment between the def and a
-    # later consume still kills the seed, which is sound: the closure reads
-    # the rebound variable, not the old object.
-    live: set[str] = _collect_nested_def_captures(stmts)
+    # A name a nested def or lambda captures is never moved anywhere in the
+    # body: the closure reads the variable itself whenever it runs, and
+    # where that can be -- a later call, a copy of the def passed on, a
+    # `finally`, an `__exit__`, a `__del__` after the `return` -- is not
+    # something a last-use walk can bound. So such a name is live at every
+    # statement and every exit, through rebinds too (the closure reads the
+    # new binding as well), and each consume of it copies or aliases like a
+    # live name's. Moving it where provably safe needs a reachability and
+    # escape proof: BUGS.md#closure-captured-name-moved-at-last-use.
+    if pinned is None:
+        pinned = closure_pinned_names(stmts)
+    live: set[str] = set(pinned)
     w = _Walk(IdentitySet(), source_aliases, detached_aliases,
-              returned_through=_returned_names_by_try(stmts),
+              returned_through=_returned_names_by_try(stmts), pinned=pinned,
               captured=captured)
     _analyze_stmts_backward(stmts, live, w, first_reassign_pos)
     return w.last_uses
 
 
-def _nested_def_captures(stmt: TpyNestedDef) -> set[str]:
-    """What a nested def reads from the enclosing scope.
-
-    Always the syntactic approximation: this pass runs as a prescan, so sema
-    has not filled `captured_names` yet. Keying on that field being empty
-    would silently swap mechanisms the day capture analysis moves earlier, so
-    the choice is spelled out instead.
-    """
-    return _free_names_approx(stmt.func)
+def closure_pinned_names(stmts: list[TpyStmt]) -> frozenset[str]:
+    """The names a body never moves because a closure of it captures them
+    (see analyze_last_uses)."""
+    return frozenset(collect_closure_captures(stmts))
 
 
 def nested_def_free_names(func: TpyFunction) -> frozenset[str]:
@@ -146,21 +153,41 @@ def nested_def_free_names(func: TpyFunction) -> frozenset[str]:
     return frozenset(_free_names_approx(func))
 
 
-def _collect_nested_def_captures(stmts: list[TpyStmt]) -> set[str]:
-    """Names captured by any nested def anywhere in the body (recursive).
+def collect_closure_captures(stmts: list[TpyStmt]) -> set[str]:
+    """Names any nested def or lambda anywhere in the body reads from an
+    enclosing scope.
 
-    Liveness runs before sema's capture analysis populates
-    TpyNestedDef.captured_names, so this uses a syntactic free-name
-    over-approximation instead. Surplus names (globals, builtins) are
-    harmless: they are never movable locals of the enclosing function.
+    Liveness runs before sema's capture analysis populates `captured_names`,
+    so this is a syntactic over-approximation. Surplus names (globals,
+    builtins, a nested def's own locals) only cost a copy where a move was
+    possible.
     """
     captured: set[str] = set()
     for stmt in stmts:
+        exprs = list(stmt.exprs())
         if isinstance(stmt, TpyNestedDef):
+            # Its lambdas' and nested defs' enclosing reads included.
             captured |= _free_names_approx(stmt.func)
+            exprs += [d for d in stmt.func.defaults if d is not None]
+        for expr in exprs:
+            captured |= _lambda_captures(expr)
         for body in stmt.sub_bodies():
-            captured |= _collect_nested_def_captures(body)
+            captured |= collect_closure_captures(body)
     return captured
+
+
+def _lambda_captures(expr: TpyExpr) -> set[str]:
+    """What the lambdas in `expr` read from outside themselves (a nested
+    lambda's reads are among its enclosing lambda's)."""
+    out: set[str] = set()
+    stack = [expr]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, TpyLambda):
+            out.update(n.name for n in _lambda_free_reads(node))
+        else:
+            stack.extend(node.children())
+    return out
 
 
 def _free_names_approx(func: TpyFunction) -> set[str]:
@@ -428,8 +455,8 @@ def _analyze_stmts_backward(
         # Any statement may raise, or propagate an @error_return error, part
         # way through: what the landing reads is live after its reads (so
         # none is a last use) and before it (a kill happens only on the
-        # normal path).
-        leave = w.ex.exc
+        # normal path). A closure may run inside any statement.
+        leave = w.ex.exc | w.pinned
         live |= leave
         _analyze_stmt(stmt, live, w)
         live |= leave
@@ -544,10 +571,7 @@ def _analyze_stmt(stmt: TpyStmt, live: set[str], w: _Walk) -> None:
             live.discard(name)
 
     elif isinstance(stmt, TpyNestedDef):
-        # Captured vars are referenced by the closure (by-ref or by-value).
-        # They must stay live so earlier uses aren't incorrectly marked as
-        # last-use (which would cause std::move before the capture).
-        live |= _nested_def_captures(stmt)
+        # Its captures are pinned for the whole body (analyze_last_uses).
         live.discard(stmt.func.name)
 
     else:
@@ -673,7 +697,7 @@ def _loop_header(stmt: TpyWhile | TpyForEach, exit_live: frozenset[str],
         if nxt == header:
             return header
         header = nxt
-    return (header | after | _collect_nested_def_captures(stmt.body)
+    return (header | after | w.pinned
             | {n.name for n in _all_read_names(stmt.body)})
 
 
@@ -749,7 +773,10 @@ def collect_finally_return_candidates(stmts: list[TpyStmt]) -> IdentitySet:
     never executed. Sema consults this set to restore the auto-move mark
     (which the finally's reads, live at the return's landing, withhold) and
     to stamp TpyReturn.finally_deferred_capture for eligible reference-type
-    shapes.
+    shapes. A name a closure captures is a candidate too: the move happens
+    after the finally, which is where CPython's pending return reads it; a
+    closure run after that (from a local's `__del__`) is
+    BUGS.md#closure-run-after-finally-reads-moved-return.
     """
     out: IdentitySet = IdentitySet()
     rebound = collect_nested_def_nonlocal_rebinds(stmts)
@@ -1147,12 +1174,14 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[str],
         name_counts[node.name] = name_counts.get(node.name, 0) + 1
 
     # Mark single-occurrence reads that are not live (not used later)
-    # and have no live T& aliases (prevents dangling references)
+    # and have no live T& aliases (prevents dangling references). A pinned
+    # name is live even where a `return` / `raise` / jump reset the set.
     for node in reads:
         if (name_counts[node.name] == 1
                 and node not in in_lambda
                 and node.name not in w.captured
                 and node.name not in live
+                and node.name not in w.pinned
                 and not _has_live_alias(node.name, live, w.source_aliases,
                                         w.detached_aliases)):
             w.last_uses.add(node)

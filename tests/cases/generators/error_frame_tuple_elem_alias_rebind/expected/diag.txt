@@ -1,1 +1,1 @@
-main.py:19: error: in function 'lit': this construct is not yet supported by C++ code generation (res.alias_bind)
+main.py:19: error: in function 'lit': binding 'saved' to an element inside 't' is not yet supported in a generator when 't' can be reassigned while 'saved' is live; bind 'saved' after the last reassignment of 't'

@@ -249,8 +249,7 @@ A tuple is *owned storage* only when EVERY non-value element is owned. A
 **mixed** tuple -- one owned element and one borrowed (`tuple[Own[A], B]`,
 the shape a per-element-`Own` return produces) -- has no single form: its
 owned half wants storage, its borrowed half a pointer, so it renders
-`std::tuple<A, B*>` and stays a `const&` borrow at a parameter rather than
-taking the ownership-transfer `std::tuple<...>&&` ABI. Storing one into any
+`std::tuple<A, B*>`. Storing one into any
 owning slot therefore materializes the borrowed half: the slot holds
 `std::tuple<A, B>` and the borrowed element is COPIED. That copy is a
 divergence from CPython, which aliases, and it is acknowledged at most
@@ -261,6 +260,33 @@ which yields the fully-owned storage form `Own[tuple[A, B]]`. Two sinks
 copy SILENTLY and are tracked in `BUGS.md`: a *nested* tuple slot
 (`q = (make_mixed(b), 1)`, whose borrowed element sits a level deeper than
 the per-member check inspects) and a module GLOBAL.
+
+At a PARAMETER (`def f(p: tuple[Own[A], B])`) a mixed tuple is an
+ownership transfer exactly like its fully owned twin
+`tuple[Own[A], Own[B]]` (`std::tuple<A, B>&&`): it renders
+`std::tuple<A, B*>&&` -- `std::tuple<A, const B*>&&` when the body does not
+write through the borrowed element -- so the owned element is the callee's
+and the borrowed one points at the caller's object. The callee may write
+through either element, pass `p[0]` to a mutable parameter, unpack `p` (at
+the parameter's last use the owned element moves out and the borrowed
+target binds the caller's object; a `@nocopy` owned element works too),
+return `p[0]` into an `Own[A]` slot -- a return is the tuple's last use, so
+the element moves out (`return std::move(std::get<0>(p));`) and the
+parameter counts as consumed -- and forward `p` to another such
+parameter; a def that consumes none of it warns `owned tuple param 'p' is
+never consumed`, as the twin does. At the call a fresh tuple or a mixed
+local at its last use moves in (`f(std::move(u))`, a local rebound on a
+branch included); a mixed local still read afterwards, or a fully owned
+tuple parameter, copies its owned element with a warning while its borrowed
+element keeps aliasing, and so does a generator expression that hands a
+captured one on at each pull. A generator or `async def` moves the tuple
+into its frame. The generic
+`tuple[Own[T], T]` takes the same transfer (its `T` element is
+`val_or_ptr_t<T>`, a pointer at a reference instantiation). Still
+rejected, for the mixed parameter and its fully owned twin alike: binding
+a name to `p[0]`, a method call or augmented assignment on it, and the
+partial move `sink(p[0])` (unpack first)
+(`BUGS.md#consume-own-element-of-mixed-tuple`).
 
 At a LOCAL the mixed render is the local's own shape at every binding path
 -- a straight bind, a rebind, a `try`-hoisted or branch-hoisted decl, a
@@ -731,6 +757,16 @@ d["key"] = "new"               # source mutated -> b falls back to std::string
 # a borrow-tracker fact.
 q = o.inner.tag                # local = bytes (owned copy, 2 hops)
 
+# A `bytes` tuple ELEMENT bound to a local by subscript (`y = t[0]`) is an
+# owned copy too, at every source (param, literal or call-bound local, field,
+# container element, loop variable, global), for the same reason; a local
+# unpack target (`y, k = t`) binds a view like the `str` one; reading it in
+# place (print, len, ==, a call argument, a return) copies nothing. The `str` element binds a
+# view under the source-mutation rule above. The two families converge on one
+# sound view rule (TODO.md "`str` and `bytes`: one view rule").
+bt = (b"ab", 1)
+e = bt[0]                      # local = bytes (owned copy)
+
 # Compound sources (ternary / and-or, including nested) follow the same rule,
 # borrowing EVERY arm's storage; mutating any root demotes the local to owned.
 m = names[0] if cond else d["key"]  # std::string_view (borrows names AND d)
@@ -1094,7 +1130,7 @@ process(b"hello")      # zero-alloc: static span passed directly
   - **Module globals** take the form their local twin takes. A tuple of references (`G: tuple[Box, Box] = (V, V)`) is the tuple of the pointer slots every reference-typed global is (`std::tuple<Box*, Box*>`), bound once at module init, so a write through `G[0]` reaches `V` as one through a scalar `S: Box = V` does; rebinding it from a function body is refused with the scalar's error (a top-level rebind re-points the slots). A fresh reference element in the literal (`(1, Box(5))`) makes the global OWN it -- storage form, recorded as `Own` on the binding -- and an importing module reads the form off that binding type. A tuple global is never consumed by a module-level unpack (a function may read it after init): `x, k = t` at module scope makes the pointer-slot targets point into `t`'s storage -- and a tuple global that owns a reference element therefore cannot be rebound at module level after such an unpack (the refusal names the alias that would follow it). A mixed owned+borrow global from a call keeps storage and copies its borrowed element (`BUGS.md#global-tuple-ref-storage-form`).
   - Boundaries between borrow form and storage form (field-init, field-write, global init, container-element init, destructuring of a storage-form source) lower to element-wise conversions via `tpy::tuple_to_storage<...>` / `tpy::tuple_to_pointer<...>`. The pass-through case (return value of one function flowing into the param of another, both in pointer form) needs no conversion.
   - Rvalue tuple elements of reference type (e.g. `f((Point(1,2), 42))` where the slot expects a borrow) trigger the same C++ "address of rvalue" limitation as the analogous non-Optional case; bind to a local first. Tracked in BUGS.md.
-  - **Owned-element unpack (move-out):** unpacking a fresh `tuple[Own[A], Own[B], ...]` rvalue (`a, b = make_pair()`) binds each target as an *owned, movable* local -- each `Own[T]` element is moved out of the consumed temporary, so the targets can be moved onward (into `Own[]` params, etc.) just like a single-assign owned rvalue. Non-`Own` elements keep their usual value/borrow semantics. The named-source form (`t = make_pair(); a, b = t`) works too: when the unpack is the last use of the tuple local, the source is moved into the temp and each element moved out; when the local is read again afterwards the unpack does not consume it, so each `Own` element target is a BORROW of the source's element (a write through it is seen at `t[0]`, as CPython aliases) -- the same last-use-moves / otherwise-borrows verdict a scalar `x = t` takes off an owning local, and the same for an owned tuple param (`std::tuple<...>&&`) read after its unpack. A `@nocopy` element follows suit: borrowed while the source is live, moved at its last use. One carve-out on that form: in a generator or `async def` body where the tuple local lives across a suspension (so the frame owns it), the unpack binds the frame slot rather than the tuple and fails the C++ build (`BUGS.md#frame-tuple-unpack-slot`). An owned-element tuple **parameter** (`def f(p: tuple[Own[A], Own[B]])`) takes ownership -- it is rendered `std::tuple<...>&&` (the tuple analog of the scalar `Own[T] -> T&&` ABI), so the callee can unpack/move its elements out, forward it onward, or return it; the caller moves a last-use owned source in. A source NOT at its last use can't move into the `&&` param: a `@nocopy` tuple is a use-after-move error, and a copyable one is warned and auto-copied (mirroring the scalar `Own[T]` arg -- TPy copies where CPython would alias, the same acknowledged, warned `Own`-copy divergence; silence it with an explicit `copy()` or by passing at the last use). Like a scalar `Own[T]` param it also warns when never consumed (suppressed for `@nocopy`, whose drop is a legitimate consume), and a use after the unpack makes the unpack non-consuming (the elements borrow; only a last-use unpack moves), so the never-consumed warning then fires; the read-only borrow alternative is the `Own`-less `tuple[A, B]`. Move-out of an aggregate *member* in any other shape -- partial element move-out (`take(pair[0])`), record-field move-out -- is not yet supported (needs per-place partial-move tracking); use whole-tuple unpack or `Rc.clone()`. Tracked in BUGS.md.
+  - **Owned-element unpack (move-out):** unpacking a fresh `tuple[Own[A], Own[B], ...]` rvalue (`a, b = make_pair()`) binds each target as an *owned, movable* local -- each `Own[T]` element is moved out of the consumed temporary, so the targets can be moved onward (into `Own[]` params, etc.) just like a single-assign owned rvalue. Non-`Own` elements keep their usual value/borrow semantics. The named-source form (`t = make_pair(); a, b = t`) works too: when the unpack is the last use of the tuple local, the source is moved into the temp and each element moved out; when the local is read again afterwards the unpack does not consume it, so each `Own` element target is a BORROW of the source's element (a write through it is seen at `t[0]`, as CPython aliases) -- the same last-use-moves / otherwise-borrows verdict a scalar `x = t` takes off an owning local, and the same for an owned tuple param (`std::tuple<...>&&`) read after its unpack. A `@nocopy` element follows suit: borrowed while the source is live, moved at its last use. One carve-out on that form: in a generator or `async def` body where the tuple local lives across a suspension (so the frame owns it), the unpack binds the frame slot rather than the tuple and fails the C++ build (`BUGS.md#frame-tuple-unpack-slot`). An owned-element tuple **parameter** (`def f(p: tuple[Own[A], Own[B]])`) takes ownership -- it is rendered `std::tuple<...>&&` (the tuple analog of the scalar `Own[T] -> T&&` ABI), so the callee can unpack/move its elements out, forward it onward, or return it; the caller moves a last-use owned source in. A source NOT at its last use can't move into the `&&` param: a `@nocopy` tuple is a use-after-move error, and a copyable one is warned and auto-copied (mirroring the scalar `Own[T]` arg -- TPy copies where CPython would alias, the same acknowledged, warned `Own`-copy divergence; silence it with an explicit `copy()` or by passing at the last use). Like a scalar `Own[T]` param it also warns when never consumed (suppressed for `@nocopy`, whose drop is a legitimate consume), and a use after the unpack makes the unpack non-consuming (the elements borrow; only a last-use unpack moves), so the never-consumed warning then fires. A last-use unpack hands each owned element to its target, and the check then goes per element, as for a scalar `Own[T]` local: a target that is never consumed warns (`Own[A] element 1 of tuple param 'p' is never consumed (unpacked into 'b', ...)`); the read-only borrow alternative is the `Own`-less `tuple[A, B]`. Move-out of an aggregate *member* in any other shape -- partial element move-out (`take(pair[0])`), record-field move-out -- is not yet supported (needs per-place partial-move tracking); use whole-tuple unpack or `Rc.clone()`. Tracked in BUGS.md.
   - Protocol conformance: `tuple[T1, T2, ...]` conforms to `Hashable`, `Comparable`, and `Equatable` when every `Ti` conforms to the same protocol. Lexicographic `<` and element-wise `==` lower to `std::tuple`'s built-in operators; this also unblocks the canonical `list[tuple[priority, payload]]` priority-queue pattern via `heapq`.
 - **Working**: `dict[K, V]` - ordered hash map → `tpy::ordered_map<K, V>` (insertion-order preserving)
   - Literals `{k: v, ...}`, subscript `d[k]`/`d[k] = v`, `del d[k]`, `len(d)`, `k in d`, `for k in d`
@@ -1447,10 +1483,17 @@ Restrictions:
   can rebind that local AFTER the alias (`saved = t[1]; yield ...;
   t = (A(9), A(8))`), or rebind it in a loop body that also encloses the
   alias (even textually earlier), rebind it in a `finally` after an alias in
-  an `except` handler, or rebind it from a nested def through `nonlocal`; the rebind would replace the object under the alias where
+  an `except` handler, or rebind it from a nested def through
+  `nonlocal`; the rebind would replace the object under the alias where
   CPython keeps it. A rebind that can only run before the alias -- earlier
   in the function, or in the body of a loop whose `else` takes the alias --
-  is fine.
+  is fine. Two workarounds: bind the alias after the last reassignment
+  (the one the diagnostic names, valid for every path), or bind a copy
+  (`saved = copy(t[1])`). The copy does not compile yet off a MIXED
+  (owned + borrowed) slot, a nested tuple, or a tuple reached through a
+  container or a record field
+  (`BUGS.md#tuple-elem-copy-mixed-or-list-rejects`), nor for a non-copyable
+  element.
   A tuple loop **variable**
   over a container (`for t in xs:` where the element tuple holds a reference)
   is the sibling rule: the frame field is a pointer to the source element
@@ -2160,7 +2203,7 @@ Auto-move does NOT apply to:
 - Field accesses (`self.x`)
 - Top-level (module scope) non-value-type variables
 - Variables used across loop iterations, or after the loop on a path the consume reaches: a `break` leads to the code after the loop (its `else` skipped), a `continue` to the next iteration, and a loop that may run zero times to the code after it (`take(p); for x in xs: p = P(2)` then `p` read after the loop copies); a `return` or `raise` inside a `try` runs its `finally` first, so a consume before it copies when the `finally` reads the name (a returned name itself still moves, materialized after the `finally`)
-- Variables with a live borrower: a name/field/subscript alias still used later (`a = o.inner; take(o); a.read()`), a live result of a borrowing call (`n = first(xs)`, also through an alias: `ys = xs; n = first(ys)`), a live un-exhausted generator over the variable (`g = gen(xs)`), the variable's own `for` loop -- directly or through an alias (`ys = xs; for x in ys: take(xs)`), on every path out of the body including a `break` or `return` -- a by-reference nested-def capture used after the def, or a context manager consumed inside its own `with` body (`__exit__` still reads it). These consumes fall back to a copy with the `copies ... into owned storage` warning (`@nocopy` types error instead). A borrower that is itself dead before the consume does not suppress the move for name/field/subscript aliases.
+- Variables with a live borrower: a name/field/subscript alias still used later (`a = o.inner; take(o); a.read()`), a live result of a borrowing call (`n = first(xs)`, also through an alias: `ys = xs; n = first(ys)`), a live un-exhausted generator over the variable (`g = gen(xs)`), the variable's own `for` loop -- directly or through an alias (`ys = xs; for x in ys: take(xs)`), on every path out of the body including a `break` or `return` -- a name captured by a nested def or lambda, which is never moved anywhere in the enclosing body -- before or after the def, at a `return` (`return x` into an owning slot copies too, a generic `Own[T]` and a tuple name included, except inside a `try` with a `finally`, where it moves after the finally; a return of a name no closure captures still moves), through rebinds -- whether or not the closure runs again (an unpack of it aliases; use `copy()` to acknowledge the copy, or restructure so the closure does not capture the name; moving it where provably safe is `BUGS.md#closure-captured-name-moved-at-last-use`; a consuming method call on it, `p.take()`, is the known exception and still moves, `BUGS.md#consuming-call-borrowed-receiver-consumed`; a generator expression is not a closure here -- what a live generator frame borrows is still moved by a later consume, `BUGS.md#generator-frame-borrow-outlives-consume`), or a context manager consumed inside its own `with` body (`__exit__` still reads it). These consumes fall back to a copy with the `copies ... into owned storage` warning (`@nocopy` types error instead). A borrower that is itself dead before the consume does not suppress the move for name/field/subscript aliases.
 
 The analysis is conservative: if unsure whether a variable is at its last use (e.g., used inside a loop body that may iterate multiple times), the compiler does NOT auto-move and requires explicit `copy()` as before. Last-use analysis covers `with` and `try`/`except`/`finally` bodies, and treats every statement as one that may raise: a value an exception path reads -- a handler that may catch it, a `finally` it runs on the way out (from the try body, a handler or the `else`), the code after a `with` -- is never auto-moved on the way there. Since sema learns whether a manager's `__exit__` swallows exceptions only after this analysis, every `with` is taken to: a consume in a `with` body copies (warned) when the code after the `with` reads the value, even under a manager that never suppresses. One refinement: `return <name>` of a reference type under a non-suspending finally stays an auto-move however the finally reads or mutates the name (a finally that consumes it copies instead, warned, since the returned name is read after the finally) -- codegen defers the materialization until after the finally chain, so the finally observes the live value and the move happens last (see the exceptions section). A forward-referenced callee (defined below its caller) whose signature could return a borrow is treated conservatively: the consume copies with the warning; value-returning forward references keep the silent move. Known borrow-suppression residuals (cross-module import cycles, borrows hidden inside nested call arguments such as `asyncio.create_task(coro(xs))`) are tracked in BUGS.md.
 
@@ -2237,7 +2280,7 @@ def borrow_only(b: Own[Box]) -> int32:
     return b.value  # warning: Own[Box] param 'b' is never consumed
 ```
 
-This warning is suppressed for value types (`Own[int32]` -- copy equals move), `@nocopy` types (Own is the only way to pass them), and generic `T` bounded to `ValueType`.
+This warning is suppressed for value types (`Own[int32]` -- copy equals move), `@nocopy` types (Own is the only way to pass them), and generic `T` bounded to `ValueType`. A local the param moved into at its last use (`y = b`) stands for it: consuming `y` consumes `b`.
 
 #### @nocopy Types (Working)
 

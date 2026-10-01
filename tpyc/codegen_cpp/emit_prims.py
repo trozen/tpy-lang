@@ -52,7 +52,7 @@ from ..typesys import (
     collapse_tuple_own_elements, error_return_to_cpp, is_dyn_protocol,
     is_own_pointer_repr_optional, is_polymorphic_subclass_fact,
     is_protocol_type, is_void_like_type, placeholder_value_inits,
-    polymorphic_source_inner,
+    polymorphic_source_inner, param_takes_ownership,
     polymorphic_subclass_into_optional, resolve_int_literals, unwrap_optional_own,
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
@@ -683,10 +683,12 @@ PARAM_LOCAL_SET_FIELDS = (
 def seed_param_locals(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
                       params: list[tuple[str, TpyType]],
                       local_ns: Namespace,
-                      deep_const_borrow_params: set[str]) -> None:
+                      deep_const_borrow_params: set[str],
+                      func: 'TpyFunction | None' = None) -> None:
     """Classify params into the pointer-form local sets access dispatch reads
     (`PARAM_LOCAL_SET_FIELDS` + `var_types`) so a pointer-repr param derefs
-    with `->` in a ctor member-init initializer as it does in the body."""
+    with `->` in a ctor member-init initializer as it does in the body.
+    `func` owns the params; without it none is a capture."""
     # Optional non-value params are T* / const T* in C++ -- need pointer-local treatment (->)
     for pname, ptype in params:
         # Peel the Send/Sync marker (representationally transparent -- it
@@ -735,14 +737,19 @@ def seed_param_locals(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
             if (isinstance(ptype, ReadonlyType)
                     or pname in deep_const_borrow_params):
                 ctx.const_indirect_locals.add(pname)
-        # Own[T] and Own[T] | None params are movable (caller gave up ownership)
+        # Own[T] and Own[T] | None params are movable (caller gave up
+        # ownership), and so is an ownership-transfer tuple.
+        owns = (func.takes_ownership_of(pname, ptype) if func is not None
+                else param_takes_ownership(ptype))
         own_actual = unwrap_optional_own(actual)
-        if own_actual is not None and not own_actual.wrapped.is_value_type():
+        if (owns and own_actual is not None
+                and not own_actual.wrapped.is_value_type()):
             ctx.movable_locals.add(pname)
-        if (isinstance(actual, TupleType) and actual.is_owned_movable()
-                and not isinstance(ptype, ReadonlyType)):
+        if owns and isinstance(actual, TupleType):
             ctx.movable_locals.add(pname)
-            ctx.storage_form_tuple_locals.add(pname)
+            # A mixed param keeps its borrowed elements as pointers.
+            if actual.is_owned_movable():
+                ctx.storage_form_tuple_locals.add(pname)
         # Own[tuple[T | None, ...]] params are stored in storage form
         # (std::tuple<std::optional<T>, ...>); same C++ shape as the
         # storage-form locals registered for storage-form tuple iteration.
@@ -842,7 +849,7 @@ def setup_body_scope(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
     # ptr_variant_locals, optional_locals, movable_locals, ...) that access
     # dispatch consults so `->` vs `.` / move / variant-form are correct.
     seed_param_locals(ctx, protocols, params, local_ns,
-                      ctx.deep_const_borrow_params)
+                      ctx.deep_const_borrow_params, func)
     # Generator-promoted locals are struct fields; pre-seed var_types
     # so codegen sites that consult it (e.g. address-of for tuple
     # slots) see the original TPy type rather than the synthetic

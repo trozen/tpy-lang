@@ -1235,7 +1235,7 @@ def lower_resumable(func: TpyFunction, analyzer, render_type,
             frame_layout=frame_layout,
         )
     except ThirUnsupported as ex:
-        return _reject(ex.reason, ex.loc)
+        return _reject(ex.reason, ex.loc, ex.message)
 
 
 def _lower_resumable(func: TpyFunction, analyzer, render_type,
@@ -1290,7 +1290,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         _check_callable_structure(
             func, analyzer, self_type, allow_resumable=True)
     except ThirUnsupported as ex:
-        return _reject(ex.reason, ex.loc)
+        return _reject(ex.reason, ex.loc, ex.message)
     # A generic frame (`async def f[T]` / a coro method on a generic record)
     # needs no gate of its own: the template header, and the value-vs-reference
     # frame-field choice (`val_or_ref_t<T>`), are skeleton -- every leaf reads
@@ -3101,8 +3101,9 @@ def _lower_member_nested_def(nd, lc, declared) -> 'tuple':
     return out
 
 
-def _reject(reason: str, loc: 'SourceLocation | None' = None) -> None:
-    note(reason, loc)
+def _reject(reason: str, loc: 'SourceLocation | None' = None,
+            message: str | None = None) -> None:
+    note(reason, loc, message)
     return None
 
 

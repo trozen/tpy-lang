@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def read_mixed(p: tuple[Own[A], A]) -> int32:  # tpyc: ok
+// def read_mixed(p: tuple[Own[A], A]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
 //     return p[0].n + p[1].n
-int32_t read_mixed(const std::tuple<A, const A*>& p) {
+int32_t read_mixed(std::tuple<A, const A*>&& p) {
     return (::tpy::add_check<int32_t>(std::get<0>(p).n, std::get<1>(p)->n));
 }
 

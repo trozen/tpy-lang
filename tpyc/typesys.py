@@ -3482,6 +3482,20 @@ def unwrap_optional_own(t: 'TpyType') -> 'OwnType | None':
     return None
 
 
+def param_takes_ownership(ptype: 'TpyType') -> bool:
+    """Whether a parameter declared `ptype` takes its argument by ownership
+    transfer: `Own[T]` (`T&&`, or by value for a value payload) and a tuple
+    with an owned element (`std::tuple<A, B*>&&`, whatever borrowed elements
+    sit beside the owned ones -- the transfer moves their pointers, never the
+    caller's objects). The caller moves in, a forwarding shim moves on, and
+    the body owns what arrives. `readonly` does not change it: it constifies
+    what the body reads through, not the transfer."""
+    bare = unwrap_readonly(unwrap_send_sync(unwrap_ref_type(ptype)))
+    if isinstance(bare, TupleType):
+        return bare.has_own_element()
+    return unwrap_optional_own(bare) is not None
+
+
 def is_own_pointer_repr_optional(t: 'TpyType') -> bool:
     """True for `Own[OptionalType[T_ref]]` where the inner Optional uses
     pointer representation (`T*` at borrow boundaries, `optional<T>` at
@@ -4466,6 +4480,14 @@ class TupleType(TpyType):
         # a raw field, even though `is_value_type()` reports the tuple True.
         return any(e.value_form() is ValueForm.OWN for e in self.element_types)
 
+    def owned_elements(self) -> list[tuple[int, 'TpyType']]:
+        """(index, payload) of each OWN element -- the elements
+        `has_own_element` counts -- the payload read under its `Own` and
+        any `readonly` there."""
+        return [(i, unwrap_readonly(unwrap_own(e)))
+                for i, e in enumerate(self.element_types)
+                if e.value_form() is ValueForm.OWN]
+
     def has_nested_element(self, pred: 'Callable[[TpyType], bool]') -> bool:
         """Depth-first over the element tree: True if `pred` holds at any
         element position, here or inside a nested value tuple.
@@ -4501,11 +4523,11 @@ class TupleType(TpyType):
     def is_owned_movable(self) -> bool:
         # A "purely owned" tuple: at least one Own element and NO bare borrow
         # element (every non-value element is Own). Such a tuple has a single
-        # storage form with no slot aliasing the caller, so it can be owned and
-        # moved as a unit -- the ownership-transfer `std::tuple<...>&&` param
-        # ABI and whole-tuple move-out apply. A mixed owned+borrow tuple
-        # (`tuple[Own[A], A]`) is excluded: its borrow slot aliases the caller,
-        # so the whole-tuple move model does not fit (it stays a const& borrow).
+        # storage form with no slot aliasing the caller, so the value IS owned
+        # storage and an owning slot takes it as-is. A mixed owned+borrow
+        # tuple (`tuple[Own[A], A]`) is excluded: an owning slot must
+        # materialize its borrowed half first. Whether a PARAMETER takes the
+        # tuple by ownership transfer is `param_takes_ownership`.
         return self.has_own_element() and not self.has_ref_elements()
 
     def takes_borrow_slot_as_global(self) -> bool:
@@ -4677,30 +4699,30 @@ class TupleType(TpyType):
             return t.to_cpp_return_const()
         return t.to_cpp_return_const() if const else t.to_cpp_return()
 
-    def to_cpp_param_type(self) -> str:
-        if self.is_owned_movable():
-            # Purely-owned tuple: ownership-transfer param, rvalue ref so the
-            # callee can move the owned elements out -- mirrors Own[T] -> T&&.
-            args = ", ".join(self._element_to_cpp_param(t, const=False) for t in self.element_types)
+    def _param_spelling(self, const: bool) -> str:
+        args = ", ".join(self._element_to_cpp_param(t, const=const) for t in self.element_types)
+        if param_takes_ownership(self):
+            # Rvalue ref so the callee can move the owned elements out --
+            # mirrors Own[T] -> T&&. A body that only reads keeps the transfer
+            # and makes the borrowed POINTEES const, never the tuple: a const
+            # tuple could not be moved out of.
             return f"std::tuple<{args}>&&"
-        args = ", ".join(self._element_to_cpp_param(t, const=False) for t in self.element_types)
         return f"const std::tuple<{args}>&"
 
+    def to_cpp_param_type(self) -> str:
+        return self._param_spelling(const=False)
+
     def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
-        if self.is_owned_movable() and not signature_const:
+        # `_param_spelling`: the transfer ignores `signature_const`.
+        if param_takes_ownership(self):
             return ParamPassing.OWN
         return ParamPassing.CONST_REF
 
     def to_cpp_param(self, name: str) -> str:
-        if self.is_owned_movable():
-            args = ", ".join(self._element_to_cpp_param(t, const=False) for t in self.element_types)
-            return f"std::tuple<{args}>&& {name}"
-        args = ", ".join(self._element_to_cpp_param(t, const=False) for t in self.element_types)
-        return f"const std::tuple<{args}>& {name}"
+        return f"{self._param_spelling(const=False)} {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
-        args = ", ".join(self._element_to_cpp_param(t, const=True) for t in self.element_types)
-        return f"const std::tuple<{args}>& {name}"
+        return f"{self._param_spelling(const=True)} {name}"
 
     def __str__(self) -> str:
         parts = ", ".join(str(t) for t in self.element_types)

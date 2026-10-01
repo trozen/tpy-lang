@@ -4861,7 +4861,15 @@ def _borrow_tuple_local_type(name: str, declared: dict[str, TpyType],
 def _borrow_tuple_slot(ptype: 'TpyType | None', analyzer) -> 'TupleType | None':
     """The F3 borrow-tuple PARAM slot every row below shares -- a pointer-repr
     tuple whose elements are all F1-renderable, so storage and borrow form
-    genuinely differ."""
+    genuinely differ. A MIXED ownership-transfer slot is not one: it owns
+    its owned elements (`_mixed_tuple_slot`)."""
+    slot = _mixed_tuple_slot(ptype, analyzer)
+    return slot if slot is not None and not slot.is_mixed_own() else None
+
+
+def _mixed_tuple_slot(ptype: 'TpyType | None',
+                      analyzer) -> 'TupleType | None':
+    """The F1-renderable pointer-repr tuple slot, borrow or MIXED."""
     slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
             if ptype is not None else None)
     if not isinstance(slot, TupleType) or _f1_tuple(slot, analyzer) is None:
@@ -4870,14 +4878,23 @@ def _borrow_tuple_slot(ptype: 'TpyType | None', analyzer) -> 'TupleType | None':
 
 
 def _borrow_tuple_arg(a: TpyExpr, ptype: 'TpyType | None', analyzer, *,
-                      shape_ok, arg_type) -> 'TupleType | None':
+                      shape_ok, arg_type,
+                      copy_owed: 'Callable[[TpyExpr], bool] | None' = None
+                      ) -> 'TupleType | None':
     """The shared body of the borrow-tuple ARG rows: an argument whose own
     type EQUALS the F3 slot, so the only question left is which C++ form it
     already reads as. `shape_ok` picks the arg shapes a row claims, `arg_type`
     says where that shape's type comes from (the expression for an lvalue
     read, the locals table for a name). Adding a row means one thin front,
-    not a fifth copy of this body."""
-    slot = _borrow_tuple_slot(ptype, analyzer)
+    not a fifth copy of this body.
+
+    Every row here reads STORAGE form, so a MIXED ownership-transfer slot
+    could take the same lift -- copying the owned elements in and pointing
+    the borrowed ones at the source's -- but only where that copy is owed:
+    `copy_owed` says so for the one row whose source can be a mixed tuple;
+    the others leave the mixed slot alone."""
+    slot = (_mixed_tuple_slot(ptype, analyzer) if copy_owed is not None
+            else _borrow_tuple_slot(ptype, analyzer))
     if slot is None or not shape_ok(a):
         return None
     at = arg_type(a)
@@ -4885,6 +4902,9 @@ def _borrow_tuple_arg(a: TpyExpr, ptype: 'TpyType | None', analyzer, *,
            if at is not None else None)
     if atu is None:
         return None
+    if slot.is_mixed_own():
+        return (slot if copy_owed(a) and _own_stripped_tuple_eq(atu, slot)
+                else None)
     # Equal modulo per-element ownership: a storage name whose binding marks
     # a fresh element `Own` (a tuple global that owns its literal's record)
     # holds the slot's borrow element by value, which is what the lift
@@ -4944,7 +4964,9 @@ def _mixed_own_tuple_name_arg(a: TpyExpr, ptype: 'TpyType | None',
 def _borrow_tuple_storage_name_arg(a: TpyExpr, ptype: 'TpyType | None',
                                    locals_: dict[str, TpyType],
                                    storage_tuple_locals: 'AbstractSet[str]',
-                                   analyzer) -> 'TupleType | None':
+                                   analyzer,
+                                   movable_locals: 'AbstractSet[str]'
+                                   ) -> 'TupleType | None':
     """The NAME sibling of the two lift rows above: a local ALREADY reading
     storage form (a loop var over a storage container, a local bound from
     another storage source) at a borrow-tuple param slot
@@ -4954,12 +4976,23 @@ def _borrow_tuple_storage_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     Keyed on `storage_tuple_locals` membership -- the positive fact
     `is_storage_form_source` reads for a Name. A borrow-form name is NOT in
     that set and rides `_borrow_tuple_name_arg`'s bare-bind row instead, so
-    the two NAME rows partition on positive evidence, never on absence."""
+    the two NAME rows partition on positive evidence, never on absence.
+
+    The one storage-form binding of a MIXED tuple is a module global, and a
+    mixed slot takes its lift where the copy of its owned elements is owed:
+    a live name whose copy sema declared, or a last use sema calls a move
+    that no binding here can make (static storage stays put) -- the copy
+    the fully owned twin's decay copy makes too
+    (BUGS.md#global-tuple-ref-storage-form)."""
+    def copy_owed(x: TpyExpr) -> bool:
+        return (x in analyzer.ctx.own_element_copies
+                or (x in analyzer.ctx.all_last_uses
+                    and x.name not in movable_locals))
     return _borrow_tuple_arg(
         a, ptype, analyzer,
         shape_ok=lambda x: (isinstance(x, TpyName)
                             and x.name in storage_tuple_locals),
-        arg_type=lambda x: locals_.get(x.name))
+        arg_type=lambda x: locals_.get(x.name), copy_owed=copy_owed)
 
 
 def _required_protocol_union_slot(ptype: 'TpyType | None') -> bool:
@@ -6732,7 +6765,8 @@ def _r_opt_own_ptr_opt_name_move(req: _ArgReq) -> bool:
 def _own_tuple_shape_match_facts(
         a: TpyExpr, ptype: 'TpyType | None', locals_: dict[str, TpyType],
         narrowed: 'AbstractSet[str]',
-        inline_narrowed) -> 'TupleType | None':
+        inline_narrowed,
+        own_borrow_tuple_locals: 'AbstractSet[str]') -> 'TupleType | None':
     """The shared shape half of the Own-element tuple NAME arg arms: a
     non-self, non-narrowed in-scope NAME whose declared tuple matches the
     slot per-element modulo-Own (`tuple[Box, int32]` vs `tuple[Own[Box],
@@ -6757,10 +6791,10 @@ def _own_tuple_shape_match_facts(
     if not any(isinstance(unwrap_readonly(et), OwnType)
                for et in pu.element_types):
         return None
-    if pu.is_mixed_own():
-        # A MIXED slot is a const& of the mixed render -- it binds the
-        # hybrid verbatim, never through the storage move/lift/decay rows
-        # (the lift row wrapped `show((*p))` in tuple_to_storage).
+    # A MIXED slot holds its borrowed elements as pointers, so only a
+    # binding holding the mixed render binds it whole; a storage binding
+    # takes the storage lift instead.
+    if pu.is_mixed_own() and a.name not in own_borrow_tuple_locals:
         return None
     return au
 
@@ -6769,7 +6803,8 @@ def _own_tuple_move_arg_facts(
         a: TpyExpr, ptype: 'TpyType | None', locals_: dict[str, TpyType],
         narrowed: 'AbstractSet[str]', inline_narrowed,
         movable_locals: 'AbstractSet[str]', analyzer,
-        func_name: 'str | None') -> bool:
+        func_name: 'str | None',
+        own_borrow_tuple_locals: 'AbstractSet[str]') -> bool:
     """A storage OWN-element tuple NAME at the matching rvalue tuple slot
     (`consume(std::move(t))` on `tuple[Own[A], Own[A]]` -> the
     `std::tuple<A, A>&&` param): the movable binding is consumed whole at
@@ -6778,7 +6813,8 @@ def _own_tuple_move_arg_facts(
     no move can hand over (a resumable frame's slot is movable all the
     same)."""
     if _own_tuple_shape_match_facts(a, ptype, locals_, narrowed,
-                                    inline_narrowed) is None:
+                                    inline_narrowed,
+                                    own_borrow_tuple_locals) is None:
         return False
     if a in analyzer.ctx.own_element_copies:
         return False
@@ -6790,14 +6826,16 @@ def _own_tuple_borrow_lift_arg_facts(
         narrowed: 'AbstractSet[str]', inline_narrowed, analyzer,
         pointers: 'AbstractSet[str]',
         storage_tuple_locals: 'AbstractSet[str]',
-        own_param_names: 'AbstractSet[str]') -> bool:
+        own_param_names: 'AbstractSet[str]',
+        own_borrow_tuple_locals: 'AbstractSet[str]') -> bool:
     """A BORROW-form Own-element tuple NAME at the `std::tuple<...>&&`
     slot whose copy sema declared: the F3 `tuple_to_storage` lift copies the
     referents in (the warned copy). STORAGE-form bindings stay out -- a
     movable last use rides `_own_tuple_move_arg_facts`, and a still-live
     storage binding needs the `auto(p)` decay-copy instead."""
     au = _own_tuple_shape_match_facts(a, ptype, locals_, narrowed,
-                                      inline_narrowed)
+                                      inline_narrowed,
+                                      own_borrow_tuple_locals)
     if au is None or not declared_name_copy(a, analyzer):
         return False
     if (a.name in pointers or a.name in storage_tuple_locals
@@ -6813,24 +6851,28 @@ def _own_tuple_decay_copy_arg_facts(
         a: TpyExpr, ptype: 'TpyType | None', locals_: dict[str, TpyType],
         narrowed: 'AbstractSet[str]', inline_narrowed,
         movable_locals: 'AbstractSet[str]', analyzer,
-        func_name: 'str | None', pointers: 'AbstractSet[str]') -> bool:
+        func_name: 'str | None', pointers: 'AbstractSet[str]',
+        own_borrow_tuple_locals: 'AbstractSet[str]') -> bool:
     """A STORAGE-form Own-element tuple NAME still live at the
     `std::tuple<...>&&` slot: the render decay-copies (`sink(auto(p))` --
     the warned copy; sema rejected the @nocopy case). A movable last use
     rides `_own_tuple_move_arg_facts`, a borrow-form binding the
-    `tuple_to_storage` lift."""
+    `tuple_to_storage` lift. A MIXED binding at a mixed slot decay-copies
+    the same way -- the copy takes the owned elements and the pointers --
+    but only where sema declared that copy: a name sema moves is never
+    copied here."""
     au = _own_tuple_shape_match_facts(a, ptype, locals_, narrowed,
-                                      inline_narrowed)
+                                      inline_narrowed,
+                                      own_borrow_tuple_locals)
     if au is None or _is_move_source_facts(a, movable_locals, analyzer,
                                            func_name):
         return False
-    if a.name in pointers or au.has_pointer_repr_element():
+    if a.name in pointers:
         return False
-    # The auto() gate keys on is_owned_movable (ALL non-value
-    # elements Own) -- a MIXED slot is a const& of the mixed render,
-    # never a && slot, so it must stay out.
     pu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-    return isinstance(pu, TupleType) and pu.is_owned_movable()
+    if pu.is_mixed_own():
+        return a in analyzer.ctx.own_element_copies
+    return not au.has_pointer_repr_element() and pu.is_owned_movable()
 
 
 def _btuple_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -10975,7 +11017,7 @@ def _r_native_iterable_comp(req: _ArgReq) -> bool:
 def _r_borrow_tuple_storage_name(req: _ArgReq) -> bool:
     return _borrow_tuple_storage_name_arg(
         req.a, req.ptype, req.locals_, req.storage_tuple_locals,
-        req.analyzer) is not None
+        req.analyzer, req.movable_locals) is not None
 
 
 def _r_borrow_tuple_field(req: _ArgReq) -> bool:
@@ -12258,20 +12300,22 @@ def _r_own_movable_tuple_pass(req: _ArgReq) -> bool:
 def _r_own_tuple_move(req: _ArgReq) -> bool:
     return _own_tuple_move_arg_facts(
         req.a, req.ptype, req.locals_, req.narrowed, req.inline_narrowed,
-        req.movable_locals, req.analyzer, req.func_name)
+        req.movable_locals, req.analyzer, req.func_name,
+        req.own_borrow_tuple_locals)
 
 
 def _r_own_tuple_borrow_lift(req: _ArgReq) -> bool:
     return _own_tuple_borrow_lift_arg_facts(
         req.a, req.ptype, req.locals_, req.narrowed, req.inline_narrowed,
         req.analyzer, req.pointers, req.storage_tuple_locals,
-        req.own_param_names)
+        req.own_param_names, req.own_borrow_tuple_locals)
 
 
 def _r_own_tuple_decay_copy(req: _ArgReq) -> bool:
     return _own_tuple_decay_copy_arg_facts(
         req.a, req.ptype, req.locals_, req.narrowed, req.inline_narrowed,
-        req.movable_locals, req.analyzer, req.func_name, req.pointers)
+        req.movable_locals, req.analyzer, req.func_name, req.pointers,
+        req.own_borrow_tuple_locals)
 
 
 def _r_walrus_frame_field(req: _ArgReq) -> bool:

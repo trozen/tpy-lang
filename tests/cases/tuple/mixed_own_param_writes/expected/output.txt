@@ -1,0 +1,30 @@
+free 15 11
+method 2 22
+ctor 3 33
+closure 40 44
+generator 51 55
+generator 51 56
+async 60 67
+genexpr 151 69
+generic 7
+nocopy 9 80
+local-last 8 88
+local-unpack 8 88
+local-rebound 8 8
+owned-live 100
+closure-unpack 201 101
+closure-unpack-owned 205
+closure-unpack-uncalled 104
+closure-forward 300 90
+return 12 99
+return-nocopy 17 98
+return-local 8 97
+owned-twin 13 44
+genexpr-param 237 99
+genexpr-local 219 101
+operator 26
+adapter 86
+member-init 21 45 88
+field-write 24 88
+global-genexpr 160
+global 80

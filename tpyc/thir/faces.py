@@ -1255,6 +1255,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.record_self",              # `return self` -> `return (*this);`
     "ret.self_move",                # `return self` in a consuming method
                                     # -> `return std::move((*this));`
+    "ret.owned_element_move",       # `return p[0]` of an owned tuple element
+                                    # -> `return std::move(std::get<0>(p));`
     "ret.record_field",             # `return recv.field` at the borrow slot
     "ret.record_subscript",         # `return c[i]` -- container record element
     "ret.ptr_opt_field",            # `return self.f` (Optional[record] field)
@@ -1928,6 +1930,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # The IMPLICIT copy an owning RETURN slot performs on a borrowed source
     # sema warned about -- the same copy-construct node, at the ladder tail.
     "ret.borrowed_copy",
+    # ... its open-`Own[T]` twin: a closure-captured name at a generic
+    # owning return -> `return T(x);`.
+    "ret.live_name_tparam_copy",
+    # ... and its tuple twin: a closure-captured storage-form tuple name at
+    # an owning tuple return -> `return std::tuple<Point, int32_t>(t);`.
+    "ret.live_name_tuple_copy",
     # `copy(s)` of a str NAME -> `std::string(s)` (the explicit owned copy).
     "call.copy_str",
     # ... the non-owned-str half of that row: a VIEW-resolved str source or

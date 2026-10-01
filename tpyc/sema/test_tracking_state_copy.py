@@ -140,6 +140,7 @@ _LEAF_VALUE_NAMES = {
     'LoopClauseEdges',  # sets of names only
     'LoanInfo',         # a borrow kind, a flag and an index key
     'NestedMutationMark',  # a name and four flags
+    'OwnSlot',          # a param name and an element index
     'ViewTypeFamily',   # a static descriptor of the str / bytes family
 }
 _CONTAINER_NAMES = {'list', 'dict', 'set', 'frozenset', 'tuple'}

@@ -16,7 +16,7 @@ class A:
 
 def lit(c: bool) -> Iterator[int32]:
     t = (A(1), A(2))
-    saved = t[1]  # tpyc: error(/not yet supported.*res\.alias_bind/)
+    saved = t[1]  # tpyc: error(/binding 'saved' to an element inside 't' is not yet supported in a generator.*last reassignment of 't'$/)
     yield saved.v
     if c:
         t = (A(9), A(8))

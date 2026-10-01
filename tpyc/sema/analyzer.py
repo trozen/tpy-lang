@@ -87,7 +87,7 @@ def _assert_no_pending_locals(locals_dict: dict, func_name: str) -> None:
 from ..diagnostics import Scope, Diagnostic, SemanticError
 from .. import qnames
 from .context import (
-    SemanticContext, RecordContext, DeferredGenericYieldSettle, LoanInfo,
+    SemanticContext, RecordContext, DeferredGenericYieldSettle, LoanInfo, OwnSlot,
     MODULE_INIT_CONTEXT, contains_pending_leaf)
 from . import own_copy
 from .type_ops import TypeOperations
@@ -104,7 +104,8 @@ from .methods import MethodAnalyzer
 from .statements import StatementAnalyzer
 
 from ..prescan import ScanResult, scan_reassigned_vars, liveness_alias_sources, collect_fact_kills
-from ..liveness import analyze_last_uses, collect_finally_return_candidates
+from ..liveness import (analyze_last_uses, closure_pinned_names,
+                        collect_finally_return_candidates)
 from .alias_rebind import decide_rebind_storage, global_write_facts
 from .frame_close import decide_frame_close, stamp_close_materials
 from .loop_frames import resolve_loop_frame_calls
@@ -1476,6 +1477,71 @@ class SemanticAnalyzer:
         if func.loc is not None:
             self.ctx.frame_fact_fns[(func.loc.line, func.name)] = fi
 
+    def _own_payload_exempt(self, payload: TpyType) -> bool:
+        """An `Own[payload]` slot the never-consumed warning leaves alone."""
+        # Value types: copy == move, no semantic difference
+        if payload.is_value_type():
+            return True
+        # Generic T bounded to ValueType: same as value type
+        if isinstance(payload, TypeParamRef):
+            bound = self.type_ops.get_type_param_bound(payload.name)
+            if (bound is not None and isinstance(bound, NominalType)
+                    and bound.qualified_name() == "tpy.ValueType"):
+                return True
+        # @nocopy types are lifetime-significant: taking Own[T] to
+        # consume-by-drop (hand it off and let it drop) is a legitimate
+        # ownership use, so don't flag it. The drop lands at the CALLER's
+        # scope end, not here: an Own[T] param is a `T&&` borrow, so a
+        # callee that doesn't relocate the value never destructs it --
+        # relocation (store/forward/return) is the "consume" this check
+        # models. That timing matches CPython, where passing a value as an
+        # argument likewise doesn't drop it; prompt cleanup is `del`/`with`.
+        # (These types CAN be borrowed via a plain param; the suppression
+        # is about avoiding false positives on the dispose pattern, not
+        # about Own being the only way to pass them.)
+        return self.ctx.is_type_nocopy(payload)
+
+    def _warn_unconsumed_owned_tuple(self, func: TpyFunction, pname: str,
+                                     tuple_type: TupleType) -> None:
+        """An owned-element tuple param is an ownership-transfer param (the
+        `std::tuple<...>&&` ABI), so it warns when never consumed just like a
+        scalar Own[T]. Once an unpack at its last use has moved its elements
+        into locals, or a return has moved one element out, each element is
+        a scalar of its own: consuming one consumes that element only, and
+        each one dropped warns."""
+        consumed = self.ctx.func.current_consumed_own_params
+        if OwnSlot(pname) in consumed:
+            return
+        owned = tuple_type.owned_elements()
+        targets = {slot.index: local
+                   for local, slot in self.ctx.func.own_consume_aliases.items()
+                   if slot.param == pname and slot.index is not None}
+        if not targets and not any(OwnSlot(pname, i) in consumed
+                                   for i, _ in owned):
+            # Never taken apart (unpacked into element locals, or an element
+            # moved out on its own): the whole tuple is the unit, and a
+            # @nocopy element makes consume-by-drop legitimate.
+            if any(self.ctx.is_type_nocopy(t) or t.is_value_type() for _, t in owned):
+                return
+            self.ctx.warning(
+                f"owned tuple param '{pname}' is never consumed "
+                f"(not moved out by an unpack, stored, forwarded, or returned)",
+                func,
+            )
+            return
+        for i, payload in owned:
+            if OwnSlot(pname, i) in consumed or self._own_payload_exempt(payload):
+                continue
+            local = targets.get(i)
+            via = (f"unpacked into '{local}', which is not" if local is not None
+                   else "not")
+            self.ctx.warning(
+                f"Own[{payload}] element {i} of tuple param '{pname}' is never "
+                f"consumed ({via} stored in a field, forwarded to another "
+                f"Own[T], or returned)",
+                func,
+            )
+
     def _warn_unconsumed_own_params(self, func: TpyFunction) -> None:
         """Warn when Own[T] params are never consumed (stored, forwarded, or returned)."""
         if func.is_stub:
@@ -1486,6 +1552,10 @@ class SemanticAnalyzer:
         if func.name == "__move__":
             return
         for pname, ptype in func.params:
+            # A capture borrows the enclosing variable: whatever `Own` its
+            # type carries was written, and is checked, in the enclosing body.
+            if func.is_capture(pname):
+                continue
             # Peel the transparent Send/Sync marker so a Send[Own[T]] param is
             # still recognized as an owned param subject to the consume check.
             bare = unwrap_readonly(unwrap_send_sync(ptype))
@@ -1493,51 +1563,20 @@ class SemanticAnalyzer:
             # `std::tuple<...>&&` ABI), so it warns when never consumed just
             # like a scalar Own[T] -- unless every owned element is @nocopy
             # (consume-by-drop is legitimate, mirroring the scalar suppression).
-            if (isinstance(bare, TupleType) and bare.is_owned_movable()
-                    and not isinstance(ptype, ReadonlyType)):
-                if pname in self.ctx.func.current_consumed_own_params:
-                    continue
-                owned_inners = [unwrap_readonly(e.wrapped) for e in bare.element_types
-                                if isinstance(unwrap_readonly(e), OwnType)]
-                if any(self.ctx.is_type_nocopy(t) or t.is_value_type()
-                       for t in owned_inners):
-                    continue
-                self.ctx.warning(
-                    f"owned tuple param '{pname}' is never consumed "
-                    f"(not moved out by an unpack, stored, forwarded, or returned)",
-                    func,
-                )
+            if isinstance(bare, TupleType):
+                if func.takes_ownership_of(pname, ptype):
+                    self._warn_unconsumed_owned_tuple(func, pname, bare)
                 continue
             own = unwrap_optional_own(bare)
             if own is None:
                 continue
-            if pname in self.ctx.func.current_consumed_own_params:
+            if OwnSlot(pname) in self.ctx.func.current_consumed_own_params:
                 continue
             # Optional[Own[T]]: None branch has nothing to consume, making
             # flow-sensitive intersection unreliable
             if isinstance(unwrap_readonly(ptype), OptionalType):
                 continue
-            # Value types: copy == move, no semantic difference
-            if own.wrapped.is_value_type():
-                continue
-            # Generic T bounded to ValueType: same as value type
-            if isinstance(own.wrapped, TypeParamRef):
-                bound = self.type_ops.get_type_param_bound(own.wrapped.name)
-                if (bound is not None and isinstance(bound, NominalType)
-                        and bound.qualified_name() == "tpy.ValueType"):
-                    continue
-            # @nocopy types are lifetime-significant: taking Own[T] to
-            # consume-by-drop (hand it off and let it drop) is a legitimate
-            # ownership use, so don't flag it. The drop lands at the CALLER's
-            # scope end, not here: an Own[T] param is a `T&&` borrow, so a
-            # callee that doesn't relocate the value never destructs it --
-            # relocation (store/forward/return) is the "consume" this check
-            # models. That timing matches CPython, where passing a value as an
-            # argument likewise doesn't drop it; prompt cleanup is `del`/`with`.
-            # (These types CAN be borrowed via a plain param; the suppression
-            # is about avoiding false positives on the dispose pattern, not
-            # about Own being the only way to pass them.)
-            if self.ctx.is_type_nocopy(own.wrapped):
+            if self._own_payload_exempt(own.wrapped):
                 continue
             self.ctx.warning(
                 f"Own[{own.wrapped}] param '{pname}' is never consumed "
@@ -3689,8 +3728,10 @@ class SemanticAnalyzer:
         self.top_level_scan_result = scan_reassigned_vars(stmts)
         self.stmts._warn_scalar_type_shadows(None, set(), self.top_level_scan_result)
         # Last-use analysis for auto-move (shared with codegen)
+        self.ctx.func.closure_pinned = closure_pinned_names(stmts)
         self.ctx.all_last_uses |= analyze_last_uses(
-            stmts, liveness_alias_sources(self.top_level_scan_result))
+            stmts, liveness_alias_sources(self.top_level_scan_result),
+            pinned=self.ctx.func.closure_pinned)
         self.ctx.finally_return_candidates |= collect_finally_return_candidates(stmts)
         self.ctx.func.current_reassigned_vars = self.top_level_scan_result.reassigned.copy()
         self.ctx.func.current_fresh_ctor_locals = set()

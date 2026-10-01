@@ -1,6 +1,9 @@
 main.py:35: warning: copies P into owned storage (argument 't' tuple element 0); use copy() to make this explicit
 main.py:35: warning: copies P into owned storage (argument 't' tuple element 1); use copy() to make this explicit
 main.py:276: warning: copies P into field; use copy() to make this explicit
+main.py:61: warning: Own[P] element 0 of tuple param 't' is never consumed (unpacked into 'a', which is not stored in a field, forwarded to another Own[T], or returned)
+main.py:61: warning: Own[P] element 1 of tuple param 't' is never consumed (unpacked into 'b', which is not stored in a field, forwarded to another Own[T], or returned)
+main.py:67: warning: Own[P] element 0 of tuple param 't' is never consumed (unpacked into 'a', which is not stored in a field, forwarded to another Own[T], or returned)
 main.py:75: warning: copies P into owned storage (tuple element 1); use copy() to make this explicit
 main.py:80: warning: copies P into owned storage (tuple element 0); use copy() to make this explicit
 main.py:80: warning: copies P into owned storage (tuple element 1); use copy() to make this explicit

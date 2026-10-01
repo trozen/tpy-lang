@@ -35,7 +35,7 @@ from .. import qnames
 from . import emit_prims
 from .context import (
     INDENT, DUNDER_TO_BINARY_OP, DUNDER_TO_REVERSE_BINARY_OP, CodeGenError,
-    escape_cpp_name, enum_member_cpp)
+    escape_cpp_name, enum_member_cpp, forward_param)
 from ..parse import TpyNoneLiteral
 from .functions import NULL_PROTOCOL_ARG_CPP, factory_default_to_cpp
 from .int_literals import render_int_literal_value
@@ -1528,13 +1528,14 @@ class RecordGenerator:
         """Generate a const operator[] overload (read-only subscript)."""
         if not method.params:
             return
-        index_param_name, _ = method.params[0]
+        index_param_name, index_type = method.params[0]
         # Mirror __getitem__'s emitted key param (borrow form + the method's
         # inferred const-ness), like the call operator -- not the storage form.
         index_cpp = self.functions.gen_shim_params(method, record_name)
         ret_const = method.return_type.to_cpp_return_const()
+        index_arg = forward_param(escape_cpp_name(index_param_name), index_type)
         out.write(f"\n{INDENT}{ret_const} operator[]({index_cpp}) const {{\n")
-        out.write(f"{INDENT}{INDENT}return __getitem__({escape_cpp_name(index_param_name)});\n")
+        out.write(f"{INDENT}{INDENT}return __getitem__({index_arg});\n")
         out.write(f"{INDENT}}}\n")
 
     def _gen_mutable_subscript_operator(self, out: TextIO, method: 'TpyFunction',
@@ -1548,12 +1549,13 @@ class RecordGenerator:
         """
         if not method.params:
             return
-        index_param_name, _ = method.params[0]
+        index_param_name, index_type = method.params[0]
         index_cpp = self.functions.gen_shim_params(method, record_name)
         ret_mut = (method.return_type.to_cpp_return_const()
                    if method.is_readonly else method.return_type.to_cpp_return())
+        index_arg = forward_param(escape_cpp_name(index_param_name), index_type)
         out.write(f"\n{INDENT}{ret_mut} operator[]({index_cpp}) {{\n")
-        out.write(f"{INDENT}{INDENT}return __getitem__({escape_cpp_name(index_param_name)});\n")
+        out.write(f"{INDENT}{INDENT}return __getitem__({index_arg});\n")
         out.write(f"{INDENT}}}\n")
 
     def _gen_binary_operators(self, out: TextIO, record: TpyRecord) -> None:
@@ -1593,7 +1595,9 @@ class RecordGenerator:
                 continue
 
             param_name, param_type = method.params[0]
-            param_cpp = param_type.to_cpp_const_param(param_name)
+            # The method's own param spelling (its const verdict), which the
+            # delegation must bind.
+            param_cpp = self.functions.gen_shim_params(method, record.name)
             # Mirror the method's emitted return: a readonly dunder's borrow
             # return is const-projected there (const=is_readonly), so the shim
             # must render const too or the delegation discards qualifiers.
@@ -1602,12 +1606,13 @@ class RecordGenerator:
                        if method.is_readonly else method.return_type.to_cpp())
             rec_short = bare_name(record.name)
             rec_cpp = escape_cpp_name(rec_short)
+            arg = forward_param(escape_cpp_name(param_name), param_type)
 
             # Forward dunder: `record OP other` -> friend with the record on the
             # left. Using a friend function allows symmetric operand handling.
             if forward_op is not None:
                 out.write(f"\n{INDENT}friend {ret_cpp} operator{forward_op}(const {rec_cpp}& lhs, {param_cpp}) {{\n")
-                out.write(f"{INDENT}{INDENT}return lhs.{method.name}({param_name});\n")
+                out.write(f"{INDENT}{INDENT}return lhs.{method.name}({arg});\n")
                 out.write(f"{INDENT}}}\n")
             # Reflected dunder: `other OP record` -> friend with the record on
             # the RIGHT, delegating to __rOP__. Matches DUNDER_CPP_TEMPLATES'
@@ -1615,7 +1620,7 @@ class RecordGenerator:
             # resolves a binop to the reverse method.
             else:
                 out.write(f"\n{INDENT}friend {ret_cpp} operator{reverse_op}({param_cpp}, const {rec_cpp}& rhs) {{\n")
-                out.write(f"{INDENT}{INDENT}return rhs.{method.name}({param_name});\n")
+                out.write(f"{INDENT}{INDENT}return rhs.{method.name}({arg});\n")
                 out.write(f"{INDENT}}}\n")
 
     def _gen_call_operator(self, out: TextIO, record: TpyRecord) -> None:
@@ -1640,7 +1645,8 @@ class RecordGenerator:
                        if method.is_readonly else method.return_type.to_cpp())
             const_suffix = " const" if method.is_readonly else ""
             params_cpp = self.functions.gen_shim_params(method, record.name)
-            arg_names = ", ".join(escape_cpp_name(p_name) for p_name, _ in method.params)
+            arg_names = ", ".join(forward_param(escape_cpp_name(p_name), p_type)
+                                  for p_name, p_type in method.params)
             out.write(f"\n{INDENT}{ret_cpp} operator()({params_cpp}){const_suffix} {{\n")
             out.write(f"{INDENT}{INDENT}return __call__({arg_names});\n")
             out.write(f"{INDENT}}}\n")

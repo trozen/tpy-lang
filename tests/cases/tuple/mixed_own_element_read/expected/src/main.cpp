@@ -61,7 +61,7 @@ int32_t read_direct(Box& b) {
 //     # A param is not storage-form to begin with, so this shape always worked --
 //     # it is the inverse guarding against the fix over-reaching.
 //     return p[1].val
-int32_t read_param(const std::tuple<Box, const Box*>& p) {
+int32_t read_param(std::tuple<Box, const Box*>&& p) {
     return std::get<1>(p)->val;
 }
 

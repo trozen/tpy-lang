@@ -63,14 +63,15 @@ from ..prescan import (
     parse_deref_view_key,
     FactKills, collect_fact_kills, liveness_alias_sources, is_scan_rvalue,
 )
-from ..liveness import (analyze_last_uses, collect_finally_return_candidates,
+from ..liveness import (analyze_last_uses, closure_pinned_names,
+                        collect_finally_return_candidates,
                         nested_def_free_names,
                         collect_deleted_names, collect_finally_rebound_returns,
                         collect_nested_def_nonlocal_rebinds,
                         stmts_terminate, tuple_literal_leaves,
                         while_head_always_true)
 from ..parse.nodes import SourceLocation, VarLinkage, op_spelling
-from .context import (PendingLocal, addr_taken_roots, call_borrow_operands,
+from .context import (OwnSlot, PendingLocal, addr_taken_roots, call_borrow_operands,
                       canonical_storage_key,
                       expr_yields_non_null_ptr, LoopClauseEdges,
                       record_borrow_binding, record_stmt_borrow_binding,
@@ -451,6 +452,28 @@ def _param_is_borrowed(t: TpyType) -> bool:
         or not (m.is_value_type() or isinstance(m, TypeParamRef)
                 or is_protocol_type(m) or is_dyn_protocol(m))
         for m in members)
+
+
+def _slot_owns(t: TpyType) -> bool:
+    """A return slot that takes ownership of (some of) its value: `Own[T]`,
+    or an Optional / union / tuple with an `Own` part."""
+    t = unwrap_readonly(unwrap_ref_type(t))
+    if isinstance(t, OwnType):
+        return True
+    if isinstance(t, (OptionalType, UnionType)):
+        return any(_slot_owns(m) for m in t.inner_types())
+    return own_tuple_target(t) is not None
+
+
+def _holds_reference(t: TpyType) -> bool:
+    """Whether a value of `t` holds a reference-type object by value, whose
+    copy CPython would not make."""
+    t = unwrap_readonly(unwrap_own(unwrap_ref_type(t)))
+    if isinstance(t, TupleType):
+        return any(_holds_reference(e) for e in t.element_types)
+    if isinstance(t, (OptionalType, UnionType)):
+        return any(_holds_reference(m) for m in t.inner_types())
+    return not t.is_value_type()
 
 
 class StatementAnalyzer:
@@ -981,13 +1004,36 @@ class StatementAnalyzer:
 
     def _check_own_lvalue_return(self, own_type: OwnType, expr: TpyExpr,
                                  context: str,
-                                 whole_slot: bool = True) -> None:
+                                 whole_slot: bool = True) -> bool:
         """Check that an lvalue returned as Own[T] has explicit copy() or is
         auto-moved; a borrowed one copies and warns, naming the element of a
-        returned tuple."""
-        self.compat.check_own_lvalue_into_own(own_type, expr, context,
-                                              action="return",
-                                              whole_slot=whole_slot)
+        returned tuple. True when the slot copies."""
+        return self.compat.check_own_lvalue_into_own(own_type, expr, context,
+                                                     action="return",
+                                                     whole_slot=whole_slot)
+
+    def _warn_live_name_return(self, value: TpyExpr, expected: TpyType) -> bool:
+        """The `Own[T]` slot's copy rule at the other owning return slots --
+        an `Optional` or a tuple with an `Own` part: an owned NAME a closure
+        captures (it may read it after the return) is not handed over, and
+        the slot says so in the same words. True when the slot copies."""
+        value = self.compat.returned_captured_name(value)
+        if value is None or not _slot_owns(expected):
+            return False
+        t = self.ctx.get_expr_type(value)
+        if t is None or not _holds_reference(t):
+            return False
+        if self.ctx.is_type_non_copyable(t):
+            reason = (self.ctx.nocopy_reason(t) if self.ctx.is_type_nocopy(t)
+                      else f"non-copyable type '{unwrap_readonly(t)}'")
+            raise self.ctx.error(
+                f"{reason} is used after this point and "
+                f"cannot be moved into return type {expected}. Remove later "
+                f"uses or restructure the code.", value)
+        self.ctx.warning(
+            f"copies {self.compat._copy_diag_type(t)} into owned storage; "
+            f"{self.compat.copy_remedy(value)}", value)
+        return True
 
     def _analyze_return_value(self, stmt: TpyReturn) -> None:
         """The value half of a `return` statement's analysis."""
@@ -1037,7 +1083,12 @@ class StatementAnalyzer:
                 if self.compat.is_copy_call(stmt.value):
                     self._warn_unnecessary_return_copy(stmt.value)
                 else:
-                    self._check_own_lvalue_return(own_expected, stmt.value, "return type")
+                    copies = self._check_own_lvalue_return(
+                        own_expected, stmt.value, "return type")
+                    # A borrowed name's `return b;` copies in C++ already.
+                    stmt.copies_live_name = (
+                        copies and self.compat.returned_captured_name(
+                            stmt.value) is not None)
             # Check Own[T] elements in tuple literals.
             if isinstance(stmt.value, TpyTupleLiteral):
                 tuple_target = own_tuple_target(expected)
@@ -1055,6 +1106,12 @@ class StatementAnalyzer:
                     self.compat.check_name_borrow_into_own(
                         stmt.value.name, tuple_target, stmt.value,
                         return_slot=True)
+            # A tuple name with a borrowed element has its copy declared per
+            # element just above.
+            if (not isinstance(own_expected, OwnType)
+                    and stmt.value not in self.ctx.own_element_copies):
+                stmt.copies_live_name = self._warn_live_name_return(
+                    stmt.value, own_expected)
             # Returning an ephemeral generator/iterator borrow lets it escape
             # its iteration step -- reject with the copy-out fix (before the
             # generic dangling check so the specific message wins).
@@ -1325,6 +1382,28 @@ class StatementAnalyzer:
         if eligible:
             self.ctx.all_last_uses.add(stmt.value)
             stmt.finally_deferred_capture = True
+
+    def _owned_element_is_pointer(self, name: str, index: int) -> bool:
+        """Whether the tuple `name` this body OWNS holds element `index` as a
+        pointer to an object outside it (`std::tuple<A, B*>` -- a mixed
+        parameter or a mixed call result, the only owned tuples with a
+        borrowed element): what that element names outlives a move of
+        `name`. A module global holds its elements by value, and a name this
+        body does not own is never moved here, so the answer does not matter
+        for it."""
+        if self.ctx.is_top_level or not self.compat._is_owned_var(name):
+            return False
+        bare = self._declared_binding(name)
+        return (isinstance(bare, TupleType)
+                and index < len(bare.element_types)
+                and TupleType._element_is_pointer_repr(bare.element_types[index]))
+
+    def _own_consume_key(self, name: str) -> OwnSlot | None:
+        """The never-consumed credit a move out of `name` carries: the param
+        itself, or what the local `name` took from one."""
+        if name in self.ctx.func.current_param_names:
+            return OwnSlot(name)
+        return self.ctx.func.own_consume_aliases.get(name)
 
     def _declared_binding(self, name: str) -> 'TpyType | None':
         declared = (self.ctx.func.current_scope.lookup(name)
@@ -3966,8 +4045,10 @@ class StatementAnalyzer:
         self.ctx.func.nested_def_pending.update(scan.nested_def_bind_loc)
         self.ctx.func.own_ns = ns
         self._warn_scalar_type_shadows(func, param_names, scan)
+        self.ctx.func.closure_pinned = closure_pinned_names(func.body)
         self.ctx.all_last_uses |= analyze_last_uses(
             func.body, liveness_alias_sources(scan),
+            pinned=self.ctx.func.closure_pinned,
             captured=(nested_def_free_names(func) if func.is_nested_def
                       else frozenset()))
         self.ctx.finally_return_candidates |= collect_finally_return_candidates(func.body)
@@ -4232,9 +4313,6 @@ class StatementAnalyzer:
             if name not in captured:
                 captured.append(name)
         stmt.captured_names = captured
-        for cap in captured:
-            self.ctx.func.closure_captured_names.setdefault(
-                cap, set()).add(func.name)
         # A lambda inside the def that reads an enclosing name reads it
         # through the def, at the type it has here.
         own_locals = (({p for p, _ in params}
@@ -4354,16 +4432,6 @@ class StatementAnalyzer:
             return
         self.ctx.declared_var_types[(stmt.loc.line, stmt.var)] = (
             resolve_int_literals(elem_type, self.ctx.default_int_for_literal))
-
-    def _captured_by_live_closure(self, stmt: TpyVarDecl, name: str) -> bool:
-        """Whether a nested def that captured `name` is still live after this
-        declaration -- read off the liveness the last-use pass stamped on it,
-        so a closure only called BEFORE the bind does not pin the name."""
-        closures = self.ctx.func.closure_captured_names.get(name)
-        if not closures:
-            return False
-        live_after = stmt.live_names_after
-        return live_after is None or not closures.isdisjoint(live_after)
 
     def _is_body_first_local(self, name: str) -> bool:
         """Whether `name` is pending as a local a loop body (not a `for`
@@ -6158,16 +6226,11 @@ class StatementAnalyzer:
             self.ctx.func.var_scope_depth[stmt.name] = self.ctx.func.current_scope.depth
         # Update rvalue status for hoist eligibility (both new vars and reassignments)
         if stmt.init:
+            self.ctx.func.own_consume_aliases.pop(stmt.name, None)
             if self.compat.is_lvalue(stmt.init):
                 # Move-through: lvalue alias at last use of source promotes to rvalue.
                 # Both target and source must be non-reassigned Tier 1 locals
                 # (reassigned vars become T* pointer-locals in codegen).
-                if (isinstance(stmt.init, TpyName)
-                        and self._captured_by_live_closure(stmt, stmt.init.name)):
-                    # A closure that may still be called reads the source by
-                    # reference: the bind aliases it, whatever the last-use
-                    # walk says.
-                    self.ctx.all_last_uses.discard(stmt.init)
                 if (isinstance(stmt.init, TpyName)
                         and existing_type is None
                         and stmt.name not in self.ctx.func.current_reassigned_vars
@@ -6181,6 +6244,11 @@ class StatementAnalyzer:
                     self.ctx.func.rvalue_vars.add(stmt.name)
                     note_owned_local(self.ctx, stmt.name, var_type)
                     self.ctx.func.move_through_vars.add(stmt.name)
+                    # The source moved into this local, so consuming the
+                    # local consumes what the source's Own param handed in.
+                    key = self._own_consume_key(stmt.init.name)
+                    if key is not None:
+                        self.ctx.func.own_consume_aliases[stmt.name] = key
                 else:
                     self.ctx.func.rvalue_vars.discard(stmt.name)
                     self.ctx.func.owned_locals.discard(stmt.name)
@@ -6511,8 +6579,13 @@ class StatementAnalyzer:
                 elem_srcs = self.ctx.func.loop_var_elem_iterable.get(src_root)
                 lenders = (elem_srcs[i] if elem_srcs is not None
                            and i < len(elem_srcs) else (src_root,))
+                through_pointer = (literal_src is None and elem_srcs is None
+                                   and isinstance(stmt.value, TpyName)
+                                   and self._owned_element_is_pointer(
+                                       stmt.value.name, i))
                 for lender in lenders:
-                    bt.add_borrow(lender, name, BorrowKind.ELEMENT)
+                    bt.add_borrow(lender, name, BorrowKind.ELEMENT,
+                                  through_pointer=through_pointer)
                 # A reassigned target binds `T* x = &(element)`, one type
                 # for every referent it is re-pointed at, so the source must
                 # stay mutable -- the reassigned scalar alias's rule. The
@@ -6533,12 +6606,23 @@ class StatementAnalyzer:
         # -- at the last use mark the source consumed (drives the unconsumed-
         # param warning); a move-only (nocopy) source used after this point
         # can't be moved out, so it is the same use-after-move error scalar
-        # Own raises rather than the raw deleted-copy C++ error.
+        # Own raises rather than the raw deleted-copy C++ error. The source of
+        # an Own param's elements hands each owned element to its target, so
+        # the warning then asks per element whether its target was consumed.
+        for name in stmt.targets:
+            if name is not None:
+                self.ctx.func.own_consume_aliases.pop(name, None)
         if (not self.ctx.is_top_level and any(stmt.is_owned)
                 and isinstance(stmt.value, TpyName)
                 and self.compat._is_owned_var(stmt.value.name)):
             if self.compat.is_auto_move_use(stmt.value):
-                self.compat.check_own_consumption(stmt.value)
+                key = self._own_consume_key(stmt.value.name)
+                if key is None or key.index is not None:
+                    self.compat.check_own_consumption(stmt.value)
+                else:
+                    for i, name in enumerate(stmt.targets):
+                        if stmt.is_owned[i] and name is not None:
+                            self.ctx.func.own_consume_aliases[name] = OwnSlot(key.param, i)
             elif self.ctx.is_type_non_copyable(rhs_type):
                 reason = (self.ctx.nocopy_reason(rhs_type)
                           or f"owned tuple '{stmt.value.name}'")
@@ -6884,7 +6968,11 @@ class StatementAnalyzer:
                         and isinstance(tgt_inner, PtrType)
                         and not tgt_inner.is_readonly):
                     self.ctx.func.current_addr_escape_param_names.add(stmt.value.name)
+            elif isinstance(stmt.value, TpyName):
+                # A local holding what an Own param moved in, stored.
+                self.ctx.mark_own_param_consumed(stmt.value.name)
         if isinstance(stmt.target, TpyName):
+            self.ctx.func.own_consume_aliases.pop(stmt.target.name, None)
             # Track param rebinding (subsequent mutations target the new local, not the arg)
             if stmt.target.name in self.ctx.func.current_param_names:
                 self.ctx.func.current_rebound_params.add(stmt.target.name)

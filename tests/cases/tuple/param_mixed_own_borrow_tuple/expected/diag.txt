@@ -1,0 +1,1 @@
+main.py:16: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)

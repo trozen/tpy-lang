@@ -1447,7 +1447,8 @@ def _own_tuple_shape_match(a: TpyExpr, ptype: 'TpyType | None',
                            declared: dict[str, TpyType]) -> 'TupleType | None':
     """`_own_tuple_shape_match_facts` over the lowering context."""
     return _own_tuple_shape_match_facts(a, ptype, declared,
-                                        lc.narrow.narrowed, lc.inline_narrowed)
+                                        lc.narrow.narrowed, lc.inline_narrowed,
+                                        lc.own_borrow_tuple_locals)
 
 
 def _own_tuple_move_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -1456,7 +1457,8 @@ def _own_tuple_move_arg(a: TpyExpr, ptype: 'TpyType | None',
     """`_own_tuple_move_arg_facts` over the lowering context."""
     return _own_tuple_move_arg_facts(
         a, ptype, declared, lc.narrow.narrowed, lc.inline_narrowed,
-        lc.movable_locals, lc.analyzer, getattr(lc.func, "name", None))
+        lc.movable_locals, lc.analyzer, getattr(lc.func, "name", None),
+        lc.own_borrow_tuple_locals)
 
 
 def _own_tuple_borrow_lift_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -1466,7 +1468,7 @@ def _own_tuple_borrow_lift_arg(a: TpyExpr, ptype: 'TpyType | None',
     return _own_tuple_borrow_lift_arg_facts(
         a, ptype, declared, lc.narrow.narrowed, lc.inline_narrowed,
         lc.analyzer, lc.pointers, lc.storage_tuple_locals,
-        _own_param_names(lc))
+        _own_param_names(lc), lc.own_borrow_tuple_locals)
 
 
 def _own_tuple_decay_copy_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -1476,7 +1478,7 @@ def _own_tuple_decay_copy_arg(a: TpyExpr, ptype: 'TpyType | None',
     return _own_tuple_decay_copy_arg_facts(
         a, ptype, declared, lc.narrow.narrowed, lc.inline_narrowed,
         lc.movable_locals, lc.analyzer, getattr(lc.func, "name", None),
-        lc.pointers)
+        lc.pointers, lc.own_borrow_tuple_locals)
 
 
 def _own_move_source_slice(a: TpyExpr, ptype: 'TpyType | None',
@@ -6698,7 +6700,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             _own_elem_bare = (
                 not _gen_elem_ref
                 and isinstance(e.obj, TpyName)
-                and e.obj.name in lc.storage_tuple_locals
+                and (e.obj.name in lc.storage_tuple_locals
+                     # The mixed render holds its OWNED elements by value too.
+                     or (e.obj.name in lc.own_borrow_tuple_locals
+                         and tup[1] in dict(tup[0].owned_elements())))
                 # An OPTIONAL element off a storage tuple is the ONE family
                 # whose read is not bare std::get (it needs the
                 # optional_to_ptr lift) -- unreachable through today's decl
@@ -13771,7 +13776,8 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
             is_const=(readonly_target or isinstance(ptype, ReadonlyType)),
             loc=getattr(a, "loc", None))
     bt_name = _borrow_tuple_storage_name_arg(
-        a, ptype, declared, lc.storage_tuple_locals, analyzer)
+        a, ptype, declared, lc.storage_tuple_locals, analyzer,
+        lc.movable_locals)
     if bt_name is not None:
         # The NAME twin of the two lift rows above: a storage-form tuple local
         # takes the same `tuple_to_pointer`. Const-ness is the want_const

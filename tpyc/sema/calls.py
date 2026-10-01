@@ -16,7 +16,7 @@ from ..compilation_context import require_current_compiler
 from ..typesys import (
     any_default_suppressed,
     default_emittable_at,
-    TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, own_tuple_target, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
+    TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, own_tuple_target, param_takes_ownership, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
     is_polymorphic_class_type, is_dynamic_dispatch_inner, polymorphic_source_inner,
     deref_dispatch_inner,
     IntLiteralType, resolve_int_literals,
@@ -2997,12 +2997,9 @@ class CallAnalyzer:
                 # The `std::tuple<...>&&` param binds only an rvalue, so a
                 # movable owned-tuple source NOT at its last use can't move in:
                 # a @nocopy tuple is a clean use-after-move error, a copyable one
-                # warns and is auto-copied (mirrors the scalar Own[T] arg). Only
-                # the owned-movable, non-readonly tuple param is rendered `&&`;
-                # a mixed/borrow or readonly param is const& and binds an lvalue.
+                # warns and is auto-copied (mirrors the scalar Own[T] arg).
                 bare = unwrap_readonly(ptype)
-                if (isinstance(bare, TupleType) and bare.is_owned_movable()
-                        and not isinstance(ptype, ReadonlyType)
+                if (isinstance(bare, TupleType) and param_takes_ownership(ptype)
                         and self.compat._is_owned_var(arg.name)
                         and not self.compat.is_auto_move_use(arg)):
                     if self.ctx.is_type_non_copyable(arg_type):
@@ -3012,9 +3009,12 @@ class CallAnalyzer:
                             f"{reason} is used after this point and cannot be "
                             f"moved into '{pname}'. Remove later uses or use "
                             f"copy().", arg)
-                    self.ctx.warning(
-                        f"copies {bare} into owned storage; use copy() to make "
-                        f"this explicit", arg)
+                    # A mixed slot's owned element is warned by the
+                    # element-wise check the argument coercion runs.
+                    if bare.is_owned_movable():
+                        self.ctx.warning(
+                            f"copies {bare} into owned storage; use copy() to "
+                            f"make this explicit", arg)
         own_ptype = unwrap_optional_own(ptype)
         if own_ptype is None:
             return

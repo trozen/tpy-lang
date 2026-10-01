@@ -85,7 +85,7 @@ Box via_closure_rebind() {
     {
         bool __fin_ran_3 = false;
         try {
-            Box __tpy_ret_0 = b;
+            Box __tpy_ret_0 = Box(b);
             __fin_ran_3 = true;
             swap();
             return __tpy_ret_0;

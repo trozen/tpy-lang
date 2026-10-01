@@ -2421,7 +2421,8 @@ def _open_value_tuple(t: TpyType | None) -> 'TupleType | None':
 def _value_tuple_global(t: TpyType | None, analyzer) -> 'TupleType | None':
     """The `Final[tuple[...]]` global / class-constant family: scalar, str
     (owned OR view -- a constant's str element is a static string_view,
-    which reads bare exactly like a view local), and NESTED such tuples
+    which reads bare exactly like a view local), owned bytes, and NESTED
+    such tuples
     (`NESTED: Final[tuple[tuple[str, int32], str]]`; a nested element reads
     as a plain value copy `std::tuple<...> inner = std::get<0>(__tup_N);`).
     Wider than `_value_tuple` on the str-view and nesting axes because no
@@ -2435,7 +2436,8 @@ def _value_tuple_global(t: TpyType | None, analyzer) -> 'TupleType | None':
     for e in t.element_types:
         if (_eligible_scalar(e)
                 or _resolved_str_value(unwrap_ref_type(e), analyzer)
-                is not None):
+                is not None
+                or _owned_viewfam_elem(e, analyzer)):
             continue
         inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e)))
         if (isinstance(inner, TupleType)
@@ -5010,11 +5012,10 @@ def _f1_tuple_element_ok(e: TpyType, analyzer) -> bool:
     lowered yet."""
     if _eligible_scalar(e) or _f1_record(e, analyzer):
         return True
-    # An owned-str element spells `std::string` in BOTH forms (str is a
-    # value type; only the pointer-repr siblings split), so it rides the
-    # per-element conversions untouched.
-    st = _resolved_str_value(e, analyzer)
-    if st is not None and is_str_type(st):
+    # An owned view-family element spells `std::string` / `::tpy::Bytes`
+    # in BOTH forms (a value type; only the pointer-repr siblings split),
+    # so it rides the per-element conversions untouched.
+    if _owned_viewfam_elem(e, analyzer):
         return True
     # A `Ptr[T]` element spells `T*` in BOTH forms (a pointer VALUE, copied
     # like a scalar); the runtime tuple_to_storage/tuple_to_pointer helpers
@@ -5160,17 +5161,13 @@ def _is_borrow_form_name(t: TpyType | None) -> bool:
 
 def _value_tuple_element_ok(e: TpyType, analyzer) -> bool:
     """The narrow value-tuple element: a scalar, value-form record,
-    callable, owned-str slot, or an `Any` cell. All read bare in every sink
-    (a str element is an owned `std::string` lvalue, an Any element a
-    `const ::tpy::Any&`, a value record a copy like a scalar's), so a
-    subscript read of such an element needs no lift."""
-    return (_eligible_scalar(e) or _owned_str_slot(e, analyzer)
+    callable, owned str/bytes slot, or an `Any` cell. All read bare in every
+    sink (a str/bytes element is an owned `std::string` / `::tpy::Bytes`
+    lvalue, an Any element a `const ::tpy::Any&`, a value record a copy like
+    a scalar's), so a subscript read of such an element needs no lift."""
+    return (_eligible_scalar(e) or _owned_viewfam_elem(e, analyzer)
             or _value_record_slot(e)
             or _callable_value(e)
-            # The owned-BYTES element (`tuple[bytes, bytes]` --
-            # `std::vector<uint8_t>` storage) reads bare like the owned-str
-            # element -- the owned form at every position.
-            or _owned_bytes_slot(e, analyzer)
             # A UNIT element (`tuple[None, int]`) is `std::monostate` -- a
             # value type with no storage/borrow split, read bare like a
             # scalar.
@@ -6181,7 +6178,7 @@ def _tuple_subscript_container_elem_read(
 def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
                                 analyzer) -> 'int | None':
     """A value-result tuple subscript read `t[N]` -> `std::get<N>(t)` (value form, no
-    lift): element N is a value scalar or owned-str. Returns the normalized index, or
+    lift): element N is a value scalar or owned str/bytes. Returns the normalized index, or
     None -- record / `Optional` (borrow) elements ride the field-receiver path
     (`t[N].field`). The receiver is an in-scope eligible-tuple NAME, or a clean
     value-tuple FIELD read (`self.data[N]` -> `std::get<N>(this->data)`; the field
@@ -6274,8 +6271,9 @@ def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
             and not _open_sibling_value_tuple(recv_t, analyzer)):
         return None
     el = recv_t.element_types[idx]
-    # An owned-str element reads as an owned lvalue (`std::get<N>(t)` yields
-    # `const std::string&`) -- bare in every sink, so it rides
+    # An owned str/bytes element reads as an owned lvalue (`std::get<N>(t)`
+    # yields `const std::string&` / `const ::tpy::Bytes&`) -- bare in every
+    # sink, so it rides
     # the same value-read arm as a scalar element. A value-form record
     # element copies out like a scalar. A nested value-tuple element
     # reads bare as a whole `std::tuple<...>` value (recursively value-tuple),
@@ -6283,7 +6281,7 @@ def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
     # Optional[scalar] element reads bare as `std::optional<T>` STORAGE
     # (None-tests / unwraps gate at the value-opt consumers); pointer-repr
     # Optionals stay on the borrow paths.
-    return (idx if (_eligible_scalar(el) or _owned_str_slot(el, analyzer)
+    return (idx if (_eligible_scalar(el) or _owned_viewfam_elem(el, analyzer)
                     or _value_record_slot(el)
                     or _callable_value(el)
                     or _value_opt_scalar(el, analyzer) is not None
@@ -6507,8 +6505,9 @@ def _field_over_record_getitem_ok(e: TpyExpr, locals_: dict[str, TpyType],
 
 def _owned_str_slot(t: TpyType | None, analyzer) -> bool:
     """An owned `str` container element/key/value slot (S5). Only the owned
-    nominals are admitted -- `str` and `tpy.String` (both `std::string`
-    storage; the form axis treats String as owned, see `_resolved_str_value`):
+    nominals are admitted -- `str` (`std::string`) and `tpy.String`
+    (`::tpy::String`, a `std::string` subclass; the form axis treats String
+    as owned, see `_resolved_str_value`):
     a `StrView`/`BytesView` slot makes the container hold views, whose literal
     keys/elements pin to static storage (`view_key_target` threads the key
     type into the literal render) -- a shape this slice does not render; the
@@ -6517,13 +6516,21 @@ def _owned_str_slot(t: TpyType | None, analyzer) -> bool:
     return st is not None and (is_str_type(st) or is_string_type(st))
 
 def _owned_bytes_slot(t: TpyType | None, analyzer) -> bool:
-    """The owned-str slot's bytes twin (`bytes` -- `std::vector<uint8_t>`
+    """The owned-str slot's bytes twin (`bytes` -- `::tpy::Bytes`
     storage): a value-tuple element / unpack-elem slot whose reads are the
     bare owned vector. `BytesView` slots stay out for the same reason
     `_owned_str_slot` excludes views (a view element would make the
     container hold spans -- unreachable today)."""
     bt = _resolved_bytes_value(t, analyzer)
     return bt is not None and is_bytes_type(bt)
+
+def _owned_viewfam_elem(t: TpyType | None, analyzer) -> bool:
+    """An owned element of either view family -- `str` (`std::string`) /
+    `tpy.String` (`::tpy::String`) or `bytes` (`::tpy::Bytes`). The two
+    families are the same kind of value (immutable, an owning type beside a
+    view type), so a rule about owned element storage keys on this, not on
+    one family."""
+    return _owned_str_slot(t, analyzer) or _owned_bytes_slot(t, analyzer)
 
 
 def _container_scalar_read(t: TpyType | None, analyzer) -> bool:
@@ -9460,8 +9467,8 @@ def _container_storage_return_call_ret(ret: TpyType | None, analyzer) -> bool:
 
 def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
     """A call-result tuple with at least one `Own[F1-record]` element, every
-    other element a value scalar or str -- the tuple-unpack move-out family
-    (`a, b = socket.socketpair()`). Admitted ONLY where the sink takes the
+    other element a value scalar or str/bytes -- the tuple-unpack move-out
+    family (`a, b = socket.socketpair()`). Admitted ONLY where the sink takes the
     tuple WHOLE (`SinkForm.TUPLE_SOURCE`) -- the standalone tuple-unpack
     SOURCE emits the bare `auto __tup_N = f(...);` capture + per-element
     `std::move(std::get<i>)` decls. Deliberately NOT folded into
@@ -9499,7 +9506,7 @@ def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
                     or _own_container_element(e)):
                 return None
         elif not (_eligible_scalar(e)
-                  or _resolved_str_value(unwrap_ref_type(e), analyzer)
+                  or _resolved_viewfam_value(unwrap_ref_type(e), analyzer)
                   is not None
                   # A nested VALUE-tuple element (`accept() ->
                   # tuple[Own[socket], tuple[str, int32]]`): the capture
@@ -9547,7 +9554,7 @@ def _own_ref_mix_call_ret(ret: TpyType | None,
               and _f1_record(e, analyzer)):
             saw_borrow = True
         elif not (_eligible_scalar(e)
-                  or _resolved_str_value(unwrap_ref_type(e), analyzer)
+                  or _resolved_viewfam_value(unwrap_ref_type(e), analyzer)
                   is not None):
             return None
     return t if (saw_own and saw_borrow) else None

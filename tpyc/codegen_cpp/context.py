@@ -18,7 +18,7 @@ from ..typesys import (
     AliasRef, RecursiveUnionInfo, RecordInfo,
     is_protocol_type, unwrap_readonly, unwrap_qualifiers, ensure_qualified, unwrap_ref_type,
     is_union_or_optional_type, is_own_pointer_repr_optional,
-    polymorphic_source_is_pointer,
+    polymorphic_source_is_pointer, param_takes_ownership,
 )
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -96,6 +96,17 @@ def escape_cpp_name(name: str) -> str:
     if name in _CPP_RESERVED_WORDS:
         return name + "_"
     return name
+
+
+def forward_param(cpp_name: str, ptype: TpyType) -> str:
+    """A delegating shim's argument for its own parameter `cpp_name`
+    (declared `ptype`) handed on to the method it wraps: an
+    ownership-transfer parameter is moved on, since the slot it binds takes
+    an rvalue (`T&&`, `std::tuple<...>&&`, a move-only by-value payload);
+    any other parameter is passed by name."""
+    if param_takes_ownership(ptype):
+        return f"std::move({cpp_name})"
+    return cpp_name
 
 
 def resumable_struct_name(name: str, owner_record: str | None = None,

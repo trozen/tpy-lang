@@ -26,7 +26,7 @@ int32_t write_borrow_elem(Box& b);
 // def read_direct(b: Box) -> int32:
 int32_t read_direct(Box& b);
 // def read_param(p: tuple[Own[Box], Box]) -> int32:
-int32_t read_param(const std::tuple<Box, const Box*>& p);
+int32_t read_param(std::tuple<Box, const Box*>&& p);
 // def unpack_mixed(b: Box) -> int32:
 int32_t unpack_mixed(Box& b);
 // def method_on_borrow_elem(b: Box) -> int32:

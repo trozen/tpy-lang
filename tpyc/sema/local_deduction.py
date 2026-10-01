@@ -1342,7 +1342,7 @@ class LocalTypeDeduction:
         - Another PendingViewType or view-type local
         - A Final[str] constant (constexpr string_view)
         - A function returning a view type
-        - Subscript on lvalue tuple (immutable, stable element storage)
+        - Subscript on lvalue tuple, `str` element only (a `bytes` one owns)
         - Subscript on a NAME container whose element storage is stable
         - A one-hop read of a record field off a NAME receiver
 
@@ -1434,7 +1434,12 @@ class LocalTypeDeduction:
         if isinstance(init_expr, TpySubscript) and self.compat.is_lvalue(init_expr):
             obj_type = self.ctx.get_expr_type(init_expr.obj)
             if isinstance(obj_type, TupleType):
-                return True
+                # A bytes element binds an owned copy: the str view admitted
+                # here dangles when the tuple is a container element and the
+                # container is mutated
+                # (BUGS.md#container-tuple-str-element-view-dangles), and
+                # bytes stays sound rather than inherit that.
+                return is_str
             if obj_type.subscript_borrows() and isinstance(init_expr.obj, TpyName):
                 return True
 

@@ -9,15 +9,41 @@ namespace tpyapp::main {
 
 struct A;
 struct B;
+struct H;
+struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def keep(x: Own[A], into: list[A]) -> None:
+void keep(A&& x, std::vector<A>& into);
+// def keep_both(p: tuple[Own[A], Own[A]], into: list[A]) -> None:
+void keep_both(std::tuple<A, A>&& p, std::vector<A>& into);
 // def read_owned(p: tuple[Own[A], Own[A]]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
 int32_t read_owned(std::tuple<A, A>&& p);
 // def read_borrow(p: tuple[A, A]) -> int32:  # tpyc: ok
 int32_t read_borrow(const std::tuple<const A*, const A*>& p);
 // def read_nocopy(p: tuple[Own[B], Own[B]]) -> int32:  # tpyc: ok
 int32_t read_nocopy(std::tuple<B, B>&& p);
+// def drop_one(p: tuple[Own[A], Own[A]], into: list[A]) -> int32:  # tpyc: warning(/Own\[A\] element 1 of tuple param 'p' is never consumed \(unpacked into 'b'/)
+int32_t drop_one(std::tuple<A, A>&& p, std::vector<A>& into);
+// def drop_on_branch(p: tuple[Own[A], Own[A]], c: bool, into: list[A]) -> None:  # tpyc: warning(/element 1 of tuple param 'p' is never consumed/)
+void drop_on_branch(std::tuple<A, A>&& p, bool c, std::vector<A>& into);
+// def mixed(p: tuple[Own[A], A]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
+int32_t mixed(std::tuple<A, const A*>&& p);
+// def through_local(x: Own[A], into: list[A]) -> None:  # tpyc: ok
+void through_local(A&& x, std::vector<A>& into);
+// def consume_all(p: tuple[Own[A], Own[A]], into: list[A]) -> None:  # tpyc: ok
+void consume_all(std::tuple<A, A>&& p, std::vector<A>& into);
+// def drop_nocopy(p: tuple[Own[A], Own[B]], into: list[A]) -> int32:  # tpyc: ok
+int32_t drop_nocopy(std::tuple<A, B>&& p, std::vector<A>& into);
+// def drop_value(p: tuple[Own[A], int32], into: list[A]) -> int32:  # tpyc: ok
+int32_t drop_value(std::tuple<A, int32_t>&& p, std::vector<A>& into);
+// def forward(p: tuple[Own[A], Own[A]], into: list[A]) -> None:  # tpyc: ok
+void forward(std::tuple<A, A>&& p, std::vector<A>& into);
+// def return_through_local(x: Own[A]) -> Own[A]:  # tpyc: ok
+A return_through_local(A&& x);
+// def return_unpacked(p: tuple[Own[A], Own[A]], into: list[A]) -> Own[A]:  # tpyc: ok
+A return_unpacked(std::tuple<A, A>&& p, std::vector<A>& into);
 // def main() -> None:
 void main();
 
@@ -59,6 +85,47 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
     return os;
 }
 
+// class H:
+struct H {
+    // k: int32
+    int32_t k;
+
+    // def __init__(self) -> None:
+    H();
+
+    // def drop_first(self, p: tuple[Own[A], Own[A]], into: list[A]) -> int32:  # tpyc: warning(/Own\[A\] element 0 of tuple param 'p' is never consumed \(unpacked into 'a'/)
+    int32_t drop_first(std::tuple<A, A>&& p, std::vector<A>& into);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.H";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const H& obj) {
+    ::tpy::print_object_default(os, "H", obj);
+    return os;
+}
+
+// class Holder:
+struct Holder {
+    // slot: A
+    A slot;
+    // other: A
+    A other;
+
+    // def __init__(self) -> None:
+    Holder();
+
+    // def store_through_local(self, x: Own[A]) -> None:  # tpyc: ok
+    void store_through_local(A&& x);
+
+    // def store_unpacked(self, p: tuple[Own[A], Own[A]]) -> None:  # tpyc: ok
+    void store_unpacked(std::tuple<A, A>&& p);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
+    ::tpy::print_object_default(os, "Holder", obj);
+    return os;
+}
+
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
@@ -67,5 +134,53 @@ inline A::A(int32_t n) : n(n) {}
 // def __init__(self, m: int32) -> None:
 //     self.m = m
 inline B::B(int32_t m) : m(m) {}
+
+// def __init__(self) -> None:
+//     self.k = 0
+inline H::H() : k(0) {}
+
+// # method: the same per-element verdict as the free function.
+// def drop_first(self, p: tuple[Own[A], Own[A]], into: list[A]) -> int32:  # tpyc: warning(/Own\[A\] element 0 of tuple param 'p' is never consumed \(unpacked into 'a'/)
+//     a, b = p
+//     keep(b, into)
+//     self.k += 1
+//     return a.n + self.k
+inline int32_t H::drop_first(std::tuple<A, A>&& p, std::vector<A>& into) {
+    auto&& __tup_1 = std::move(p);
+    A a = std::move(std::get<0>(__tup_1));
+    A b = std::move(std::get<1>(__tup_1));
+    ::tpyapp::main::keep(std::move(b), into);
+    this->k = ::tpy::add_check<int32_t>(this->k, 1);
+    return (::tpy::add_check<int32_t>(a.n, this->k));
+}
+
+// def __init__(self) -> None:
+//     self.slot = A(0)
+//     self.other = A(0)
+inline Holder::Holder()
+    : slot(A(0)),
+      other(A(0)) {}
+
+// # field store: storing the local `y` consumes the `x` it took.
+// def store_through_local(self, x: Own[A]) -> None:  # tpyc: ok
+//     y = x
+//     self.slot = y
+inline void Holder::store_through_local(A&& x) {
+    A y = std::move(x);
+    this->slot = std::move(y);
+}
+
+// # field store: each stored unpack target consumes its element.
+// def store_unpacked(self, p: tuple[Own[A], Own[A]]) -> None:  # tpyc: ok
+//     a, b = p
+//     self.slot = a
+//     self.other = b
+inline void Holder::store_unpacked(std::tuple<A, A>&& p) {
+    auto&& __tup_1 = std::move(p);
+    A a = std::move(std::get<0>(__tup_1));
+    A b = std::move(std::get<1>(__tup_1));
+    this->slot = std::move(a);
+    this->other = std::move(b);
+}
 void __tpy_init();
 } // namespace tpyapp::main

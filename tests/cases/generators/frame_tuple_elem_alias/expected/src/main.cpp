@@ -112,6 +112,123 @@ __gen_orelse_alias orelse_alias() {
     return __gen_orelse_alias();
 }
 
+
+// def copy_alias(c: bool) -> Iterator[int32]:
+__gen_copy_alias copy_alias(bool c) {
+    return __gen_copy_alias(c);
+}
+
+
+// def copy_chained(c: bool) -> Iterator[int32]:
+__gen_copy_chained copy_chained(bool c) {
+    return __gen_copy_chained(c);
+}
+
+
+// def list_of_tuples_after_rebind(c: bool) -> Iterator[int32]:
+__gen_list_of_tuples_after_rebind list_of_tuples_after_rebind(bool c) {
+    return __gen_list_of_tuples_after_rebind(c);
+}
+
+// # workaround 1, coroutine twin. (A MIXED slot's owned element cannot be
+// # copied yet: BUGS.md#tuple-elem-copy-mixed-or-list-rejects.)
+// async def co_copy(c: bool) -> int32:
+//     t = (A(1), A(2))
+//     saved = copy(t[0])  # tpyc: ok
+//     await asyncio.sleep(0)            # -> S_RESUME_0
+//     saved.x = 6
+//     if c:
+//         t = (A(9), A(8))
+//     return saved.x * 100 + t[0].x
+::tpystd::tpy::Poll<int32_t> __coro_co_copy::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        t.emplace(std::tuple<A, A>{A(1), A(2)});
+        saved.emplace(A(std::get<0>((*t))));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        (*saved).x = 6;
+        if (c) {
+            t.emplace(std::tuple<A, A>{A(9), A(8)});
+        }
+        __state = S_DONE;
+        int32_t __tpy_async_ret = (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>((*saved).x, 100)), std::get<0>((*t)).x));
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def co_copy(c: bool) -> int32:
+__coro_co_copy co_copy(bool c) {
+    return __coro_co_copy(c);
+}
+
+// # workaround 2, coroutine twin on the owned element of a mixed slot: the
+// # alias is taken after the last rebind, so it aliases the new element in
+// # place and a write through it is seen through the slot.
+// async def co_alias_after_rebind(b: A, c: bool) -> int32:
+//     t = (A(1), b)
+//     await asyncio.sleep(0)                                # -> S_RESUME_0
+//     if c:
+//         t = (A(9), b)
+//     saved = t[0]  # tpyc: ok
+//     await asyncio.sleep(0)                                # -> S_RESUME_1
+//     saved.x = 7
+//     return t[0].x
+::tpystd::tpy::Poll<int32_t> __coro_co_alias_after_rebind::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        t.emplace(std::tuple<A, A*>{A(1), &(b)});
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        if (c) {
+            t.emplace(std::tuple<A, A*>{A(9), &(b)});
+        }
+        saved = &(std::get<0>((*t)));
+        __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_RESUME_1: {  // after: await asyncio.sleep(0)
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        saved->x = 7;
+        __state = S_DONE;
+        int32_t __tpy_async_ret = std::get<0>((*t)).x;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def co_alias_after_rebind(b: A, c: bool) -> int32:
+__coro_co_alias_after_rebind co_alias_after_rebind(A& b, bool c) {
+    return __coro_co_alias_after_rebind(b, c);
+}
+
 // def main() -> None:
 //     r0 = A(3)
 //     r1 = A(4)
@@ -148,6 +265,15 @@ __gen_orelse_alias orelse_alias() {
 //         print("alias_after_last_rebind", v)
 //     for v in orelse_alias():
 //         print("orelse_alias", v)
+//     for v in copy_alias(True):
+//         print("copy_alias", v)
+//     for v in copy_chained(True):
+//         print("copy_chained", v)
+//     for v in list_of_tuples_after_rebind(True):
+//         print("list_of_tuples_after_rebind", v)
+//     print("co_copy", asyncio.run(co_copy(True)))
+//     print("co_alias_after_rebind",
+//           asyncio.run(co_alias_after_rebind(A(3), True)))
 void main() {
     A r0 = A(3);
     A r1 = A(4);
@@ -282,6 +408,39 @@ void main() {
             std::cout << "orelse_alias" << " " << v << "\n";
         }
     }
+    {
+        auto __src_24 = ::tpyapp::main::copy_alias(true);
+        auto&& __itr_24 = ::tpy::__iter__(__src_24);
+        for (;;) {
+            auto __r_25 = __itr_24.__next__();
+            if (!__r_25.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_25);
+            std::cout << "copy_alias" << " " << v << "\n";
+        }
+    }
+    {
+        auto __src_26 = ::tpyapp::main::copy_chained(true);
+        auto&& __itr_26 = ::tpy::__iter__(__src_26);
+        for (;;) {
+            auto __r_27 = __itr_26.__next__();
+            if (!__r_27.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_27);
+            std::cout << "copy_chained" << " " << v << "\n";
+        }
+    }
+    {
+        auto __src_28 = ::tpyapp::main::list_of_tuples_after_rebind(true);
+        auto&& __itr_28 = ::tpy::__iter__(__src_28);
+        for (;;) {
+            auto __r_29 = __itr_28.__next__();
+            if (!__r_29.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_29);
+            std::cout << "list_of_tuples_after_rebind" << " " << v << "\n";
+        }
+    }
+    std::cout << "co_copy" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::co_copy(true))) << "\n";
+    A __tmp_3 = A(3);
+    std::cout << "co_alias_after_rebind" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::co_alias_after_rebind(__tmp_3, true))) << "\n";
 }
 
 
@@ -290,7 +449,8 @@ void main() {
 // # alias copies it rather than taking the address of the element slot. The
 // # rejected shapes (a rebind that can run after an alias of a by-value
 // # element, including a `finally` rebind after a handler's alias) are pinned
-// # by the error_frame_*alias_rebind cases.
+// # by the error_frame_*alias_rebind cases; the *_after_rebind sections are
+// # the rewrite their diagnostic names, the copy_* sections the other one.
 // import asyncio
 //
 // main()
