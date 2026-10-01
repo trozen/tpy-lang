@@ -12,7 +12,11 @@ from .. import cli
 from ..mir_workspace import analyze_call_workspace
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
-from .collect import dump_codegen_mir
+from .call_contract import MIRSummaryState
+from .collect import (
+    MIRStorageCheck, MIRStorageState, MIRVerdictStatus, dump_codegen_mir, enumerate_bodies,
+    enumerate_body_sources, verdict_of,
+)
 from .definitions import MIRDefinitions
 from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, function_body_kind
 
@@ -364,3 +368,99 @@ def test_both_entry_paths_take_the_kind_from_the_receiver_fact() -> None:
         lowered = workspace.bodies[body]
         assert isinstance(lowered, MIRFunction), lowered
         assert lowered.kind is KINDS[body.declaration]
+
+
+VERDICT_SOURCE = """\
+from typing import Iterator
+from tpy import int32, readonly, nocopy
+
+@nocopy
+class Cell:
+    value: int32
+    def __init__(self, value: int32):
+        self.value = value
+    def read(self) -> int32:
+        return self.value
+
+def observe(cell: Cell) -> readonly[Cell]:
+    return cell
+
+def borrowed(value: int32) -> int32:
+    # The materialized constructor argument backs the borrowed result.
+    saved = observe(Cell(value))
+    return saved.value
+
+def plain(value: int32) -> int32:
+    return value + 1
+
+def countdown(n: int32) -> int32:
+    if n <= 0:
+        return 0
+    return countdown(n - 1)
+
+def gen(n: int32) -> Iterator[int32]:
+    yield n
+
+print(borrowed(1), plain(2), countdown(3), Cell(4).read())
+"""
+
+
+def _verdicts(source: str):
+    compiler, modules = _compile(source)
+    entry = _entry(modules)
+    ctx = compiler.collect_thir(entry, tolerate_reject=True)
+    with compiler.mir_analysis([(entry, ctx)]) as program:
+        verdicts = enumerate_bodies(entry.ast, entry.analyzer, ctx, entry.name, program.definitions,
+                                    compiler.thir_reject_by_node, program.workspace)
+        out = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, program.definitions,
+                               compiler.thir_reject_by_node, program.workspace)
+    return verdicts, out, program.workspace
+
+
+@pytest.mark.parametrize("source", [SOURCE, VERDICT_SOURCE, KIND_SOURCE], ids=["dump", "verdicts", "kinds"])
+def test_every_dumped_and_scheduled_body_has_exactly_one_verdict(source: str) -> None:
+    verdicts, out, workspace = _verdicts(source)
+    bodies = [v.body for v in verdicts]
+    assert len(bodies) == len(set(bodies))
+    dumped = re.findall(r"^fn [^:\s]+::(\S+?)(?::? <| -> )", out, re.MULTILINE)
+    assert [b.declaration for b in bodies] == dumped
+    assert set(workspace.bodies) <= set(bodies)
+
+
+def test_fresh_lowering_agrees_with_the_workspace_cache() -> None:
+    compiler, modules = _compile(VERDICT_SOURCE)
+    entry = _entry(modules)
+    ctx = compiler.collect_thir(entry, tolerate_reject=True)
+    with compiler.mir_analysis([(entry, ctx)]) as program:
+        sources = list(enumerate_body_sources(entry.ast, entry.analyzer, ctx, entry.name,
+                                              compiler.thir_reject_by_node))
+        assert sources
+        for source in sources:
+            cached = verdict_of(source, program.definitions, program.workspace)
+            fresh = verdict_of(source, program.definitions, program.workspace, fresh=True)
+            assert (fresh.status, fresh.reason, fresh.conflicts) == (cached.status, cached.reason, cached.conflicts)
+
+
+def test_verdicts_climb_the_ladder() -> None:
+    verdicts, _out, _workspace = _verdicts(VERDICT_SOURCE)
+    by_name = {v.name: v for v in verdicts}
+    borrowed = by_name["borrowed"]
+    assert (borrowed.status, borrowed.storage, borrowed.conflicts) == (
+        MIRVerdictStatus.CERTIFIED, MIRStorageCheck(MIRStorageState.CERTIFIED), ())
+    assert borrowed.line == 15 and borrowed.kind is MIRBodyKind.FREE_FUNCTION
+    # Nothing to prove is covered, never certified.
+    plain = by_name["plain"]
+    assert (plain.status, plain.storage) == (
+        MIRVerdictStatus.COVERED, MIRStorageCheck(MIRStorageState.NO_PROOF_REQUIRED))
+    assert plain.summary is not None and plain.summary.state is MIRSummaryState.KNOWN
+    gen = by_name["gen"]
+    assert (gen.status, gen.reason, gen.function, gen.storage) == (
+        MIRVerdictStatus.UNCOVERED, "resumable body", None, None)
+    countdown = by_name["countdown"]
+    assert countdown.summary is not None and countdown.summary.state is MIRSummaryState.OPAQUE
+    assert "recursi" in countdown.summary.reason
+    ctor = by_name["__init__"]
+    assert ctor.kind is MIRBodyKind.CONSTRUCTOR and ctor.summary is None and ctor.line == 7
+    init, = (v for v in verdicts if v.line is None)
+    assert (init.name, init.status, init.reason) == ("__tpy_init", MIRVerdictStatus.UNCOVERED,
+                                                     "module initialization")

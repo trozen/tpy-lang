@@ -1,0 +1,52 @@
+param_borrow: False
+by_value: s
+local: 6
+temporary: True
+ret_copy: r
+global_read: 14
+global_print: glob 7 b'gb'
+prints: s 1 b'b' lit
+element: False
+param_copy: px
+append: aya
+convert: c
+literal: abc
+promoted: 13 True
+big_copy: 8
+loop: 8
+float_big: 3.5
+mixed: True
+neg: -5
+calls_with_str: 1
+lends: 2
+copies: 1
+literal_arguments: 2
+owned_result_caller: True
+fresh_result: False
+temporary_argument: 1
+result_local: rl
+global_arguments: 2
+overlap: True
+overlap_write: True 1
+bytes_print: b'xy'
+expression_arguments: 1
+print_call: pc
+bytes_literal: b'ab'
+rvalue_temp: 7
+conditional_hoist: 4 12
+view_local: 1
+str_field: True
+str_field_write: w
+method: True False
+view_return: vr
+buffer: 1
+global_copy: 1
+view_caller: 1
+fstring: 42
+concat_mixed: True
+no_init: 1 2
+string_as_str: sx
+global_write: new
+generator: 3
+generator: 2
+generator: 1

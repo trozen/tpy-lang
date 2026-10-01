@@ -41,7 +41,7 @@ def test_run_reports_four_count(tmp_path: Path) -> None:
     assert lowered, "no body lowered"
     # Every lowered body carries an analysis and a storage verdict; nothing
     # without proof obligations may pass as certified.
-    assert all(r["analyses"] in ("complete", "incomplete", "error") for r in lowered)
+    assert all(r["analyses"] in ("complete", "incomplete") for r in lowered)
     assert all(r["storage"] for r in lowered)
     assert not any(r["certified"] == "True" and r["storage"] != "certified" for r in rows)
     assert all(r["reason_cat"] for r in rows if r["lowered"] == "False" and r["status"] != "no_body")

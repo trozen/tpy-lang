@@ -1,0 +1,6 @@
+unmarked: 3.0
+unmarked_nullary: 0.25
+text_of_scalar: 2
+mut_ref: 2
+mutable_leaf: ab
+view_result: 1

@@ -38,21 +38,11 @@ from tpyc.mir.coverage import scalar_param  # noqa: E402
 from tpyc.codegen_cpp.context import CodeGenOptions  # noqa: E402
 from tpyc.compiler import Compiler  # noqa: E402
 from tpyc.diagnostics import DiagnosticLevel, format_diagnostics  # noqa: E402
-from tpyc.mir.call_effects import analyze_call_effects  # noqa: E402
-from tpyc.mir.collect import _declaration_name  # noqa: E402
-from tpyc.mir.dependencies import analyze_dependencies  # noqa: E402
-from tpyc.mir.liveness import analyze_liveness  # noqa: E402
-from tpyc.mir.lower import lower_constructor, lower_function  # noqa: E402
-from tpyc.mir.nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, function_body_kind  # noqa: E402
-from tpyc.mir.payload_lifetime import inspect_payload_lifetimes  # noqa: E402
-from tpyc.mir.retention import analyze_retention  # noqa: E402
-from tpyc.mir.scope_lifetime import inspect_scope_lifetimes  # noqa: E402
-from tpyc.mir.storage import analyze_storage  # noqa: E402
-from tpyc.mir.storage_adapter import MIRStorageRequest, certify_thir_storage  # noqa: E402
-from tpyc.mir.storage_evidence import MIRStorageVerdict  # noqa: E402
+from tpyc.mir.collect import (  # noqa: E402
+    MIRBodyVerdict, MIRRefusalKind, MIRStorageCheck, MIRStorageState, MIRVerdictStatus, enumerate_body_sources,
+    verdict_of,
+)
 from tpyc.parse import nodes as pn  # noqa: E402
-from tpyc.thir.lower import iter_module_callables, iter_module_constructors  # noqa: E402
-from tpyc.thir.reject import is_bodyless_binding  # noqa: E402
 
 TPY_LIB = REPO / "lib" / "tpy"
 CASES = REPO / "tests" / "cases"
@@ -248,62 +238,27 @@ def _frontend(opts: dict):
 
 # --- the four-count per lowered body ---------------------------------------
 
-def run_analyses(fn: MIRFunction) -> dict:
-    """The analyses `--dump-mir` runs over a lowered body; first gap + conflicts."""
-    try:
-        liveness = analyze_liveness(fn)
-        deps = analyze_dependencies(fn, liveness)
-        scope = inspect_scope_lifetimes(fn)
-        payload = inspect_payload_lifetimes(fn)
-        events = analyze_storage(fn)
-        effects = analyze_call_effects(fn, deps)
-        retention = analyze_retention(fn, liveness, deps, events)
-    except Exception as e:  # noqa: BLE001
-        return {"analyses": "error", "analysis_gap": f"error: {type(e).__name__}: {normalize(str(e))[:120]}",
-                "analysis_gaps": ["error"], "analysis_conflicts": []}
-    staged = (("dependencies", deps), ("scope ends", scope.ends), ("scope conflicts", scope.conflicts),
-              ("payload ends", payload.ends), ("payload conflicts", payload.conflicts),
-              ("storage", events), ("call effects", effects), ("retention", retention))
-    gaps = [(name, r) for name, r in staged if isinstance(r, MIRNotCovered)]
-    conflicts = []
-    if not isinstance(scope.conflicts, MIRNotCovered) and scope.conflicts:
-        conflicts.append("scope_end")
-    if not isinstance(payload.conflicts, MIRNotCovered) and payload.conflicts:
-        conflicts.append("payload_end")
-    if not isinstance(retention, MIRNotCovered) and retention.conflicts:
-        conflicts.append("replacement")
-    if scope.freshness:
-        conflicts.append("stale_alias")
-    first = gaps[0] if gaps else None
-    return {"analyses": "incomplete" if gaps else "complete",
-            "analysis_gap": f"{first[0]}: {normalize(first[1].reason)[:140]}" if first else None,
-            "analysis_gaps": [name for name, _r in gaps], "analysis_conflicts": conflicts}
+def storage_columns(check: MIRStorageCheck) -> dict:
+    state = check.state.name.lower()
+    if check.state is MIRStorageState.CONFLICT:
+        return {"storage": state, "storage_gap": None, "storage_conflicts": list(check.conflicts)}
+    return {"storage": state, "storage_gap": normalize(check.gap)[:140] if check.gap is not None else None}
 
 
-def certify(source, body: MIRBodyId, kind: MIRBodyKind, definitions, summaries) -> dict:
-    """`certify_thir_storage` verdict; `requires_proof=False` is never CERTIFIED."""
-    try:
-        request = MIRStorageRequest(source, body, kind, definitions, summaries)
-        bound = certify_thir_storage(request)
-        requires = bound.requires_proof
-        if requires is None:
-            return {"storage": "no_facts", "storage_gap": "storage facts have not been published"}
-        if not requires:
-            return {"storage": "no_proof_required", "storage_gap": None}
-        verdict = bound.verdict
-        if verdict is MIRStorageVerdict.CERTIFIED:
-            if bound.function is not None and bound.certifies(request, source, bound.function):
-                return {"storage": "certified", "storage_gap": None}
-            return {"storage": "not_covered", "storage_gap": "certificate does not bind the request"}
-        if verdict is MIRStorageVerdict.CONFLICT:
-            kinds = sorted({c.kind.name.lower() for c in bound.evidence.conflicts})
-            return {"storage": "conflict", "storage_gap": None, "storage_conflicts": kinds}
-        gaps = list(bound.gaps) + (list(bound.evidence.gaps) if bound.evidence is not None else [])
-        gap = (f"{gaps[0].node_kind}: {normalize(gaps[0].reason)[:140]}" if gaps
-               else "no evidence")
-        return {"storage": "not_covered", "storage_gap": gap}
-    except Exception as e:  # noqa: BLE001
-        return {"storage": "error", "storage_gap": f"error: {type(e).__name__}: {normalize(str(e))[:120]}"}
+def lowered_columns(verdict: MIRBodyVerdict) -> dict:
+    """The analyses, exit fact and storage verdict of a lowered body as report columns."""
+    analyses, storage = verdict.analyses, verdict.storage
+    assert analyses is not None and storage is not None
+    incomplete = verdict.status is MIRVerdictStatus.INCOMPLETE
+    columns = {"analyses": "incomplete" if incomplete else "complete",
+               # The verdict's reason is the first gap as "<analysis>: <reason>".
+               "analysis_gap": normalize(verdict.reason)[:140] if incomplete else None,
+               "analysis_gaps": [name for name, _r in analyses.gaps], "analysis_conflicts": list(analyses.conflicts),
+               # Storage verdicts are normal-path evidence; the exit fact says which bodies they leave uncovered.
+               "exceptional_exits": verdict.exceptional_exits}
+    columns.update(storage_columns(storage))
+    columns["conflict"] = bool(verdict.conflicts)
+    return columns
 
 
 # --- per-program job -------------------------------------------------------
@@ -347,9 +302,9 @@ def run_job(job: dict) -> dict:
         with compiler.mir_analysis(collected) as mir:
             for m, ctx in collected:
                 if is_user[m.name] == report_user:
-                    out["bodies"].extend(enumerate_bodies(m, ctx, mir.definitions, mir.workspace,
-                                                          compiler.thir_reject_by_node, is_user[m.name],
-                                                          body_ranges))
+                    out["bodies"].extend(body_records(m, ctx, mir.definitions, mir.workspace,
+                                                      compiler.thir_reject_by_node, is_user[m.name],
+                                                      body_ranges))
         _attribute_diags(out, modules, is_user, body_ranges)
         out["unattributed_events"] = dict(hooks.UNATTRIBUTED)
         out["status"] = "ok"
@@ -405,19 +360,14 @@ def _events_for(func, nested) -> dict:
     return dict(c)
 
 
-def enumerate_bodies(module, ctx, definitions, workspace, reasons, user, body_ranges) -> list[dict]:
-    """One record per body, in the order and with the identities of `dump_codegen_mir`."""
+def body_records(module, ctx, definitions, workspace, reasons, user, body_ranges) -> list[dict]:
+    """One record per body of `collect.enumerate_body_sources`, the walk and
+    identities `dump_codegen_mir` uses, measured by `collect.verdict_of`; the
+    survey columns are this tool's own."""
     tpy = module.ast
     analyzer = module.analyzer
     recs: list[dict] = []
-    identities: dict[str, int] = {}
     ranges = body_ranges.setdefault(module.name, [])
-
-    def identity(name, func=None):
-        name = _declaration_name(name, func)
-        count = identities.get(name, 0) + 1
-        identities[name] = count
-        return MIRBodyId(module.name, name if count == 1 else f"{name}#{count}")
 
     def rec(body, position, status, raw, *, node_kind=None, extra=None, feats=(), line=None, events=None,
             btype=None, measured=None):
@@ -429,101 +379,40 @@ def enumerate_bodies(module, ctx, definitions, workspace, reasons, user, body_ra
         r.update(measured or {})
         recs.append(r)
 
-    def missing(func):
-        if is_bodyless_binding(func) or func.is_overload_stub:
-            return "no_body", "no body to lower"
-        why = reasons.get(func)
-        if why is not None:
-            return "not_covered", f"THIR rejected: {why}"
-        return "not_covered", "THIR not attempted: an earlier reject ended emission"
-
-    def measure(source, body, kind, lower):
-        """Lower (or take the workspace's result), then run the four-count stages."""
-        cached = workspace.bodies.get(body) if kind is not MIRBodyKind.CONSTRUCTOR else None
+    def measure(source) -> dict:
+        """The body's verdict as `rec` arguments. A MIR exception is recorded
+        rather than raised, so one body cannot end the program's measurement."""
+        _LAST["node"] = None
         try:
-            _LAST["node"] = None
-            result = cached if cached is not None else lower(kind)
-            if isinstance(result, MIRNotCovered) and cached is not None:
-                _LAST["node"] = None
-                again = lower(kind)
-                if not (isinstance(again, MIRNotCovered) and again.reason == result.reason):
-                    _LAST["node"] = None
+            verdict = verdict_of(source, definitions, workspace, fresh=True)
         except Exception as e:  # noqa: BLE001
-            return "not_covered", f"MIR crash: {type(e).__name__}: {str(e)[:120]}", None, None, None, {}
-        if isinstance(result, MIRNotCovered):
-            return ("not_covered", f"MIR not covered: {result.reason}", result.node_kind,
-                    result.loc.line if result.loc is not None else None, blocker_type(result.reason), {})
-        measured = run_analyses(result)
-        # Storage verdicts are normal-path evidence; the exit fact says which bodies they leave uncovered.
-        measured["exceptional_exits"] = result.exceptional_exits
-        measured.update(certify(source, body, kind, definitions, workspace.summaries))
-        measured["conflict"] = bool(measured["analysis_conflicts"]) or measured["storage"] == "conflict"
-        return "covered", None, None, None, None, measured
+            return {"status": "not_covered", "raw": f"MIR crash: {type(e).__name__}: {str(e)[:120]}"}
+        refusal = verdict.refusal
+        if refusal is None:
+            return {"status": "covered", "raw": None, "measured": lowered_columns(verdict)}
+        return {"status": "no_body" if refusal.kind is MIRRefusalKind.NO_BODY else "not_covered",
+                "raw": refusal.display, "node_kind": refusal.node_kind,
+                "line": refusal.loc.line if refusal.loc is not None else None,
+                "btype": blocker_type(refusal.reason)}
 
-    if tpy.top_level_stmts:
-        body = identity("__tpy_init")
-        feats, _lo, _hi, _nested = body_scan(tpy.top_level_stmts)
-        ev = dict(hooks.INIT_EVENTS.get(module.name, {}))
-        if ctx.thir_top_level is not None:
-            raw = "MIR not covered: module initialization"
-        elif reasons.get(tpy) is not None:
-            raw = f"THIR rejected: {reasons.get(tpy)}"
-        else:
-            raw = "THIR not attempted: an earlier reject ended emission"
-        rec(body, "module_init", "not_covered", raw, feats=feats, events=ev)
-
-    for func, owner in iter_module_callables(tpy, analyzer):
-        name = f"{owner.name}.{func.name}" if owner is not None else func.name
-        body = identity(name, func)
+    for source in enumerate_body_sources(tpy, analyzer, ctx, module.name, reasons):
+        body, func = source.body, source.func
+        if func is None:
+            feats, _lo, _hi, _nested = body_scan(tpy.top_level_stmts)
+            rec(body, "module_init", feats=feats, events=dict(hooks.INIT_EVENTS.get(module.name, {})),
+                **measure(source))
+            continue
         feats, lo, hi, nested = body_scan(func.body)
         if func.loc is not None:
             lo = func.loc.line if lo is None else min(lo, func.loc.line)
         ranges.append((body.declaration, lo, hi))
-        pos = position_of(func, owner)
-        generic = bool(func.type_params or (owner is not None and getattr(owner, "type_args", None)))
-        extra = {"generic": generic, "overloaded": bool(analyzer.overload_groups.get(func))}
-        ev = _events_for(func, nested)
-        common = {"extra": extra, "feats": feats, "events": ev}
-        if is_bodyless_binding(func) or func.is_overload_stub:
-            st, raw = missing(func)
-            rec(body, pos, st, raw, **common)
-        elif ctx.thir_resumables.get(func) is not None:
-            rec(body, pos, "not_covered", "MIR not covered: resumable body", **common)
-        elif func in ctx.thir_functions or func in ctx.thir_overload_functions:
-            fn = ctx.thir_functions.get(func)
-            if generic:
-                rec(body, pos, "not_covered", "MIR not covered: generic body", **common)
-            elif analyzer.overload_groups.get(func):
-                rec(body, pos, "not_covered", "MIR not covered: overloaded callable", **common)
-            elif fn is None:
-                st, raw = missing(func)
-                rec(body, pos, st, raw, **common)
-            else:
-                st, raw, nk, line, bt, measured = measure(
-                    fn, body, function_body_kind(fn), lambda _k, fn=fn, body=body: lower_function(
-                        fn, body, definitions=definitions, summaries=workspace.summaries))
-                rec(body, pos, st, raw, node_kind=nk, line=line, btype=bt, measured=measured, **common)
+        if source.record is not None:
+            pos = "constructor"
+            extra = {"generic": bool(source.record.type_params), "overloaded": False}
         else:
-            st, raw = missing(func)
-            rec(body, pos, st, raw, **common)
-
-    for record, ctor, _owner in iter_module_constructors(tpy, analyzer):
-        body = identity(f"{record.name}.__init__", ctor)
-        feats, lo, hi, nested = body_scan(ctor.body)
-        if ctor.loc is not None:
-            lo = ctor.loc.line if lo is None else min(lo, ctor.loc.line)
-        ranges.append((body.declaration, lo, hi))
-        common = {"extra": {"generic": bool(record.type_params), "overloaded": False}, "feats": feats,
-                  "events": _events_for(ctor, nested)}
-        if ctor not in ctx.thir_constructors:
-            st, raw = missing(ctor)
-            rec(body, "constructor", st, raw, **common)
-        elif record.type_params:
-            rec(body, "constructor", "not_covered", "MIR not covered: generic constructor", **common)
-        else:
-            thir_ctor = ctx.thir_constructors[ctor]
-            st, raw, nk, line, bt, measured = measure(
-                thir_ctor, body, MIRBodyKind.CONSTRUCTOR, lambda _k, c=thir_ctor, body=body: lower_constructor(
-                    c, body, definitions=definitions, summaries=workspace.summaries))
-            rec(body, "constructor", st, raw, node_kind=nk, line=line, btype=bt, measured=measured, **common)
+            pos = position_of(func, source.owner)
+            extra = {"generic": bool(func.type_params or (source.owner is not None
+                                                           and getattr(source.owner, "type_args", None))),
+                     "overloaded": bool(analyzer.overload_groups.get(func))}
+        rec(body, pos, extra=extra, feats=feats, events=_events_for(func, nested), **measure(source))
     return recs

@@ -179,3 +179,20 @@ def test_frontend_plugin_parse_error_fails_the_compile(tmp_path: Path) -> None:
 
     assert result.success is False
     assert "main.pas:3: error: expected RPAREN, got SEMI ';'" in result.diagnostics
+
+
+def test_mir_compiler_error_fails_the_case_not_the_compile(tmp_path: Path,
+                                                           monkeypatch: pytest.MonkeyPatch) -> None:
+    """A compiler-error class raised inside the MIR run must not reach the
+    compile's handlers, which would turn it into a failed compile with a
+    diagnostic: diag.txt pins the compiler's output and MIR is not part of it."""
+    def raising(*_args, **_kwargs):
+        raise conftest.CodeGenError("MIR probe")
+
+    monkeypatch.setattr(conftest, "enumerate_bodies", raising)
+    src_file = tmp_path / "src" / "main.py"
+    src_file.parent.mkdir()
+    src_file.write_text("def f() -> int:\n    return 1\n\nprint(f())\n")
+
+    with pytest.raises(AssertionError, match="MIR raised a compiler error"):
+        conftest.compile_with_diagnostics(src_file, tmp_path / "out")
