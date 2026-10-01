@@ -970,7 +970,13 @@ Actual coverage is recorded in `LANGUAGE_FEATURES.md` and `ARCHITECTURE.md`;
 emitted THIR directly, including method/constructor producer checks without
 admitting those body kinds to MIR. Direct IR tests cover record-member assembly
 behind the existing source gate, capability transfer directions and malformed
-operations. No compiler test reads the snippet-test corpus.
+operations. No compiler test reads the snippet-test corpus. The other direction
+holds: the snippet harness runs MIR over every case that reaches codegen
+(`tpyc/mir/collect.py`: one `MIRBodyVerdict` per body, the record `--dump-mir`
+and the coverage tool also render), so a MIR exception fails the case, and a case pins a
+body's verdict with `# tpyc: mir(...)` / `mir_summary(...)` on its `def` line.
+There is no MIR dump snapshot per case, for the reason THIR has none: a dump
+pins the IR's spelling, not a fact about the program.
 
 The implementation records `THIROptionalLayout` on parameters and selected
 holder writes, and `THIROptionalRead` on whole-wrapper or extracted name reads.

@@ -1,0 +1,12 @@
+label_len: 4
+lent_len: 3
+global_len: 4
+clock: True
+construct: 3
+smaller: 5
+smaller_is: True
+smaller_sum: 5
+overloads: True
+twice: 1.527180
+both: 2
+record_len: 4

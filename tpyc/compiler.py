@@ -3647,12 +3647,29 @@ class Compiler:
             (no .cpp is generated for binding-only modules).
         """
         with activate_compiler(self):
-            return self._generate_code_impl(compiled, output_dir, entry_module_name, options, flat)
+            hpp_path, cpp_path, _codegen = self._generate_code_impl(
+                compiled, output_dir, entry_module_name, options, flat)
+            return hpp_path, cpp_path
+
+    def generate_code_and_context(self, compiled: CompiledModule, output_dir: Path,
+                                  entry_module_name: str | None = None,
+                                  options: CodeGenOptions | None = None,
+                                  flat: bool = False
+                                  ) -> 'tuple[Path | None, Path | None, CodeGenContext]':
+        """`generate_code` plus the codegen ctx the files were emitted from.
+
+        The file-writing sibling of `generate_code_and_thir`: the snippet-test
+        harness reads MIR verdicts off the THIR caches of the very emission it
+        snapshots, so it needs the ctx without paying a second codegen pass."""
+        with activate_compiler(self):
+            hpp_path, cpp_path, codegen = self._generate_code_impl(
+                compiled, output_dir, entry_module_name, options, flat)
+            return hpp_path, cpp_path, codegen.ctx
 
     def _generate_code_impl(self, compiled: CompiledModule, output_dir: Path,
                             entry_module_name: str | None,
                             options: CodeGenOptions | None,
-                            flat: bool) -> tuple[Path, Path | None] | tuple[None, None]:
+                            flat: bool) -> 'tuple[Path | None, Path | None, CodeGenerator]':
         self._check_no_errors(compiled)
         mod_name = compiled.name
 
@@ -3703,7 +3720,7 @@ class Compiler:
             )
 
         if not hpp_code:
-            return None, None
+            return None, None, codegen
         hpp_path.parent.mkdir(parents=True, exist_ok=True)
         hpp_path.write_text(hpp_code)
         # Cycle members get a `<mod>_fwd.hpp` so peers can include
@@ -3729,7 +3746,7 @@ class Compiler:
             glue_path.write_text(glue_code)
             self._ext_glue_cpp_paths.append(glue_path)
 
-        return hpp_path, cpp_path
+        return hpp_path, cpp_path, codegen
 
     def _generate_to_strings(self, compiled: CompiledModule,
                              options: CodeGenOptions | None

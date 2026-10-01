@@ -65,6 +65,7 @@ from tpyc.build.third_party import (
     resolve_build_plan, ThirdPartyMode, THIRD_PARTY_MODES, known_lib_names,
 )
 from tpyc.thir.faces import THIR_FACES
+from tpyc.mir.collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 
 # Default options for tests: emit source comments for easier debugging
 TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True, comment_line_numbers=False)
@@ -813,6 +814,9 @@ class CompileResult:
     send_sync_facts: dict[tuple[int, str], tuple[bool, bool]] | None = None
     # (frame is_send, is_sync) per async/generator def, for # tpyc: frame_send/frame_sync
     frame_facts: dict[tuple[int, str], tuple[bool, bool]] | None = None
+    # The entry module's MIR verdicts per (def line, bare name), for # tpyc: mir/mir_summary.
+    # A tuple: one def can emit several bodies (the clone pair of an @auto_readonly method).
+    mir_verdicts: dict[tuple[int, str], tuple[MIRBodyVerdict, ...]] | None = None
     # Linker flags from # tpy: link() directives
     link_flags: list[str] = field(default_factory=list)
     # Third-party (link_third_party) build inputs: include dirs for the C
@@ -1024,6 +1028,40 @@ def _failed(compiler, error_line: str) -> CompileResult:
     return CompileResult(success=False, diagnostics="\n".join(lines) + "\n")
 
 
+def _mir_verdicts(compiler, local_contexts, entry_module) -> dict[tuple[int, str], tuple[MIRBodyVerdict, ...]]:
+    """MIR over the case's own modules, the program `--dump-mir` sees.
+
+    Runs for every case, annotated or not, so a MIR exception surfaces on the
+    whole corpus; it propagates as the case's failure (with its traceback),
+    never as a compile diagnostic, since diag.txt pins the compiler's output
+    and MIR is not part of it. Refusal, incompleteness and conflicts are
+    verdicts, checked only where an annotation asks."""
+    verdicts: dict[tuple[int, str], tuple[MIRBodyVerdict, ...]] = {}
+    try:
+        with compiler.mir_analysis(local_contexts) as mir:
+            for mod, ctx in local_contexts:
+                bodies = enumerate_bodies(mod.ast, mod.analyzer, ctx, mod.name, mir.definitions,
+                                          compiler.thir_reject_by_node, mir.workspace)
+                if mod is entry_module:
+                    verdicts = key_mir_verdicts(bodies)
+    except (CompileError, SemanticError, ParseError, CodeGenError) as e:
+        # The caller's handlers turn these four into a failed compile with a
+        # diagnostic; a MIR failure must stay a test failure.
+        raise AssertionError(f"MIR raised a compiler error: {e!r}") from e
+    return verdicts
+
+
+def key_mir_verdicts(bodies) -> dict[tuple[int, str], tuple[MIRBodyVerdict, ...]]:
+    """Verdicts by (def line, bare name). A def can emit several bodies (an
+    `@auto_readonly` clone pair shares its line and name), and an annotation
+    on that line must hold for every one of them, so none is dropped."""
+    keyed: dict[tuple[int, str], tuple[MIRBodyVerdict, ...]] = {}
+    for v in bodies:
+        if v.line is not None:
+            keyed[(v.line, v.name)] = keyed.get((v.line, v.name), ()) + (v,)
+    return keyed
+
+
 def compile_with_diagnostics(
         src_file: Path, output_dir: Path, default_int: str | None = None,
         snapshot_lib_modules: frozenset[str] = frozenset()) -> CompileResult:
@@ -1088,12 +1126,14 @@ def compile_with_diagnostics(
                 local_mods.append(mod)
 
         all_modules = []
+        local_contexts = []
         for mod in local_mods:
             with _codegen_error_from(mod):
-                hpp_path, cpp_path = compiler.generate_code(
+                hpp_path, cpp_path, mod_ctx = compiler.generate_code_and_context(
                     mod, output_dir, entry_module_name=entry_module.name,
                     options=TEST_CODEGEN_OPTIONS
                 )
+            local_contexts.append((mod, mod_ctx))
             # cpp_path is None for native_module (binding-only) modules
             all_modules.append((mod.name, hpp_path, cpp_path, True))
 
@@ -1133,6 +1173,8 @@ def compile_with_diagnostics(
 
         # Read after the library emit so a library module's faces count too.
         record_thir_faces(compiler._thir_face_witnesses)
+
+        mir_verdicts = _mir_verdicts(compiler, local_contexts, entry_module)
 
         # Return paths for the entry point module
         layout = BuildLayout(output_dir, entry_module.name)
@@ -1177,6 +1219,7 @@ def compile_with_diagnostics(
                              cast_safe_facts=cast_safe_facts,
                              send_sync_facts=send_sync_facts,
                              frame_facts=frame_facts,
+                             mir_verdicts=mir_verdicts,
                              link_flags=link_flags,
                              third_party_include_dirs=list(tp_plan.extra_include_dirs),
                              third_party_link_flags=list(tp_plan.extra_link_flags),
@@ -2401,15 +2444,20 @@ def error_case_annotation_problems(src_dir: Path) -> list[str]:
     is satisfied by a line the phase never reached: a line after the reject is
     never lowered, a line before it renders into no snapshot. `warning` and
     `error` legs are not vacuous (they fail when unobserved), so only `ok` is
-    refused -- and at least one `error` leg must name the rejection."""
+    refused -- and at least one `error` leg must name the rejection. `mir(...)`
+    / `mir_summary(...)` are refused for the same reason: nothing reaches MIR
+    in a case that does not compile."""
     has_error_annotation = False
     vacuous_ok: list[str] = []
+    vacuous_mir: list[str] = []
     for src_file in sorted(src_dir.rglob("*.py")):
-        for ann in parse_annotations(src_file.read_text()):
+        source = src_file.read_text()
+        for ann in parse_annotations(source):
             if ann.level == "error":
                 has_error_annotation = True
             elif ann.level == "ok":
                 vacuous_ok.append(f"{src_file.name}:{ann.line}")
+        vacuous_mir.extend(f"{src_file.name}:{ann.line}" for ann in parse_mir_annotations(source))
     problems: list[str] = []
     if not has_error_annotation:
         problems.append(
@@ -2422,6 +2470,13 @@ def error_case_annotation_problems(src_dir: Path) -> list[str]:
             + ", ".join(vacuous_ok)
             + ". Move the claim to a normal case (or a section of one), or "
             "drop the leg with a pointer to where it is already pinned.")
+    if vacuous_mir:
+        problems.append(
+            "'# tpyc: mir(...)' / 'mir_summary(...)' in an error case asserts "
+            "nothing -- compilation stops at the first error, so no body "
+            "reaches MIR: "
+            + ", ".join(vacuous_mir)
+            + ". Move the claim to a normal case (or a section of one).")
     return problems
 
 
@@ -2955,6 +3010,105 @@ def validate_frame_annotations(
                 f"{ann.trait}({'yes' if actual else 'no'})"
             )
 
+    return errors
+
+
+@dataclass
+class MirAnnotation:
+    """`# tpyc: mir(verdict [/regex/])` or `mir_summary(state [/regex/])` on a def line."""
+    line: int
+    family: str  # "mir" | "mir_summary"
+    verdict: str
+    pattern: str | None
+
+
+_MIR_ITEM_RE = re.compile(r'\b(mir|mir_summary)\(\s*(\w+)(?:\s+/(.+?)/)?\s*\)')
+_MIR_VERDICTS = {"uncovered", "incomplete", "covered", "certified", "conflict"}
+_MIR_SUMMARY_STATES = {"known", "opaque"}
+
+
+def parse_mir_annotations(source: str) -> list[MirAnnotation]:
+    """Parse # tpyc: mir(...) / mir_summary(...) annotations (on def lines)."""
+    annotations = []
+    comment_re = re.compile(r'#\s*tpyc:(.*)$')
+    for lineno, line in enumerate(source.splitlines(), start=1):
+        if line.lstrip().startswith('#'):
+            continue
+        comment = comment_re.search(line)
+        if not comment:
+            continue
+        for match in _MIR_ITEM_RE.finditer(comment.group(1)):
+            annotations.append(MirAnnotation(line=lineno, family=match.group(1),
+                                             verdict=match.group(2), pattern=match.group(3)))
+    return annotations
+
+
+def _mir_verdict_problem(ann: MirAnnotation, verdict: MIRBodyVerdict) -> str | None:
+    """Why `verdict` does not satisfy `ann`, or None when it does."""
+    def matches(text: str | None) -> bool:
+        return ann.pattern is None or (text is not None and re.search(ann.pattern, text) is not None)
+
+    status = verdict.status
+    if ann.family == "mir_summary":
+        summary = verdict.summary
+        if summary is None:
+            return "no summary recorded"
+        state = summary.state.name.lower()
+        if state != ann.verdict or not matches(summary.reason):
+            return f"MIR summary is {state}" + (f" ({summary.reason})" if summary.reason else "")
+        return None
+    lowered = status is not MIRVerdictStatus.UNCOVERED
+    match ann.verdict:
+        case "uncovered":
+            ok = status is MIRVerdictStatus.UNCOVERED and matches(verdict.reason)
+        case "incomplete":
+            ok = status is MIRVerdictStatus.INCOMPLETE and matches(verdict.reason)
+        case "covered":
+            ok = status in (MIRVerdictStatus.COVERED, MIRVerdictStatus.CERTIFIED) and not verdict.conflicts
+        case "certified":
+            ok = status is MIRVerdictStatus.CERTIFIED and not verdict.conflicts
+        case _:  # conflict
+            ok = lowered and any(matches(kind) for kind in verdict.conflicts)
+    return None if ok else f"MIR says {verdict.describe()}"
+
+
+def validate_mir_annotations(
+    src_file: Path,
+    verdicts: dict[tuple[int, str], tuple[MIRBodyVerdict, ...]],
+) -> list[str]:
+    """Validate # tpyc: mir(...) / mir_summary(...) annotations against the
+    MIR verdicts of the bodies the def emits; the annotation must hold for
+    every one of them. The annotation sits on the `def` line; a method is
+    named by its bare name, a constructor by `__init__`. Returns list of
+    validation errors."""
+    source = src_file.read_text()
+    errors = []
+    for ann in parse_mir_annotations(source):
+        known = _MIR_SUMMARY_STATES if ann.family == "mir_summary" else _MIR_VERDICTS
+        spelled = f"{ann.family}({ann.verdict}{f' /{ann.pattern}/' if ann.pattern else ''})"
+        if ann.verdict not in known:
+            errors.append(f"Line {ann.line}: unknown {spelled}; expected one of "
+                          f"{', '.join(sorted(known))}")
+            continue
+        if ann.pattern is not None and ann.verdict in ("covered", "certified", "known"):
+            errors.append(f"Line {ann.line}: {spelled} takes no /regex/")
+            continue
+        line_text = source.splitlines()[ann.line - 1]
+        def_match = _DEF_NAME_RE.match(line_text)
+        if not def_match:
+            errors.append(f"Line {ann.line}: could not extract function name from line")
+            continue
+        fn_name = def_match.group(1)
+        bodies = verdicts.get((ann.line, fn_name), ())
+        if not bodies:
+            errors.append(f"Line {ann.line}: no MIR body recorded for '{fn_name}'")
+            continue
+        for verdict in bodies:
+            problem = _mir_verdict_problem(ann, verdict)
+            if problem is None:
+                continue
+            body = f" ({verdict.body.declaration})" if len(bodies) > 1 else ""
+            errors.append(f"Line {ann.line}: expected {spelled} for '{fn_name}'{body} but {problem}")
     return errors
 
 

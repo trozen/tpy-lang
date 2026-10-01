@@ -258,7 +258,7 @@ def report(out_dir: Path, sample: dict | None, compare_dir: Path | None, cases_d
     emit(f"-- analyses, over lowered bodies ({len(inc)} incomplete) --")
     for k, v in Counter(r.get("analysis_gap") for r in inc).most_common(15):
         emit(f"{v:6}  {k}")
-    sg = [r for r in bodies if r["lowered"] and r.get("storage") in ("not_covered", "error", "no_facts")]
+    sg = [r for r in bodies if r["lowered"] and r.get("storage") in ("not_covered", "no_facts")]
     emit(f"-- storage certificate, over lowered bodies ({len(sg)} not certified for a gap) --")
     for k, v in Counter(r.get("storage_gap") for r in sg).most_common(15):
         emit(f"{v:6}  {k}")

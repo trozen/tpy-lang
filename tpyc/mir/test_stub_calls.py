@@ -33,7 +33,7 @@ from .validate import MIRValidationError, validate_function
 SOURCE = """\
 import math
 import time
-from tpy import int32, pure, Comparable, StrView, String
+from tpy import int32, pure, StrView, String
 from tpy.extern import native
 
 G: str = "glob"
@@ -54,10 +54,6 @@ def probe_plain(x: float) -> float: ...
 
 @native("probe_tick")
 def probe_tick() -> float: ...
-
-@pure
-@native("probe_text")
-def probe_text(x: Comparable) -> str: ...
 
 @native("probe_fill", transient=True)
 def probe_fill(s: String) -> None: ...
@@ -113,10 +109,6 @@ def unmarked(x: float) -> float:
 def unmarked_nullary() -> float:
     # Lending no argument is no contract: an unmarked stub may reach any storage.
     return probe_tick()
-
-def text_of_scalar(i: int32) -> int32:
-    # The str result may borrow what the protocol parameter binds, and an int32 has no storage.
-    return len(probe_text(i))
 
 def mut_ref(r: Rec) -> None:
     probe_bump(r)
@@ -200,13 +192,9 @@ def _replace_call(fn: MIRFunction, stmt: MIRAssign, call: MIRCall, **body) -> MI
         replace(s, value=call) if s is stmt else s for s in b.statements)) for b in fn.blocks))
 
 
-COVERED = ("lent_len", "global_len", "clock", "construct", "smaller", "smaller_is", "smaller_sum",
-           "overloads", "twice", "both")
-
-
-@pytest.mark.parametrize("name", COVERED)
-def test_admitted_stub_calls_lower_and_every_analysis_completes(active, name: str) -> None:
-    fn = active.bodies[name]
+def test_admitted_stub_calls_carry_their_declared_summary(active) -> None:
+    # Two stubs in one body: `min` lends owned leaves, `len` lends through its protocol parameter.
+    fn = active.bodies["both"]
     assert isinstance(fn, MIRFunction), fn
     liveness = analyze_liveness(fn)
     dependencies = analyze_dependencies(fn, liveness)
@@ -216,7 +204,7 @@ def test_admitted_stub_calls_lower_and_every_analysis_completes(active, name: st
     assert inspect_scope_lifetimes(fn).conflicts == ()
     # A stub may raise, so every call to one carries the exit fact.
     calls = [stmt.value for stmt in _call_statements(fn)]
-    assert calls and all(call.may_raise for call in calls) and fn.exceptional_exits
+    assert len(calls) == 2 and all(call.may_raise for call in calls) and fn.exceptional_exits
     for call in calls:
         summary = call.summary
         assert isinstance(summary.callee, th.THIRStubCallee)
@@ -324,19 +312,6 @@ def test_calls_of_one_stub_share_one_summary(active) -> None:
     fn = active.bodies["twice"]
     first, second = (stmt.value.summary for stmt in _call_statements(fn))
     assert first is second and fn.call_summaries == (first,)
-
-
-@pytest.mark.parametrize("name,reason", [
-    ("unmarked", "stub declares no contract"),
-    ("unmarked_nullary", "stub declares no contract"),
-    ("text_of_scalar", "stub result may borrow a scalar argument"),
-    ("mut_ref", "stub parameter is not a readonly leaf"),
-    ("mutable_leaf", "stub parameter is not a readonly leaf"),
-    ("record_len", "stub protocol argument is not a builtin leaf"),
-])
-def test_stub_calls_outside_the_contract_refuse(lowered, name: str, reason: str) -> None:
-    body = lowered.bodies[name]
-    assert isinstance(body, MIRNotCovered) and body.reason == reason, body
 
 
 def test_refused_stubs_declare_what_the_gates_read(active) -> None:

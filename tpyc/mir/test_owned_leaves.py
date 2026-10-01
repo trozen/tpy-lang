@@ -379,19 +379,12 @@ def test_opaque_definitions_are_a_builtin_certificate(active) -> None:
 # --- lowering ---------------------------------------------------------------------
 
 SOURCE = """\
-from tpy import int32, char, String, Own, StrView
+from tpy import int32, char, String, Own
 
 G: str = "glob"
 N: int = 7
 B: bytes = b"gb"
 COUNT: int32 = 0
-
-class Rec:
-    name: str
-    count: int32
-    def __init__(self, name: str, count: int32):
-        self.name = name
-        self.count = count
 
 def param_borrow(s: str, n: int, t: String, b: bytes) -> bool:
     # Borrowing parameters: a view, two const refs and a bytes view, read in place.
@@ -464,34 +457,11 @@ def loop(n: int) -> int:
         k = k + 1
     return k
 
-def float_big(x: float, n: int) -> float:
-    return x + n
-
 def mixed(n: int, i: int32) -> bool:
     return i > n
 
 def neg(n: int) -> int:
     return -n
-
-def view_local(s: str) -> int32:
-    v = s[1:]
-    return 1
-
-def str_field(r: Rec) -> bool:
-    return r.name == "x"
-
-def str_field_write(r: Rec, s: str) -> None:
-    r.name = s
-
-def global_write() -> None:
-    global G
-    G = "new"
-
-def view_return(s: str) -> StrView:
-    return s
-
-def buffer(b: bytearray) -> int32:
-    return 1
 
 def takes(s: str) -> int32:
     return 1
@@ -517,13 +487,6 @@ def literal_arguments() -> int32:
     # A borrowed literal is static storage; an owning one is materialized.
     return takes("lit") + takes_own("own")
 
-def own_result(s: str) -> Own[str]:
-    return s
-
-def owned_result_caller(s: str) -> bool:
-    # An `Own[str]` return is a plain owned str at the caller.
-    return own_result(s) == "x"
-
 def fresh_result(s: str) -> bool:
     # The callee returns by value: a fresh temporary, not a borrow of `s`.
     return ret_copy(s) == "x"
@@ -538,10 +501,6 @@ def result_local(s: str) -> str:
 def global_arguments() -> int32:
     return takes(G) + takes_big(N)
 
-def global_copy() -> int32:
-    # THIR names the owning copy of a global as an argument temporary, which MIR does not admit yet.
-    return takes_own(G)
-
 def overlap(s: str) -> bool:
     # `s` may borrow G itself: two readonly borrows of one storage never conflict.
     return s == G and takes(G) == 1
@@ -550,20 +509,6 @@ def overlap_write(s: str) -> bool:
     global COUNT
     COUNT = 1
     return s == G
-
-def view_caller(s: str) -> int32:
-    # No MIR place holds a view, so the conversion handing the view result to `takes` is refused.
-    return takes(view_return(s))
-
-def fstring(n: int) -> str:
-    return f"{n}"
-
-def bytes_print() -> None:
-    # The storage-form literal is a temporary of the print call's full expression.
-    print(b"xy")
-
-def concat_mixed(s: str, t: str) -> bool:
-    return s + t == "x"
 
 def scaled(x: float, n: int) -> int32:
     return 1
@@ -577,38 +522,9 @@ def print_call(s: str) -> None:
     # The call's owned result is a temporary of the print call's full expression.
     print(ret_copy(s), end="")
 
-def no_init(flag: bool) -> int:
-    # The declaration names storage no initialization writes.
-    n: int
-    if flag:
-        n = 1
-    else:
-        n = 2
-    return n
-
 def bytes_literal() -> bytes:
     return b"ab"
-
-def string_as_str(s: str) -> str:
-    # `string_to_str` renders the String in place; MIR does not model it as a new value.
-    t = s + "x"
-    return t
-
-def main() -> None:
-    print(param_borrow("x", 1, String("t"), b"b"), by_value("s"), local(3), temporary(2, 3))
-    print(ret_copy("r"), global_read(), element("abc", b"abc", 1), param_copy("p"), append("a"))
-    print(convert('c', 3), literal(), loop(4), float_big(1.5, 2), mixed(3, 4), neg(5))
-    global_print()
-    prints("s", 1, b"b")
-
-main()
 """
-
-COVERED = ("param_borrow", "by_value", "local", "temporary", "ret_copy", "global_read", "global_print", "prints",
-           "element", "param_copy", "append", "convert", "literal", "loop", "float_big", "mixed", "neg",
-           "big_copy", "promoted", "promoted_compare", "calls_with_str", "lends", "copies", "literal_arguments", "fresh_result",
-           "temporary_argument", "result_local", "own_result", "owned_result_caller", "global_arguments", "overlap", "overlap_write", "bytes_print",
-           "expression_arguments", "print_call", "bytes_literal")
 
 
 @dataclass(frozen=True)
@@ -648,26 +564,37 @@ def _storage_roots(fn: MIRFunction) -> frozenset[MIRSlotId]:
     return frozenset(s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
 
 
-@pytest.mark.parametrize("name", COVERED)
-def test_every_owned_leaf_position_lowers_and_every_analysis_completes(lowered_active, name: str) -> None:
-    fn = lowered_active.bodies[name]
-    assert isinstance(fn, MIRFunction), fn
+def test_owned_leaf_analyses_complete_without_conflicts(lowered_active) -> None:
+    # A loop joins owned storage replaced in place with per-iteration temporaries.
+    fn = lowered_active.bodies["loop"]
     liveness = analyze_liveness(fn)
     dependencies = analyze_dependencies(fn, liveness)
     events = analyze_storage(fn)
     assert not isinstance(dependencies, MIRNotCovered) and not isinstance(events, MIRNotCovered)
-    retention = analyze_retention(fn, liveness, dependencies, events)
-    assert retention.conflicts == ()
+    assert analyze_retention(fn, liveness, dependencies, events).conflicts == ()
     assert not isinstance(analyze_scope_ends(fn), MIRNotCovered)
-    inspection = inspect_scope_lifetimes(fn)
-    assert inspection.conflicts == ()
-    roots = _storage_roots(fn)
-    if roots:
-        evidence = certify_storage_origins(fn, roots, lowered_active.definitions)
-        assert evidence.verdict is MIRStorageVerdict.CERTIFIED, evidence.gaps
-    # Every owned-leaf slot's layout is the opaque certificate.
-    for slot in fn.slots:
-        if slot.value_kind in (MIRValueKind.OWNED, MIRValueKind.BORROWED):
+    assert inspect_scope_lifetimes(fn).conflicts == ()
+
+
+def test_owned_leaf_storage_roots_are_certified(lowered_active) -> None:
+    # Every lowered body with owned storage: the snippet cases cannot pin this
+    # (the harness's `certified` rung is the THIR storage certificate, which
+    # has nothing to prove for an owned leaf), so the unit keeps the matrix.
+    rooted = {name: fn for name, fn in lowered_active.bodies.items()
+              if isinstance(fn, MIRFunction) and _storage_roots(fn)}
+    assert "loop" in rooted and len(rooted) > 1
+    for name, fn in rooted.items():
+        evidence = certify_storage_origins(fn, _storage_roots(fn), lowered_active.definitions)
+        assert evidence.verdict is MIRStorageVerdict.CERTIFIED, (name, evidence.gaps)
+
+
+def test_owned_leaf_slots_take_the_opaque_layout(lowered_active) -> None:
+    # `param_borrow` borrows all four leaf types; `append` owns its str.
+    for name in ("param_borrow", "append"):
+        fn = lowered_active.bodies[name]
+        leaves = [s for s in fn.slots if s.value_kind in (MIRValueKind.OWNED, MIRValueKind.BORROWED)]
+        assert leaves
+        for slot in leaves:
             layout, = (r for r in fn.records if r.type == slot.type)
             assert layout.opaque and layout.fields == ()
 
@@ -970,25 +897,6 @@ def test_loop_temporaries_initialize_per_activation(lowered_active) -> None:
     writes = analyze_storage(fn).writes
     modes = sorted(stmt.storage_write.mode.name for stmt in writes.values())
     assert modes.count("INITIALIZE_REGION") == 3 and modes.count("IN_PLACE") == 1
-
-
-@pytest.mark.parametrize("name,reason", [
-    ("view_local", "view local"),
-    ("str_field", "owned-leaf record field"),
-    ("str_field_write", "owned-leaf record field"),
-    ("global_write", "owned-leaf global write"),
-    ("view_return", "view return"),
-    ("global_copy", "unsupported owned-leaf expression"),
-    ("buffer", "unsupported parameter type"),
-    ("view_caller", "unsupported coercion"),
-    ("fstring", "unsupported owned-leaf expression"),
-    ("concat_mixed", "uncertified binary operation"),
-    ("no_init", "owned-leaf declaration needs an initializer"),
-    ("string_as_str", "conversion aliases its source"),
-])
-def test_shapes_outside_the_owned_leaf_unit_refuse(lowered, name: str, reason: str) -> None:
-    body = lowered.bodies[name]
-    assert isinstance(body, MIRNotCovered) and body.reason == reason, body
 
 
 # --- damage -----------------------------------------------------------------------

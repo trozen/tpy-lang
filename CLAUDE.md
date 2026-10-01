@@ -200,6 +200,8 @@ its fatal-error paths; see BUGS.md.)
    - `# tpyc: bounds_safe(var)` / `bounds_checked(var)` -- assert the subscript on `var` is proven in range (no bounds check emitted) / not proven (check emitted). Comp-phase only.
    - `# tpyc: div_safe(var)` / `div_checked(var)` -- same for the divisor `var` being proven non-zero. Comp-phase only.
    - `# tpyc: cast_safe(TypeName)` / `cast_checked(TypeName)` -- same for the cast to `TypeName` on that line being proven in range (no range check emitted) / not proven. Comp-phase only.
+   - `# tpyc: mir(verdict)` -- assert the MIR verdict of the body whose `def` line carries it (free function, method by its bare name, `__init__`): `uncovered /re/` (did not lower; regex over the reason), `incomplete /re/` (an analysis gap, `"<analysis>: <reason>"`), `covered` (every analysis complete, no conflict; a certified body counts), `certified` (the storage certificate binds and no conflict -- a body with nothing to prove is not certified), `conflict /re/` (passes when any conflict kind matches). A def that emits several bodies (an `@auto_readonly` clone pair) must satisfy it in each. Comp-phase only; never in an `error_` case. MIR runs for every case that reaches codegen, annotated or not: a MIR exception fails the case, a refusal does not.
+   - `# tpyc: mir_summary(known)` / `mir_summary(opaque /re/)` -- assert the body's callee summary in the MIR call workspace (on the `def` line). Comp-phase only; never in an `error_` case.
 4. Run `uv run python tests/update_snapshots.py {name}` to generate expected outputs.
 5. Run `uv run pytest -k {name}` to verify.
 

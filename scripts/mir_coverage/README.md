@@ -3,7 +3,11 @@
 Measures how far the MIR pipeline gets over real programs, per function body,
 the way `tpyc --dump-mir` sees them: compile in-process (front-end + THIR
 collection, no C++ build), lower every emitted body, run the analyses, and ask
-the storage adapter for a certificate.
+the storage adapter for a certificate. The body walk and the verdict ladder
+live in `tpyc/mir/collect.py`, shared with `--dump-mir` and the snippet-test
+`# tpyc: mir(...)` annotations: this tool renders each body's
+`collect.verdict_of` record as columns and adds its survey columns on top. A
+MIR exception inside one body is recorded as that body's `MIR crash` reason.
 
 ## The four-count
 
@@ -12,7 +16,7 @@ excluded) gets:
 
 | count | meaning |
 |-------|---------|
-| lowered | `lower_function` / `lower_constructor` (or the call workspace) returned a `MIRFunction` |
+| lowered | `lower_function` / `lower_constructor` returned a `MIRFunction` |
 | complete | every analysis `--dump-mir` runs (dependencies, scope ends/conflicts, payload ends/conflicts, storage, call effects, retention) returned without `MIRNotCovered` |
 | conflict | an inspection reported a conflict (scope end, payload end, replacement, stale alias) or the certificate's verdict is CONFLICT |
 | certified | `storage_adapter.certify_thir_storage` returned CERTIFIED and the certificate binds the request |
