@@ -20,6 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 350
     container: ubuntu:24.04
+    # Container steps default to `sh` (dash), which has no `pipefail`.
+    defaults:
+      run:
+        shell: bash
     env:
       DEBIAN_FRONTEND: noninteractive
       # The distro Python is the 24.04 row's axis -- never a managed download.
