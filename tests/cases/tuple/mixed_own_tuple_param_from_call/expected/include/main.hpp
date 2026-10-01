@@ -16,13 +16,13 @@ std::tuple<Box, Box*> make_mixed(Box& b);
 // def make_owned() -> tuple[Own[Box], Own[Box]]:
 std::tuple<Box, Box> make_owned();
 // def take_mixed(p: tuple[Own[Box], Box]) -> int32:
-int32_t take_mixed(const std::tuple<Box, const Box*>& p);
+int32_t take_mixed(std::tuple<Box, const Box*>&& p);
 // def take_owned(p: tuple[Own[Box], Own[Box]]) -> int32:
 int32_t take_owned(std::tuple<Box, Box>&& p);
 // def relay(b: Box) -> int32:
 int32_t relay(Box& b);
 // def mutate_borrowed(p: tuple[Own[Box], Box]) -> None:
-void mutate_borrowed(const std::tuple<Box, Box*>& p);
+void mutate_borrowed(std::tuple<Box, Box*>&& p);
 // def main() -> None:
 void main();
 

@@ -1,9 +1,9 @@
-# A mixed owned+borrow tuple PARAM is a const& borrow of the mixed render
-# (`const std::tuple<Box, const Box*>&`), NOT owning storage -- only a fully
-# owned tuple param takes the storage/`&&` ABI. So a mixed call result passes
-# straight into it with no form conversion in either direction: it is already
-# the borrow form the slot wants, and lifting it to storage would hand the slot
-# the wrong shape.
+# A mixed owned+borrow tuple PARAM takes the ownership transfer of the mixed
+# render (`std::tuple<Box, const Box*>&&`: the owned element by value, the
+# borrowed one as a pointer), not owning storage of both elements. So a mixed
+# call result passes straight into it with no form conversion in either
+# direction: it is already the form the slot wants, and lifting it to storage
+# would hand the slot the wrong shape.
 from tpy import int32, Own
 
 
@@ -36,9 +36,9 @@ def relay(b: Box) -> int32:
 
 
 def mutate_borrowed(p: tuple[Own[Box], Box]) -> None:
-    # The borrowed element is a NON-const pointer inside the const tuple
-    # (`const std::tuple<Box, Box*>&`), so this reaches the caller's object --
-    # a param borrows, it does not copy, matching CPython.
+    # The borrowed element is a NON-const pointer inside the transferred tuple
+    # (`std::tuple<Box, Box*>&&`), so this reaches the caller's object -- the
+    # borrowed element is not copied, matching CPython.
     p[1].n = 42
 
 

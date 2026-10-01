@@ -883,10 +883,17 @@ class LoanInfo:
     element BE the borrowed one. `element_index_relation` decides; a
     DISTINCT answer is no conflict, an UNKNOWN one is a conflict the
     diagnostic must report as possible rather than certain.
+
+    `through_pointer` says the borrower holds what an element of the storage
+    POINTS AT (a tuple parameter's borrowed element is a `T*` to the
+    caller's object), not a place inside the storage: a write through the
+    borrower still writes through the storage, but moving the storage away
+    leaves the borrower valid, so the loan does not gate a move of it.
     """
     kind: BorrowKind
     on_element: bool = False
     elem_index: tuple[str, int | str] | None = None
+    through_pointer: bool = False
 
 
 def loan_mutation_warning(place: str, cause: str, *, iterating: bool,
@@ -970,8 +977,12 @@ def combine_loan_info(a: LoanInfo, b: LoanInfo) -> LoanInfo:
     indices = {leg.elem_index for leg in (a, b)
                if leg.on_element or leg.kind in (BorrowKind.ELEMENT, BorrowKind.PTR)}
     elem_index = indices.pop() if len(indices) == 1 else None
-    if on_element != winner.on_element or elem_index != winner.elem_index:
-        winner = replace(winner, on_element=on_element, elem_index=elem_index)
+    # A leg into the storage itself pins it, whichever leg wins.
+    through_pointer = a.through_pointer and b.through_pointer
+    if (on_element != winner.on_element or elem_index != winner.elem_index
+            or through_pointer != winner.through_pointer):
+        winner = replace(winner, on_element=on_element, elem_index=elem_index,
+                         through_pointer=through_pointer)
     return winner
 
 
@@ -1011,9 +1022,10 @@ class BorrowTracker:
     def add_borrow(self, storage: str, borrower: str, kind: BorrowKind = BorrowKind.ALIAS,
                    *, on_element: bool = False,
                    elem_index: 'tuple[str, int | str] | None' = None,
-                   merge: bool = False) -> None:
+                   merge: bool = False, through_pointer: bool = False) -> None:
         """Record that ``borrower`` borrows from ``storage`` (or, with
-        ``on_element``, from the element ``elem_index`` of it).
+        ``on_element``, from the element ``elem_index`` of it; with
+        ``through_pointer``, from what that element points at).
 
         The for-each ITER registration is the only site that sets
         ``on_element`` directly, but it is not the only way a loan acquires
@@ -1025,7 +1037,7 @@ class BorrowTracker:
         combined with the new one (`combine_loan_info`) rather than replaced,
         so a weaker loan never downgrades a stronger one.
         """
-        loan = LoanInfo(kind, on_element, elem_index)
+        loan = LoanInfo(kind, on_element, elem_index, through_pointer)
         holders = self.loans.setdefault(storage, {})
         if merge and borrower in holders:
             loan = combine_loan_info(holders[borrower], loan)
@@ -1160,7 +1172,8 @@ class BorrowTracker:
 
         Liveness sees a known alias only as a name, not what borrows through
         it (`ys = xs; for x in ys:` files the loan on `ys`), so the known
-        aliases' own borrowers are asked too.
+        aliases' own borrowers are asked too. A loan held through a
+        pointer element (`LoanInfo.through_pointer`) is not on the storage.
         """
         seen: set[str] = set()
         todo = [storage]
@@ -1173,7 +1186,9 @@ class BorrowTracker:
             for key, holders in self.loans.items():
                 if key != current and not key.startswith(prefix):
                     continue
-                for b in holders:
+                for b, loan in holders.items():
+                    if loan.through_pointer:
+                        continue
                     if b not in known_aliases:
                         return True
                     todo.append(b)
@@ -1674,6 +1689,13 @@ class NestedMutationMark(NamedTuple):
     receiver: bool
 
 
+class OwnSlot(NamedTuple):
+    """What a consume credits for the never-consumed warning: Own param
+    `param` as a whole, or owned element `index` of tuple param `param`."""
+    param: str
+    index: int | None = None
+
+
 class DeferredGenericYieldSettle(NamedTuple):
     """One generator parked for the module-end generic-yield-slot verdict.
 
@@ -1928,6 +1950,9 @@ class FunctionTrackingState:
     # Names a `del` in this body unbinds: the value is destroyed there, so
     # like a rebind it ends the storage a view or `const&` of it reads.
     deleted_names: set[str] = field(default_factory=set)
+    # Names a closure of this body captures (`liveness.closure_pinned_names`):
+    # never moved, so an owning return of one copies.
+    closure_pinned: frozenset[str] = frozenset()
     # Name -> (family, var_id) of every str/bytes view entry registered for
     # it in this body; a name bound in several blocks has several entries
     # that share one hoisted slot.
@@ -2057,11 +2082,6 @@ class FunctionTrackingState:
     # this function: any later call may invoke such a closure and rebind
     # these names, so check-elision facts for them die at every call site.
     closure_written_names: set[str] = field(default_factory=set)
-    # Captured name -> the nested defs defined SO FAR that capture it. Such a
-    # closure reads the enclosing storage at every later call, which the
-    # last-use walk loses at a `return` (it clears the live set), so an alias
-    # bind of the name must not move it while one of them is still live.
-    closure_captured_names: dict[str, set[str]] = field(default_factory=dict)
     # Captured name -> (line, phrase naming the reader) of the first nested
     # def, lambda or generator expression that reads it. That body was
     # analyzed at the name's type then, so no later binding may change it.
@@ -2187,7 +2207,10 @@ class FunctionTrackingState:
     # over them, an element or field borrow off them.
     current_elem_mutated_param_names: set[str] = field(default_factory=set)
     current_returned_param_names: set[str] = field(default_factory=set)
-    current_consumed_own_params: set[str] = field(default_factory=set)
+    current_consumed_own_params: set[OwnSlot] = field(default_factory=set)
+    # A local that took what an Own param moved out -> the slot its consume
+    # credits. A rebind of the local drops its entry.
+    own_consume_aliases: dict[str, OwnSlot] = field(default_factory=dict)
     # Params whose address has been observed escaping into a mutable Ptr[T]
     # field via `FIELD = PARAM`. Finalized to FunctionInfo.addr_escapes_params
     # at body-analysis end; consumed by param-signature codegen to suppress
@@ -2594,6 +2617,9 @@ class SemanticContext:
     # The declared-copy NAMES among them whose binding also holds an element
     # by value (mixed): no whole-tuple lift may build their copy.
     own_element_mixed: IdentitySet = field(default_factory=IdentitySet)
+    # `return t[i]` values that MOVE owned element `i` out of a tuple the
+    # body owns, at the tuple's last use (`returned_owned_element`).
+    returned_element_moves: IdentitySet = field(default_factory=IdentitySet)
     # The `return <name>` values under a non-suspending finally
     # (liveness.collect_finally_return_candidates; every such return -- the
     # finally can reach the local through aliases/closures, so candidacy is
@@ -3767,7 +3793,15 @@ class SemanticContext:
     def mark_own_param_consumed(self, name: str) -> None:
         """Mark an Own[T] param as consumed (stored, forwarded, or returned)."""
         if name in self.func.current_param_names:
-            self.func.current_consumed_own_params.add(name)
+            self.func.current_consumed_own_params.add(OwnSlot(name))
+        elif name in self.func.own_consume_aliases:
+            self.func.current_consumed_own_params.add(self.func.own_consume_aliases[name])
+
+    def mark_own_element_consumed(self, name: str, index: int) -> None:
+        """Mark owned element `index` of tuple param `name` consumed -- moved
+        out on its own while the tuple's other elements stay."""
+        if name in self.func.current_param_names:
+            self.func.current_consumed_own_params.add(OwnSlot(name, index))
 
     def is_last_use(self, expr: 'TpyExpr | None') -> bool:
         """Sema's last-use verdict for one name read, as sema left it: the

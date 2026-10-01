@@ -2582,7 +2582,8 @@ def _lvalue_tuple_ternary(v: TpyExpr, declared: dict[str, TpyType],
 
 def _tuple_unpack_source(
         stmt: TpyTupleUnpack, analyzer, declared: dict[str, TpyType],
-        pointers: set[str], narrowed: AbstractSet[str]) -> 'TupleType | None':
+        pointers: set[str], narrowed: AbstractSet[str],
+        own_borrow_tuple_locals: AbstractSet[str]) -> 'TupleType | None':
     """The value-scalar tuple type of an admitted `a, b = <source>` source, or
     None. Four source shapes are admitted:
 
@@ -2711,6 +2712,11 @@ def _tuple_unpack_source(
             return src_t
         if (isinstance(v, TpyName)
                 and _own_record_tuple(src_raw, analyzer) is not None):
+            return src_t
+        if isinstance(v, TpyName) and v.name in own_borrow_tuple_locals:
+            # A NAME holding the mixed render holds its borrow slots as
+            # pointers already, so its holder binds like the Own-record
+            # NAME's.
             return src_t
         note_detail("tuple_unpack.own_source_form")
         return None
@@ -7585,7 +7591,7 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
     else:
         source_type = _tuple_unpack_source(
             stmt, analyzer, declared, scope.admission_pointers(),
-            lc.narrow.narrowed.keys())
+            lc.narrow.narrowed.keys(), lc.own_borrow_tuple_locals)
         if (source_type is None and not any(stmt.is_ref)
                 and isinstance(stmt.value, (TpyCall, TpyMethodCall))):
             # A value-tuple CALL source with a VALUE-UNION element
@@ -7780,16 +7786,17 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
                      else TupleSourceBind.RVALUE), loc=loc)
 
 
-def _alias_into_rebound_tuple_slot(stmt: TpyVarDecl, init: TpySubscript,
-                                   lc: '_LowerCtx',
-                                   declared: dict[str, TpyType]) -> bool:
-    """Whether the alias `stmt` (`a = root[i].f[j]...`) points into a tuple
-    held by value in a frame slot that a rebind can overwrite while the alias
-    is live. The path of subscript and field hops from the root to the
-    element must cross a tuple (the root counts); a first hop that yields a
-    borrowed pointer ends it, since the element then lives outside the slot.
-    Paths through records and containers only are NOT covered, and a rebind
-    of such a root clobbers a multi-hop alias the same way
+def _rebound_tuple_alias_reject(stmt: TpyVarDecl, init: TpySubscript,
+                                lc: '_LowerCtx',
+                                declared: dict[str, TpyType]) -> str | None:
+    """The reject message when the alias `stmt` (`a = root[i].f[j]...`)
+    points into a tuple held by value in a frame slot that a rebind can
+    overwrite while the alias is live; None when it does not. The path of
+    subscript and field hops from the root to the element must cross a tuple
+    (the root counts); a first hop that yields a borrowed pointer ends it,
+    since the element then lives outside the slot. Paths through records and
+    containers only are NOT covered, and a rebind of such a root clobbers a
+    multi-hop alias the same way
     (BUGS.md#nested-list-literal-alias-rebind-clobbers)."""
     hops: list[TpyExpr] = []
     e: TpyExpr = init
@@ -7797,26 +7804,45 @@ def _alias_into_rebound_tuple_slot(stmt: TpyVarDecl, init: TpySubscript,
         hops.append(e)
         e = e.obj
     if not isinstance(e, TpyName):
-        return False
+        return None
     root = e.name
     if root not in lc.frame_slots:
-        return False
+        return None
     hops.reverse()
     if (isinstance(hops[0], TpySubscript)
             and _subscript_yields_borrow_ptr(hops[0], lc)):
-        return False
+        return None
     holders = [declared.get(root)] + [lc.analyzer.get_expr_type(h)
                                       for h in hops[:-1]]
-    if not any(isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))),
-                          TupleType)
-               for t in holders if t is not None):
-        return False
+    bare = [None if t is None
+            else unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+            for t in holders]
+    if not any(isinstance(t, TupleType) for t in bare):
+        return None
     # The reassigned-var scan does not see a nested def's `nonlocal` rebind.
     if (root not in lc.prescan.reassigned
             and root not in collect_nested_def_nonlocal_rebinds(
                 lc.func.body)):
-        return False
-    return _rebind_can_follow(lc.func.body, stmt, root)
+        return None
+    if not _rebind_can_follow(lc.func.body, stmt, root):
+        return None
+    return _rebound_tuple_alias_message(stmt, root, lc)
+
+
+def _rebound_tuple_alias_message(stmt: TpyVarDecl, root: str,
+                                 lc: '_LowerCtx') -> str:
+    """The user-facing sentence for the rebound-tuple alias reject: the
+    limitation in the program's own names, and the one rewrite that compiles
+    and keeps CPython's behavior for every path. `copy()` is not named: it
+    compiles only for some paths
+    (BUGS.md#tuple-elem-copy-mixed-or-list-rejects)."""
+    func = lc.func
+    kind = ("an async generator" if func.is_async and func.is_generator
+            else "an async function" if func.is_async else "a generator")
+    return (f"binding '{stmt.name}' to an element inside '{root}' is not "
+            f"yet supported in {kind} when '{root}' can be reassigned while "
+            f"'{stmt.name}' is live; bind '{stmt.name}' after the last "
+            f"reassignment of '{root}'")
 
 
 def _rebind_can_follow(body: list[TpyStmt], at: TpyStmt, name: str) -> bool:
@@ -7886,7 +7912,8 @@ def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
             and _chained_subscript_recv_type(
                 init.obj, declared, analyzer, lc.pointers) is not None):
         elem_is_ptr = _subscript_yields_borrow_ptr(init, lc)
-        if _alias_into_rebound_tuple_slot(stmt, init, lc, declared):
+        rebound_msg = _rebound_tuple_alias_reject(stmt, init, lc, declared)
+        if rebound_msg is not None:
             # An element held BY VALUE in a tuple frame slot the body can
             # rebind after this alias: the rebind writes the new tuple into
             # the same slot, so the alias would observe the new element
@@ -7894,7 +7921,9 @@ def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
             # own per rebind needs the per-element ownership verdict at each
             # site (BUGS.md#resumable-alias-identity).
             note_detail("alias.rebound_tuple_slot_elem")
-            raise ThirUnsupported("res.alias_bind")
+            raise ThirUnsupported(
+                "res.alias_bind",
+                message=rebound_msg)
         src = _lower_expr(init, lc, declared, subscript_prechecked=True)
         if elem_is_ptr and isinstance(src, THIRSubscript):
             # The element already IS the `T*`: the address-of below must
@@ -8444,6 +8473,10 @@ def _lower_btuple_reassigned_decl(stmt: TpyVarDecl, vtu: TupleType,
                                     allow_temps=True))
     declared[stmt.name] = vtu
     _witness("decl.btuple_reassigned")
+    # The local holds the mixed render; where sema proved every binding
+    # owned, it moves at its last use like the unreassigned call decl.
+    lc.own_borrow_tuple_locals.add(stmt.name)
+    lc.promote_movable(stmt.name)
     return THIRVarDecl(name=stmt.name, resolved_type=vtu, init=init,
                        cpp_type=borrow_cpp, form=Form.BORROW, loc=loc)
 
@@ -11491,6 +11524,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         # need the whole-tuple storage half (the borrow-param
                         # lift) key on `own_borrow_tuple_locals` directly.
                         lc.own_borrow_tuple_locals.add(stmt.name)
+                        # The call's result is this local's own value: at
+                        # its last use it moves, as an owned-tuple local does.
+                        lc.promote_movable(stmt.name)
             if src_bt is not None and src_bt.has_ref_elements():
                 from_call = isinstance(stmt.init, (TpyCall, TpyMethodCall))
                 init = _lower_expr(
@@ -11504,6 +11540,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                  allow_temps=from_call))
                 declared[stmt.name] = src_bt
                 _witness("decl.btuple_alias")
+                # A copy of a name holding the mixed render holds it too.
+                if (isinstance(stmt.init, TpyName)
+                        and stmt.init.name in lc.own_borrow_tuple_locals):
+                    lc.own_borrow_tuple_locals.add(stmt.name)
                 lc.ensure_borrow_tuple_const()
                 return THIRVarDecl(
                     name=stmt.name, resolved_type=src_bt, init=init,
@@ -14024,6 +14064,26 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             if copy_row is not None:
                 _witness("ret.copy_record")
                 return THIRReturn(value=copy_row, loc=loc)
+        if (stmt.value is not None and stmt.copies_live_name
+                and isinstance(stmt.value, TpyName)
+                and stmt.value.name not in narrowed):
+            # A live name at an open `Own[T]` slot: sema declared the copy
+            # (the hedged `may copy T`), and the bare `return x;` would
+            # implicit-move out from under the closure still reading it.
+            # The copy is `copy(x)`'s own open-T render (`T(x)`), at every
+            # instantiation -- a moved-from value-typed `T` would read empty
+            # in the closure just the same.
+            _rt_own = getattr(lc.func, "return_type", None)
+            _rt_own = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                _rt_own))) if isinstance(_rt_own, TpyType) else None)
+            _rt_t = (unwrap_readonly(_rt_own.wrapped)
+                     if isinstance(_rt_own, OwnType) else None)
+            if isinstance(_rt_t, TypeParamRef):
+                _witness("ret.live_name_tparam_copy")
+                return THIRReturn(
+                    value=lower_copy_construct(stmt.value, _rt_t, lc,
+                                               declared, loc=loc),
+                    loc=loc)
         # Set when the ladder admitted the ELEMENT-subscript source, so the
         # borrow-return render block below renders only what was admitted:
         # its `subscript_prechecked` lowering skips the subscript's own gates,
@@ -14222,8 +14282,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 dt = declared.get(stmt.value.name)
                 dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
                       if dt is not None else None)
+                # A live name sema declared a copy of takes the copy row below.
                 if not (lc.prescan.ret_record_borrow is not None
-                        and isinstance(dt, OwnType)):
+                        and isinstance(dt, OwnType)) and not (
+                            stmt.copies_live_name
+                            and lc.prescan.ret_record_storage is not None):
                     face = ("ret.record_borrow"
                             if lc.prescan.ret_record_borrow is not None
                             else "ret.record_storage")
@@ -14283,7 +14346,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     loc=loc)
             if (not record_ok
                     and lc.prescan.ret_record_storage is not None
-                    and not is_rvalue_source(analyzer, stmt.value)
+                    and stmt.value in analyzer.ctx.returned_element_moves):
+                # `return p[0]` of an owned element at the tuple's last use:
+                # the element moves out (sema credits it consumed); the
+                # tuple's other elements are never read again.
+                _witness("ret.owned_element_move")
+                _ev = _lower_expr(stmt.value, lc, declared)
+                return THIRReturn(
+                    value=THIRMove(result_type=_ev.result_type, value=_ev,
+                                   form=_ev.form, loc=loc),
+                    loc=loc)
+            if (not record_ok
+                    and lc.prescan.ret_record_storage is not None
+                    and (stmt.copies_live_name
+                         or not is_rvalue_source(analyzer, stmt.value))
                     and copy_construct_form(stmt.value, pointers, analyzer)):
                 # The IMPLICIT copy the owning return slot performs on a
                 # BORROWED source (a field read, a ternary of borrow calls):
@@ -14293,9 +14369,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # value form, one arm for either payload family. LAST in the
                 # ladder, so every source an arm above renders keeps its own
                 # spelling (a by-value return slot copy-constructs from a
-                # bare borrow read on its own).
-                _ret_cc = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    analyzer.get_expr_type(stmt.value))))
+                # bare borrow read on its own). A live NAME copies as its
+                # binding's type (a literal-built local's expression type
+                # may still be the pending literal's).
+                _ret_cc = (_binding_peel(declared[stmt.value.name])
+                           if (stmt.copies_live_name
+                               and isinstance(stmt.value, TpyName)
+                               and stmt.value.name in declared)
+                           else unwrap_readonly(unwrap_ref_type(
+                               unwrap_send_sync(
+                                   analyzer.get_expr_type(stmt.value)))))
                 if (record_like(_ret_cc, analyzer)
                         or _f1_container_ref(_ret_cc)):
                     _witness("ret.borrowed_copy")
@@ -14529,6 +14612,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 _witness("ret.own_tuple_borrow_lift")
                 return THIRReturn(
                     value=_own_tuple_name_copy(source, ret_vt, lc, declared),
+                    loc=loc)
+            if isinstance(source, TpyName) and stmt.copies_live_name:
+                # A storage-form tuple name a closure captures: the copy sema
+                # declared, as the record `Own` return spells it -- the bare
+                # `return t;` would move (an `Own` tuple param always).
+                _witness("ret.live_name_tuple_copy")
+                return THIRReturn(
+                    value=lower_copy_construct(
+                        source, _binding_peel(declared[source.name]), lc,
+                        declared, loc=loc),
                     loc=loc)
             if isinstance(source, TpyTupleLiteral):
                 try:
@@ -15861,7 +15954,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
     if isinstance(stmt, TpyTupleUnpack):
         source_type = _tuple_unpack_source(
             stmt, analyzer, declared, scope.admission_pointers(),
-            lc.narrow.narrowed.keys())
+            lc.narrow.narrowed.keys(), lc.own_borrow_tuple_locals)
         if (source_type is None
                 or len(source_type.element_types) != len(stmt.targets)):
             raise ThirUnsupported("stmt.tuple_unpack")
@@ -16062,7 +16155,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     note_detail("tuple_unpack.ref_source_form")
                     raise ThirUnsupported("stmt.tuple_unpack")
             elif (isinstance(stmt.value, TpyName)
-                  and _borrow_form_tuple_param(stmt.value.name, lc)):
+                  and (_borrow_form_tuple_param(stmt.value.name, lc)
+                       # A local holding the mixed render is the same
+                       # borrow form a mixed param is.
+                       or stmt.value.name in lc.own_borrow_tuple_locals)):
                 ref_name_source = True
                 _witness("stmt.tuple_unpack.ref_param_source")
             elif (isinstance(stmt.value, TpyName)

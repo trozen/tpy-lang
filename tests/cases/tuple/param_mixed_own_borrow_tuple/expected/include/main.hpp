@@ -11,8 +11,8 @@ struct A;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-// def read_mixed(p: tuple[Own[A], A]) -> int32:  # tpyc: ok
-int32_t read_mixed(const std::tuple<A, const A*>& p);
+// def read_mixed(p: tuple[Own[A], A]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
+int32_t read_mixed(std::tuple<A, const A*>&& p);
 // def main() -> None:
 void main();
 

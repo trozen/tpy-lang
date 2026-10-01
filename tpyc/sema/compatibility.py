@@ -47,7 +47,7 @@ from ..parse import (
 from .literal_utils import literal_value_from_expr
 from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY
 from ..modules import get_span_return_type
-from .context import addr_taken_roots, _storage_root, BorrowKind, BorrowTracker, CallOperands, LendSource, call_borrow_operands, call_lend_sources, tuple_borrow_escape_roots
+from .context import OwnSlot, addr_taken_roots, _storage_root, BorrowKind, BorrowTracker, CallOperands, LendSource, call_borrow_operands, call_lend_sources, tuple_borrow_escape_roots
 from .numeric_lattice import fixed_int_range_contains, numeric_info
 from ..diagnostics import (
     SemanticError, NOCOPY_REMEDIATION_HINT, CONSUMING_FIELD_MOVE_NOTE,
@@ -2436,9 +2436,10 @@ class TypeCompatibility:
     def check_own_lvalue_into_own(
         self, own_type: OwnType, expr: TpyExpr, context: str,
         *, action: str = "return", whole_slot: bool = True,
-    ) -> None:
+    ) -> bool:
         """Check that a borrowed source feeding an Own[T] slot is movable, an
-        explicit copy(), or otherwise safe to consume.
+        explicit copy(), or otherwise safe to consume. True when the slot
+        copies the source implicitly (the copy the warning declares).
 
         Borrowed means aliasing storage that outlives the expression -- an
         lvalue, or a borrow-returning call; the slot's question is not
@@ -2461,21 +2462,71 @@ class TypeCompatibility:
         """
         if self.is_copy_call(expr):
             self.check_own_consumption(expr)
-            return
+            return False
+        if action == "return" and whole_slot:
+            moved = self.returned_owned_element(expr)
+            if moved is not None:
+                self.ctx.returned_element_moves.add(expr)
+                self.ctx.mark_own_element_consumed(*moved)
+                return False
         if not self.arrives_borrowed(expr):
-            return
-        self._check_own_borrowed_source(
+            return False
+        return self._check_own_borrowed_source(
             own_type, expr, context, action, whole_slot=whole_slot)
+
+    def returned_owned_element(self, expr: TpyExpr) -> 'tuple[str, int] | None':
+        """`(name, i)` for a returned `name[i]` that MOVES an owned element
+        out of a tuple this body owns: element `i` is `Own[...]` and the
+        return is the tuple's last use, so nothing reads the moved-from
+        element (the other elements stay where they are). None otherwise."""
+        if not (isinstance(expr, TpySubscript) and isinstance(expr.obj, TpyName)):
+            return None
+        index = expr.index
+        if isinstance(index, TpyIntLiteral):
+            idx = index.value
+        elif (isinstance(index, TpyUnaryOp) and index.op == "-"
+              and isinstance(index.operand, TpyIntLiteral)):
+            idx = -index.operand.value
+        else:
+            return None
+        tt = self.ctx.get_expr_type(expr.obj)
+        tt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(tt)))
+              if tt is not None else None)
+        if not isinstance(tt, TupleType):
+            return None
+        if idx < 0:
+            idx += len(tt.element_types)
+        if not (0 <= idx < len(tt.element_types)
+                and isinstance(unwrap_readonly(tt.element_types[idx]), OwnType)):
+            return None
+        if not self.is_auto_move_use(expr.obj):
+            return None
+        return expr.obj.name, idx
+
+    def returned_captured_name(self, expr: TpyExpr) -> 'TpyName | None':
+        """The owned NAME a `return` hands over although a closure of the
+        body captures it -- the closure may still read it after the return,
+        so an owning slot copies it rather than moving. None otherwise, and
+        for a return a `finally` defers: that one moves after the finally
+        (it is marked a last use)."""
+        while isinstance(expr, TpyCoerce):
+            expr = expr.expr
+        if (isinstance(expr, TpyName)
+                and expr.name in self.ctx.func.closure_pinned
+                and expr not in self.ctx.all_last_uses
+                and self._is_owned_var(expr.name)):
+            return expr
+        return None
 
     def _check_own_borrowed_source(
         self, own_type: OwnType, expr: TpyExpr, context: str, action: str,
         *, whole_slot: bool = True,
-    ) -> None:
+    ) -> bool:
         """`check_own_lvalue_into_own`'s tail, once the source is known to be
         borrowed: it warns and copies -- unless the source is a value type, a
         movable Own local, or a consuming method's own field. A `@nocopy`
         payload errors, because there is no copy for the warning to
-        describe."""
+        describe. True when the slot copies."""
         # Value types are always safe -- copied, not aliased. OwnType.is_value_type
         # returns True (Own represents a moved value), so we have to peel Own
         # first to see whether the underlying T is genuinely a value type.
@@ -2487,23 +2538,23 @@ class TypeCompatibility:
             unwrapped = unwrap_ref_type(raw_type)
             inner_after_own = unwrapped.wrapped if isinstance(unwrapped, OwnType) else unwrapped
             if inner_after_own.is_value_type():
-                return
-            # A WHOLE returned Own-typed lvalue at non-last-use copies with
-            # the coercion-path warning, so it has nothing to add here. One
-            # ELEMENT of a tuple literal has no coercion-path warning (a
-            # literal is exempt there), so its copy is declared below --
-            # `return (b, b)` hands back two copies where CPython hands back
-            # one object twice.
-            if (action == "return" and isinstance(unwrapped, OwnType)
-                    and (whole_slot or self.is_auto_move_use(expr))):
-                return
+                return False
+            # A WHOLE returned Own-typed name moves out (C++ moves a returned
+            # local) unless a closure captures it: that one copies, declared
+            # below like any owning slot's. One ELEMENT of a tuple literal is
+            # declared below too -- `return (b, b)` hands back two copies
+            # where CPython hands back one object twice.
+            if action == "return" and isinstance(unwrapped, OwnType):
+                if (self.is_auto_move_use(expr) if not whole_slot
+                        else self.returned_captured_name(expr) is None):
+                    return False
         # A consuming method's field read that sema let move out of `self`.
         if isinstance(inner, TpyFieldAccess) and inner.consuming_move:
-            return
+            return False
         if self.is_auto_move_use(expr):
             self.require_movable(expr, context)
             self.check_own_consumption(expr)
-            return
+            return False
         expr_type = self.ctx.get_expr_type(expr)
         # Non-copyable, not just @nocopy: a record with `__del__` has no copy
         # constructor either, so the copy the warning below would declare
@@ -2545,7 +2596,7 @@ class TypeCompatibility:
         if self._is_value_type_param(payload):
             # A `T: ValueType` bound proves the copy, so there is nothing
             # to declare -- the same exemption the insert slot applies.
-            return
+            return True
         value_type = self._copy_diag_type(self.ctx.get_expr_type(expr))
         # Whether this copies at all is the instantiation's answer, not
         # the body's, so an open payload defers to the discharge.
@@ -2556,6 +2607,7 @@ class TypeCompatibility:
                 f"{self.copy_remedy(expr)}",
                 expr
             )
+        return True
 
     def _is_value_type_param(self, typ: TpyType) -> bool:
         """Check if a TypeParamRef has a ValueType bound in the current context."""
@@ -2818,13 +2870,7 @@ class TypeCompatibility:
             # transfer `std::tuple<...>&&` ABI -- movable like a scalar Own[T]).
             for pname, ptype in func.params:
                 if pname == name:
-                    # Peel the transparent Send/Sync marker: a Send[Own[T]]
-                    # param is owned storage, eligible for auto-move.
-                    bare = unwrap_readonly(unwrap_send_sync(ptype))
-                    if unwrap_optional_own(bare) is not None:
-                        return True
-                    return (isinstance(bare, TupleType) and bare.is_owned_movable()
-                            and not isinstance(ptype, ReadonlyType))
+                    return func.takes_ownership_of(pname, ptype)
             # Locals: check scope type.
             # Exclude for-loop vars: they get Own[T] from consuming iteration
             # element types but are not "rvalue-initialized" in the same sense

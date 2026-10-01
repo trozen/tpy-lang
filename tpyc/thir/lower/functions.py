@@ -861,7 +861,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
                     or func.error_return is not None):
                 raise ThirUnsupported("sig.overload_set.param_names")
     except ThirUnsupported as ex:
-        note(ex.reason, ex.loc)
+        note(ex.reason, ex.loc, ex.message)
         return None
     # A static method has no receiver -- it lowers like a free function, but
     # keeps `record_name` so `_param_is_const` resolves its param verdicts from
@@ -1007,7 +1007,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         validate_function(fn)
         return fn
     except ThirUnsupported as ex:
-        note(ex.reason, ex.loc)
+        note(ex.reason, ex.loc, ex.message)
         return None
 
 def lower_constructor(record, init_method: TpyFunction, analyzer,
@@ -1268,7 +1268,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         validate_constructor(ctor)
         return ctor
     except ThirUnsupported as ex:
-        note(ex.reason, ex.loc)
+        note(ex.reason, ex.loc, ex.message)
         return None
 
 def _attempt_ctor_mil_init(stmt, own_field_names, declared: dict,
@@ -1313,7 +1313,7 @@ def _attempt_ctor_mil_init(stmt, own_field_names, declared: dict,
                 compiler._move_verdict_journal = set(mj_snap)
 
     def attempt(probe: bool) -> THIRMilInit:
-        with lc.branch_scope(), lc.moves_only(lc.own_params):
+        with lc.branch_scope(), lc.moves_only(lc.handed_over_params):
             return THIRMilInit(
                 field_cpp=escape_cpp_name(stmt.target.field),
                 value=lower_member_init_value(stmt, lc, declared,
@@ -2087,5 +2087,5 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
         validate_function(fn)
         return fn
     except ThirUnsupported as ex:
-        note(ex.reason, ex.loc)
+        note(ex.reason, ex.loc, ex.message)
         return None

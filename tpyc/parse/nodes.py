@@ -14,6 +14,7 @@ from typing import Any, Callable, Iterator, Literal, Optional, TYPE_CHECKING
 from ..typesys import (
     TpyType, NominalType, FieldInfo, FunctionInfo,
     MethodSignature, TypeParamKind, LiteralValue, FunctionLinkage,
+    param_takes_ownership,
 )
 
 
@@ -1028,6 +1029,11 @@ class TpyReturn(TpyStmt):
     # members that are such locals (each captured by pointer before the
     # chain); every other member is evaluated into a temporary there.
     finally_deferred_leaves: tuple[tuple[int, ...], ...] = ()
+    # Set by sema: the value is an owned NAME a closure of the body captures
+    # (it may read it after the return) at an owning slot. Sema warned that
+    # the slot copies it, and the lowering spells that copy: C++ would move a
+    # bare `return x;`.
+    copies_live_name: bool = False
 
     def exprs(self) -> list[TpyExpr]:
         return [self.value] if self.value else []
@@ -1717,6 +1723,19 @@ class TpyFunction:
             return None
         loop = self.body[0]
         return loop if isinstance(loop, TpyForEach) else None
+
+    def is_capture(self, pname: str) -> bool:
+        """Whether `pname` is a lexical capture rather than an argument the
+        caller hands over: it binds the enclosing variable, whatever that
+        variable owns and in whatever C++ form it holds it there. This body
+        never owns it, so it never moves from it."""
+        return pname in self.capture_params
+
+    def takes_ownership_of(self, pname: str, ptype: 'TpyType') -> bool:
+        """Whether this body owns what parameter `pname` (declared `ptype`)
+        carries: an ownership-transfer parameter (`param_takes_ownership`)
+        that the caller hands over, never a capture."""
+        return not self.is_capture(pname) and param_takes_ownership(ptype)
 
     @property
     def is_overload_stub(self) -> bool:

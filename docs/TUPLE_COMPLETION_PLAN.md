@@ -1,8 +1,11 @@
 # Tuple completion plan
 
-Status: OPEN. Scope decided 2026-09-21; U0 and U1 done, U2 is next.
-Measured on `04a797ddf2` (2026-09-21); the matrix cells re-run 2026-09-23
-on `b7fa3e92cb` (U3 D1). Every figure here is valid for that
+Status: OPEN. Scope decided 2026-09-21; U0, U1 and U4 done. U2's rows
+land with U5: each is an element-form question, so they are the
+acceptance cells of the elementwise-form unit on the lowering's slot
+contract (decided 2026-09-29), not a batch of lowering arms on their own.
+Measured on `04a797ddf2` (2026-09-21); the matrix cells re-run 2026-09-29
+on `c7435b494b` plus the D6 fix (U2 D6). Every figure here is valid for that
 tree only -- re-run the matrix before acting on a cell.
 
 The tracked plan for making a tuple element behave as designed. `RELEASE_PLAN.md`
@@ -39,8 +42,8 @@ the raw grid.
 | value type | ok | ok | ok | ok | ok | ok |
 | `int` (BigInt) | ok | ok | ok | ok | ok | ok |
 | `str` | D3 | ok | ok | ok | D4 | ok |
-| `bytes` | D3, D6 | ok (D6) | ok (D6) | ok (D6) | D4, D6 | D6 |
-| mixed Own+borrow | D5 | ok | ok copy+warn | D1 | ok alias | D2 |
+| `bytes` | D3 | ok | ok | ok | D4 | ok |
+| mixed Own+borrow | ok (D5) | ok | ok copy+warn | D1 | ok alias | D2 |
 
 - **D1** -- a MIXED tuple LOCAL (an owned element beside a borrowed one,
   from a literal or a call) at an owning container insert (`xs.append(t)`)
@@ -54,10 +57,18 @@ the raw grid.
 - **D3 / D4** `BUGS.md#str-tuple-element-local-owned` and design-entry instance
   (1) -- a `str` / `bytes` element is owned storage at a param and a local where
   the scalar is a free view.
-- **D5** `BUGS.md#consume-own-element-of-mixed-tuple` -- the `Own` element of a
-  mixed param cannot be consumed (loud).
-- **D6** `BUGS.md#bytes-tuple-element-subscript-read-rejects` -- `t[0]` on a
-  `bytes` element rejects at every position (loud).
+- **D5** `BUGS.md#consume-own-element-of-mixed-tuple` -- the mixed param
+  takes the ownership transfer of its fully owned twin
+  (`std::tuple<Box, Box*>&&`), so reading, writing through and unpacking it
+  work and the matrix cells are `ok`; the element PLACES a name binding, a
+  method call, an augmented assignment and `sink(p[0])` reject for both
+  params alike (TODO: "Tuple parameter element places, owned and mixed
+  together"), where `sink(p[0])` takes the conservative rule `return p[0]`
+  already moves by (consume the element only where `p` is dead afterwards).
+  Only reading another element after a partial consume needs MIR (U8).
+- **D6** (closed in U2) -- `t[0]` on a `bytes` element rejected at every
+  position; it now reads like the `str` element, and a local bound to it is an
+  owned copy (`tests/cases/tuple/bytes_element_read`).
 
 Positions outside that grid, same method. Aliases correctly: unpack of a call
 (and through a relay), swap, a two-reference return, a method returning a field
@@ -265,9 +276,12 @@ per shape; the mixed tuple global (D2) waits on that entry.
     allocation for an owning `str` / `bytes` element, filed as
     `BUGS.md#field-tuple-unpack-copies-whole-tuple` (perf, U7).
 - [ ] **U2 -- everyday shapes compile.** Loud rejects of ordinary Python,
-  measured 2026-09-21 (reject tag in brackets). Size: 1-2 weeks, batch-style;
-  each row is a lowering arm with a snapshot case and keeps the adjacent
-  `error_` pin. File a `BUGS.md` entry for a row only if the reject queue
+  measured 2026-09-21 (reject tag in brackets). These rows are taken INSIDE
+  U5, as its acceptance cells: each needs the element's form at its
+  position, which is the fact U5 decides once, so a per-row lowering arm
+  now would be a shape-keyed row the slot contract deletes. Each row still
+  gets a snapshot case and keeps the adjacent `error_` pin. File a
+  `BUGS.md` entry for a row only if the reject queue
   (`scripts/thir_migration/review/`) does not already carry it.
   - [ ] unpack of a local tuple: `t = (b, 1); x, k = t` [`stmt.tuple_unpack`];
     the rebind after it (`x = Box(5)`) sits behind the same reject
@@ -285,8 +299,8 @@ per shape; the mixed tuple global (D2) waits on that entry.
     literal `(u := (1, (2, c)))` [`expr.walrus`] (sema warns the nested copy)
   - [ ] a tuple local at an `Own[tuple[...]]` arg: `take(t)`
     [`call.arg_shape.own_tuple`]
-  - [ ] `BUGS.md#bytes-tuple-element-subscript-read-rejects` (D6), and the
-    `bytes` global unpack / `print(G)` rejects behind it
+  - [x] the `bytes` element read `t[0]` (D6), and the `bytes` global unpack /
+    `print(G)` rejects behind it (branch `u4-d6`)
   - [ ] `BUGS.md#rvalue-ref-tuple-unpack-address-of-rvalue` -- `a, b = stack.pop()`
   - [x] yield re-packing an owning local: `yield (t[0], t[1])` -- compiles
     (a local literal or a call source) and warns the element copy since the
@@ -323,17 +337,30 @@ per shape; the mixed tuple global (D2) waits on that entry.
     worth taking if D2's full fix slips out of 0.7.0.
   - [ ] The `Optional`-wrapped mixed return ABI (`tuple[Own[A], B] | None`),
     carved out of the design entry's step (b).
-- [ ] **U4 -- the mixed-param diagnostics.** The consume itself is MIR work
-  (U8); what 0.7.0 owes is that the limitation is SAID. Size: under a day.
-  - [ ] `BUGS.md#consume-own-element-of-mixed-tuple` -- replace the generic
-    unlowered-shape message with a located diagnostic naming the remedy (take
-    the owned element as its own `Own[T]` parameter), pinned by an `error_`
-    case for the PARAM flavour; the `p[0].n = 99` build failure gets the same.
-  - [ ] `BUGS.md#unconsumed-own-warning-whole-tuple-granular`
-  - [ ] The frame alias reject (`BUGS.md#resumable-alias-identity`) says the
+- [x] **U4 -- the mixed-param diagnostics.** Landed 2026-10-01 in the
+  `tuple-u4` squash; item 1 was superseded by giving the mixed param
+  the ownership-transfer ABI.
+  - [x] `BUGS.md#consume-own-element-of-mixed-tuple` -- the `p[0].n = 99`
+    build failure and the unlowered unpack. Done by giving the mixed param
+    the ownership-transfer ABI of its fully owned twin
+    (`std::tuple<Box, Box*>&&`, `const Box*` when the body does not write
+    through the borrowed element): writes, `mut(p[0])`, the unpack at the
+    last use, `return p[0]` into `-> Own[Box]` (a move: the return is the
+    tuple's last use) and generator / async frames compile
+    (`tuple/mixed_own_param_writes`); the element places that still reject
+    do so for both params (`tuple/error_mixed_own_param_element_*`).
+  - [x] The unconsumed-`Own` warning per element: an unpacked owned-tuple
+    param's dropped element warns, a mixed param warns as its twin does, and
+    a move-bound local's consume credits its `Own` param
+    (`tuple/param_own_tuple_never_consumed_warn`).
+  - [x] The frame alias reject (`BUGS.md#resumable-alias-identity`) says the
     generic "not yet supported (res.alias_bind)"; give it a located
-    diagnostic naming the limitation and the workaround (take the element
-    by value with `copy()`, or alias after the last rebind).
+    diagnostic naming the limitation and the workaround that compiles for
+    every path (alias after the last rebind). Taking the element by value
+    with `copy()` is documented, not suggested: it does not compile yet off
+    a mixed slot, a nested tuple or a tuple reached through a container or
+    a field (`BUGS.md#tuple-elem-copy-mixed-or-list-rejects`). Done in
+    the `tuple-u4` squash (2026-10-01).
 
 ### After 0.7.0
 
@@ -348,7 +375,7 @@ per shape; the mixed tuple global (D2) waits on that entry.
   U1): the per-rebind-site element ownership verdict, decided in sema, feeds
   a tuple twin of the record's pointer-over-per-site-frame-field form. Then
   delete the lowering guard (`alias.rebound_tuple_slot_elem`,
-  `_alias_into_rebound_tuple_slot`) including its chain and timing
+  `_rebound_tuple_alias_reject`) including its chain and timing
   extensions.
   ONE shared root, to be designed as one `/tpy-add-feature` unit before or
   inside U5: `tpyc/sema/alias_rebind.py` admits neither tuple locals nor
@@ -368,7 +395,9 @@ per shape; the mixed tuple global (D2) waits on that entry.
   snapshot churn, and it needs the loan a view inside a tuple takes on its
   source, which is not tracked today. Do it ON U5, not before it: alone it is
   a third per-site form rule. Also closes the `str`-view printed-tuple extra
-  copy. Size: 1-2 weeks.
+  copy. Size: 1-2 weeks. It is the tuple part of TODO.md "`str` and
+  `bytes`: one view rule", and takes that entry's one rule rather than
+  `str`'s current one.
 - [ ] **U7 -- the loud tail.** The remaining loud tuple entries in `BUGS.md`
   (about 85 on 2026-09-21, most LOW or exotic), taken as ordinary batch work
   by user-facing frequency. Size: 2-4 weeks. Two the matrix pins:
@@ -378,10 +407,14 @@ per shape; the mixed tuple global (D2) waits on that entry.
 
 ### Gated on MIR
 
-- [ ] **U8 -- per-element ownership at a mixed tuple param** (D5): the
-  per-element borrow/own param ABI and per-place partial move-out. Already
-  `deferred: MIR` in `BUGS.md` ("Return/param asymmetry for a MIXED
-  owned+borrow tuple", "General destructive move-out of aggregate members").
+- [ ] **U8 -- the general partial move out of a tuple param** (D5): reading
+  another element after one was consumed (`sink(p[0])` then `p[1]`) on a
+  mixed or fully owned param needs per-place move tracking (`BUGS.md`
+  "General destructive move-out of aggregate members"). Both params already
+  take the per-element ownership-transfer ABI, `return p[0]` moves its
+  element, and `sink(p[0])` where `p` is dead afterwards and the other
+  element places are not MIR-gated (TODO: "Tuple parameter element places,
+  owned and mixed together").
 
 ## Out of scope here
 

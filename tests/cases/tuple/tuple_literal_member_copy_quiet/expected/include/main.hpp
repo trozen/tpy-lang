@@ -29,7 +29,7 @@ __gen_yield_mixed_borrow yield_mixed_borrow(C& b);
 // def yield_values() -> Iterator[tuple[int32, tuple[int32, str]]]:
 __gen_yield_values yield_values();
 // def take(t: tuple[Own[C], C]) -> int32:
-int32_t take(const std::tuple<C, const C*>& t);
+int32_t take(std::tuple<C, const C*>&& t);
 // def arg_quiet() -> None:
 void arg_quiet();
 // def setitem_quiet(c: C) -> None:

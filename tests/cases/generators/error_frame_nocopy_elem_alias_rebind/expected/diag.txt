@@ -1,0 +1,1 @@
+main.py:20: error: in function 'g': binding 'saved' to an element inside 't' is not yet supported in a generator when 't' can be reassigned while 'saved' is live; bind 'saved' after the last reassignment of 't'

@@ -18,7 +18,7 @@ std::tuple<Box, Box> make_owned() {
 
 // def take_mixed(p: tuple[Own[Box], Box]) -> int32:
 //     return p[0].n + p[1].n
-int32_t take_mixed(const std::tuple<Box, const Box*>& p) {
+int32_t take_mixed(std::tuple<Box, const Box*>&& p) {
     return (::tpy::add_check<int32_t>(std::get<0>(p).n, std::get<1>(p)->n));
 }
 
@@ -36,11 +36,11 @@ int32_t relay(Box& b) {
 }
 
 // def mutate_borrowed(p: tuple[Own[Box], Box]) -> None:
-//     # The borrowed element is a NON-const pointer inside the const tuple
-//     # (`const std::tuple<Box, Box*>&`), so this reaches the caller's object --
-//     # a param borrows, it does not copy, matching CPython.
+//     # The borrowed element is a NON-const pointer inside the transferred tuple
+//     # (`std::tuple<Box, Box*>&&`), so this reaches the caller's object -- the
+//     # borrowed element is not copied, matching CPython.
 //     p[1].n = 42
-void mutate_borrowed(const std::tuple<Box, Box*>& p) {
+void mutate_borrowed(std::tuple<Box, Box*>&& p) {
     std::get<1>(p)->n = 42;
 }
 

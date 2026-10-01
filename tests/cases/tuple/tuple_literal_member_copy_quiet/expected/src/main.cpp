@@ -38,7 +38,7 @@ __gen_yield_values yield_values() {
 // # argument: a fresh Own element and a borrowed plain element.
 // def take(t: tuple[Own[C], C]) -> int32:
 //     return t[0].v + t[1].v
-int32_t take(const std::tuple<C, const C*>& t) {
+int32_t take(std::tuple<C, const C*>&& t) {
     return (::tpy::add_check<int32_t>(std::get<0>(t).v, std::get<1>(t)->v));
 }
 

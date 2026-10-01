@@ -29,3 +29,13 @@ alias_after_last_rebind 4
 alias_after_last_rebind 7
 orelse_alias 11
 orelse_alias 5
+copy_alias 2
+copy_alias 2
+copy_alias 5
+copy_alias 8
+copy_chained 2
+copy_chained 50
+list_of_tuples_after_rebind 2
+list_of_tuples_after_rebind 5
+co_copy 609
+co_alias_after_rebind 7

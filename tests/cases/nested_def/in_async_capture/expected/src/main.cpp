@@ -14,9 +14,9 @@ namespace tpyapp::main {
 //         b.n += 1
 //
 //     bump()
-//     await asyncio.sleep(0)               # -> S_RESUME_0
+//     await asyncio.sleep(0)                                                           # -> S_RESUME_0
 //     bump()
-//     return b
+//     return b  # tpyc: warning(/copies Box into owned storage/) -- bump() captures b
 ::tpystd::tpy::Poll<Box> __coro_capture_mutate::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
@@ -35,7 +35,7 @@ namespace tpyapp::main {
         __sub_0.reset();
         bump();
         __state = S_DONE;
-        Box __tpy_async_ret = std::move((*b));
+        Box __tpy_async_ret = (*b);
         return ::tpystd::tpy::Poll<Box>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

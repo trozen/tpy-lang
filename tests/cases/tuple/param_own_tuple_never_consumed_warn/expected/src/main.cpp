@@ -4,6 +4,24 @@
 namespace tpyapp::main {
 
 
+// def keep(x: Own[A], into: list[A]) -> None:
+//     into.append(x)
+void keep(A&& x, std::vector<A>& into) {
+    into.push_back(std::move(x));
+}
+
+// def keep_both(p: tuple[Own[A], Own[A]], into: list[A]) -> None:
+//     a, b = p
+//     into.append(a)
+//     into.append(b)
+void keep_both(std::tuple<A, A>&& p, std::vector<A>& into) {
+    auto&& __tup_1 = std::move(p);
+    A a = std::move(std::get<0>(__tup_1));
+    A b = std::move(std::get<1>(__tup_1));
+    into.push_back(std::move(a));
+    into.push_back(std::move(b));
+}
+
 // def read_owned(p: tuple[Own[A], Own[A]]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
 //     return p[0].n + p[1].n
 int32_t read_owned(std::tuple<A, A>&& p) {
@@ -22,18 +40,189 @@ int32_t read_nocopy(std::tuple<B, B>&& p) {
     return (::tpy::add_check<int32_t>(std::get<0>(p).m, std::get<1>(p).m));
 }
 
+// # free function: element 1 is unpacked into `b` and dropped.
+// def drop_one(p: tuple[Own[A], Own[A]], into: list[A]) -> int32:  # tpyc: warning(/Own\[A\] element 1 of tuple param 'p' is never consumed \(unpacked into 'b'/)
+//     a, b = p
+//     keep(a, into)
+//     return b.n
+int32_t drop_one(std::tuple<A, A>&& p, std::vector<A>& into) {
+    auto&& __tup_1 = std::move(p);
+    A a = std::move(std::get<0>(__tup_1));
+    A b = std::move(std::get<1>(__tup_1));
+    ::tpyapp::main::keep(std::move(a), into);
+    return b.n;
+}
+
+// # branch: element 1 is consumed on one path only, as the scalar would warn.
+// def drop_on_branch(p: tuple[Own[A], Own[A]], c: bool, into: list[A]) -> None:  # tpyc: warning(/element 1 of tuple param 'p' is never consumed/)
+//     a, b = p
+//     keep(a, into)
+//     if c:
+//         keep(b, into)
+void drop_on_branch(std::tuple<A, A>&& p, bool c, std::vector<A>& into) {
+    auto&& __tup_1 = std::move(p);
+    A a = std::move(std::get<0>(__tup_1));
+    A b = std::move(std::get<1>(__tup_1));
+    ::tpyapp::main::keep(std::move(a), into);
+    if (c) {
+        ::tpyapp::main::keep(std::move(b), into);
+    }
+}
+
+// # mixed owned+borrow: an ownership transfer like the owned twin, so a
+// # param nothing consumes warns the same way.
+// def mixed(p: tuple[Own[A], A]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
+//     return p[0].n + p[1].n
+int32_t mixed(std::tuple<A, const A*>&& p) {
+    return (::tpy::add_check<int32_t>(std::get<0>(p).n, std::get<1>(p)->n));
+}
+
+// # scalar: `y` took what `x` moved in, so consuming `y` consumes `x`.
+// def through_local(x: Own[A], into: list[A]) -> None:  # tpyc: ok
+//     y = x
+//     keep(y, into)
+void through_local(A&& x, std::vector<A>& into) {
+    A y = std::move(x);
+    ::tpyapp::main::keep(std::move(y), into);
+}
+
+// # every element consumed through its local.
+// def consume_all(p: tuple[Own[A], Own[A]], into: list[A]) -> None:  # tpyc: ok
+//     a, b = p
+//     keep(a, into)
+//     keep(b, into)
+void consume_all(std::tuple<A, A>&& p, std::vector<A>& into) {
+    auto&& __tup_1 = std::move(p);
+    A a = std::move(std::get<0>(__tup_1));
+    A b = std::move(std::get<1>(__tup_1));
+    ::tpyapp::main::keep(std::move(a), into);
+    ::tpyapp::main::keep(std::move(b), into);
+}
+
+// # a dropped @nocopy element is consume-by-drop, as for the scalar.
+// def drop_nocopy(p: tuple[Own[A], Own[B]], into: list[A]) -> int32:  # tpyc: ok
+//     a, b = p
+//     keep(a, into)
+//     return b.m
+int32_t drop_nocopy(std::tuple<A, B>&& p, std::vector<A>& into) {
+    auto&& __tup_1 = std::move(p);
+    A a = std::move(std::get<0>(__tup_1));
+    B b = std::move(std::get<1>(__tup_1));
+    ::tpyapp::main::keep(std::move(a), into);
+    return b.m;
+}
+
+// # a value element carries no ownership to drop.
+// def drop_value(p: tuple[Own[A], int32], into: list[A]) -> int32:  # tpyc: ok
+//     a, k = p
+//     keep(a, into)
+//     return k
+int32_t drop_value(std::tuple<A, int32_t>&& p, std::vector<A>& into) {
+    auto&& __tup_1 = std::move(p);
+    A a = std::move(std::get<0>(__tup_1));
+    int32_t k = std::get<1>(__tup_1);
+    ::tpyapp::main::keep(std::move(a), into);
+    return k;
+}
+
+// # the whole tuple forwarded to another owned tuple param is consumed.
+// def forward(p: tuple[Own[A], Own[A]], into: list[A]) -> None:  # tpyc: ok
+//     keep_both(p, into)
+void forward(std::tuple<A, A>&& p, std::vector<A>& into) {
+    ::tpyapp::main::keep_both(std::move(p), into);
+}
+
+// # return: returning the local `y` consumes the `x` it took.
+// def return_through_local(x: Own[A]) -> Own[A]:  # tpyc: ok
+//     y = x
+//     return y
+A return_through_local(A&& x) {
+    A y = std::move(x);
+    return y;
+}
+
+// # return: the returned unpack target consumes its element.
+// def return_unpacked(p: tuple[Own[A], Own[A]], into: list[A]) -> Own[A]:  # tpyc: ok
+//     a, b = p
+//     keep(a, into)
+//     return b
+A return_unpacked(std::tuple<A, A>&& p, std::vector<A>& into) {
+    auto&& __tup_1 = std::move(p);
+    A a = std::move(std::get<0>(__tup_1));
+    A b = std::move(std::get<1>(__tup_1));
+    ::tpyapp::main::keep(std::move(a), into);
+    return b;
+}
+
 // def main() -> None:
 //     print(read_owned((A(1), A(2))))
 //     a = A(3)
 //     b = A(4)
 //     print(read_borrow((a, b)))
 //     print(read_nocopy((B(5), B(6))))
+//     kept: list[A] = []
+//     print("drop_one", drop_one((A(1), A(2)), kept))
+//     print("drop_first", H().drop_first((A(3), A(4)), kept))
+//     drop_on_branch((A(5), A(6)), False, kept)
+//     print("mixed", mixed((A(7), a)))
+//     through_local(A(8), kept)
+//     consume_all((A(9), A(10)), kept)
+//     print("drop_nocopy", drop_nocopy((A(11), B(12)), kept))
+//     print("drop_value", drop_value((A(13), 14), kept))
+//     forward((A(15), A(16)), kept)
+//     print("kept", [x.n for x in kept])
+//     h = Holder()
+//     h.store_through_local(A(17))
+//     h.store_unpacked((A(18), A(19)))
+//     print("store", h.slot.n, h.other.n)
+//     kept2: list[A] = []
+//     print("return", return_through_local(A(20)).n,
+//           return_unpacked((A(21), A(22)), kept2).n, [x.n for x in kept2])
 void main() {
     std::cout << ::tpyapp::main::read_owned(std::tuple<A, A>{A(1), A(2)}) << "\n";
     A a = A(3);
     A b = A(4);
     std::cout << ::tpyapp::main::read_borrow(std::tuple<A*, A*>{&(a), &(b)}) << "\n";
     std::cout << ::tpyapp::main::read_nocopy(std::tuple<B, B>{B(5), B(6)}) << "\n";
+    std::vector<A> kept = std::vector<A>{};
+    std::cout << "drop_one" << " " << ::tpyapp::main::drop_one(std::tuple<A, A>{A(1), A(2)}, kept) << "\n";
+    std::cout << "drop_first" << " " << H().drop_first(std::tuple<A, A>{A(3), A(4)}, kept) << "\n";
+    ::tpyapp::main::drop_on_branch(std::tuple<A, A>{A(5), A(6)}, false, kept);
+    std::cout << "mixed" << " " << ::tpyapp::main::mixed(std::tuple<A, A*>{A(7), &(a)}) << "\n";
+    ::tpyapp::main::through_local(A(8), kept);
+    ::tpyapp::main::consume_all(std::tuple<A, A>{A(9), A(10)}, kept);
+    std::cout << "drop_nocopy" << " " << ::tpyapp::main::drop_nocopy(std::tuple<A, B>{A(11), B(12)}, kept) << "\n";
+    std::cout << "drop_value" << " " << ::tpyapp::main::drop_value(std::tuple<A, int32_t>{A(13), 14}, kept) << "\n";
+    ::tpyapp::main::forward(std::tuple<A, A>{A(15), A(16)}, kept);
+    std::cout << "kept" << " " << ::tpy::ListPrinter(({
+        std::vector<int32_t> __result;
+        auto& __obj_0 = kept;
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const auto& x = *__beg_0;
+            __result.push_back(x.n);
+        }
+        std::move(__result);
+    })) << "\n";
+    Holder h = Holder();
+    h.store_through_local(A(17));
+    h.store_unpacked(std::tuple<A, A>{A(18), A(19)});
+    std::cout << "store" << " " << h.slot.n << " " << h.other.n << "\n";
+    std::vector<A> kept2 = std::vector<A>{};
+    std::cout << "return" << " " << ::tpyapp::main::return_through_local(A(20)).n << " " << ::tpyapp::main::return_unpacked(std::tuple<A, A>{A(21), A(22)}, kept2).n << " " << ::tpy::ListPrinter(({
+        std::vector<int32_t> __result;
+        auto& __obj_1 = kept2;
+        __result.reserve(static_cast<std::size_t>(__obj_1.size()));
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            const auto& x = *__beg_1;
+            __result.push_back(x.n);
+        }
+        std::move(__result);
+    })) << "\n";
 }
 
 // main()

@@ -27,7 +27,7 @@ from .parse.nodes import (SourceLocation, is_property_getter_read,
                           stmts_have_any_suspension, walk_body_stmts,
                           written_names)
 from .identity_map import IdentityMap
-from .value_category import CONTAINER_LITERAL_NODES
+from .value_category import CONTAINER_LITERAL_NODES, peel_coerce
 
 
 @dataclass
@@ -158,6 +158,19 @@ def storage_spelling(expr: TpyExpr) -> str | None:
         obj_key = _expr_to_narrowing_key(expr.obj)
         if obj_key is not None:
             return f"{obj_key}.{expr.method}"
+    return None
+
+
+def int_literal_spelling(e: TpyExpr) -> str | None:
+    """The source spelling of an int literal (`1`, `-1`) under any
+    coercions; None for anything else, a folded `2 + 3` included."""
+    e = peel_coerce(e)
+    if isinstance(e, TpyIntLiteral):
+        return str(e.value)
+    if isinstance(e, TpyUnaryOp) and e.op == "-":
+        operand = peel_coerce(e.operand)
+        if isinstance(operand, TpyIntLiteral):
+            return f"-{operand.value}"
     return None
 
 

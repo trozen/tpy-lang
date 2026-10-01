@@ -9,9 +9,100 @@ namespace tpyapp::main {
 
 struct Point;
 struct Sink;
+struct Holder;
+struct Ctx;
+struct Wrap;
+struct Hook;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+template <typename F_f>
+struct __gen_once;
+template <typename F_f>
+struct __gen_each;
+
+// def apply(f: Fn[[int32], int32], v: int32) -> int32:
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
+int32_t apply(__F0&& f, int32_t v);
+// def run_fn(f: Fn[[], int32], p: Own[Point]) -> int32:
+template<typename __F0>
+  requires requires(__F0& __fn) {
+      { __fn() } -> std::convertible_to<int32_t>;
+  }
+int32_t run_fn(__F0&& f, Point&& p);
+// def run(f: Callable[[], int32], p: Own[Point]) -> int32:
+int32_t run(const std::function<int32_t()>& f, Point&& p);
+// def sink_len(p: Own[Point]) -> int32:
+int32_t sink_len(Point&& p);
+// def once(f: Fn[[], int32]) -> Iterator[int32]:
+template <typename F_f>
+__gen_once<F_f> once(F_f&& f);
+// def each(f: Fn[[int32], int32], xs: list[int32]) -> Iterator[int32]:
+template <typename F_f>
+__gen_each<F_f> each(F_f&& f, const std::vector<int32_t>& xs);
+// def param_return(x: Own[Point]) -> int32:  # tpyc: warning(/Own\[Point\] param 'x' is never consumed/)
+int32_t param_return(Point&& x);
+// def indirect(x: Own[Point]) -> int32:  # tpyc: warning(/Own\[Point\] param 'x' is never consumed/)
+int32_t indirect(Point&& x);
+// def raising(x: Own[Point]) -> int32:  # tpyc: warning(/Own\[Point\] param 'x' is never consumed/)
+int32_t raising(Point&& x);
+// def via_lambda(x: Own[Point]) -> int32:  # tpyc: warning(/Own\[Point\] param 'x' is never consumed/)
+int32_t via_lambda(Point&& x);
+// def never_called(x: Own[Point]) -> int32:  # tpyc: warning(/Own\[Point\] param 'x' is never consumed/)
+int32_t never_called(Point&& x);
+// def return_copies(x: Own[Point]) -> Own[Point]:
+Point return_copies(Point&& x);
+// def def_after_return_copies(x: Own[Point], early: bool) -> int32:  # tpyc: warning(/Own\[Point\] param 'x' is never consumed/)
+int32_t def_after_return_copies(Point&& x, bool early);
+// def raise_copies(x: Own[Point], early: bool) -> int32:  # tpyc: warning(/Own\[Point\] param 'x' is never consumed/)
+int32_t raise_copies(Point&& x, bool early);
+// def lambda_local(x: Own[Point]) -> int32:  # tpyc: warning(/Own\[Point\] param 'x' is never consumed/)
+int32_t lambda_local(Point&& x);
+// def with_exit(x: Own[Point], flag: bool) -> Own[Wrap]:  # tpyc: warning(/Own\[Point\] param 'x' is never consumed/)
+Wrap with_exit(Point&& x, bool flag);
+// def call_then_rebind(x: Own[Point]) -> int32:  # tpyc: warning(/Own\[Point\] param 'x' is never consumed/)
+int32_t call_then_rebind(Point&& x);
+// def finally_landing(x: Own[Point]) -> int32:  # tpyc: warning(/Own\[Point\] param 'x' is never consumed/)
+int32_t finally_landing(Point&& x);
+// def via_generator(x: Own[Point]) -> int32:  # tpyc: warning(/Own\[Point\] param 'x' is never consumed/)
+int32_t via_generator(Point&& x);
+// def via_map(x: Own[Point]) -> int32:  # tpyc: warning(/Own\[Point\] param 'x' is never consumed/)
+int32_t via_map(Point&& x);
+// def via_callee(x: Own[Point]) -> int32:  # tpyc: warning(/Own\[Point\] param 'x' is never consumed/)
+int32_t via_callee(Point&& x);
+// def held_then_rebind(x: Own[Point], out: list[int32]) -> None:  # tpyc: warning(/Own\[Point\] param 'x' is never consumed/)
+void held_then_rebind(Point&& x, std::vector<int32_t>& out);
+// def chained() -> int32:
+int32_t chained();
+// def held_on_break(flag: bool) -> int32:
+int32_t held_on_break(bool flag);
+// def held_on_raise(flag: bool) -> int32:
+int32_t held_on_raise(bool flag);
+// def via_property() -> int32:
+int32_t via_property();
+// def via_getitem() -> int32:
+int32_t via_getitem();
+// def rebind_after_consume() -> None:
+void rebind_after_consume();
+// def finally_after_handler(flag: bool) -> int32:
+int32_t finally_after_handler(bool flag);
+// def finally_return_defers(x: Own[Point]) -> Own[Point]:  # tpyc: ok
+Point finally_return_defers(Point&& x);
+// def del_holder_return(x: Own[Point]) -> Own[Point]:
+Point del_holder_return(Point&& x);
+// def del_holder_tuple() -> tuple[Own[Point], int32]:
+std::tuple<Point, int32_t> del_holder_tuple();
+// def lambda_same_call() -> int32:
+int32_t lambda_same_call();
+// def del_holder_generic[T](x: Own[T]) -> Own[T]:
+template<typename T>
+::tpy::own_return_t<T> del_holder_generic(::tpy::own_param_t<T> x);
+// def del_holder_tuple_name(
+//         t: tuple[Own[Point], Own[Point]]) -> tuple[Own[Point], Own[Point]]:
+std::tuple<Point, Point> del_holder_tuple_name(std::tuple<Point, Point>&& t);
 // def main():
 void main();
 
@@ -22,11 +113,14 @@ struct Point {
 
     // def __init__(self):
     Point();
+
+    // def __str__(self) -> str:
+    std::string __str__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    ::tpy::print_object_default(os, "Point", obj);
+    os << obj.__str__();
     return os;
 }
 
@@ -48,10 +142,219 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
     return os;
 }
 
+// class Holder:
+struct Holder {
+    // f: Callable[[], int32]
+    std::function<int32_t()> f;
+    bool __tpy_owned_ = true;
+
+    // def __init__(self, f: Callable[[], int32]):
+    explicit Holder(std::function<int32_t()> f);
+    Holder(const Holder&) = delete;
+    Holder& operator=(const Holder&) = delete;
+    Holder(Holder&& other) noexcept;
+    Holder& operator=(Holder&& other) noexcept;
+
+    // def __del__(self):
+    ~Holder();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
+    ::tpy::print_object_default(os, "Holder", obj);
+    return os;
+}
+
+// class Ctx:
+struct Ctx {
+    // f: Callable[[], int32]
+    std::function<int32_t()> f;
+
+    // def __init__(self, f: Callable[[], int32]):
+    Ctx() = default;
+    explicit Ctx(std::function<int32_t()> f);
+
+    // def __enter__(self) -> None:
+    void __enter__() const;
+
+    // def __exit__(self, a, b, c) -> None:
+    void __exit__(std::monostate a, const ::tpy::BaseException* b, std::monostate c) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Ctx";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
+    ::tpy::print_object_default(os, "Ctx", obj);
+    return os;
+}
+
+// class Wrap:
+struct Wrap {
+    // p: Point
+    Point p;
+
+    // def __init__(self, p: Own[Point]):
+    Wrap() = default;
+    explicit Wrap(Point&& p);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Wrap";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Wrap& obj) {
+    ::tpy::print_object_default(os, "Wrap", obj);
+    return os;
+}
+
+// class Hook:
+struct Hook {
+    // f: Callable[[], int32]
+    std::function<int32_t()> f;
+
+    // def __init__(self, f: Callable[[], int32]):
+    Hook() = default;
+    explicit Hook(std::function<int32_t()> f);
+
+    // @property
+    // def value(self) -> int32:
+    int32_t value() const;
+
+    // def __getitem__(self, i: int32) -> int32:
+    int32_t __getitem__(int32_t i) const;
+
+    int32_t operator[](int32_t i) const {
+        return __getitem__(i);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Hook";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Hook& obj) {
+    ::tpy::print_object_default(os, "Hook", obj);
+    return os;
+}
+
+// def once(f: Fn[[], int32]) -> Iterator[int32]:
+template <typename F_f>
+struct __gen_once : public ::tpy::next_iter_mixin<__gen_once<F_f>, int32_t> {
+    ::tpy::frame_state __state;
+    F_f f;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_once(F_f&& f_)
+        : __state(S_INITIAL),
+          f(std::forward<F_f>(f_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_once& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_once<F_f>&) {
+        return os << "<generator once>";
+    }
+};
+// def once(f: Fn[[], int32]) -> Iterator[int32]:
+//     yield f()                                   # -> S_RESUME_0
+template <typename F_f>
+std::expected<int32_t, ::tpy::StopIteration> __gen_once<F_f>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __state = S_RESUME_0;
+        return f();
+    }
+    case S_RESUME_0: {  // after: yield f()
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def once(f: Fn[[], int32]) -> Iterator[int32]:
+template <typename F_f>
+__gen_once<F_f> once(F_f&& f) {
+    return __gen_once<F_f>(std::forward<F_f>(f));
+}
+
+// def each(f: Fn[[int32], int32], xs: list[int32]) -> Iterator[int32]:
+template <typename F_f>
+struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<F_f>, int32_t> {
+    ::tpy::frame_state __state;
+    F_f f;
+    const std::vector<int32_t>& xs;
+    int32_t v;
+    using __for_src_0_t = decltype((xs));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_each(F_f&& f_, const std::vector<int32_t>& xs)
+        : __state(S_INITIAL),
+          f(std::forward<F_f>(f_)),
+          xs(xs) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_each& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_each<F_f>&) {
+        return os << "<generator each>";
+    }
+};
+// def each(f: Fn[[int32], int32], xs: list[int32]) -> Iterator[int32]:
+//     for v in xs:
+//         yield f(v)                                                    # -> S_RESUME_0
+template <typename F_f>
+std::expected<int32_t, ::tpy::StopIteration> __gen_each<F_f>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield f(v)
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        v = *((*__for_it_0))++;
+        __state = S_RESUME_0;
+        return f(v);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def each(f: Fn[[int32], int32], xs: list[int32]) -> Iterator[int32]:
+template <typename F_f>
+__gen_each<F_f> each(F_f&& f, const std::vector<int32_t>& xs) {
+    return __gen_each<F_f>(std::forward<F_f>(f), xs);
+}
+
 
 // def __init__(self):
 //     self.items = [1, 2, 3]
 inline Point::Point() : items(std::vector<int32_t>{1, 2, 3}) {}
+
+// def __str__(self) -> str:
+//     return "x" * len(self.items)
+inline std::string Point::__str__() const {
+    return (::tpy::str_repeat("x", ::tpy::__len__(this->items)));
+}
 
 // def __init__(self):
 //     self.stored = []
@@ -62,5 +365,102 @@ inline Sink::Sink() : stored(std::vector<Point>{}) {}
 inline void Sink::consume(Point&& p) {
     this->stored.push_back(std::move(p));
 }
+
+// def __init__(self, f: Callable[[], int32]):
+//     self.f = f
+inline Holder::Holder(std::function<int32_t()> f) : f(f) {}
+
+inline Holder::Holder(Holder&& other) noexcept : f(std::move(other.f)) {
+    other.__tpy_owned_ = false;
+}
+inline Holder& Holder::operator=(Holder&& other) noexcept {
+    if (this != &other) {
+        this->~Holder();
+        new (this) Holder(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self):
+//     print("holder sees", self.f())
+inline Holder::~Holder() {
+    if (!this->__tpy_owned_) return;
+    std::cout << "holder sees" << " " << (*this).f() << "\n";
+}
+
+// def __init__(self, f: Callable[[], int32]):
+//     self.f = f
+inline Ctx::Ctx(std::function<int32_t()> f) : f(f) {}
+
+// def __enter__(self) -> None:
+//     pass
+inline void Ctx::__enter__() const {
+}
+
+// def __exit__(self, a, b, c) -> None:
+//     print("with_exit sees", self.f())
+inline void Ctx::__exit__(std::monostate a, const ::tpy::BaseException* b, std::monostate c) const {
+    std::cout << "with_exit sees" << " " << (*this).f() << "\n";
+}
+
+// def __init__(self, p: Own[Point]):
+//     self.p = p
+inline Wrap::Wrap(Point&& p) : p(std::move(p)) {}
+
+// def __init__(self, f: Callable[[], int32]):
+//     self.f = f
+inline Hook::Hook(std::function<int32_t()> f) : f(f) {}
+
+// @property
+// def value(self) -> int32:
+//     return self.f()
+inline int32_t Hook::value() const {
+    return (*this).f();
+}
+
+// def __getitem__(self, i: int32) -> int32:
+//     return self.f() + i
+inline int32_t Hook::__getitem__(int32_t i) const {
+    return (::tpy::add_check<int32_t>((*this).f(), i));
+}
+// def apply(f: Fn[[int32], int32], v: int32) -> int32:
+//     return f(v)
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
+int32_t apply(__F0&& f, int32_t v) {
+    return f(v);
+}
+// def run_fn(f: Fn[[], int32], p: Own[Point]) -> int32:
+//     Sink().consume(p)
+//     return f()
+template<typename __F0>
+  requires requires(__F0& __fn) {
+      { __fn() } -> std::convertible_to<int32_t>;
+  }
+int32_t run_fn(__F0&& f, Point&& p) {
+    Sink().consume(std::move(p));
+    return f();
+}
+// # ... a returned name at a GENERIC `Own[T]` slot copies as well (`T(x)`), the
+// # hedged warning's copy: a moved-from `x` would read 0 items. (Read-only: a
+// # nested def cannot call a bound method on `T`,
+// # BUGS.md#nested-def-bounded-typeparam-method-rejected.)
+// def del_holder_generic[T](x: Own[T]) -> Own[T]:
+//     def g() -> int32:
+//         return len(str(x))
+//
+//     h = Holder(lambda: g())
+//     return x  # tpyc: warning(/may copy T into owned storage/)
+template<typename T>
+::tpy::own_return_t<T> del_holder_generic(::tpy::own_param_t<T> x) {
+    auto g = [&x]() -> int32_t {
+        return ::tpy::__len__(std::string(::tpy::__str__(x)));
+    };
+    Holder h = Holder([g]() -> int32_t { return g(); });
+    return T(x);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

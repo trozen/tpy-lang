@@ -1,3 +1,2 @@
-main.py:25: warning: copies tuple[Own[Alpha], Own[Beta]] into owned storage; use copy() to make this explicit
 main.py:24: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:25: error: in function 'mixed_caller': this construct is not yet supported by C++ code generation (expr.call:call.arg_shape.tuple)
+main.py:29: error: in function 'mixed_caller': this construct is not yet supported by C++ code generation (expr.call:call.arg_shape.tuple)

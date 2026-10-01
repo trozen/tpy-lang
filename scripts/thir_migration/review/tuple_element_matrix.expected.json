@@ -198,10 +198,10 @@
   "same"
  ],
  "bytes__collection__T_sub": [
-  "stmt.var_decl:subscript.tuple_shape",
+  "ok",
   "",
-  "",
-  ""
+  "std::vector<std::tuple<::tpy::Bytes, int32_t>> probe_xs = std::vector<std::tuple<::tpy::Bytes, int32_t>>{} | probe_xs.push_back(std::tuple<::tpy::Bytes, int32_t>{::tpy::Bytes(v), 1}) | ::tpy::Bytes probe_x = std::get<0>(::tpy::__getitem__(probe_xs, 0))",
+  "same"
  ],
  "bytes__collection__T_unpack": [
   "ok",
@@ -216,10 +216,10 @@
   "same"
  ],
  "bytes__field__T_sub": [
-  "stmt.var_decl:subscript.tuple_shape",
+  "ok",
   "",
-  "",
-  ""
+  "std::tuple<::tpy::Bytes, int32_t> probe_f | inline H::H(::tpy::BytesView v) : probe_f(std::tuple<::tpy::Bytes, int32_t>{::tpy::Bytes(v), 1}) {} | ::tpy::Bytes probe_x = std::get<0>(h.probe_f)",
+  "same"
  ],
  "bytes__field__T_unpack": [
   "ok",
@@ -234,16 +234,16 @@
   "same"
  ],
  "bytes__global__T_sub": [
-  "stmt.var_decl:subscript.tuple_shape",
+  "ok",
   "",
-  "",
-  ""
+  "extern std::tuple<::tpy::Bytes, int32_t> probe_g | std::tuple<::tpy::Bytes, int32_t> probe_g | ::tpy::Bytes probe_x = std::get<0>(probe_g) | probe_g = std::tuple<::tpy::Bytes, int32_t>{::tpy::bytes_literal_owned(\"hello\", 5), 1}",
+  "same"
  ],
  "bytes__global__T_unpack": [
-  "stmt.tuple_unpack",
+  "ok",
   "",
-  "",
-  ""
+  "extern std::tuple<::tpy::Bytes, int32_t> probe_g | std::tuple<::tpy::Bytes, int32_t> probe_g | const auto& __tup_1 = probe_g | ::tpy::BytesView probe_x = std::get<0>(__tup_1) | int32_t k = std::get<1>(__tup_1) | probe_g = std::tuple<::tpy::Bytes, int32_t>{::tpy::bytes_literal_owned(\"hello\", 5), 1}",
+  "same"
  ],
  "bytes__local__S": [
   "ok",
@@ -252,10 +252,10 @@
   "same"
  ],
  "bytes__local__T_sub": [
-  "stmt.var_decl:subscript.tuple_shape",
+  "ok",
   "",
-  "",
-  ""
+  "std::tuple<::tpy::Bytes, int32_t> probe_loc = std::tuple<::tpy::Bytes, int32_t>{::tpy::Bytes(v), 1} | ::tpy::Bytes probe_x = std::get<0>(probe_loc)",
+  "same"
  ],
  "bytes__local__T_unpack": [
   "ok",
@@ -270,10 +270,10 @@
   "same"
  ],
  "bytes__param__T_sub": [
-  "stmt.var_decl:subscript.tuple_shape",
+  "ok",
   "",
-  "",
-  ""
+  "void probe_fn(const std::tuple<::tpy::Bytes, int32_t>& p) | ::tpy::Bytes probe_x = std::get<0>(p) | probe_fn(std::tuple<::tpy::Bytes, int32_t>{::tpy::Bytes(v), 1})",
+  "same"
  ],
  "bytes__param__T_unpack": [
   "ok",
@@ -288,10 +288,10 @@
   "same"
  ],
  "bytes__return__T_sub": [
-  "stmt.var_decl:subscript.tuple_shape",
+  "ok",
   "",
-  "",
-  ""
+  "std::tuple<::tpy::Bytes, int32_t> probe_fn(::tpy::BytesView v) | std::tuple<::tpy::Bytes, int32_t> r = probe_fn(::tpy::bytes_literal(\"hello\", 5)) | ::tpy::Bytes probe_x = std::get<0>(r)",
+  "same"
  ],
  "bytes__return__T_unpack": [
   "ok",
@@ -330,22 +330,22 @@
   "same"
  ],
  "mixed__param__T_consume": [
-  "stmt.tuple_unpack",
-  "copies Cell into owned storage; use copy() to make this explicit",
+  "ok",
   "",
-  ""
+  "int32_t probe_fn(std::tuple<Cell, Cell*>&& p) | auto& __tup_1 = p | Cell o = std::move(std::get<0>(__tup_1)) | auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)))",
+  "same"
  ],
  "mixed__param__T_read": [
   "ok",
-  "",
-  "int32_t probe_fn(const std::tuple<Cell, Cell*>& p)",
+  "owned tuple param 'p' is never consumed (not moved out by an unpack, stored, for",
+  "int32_t probe_fn(std::tuple<Cell, Cell*>&& p)",
   "same"
  ],
  "mixed__param__T_write_own": [
   "ok",
-  "",
-  "int32_t probe_fn(const std::tuple<Cell, Cell*>& p)",
-  "build-fail"
+  "owned tuple param 'p' is never consumed (not moved out by an unpack, stored, for",
+  "int32_t probe_fn(std::tuple<Cell, Cell*>&& p)",
+  "same"
  ],
  "mixed__return__T": [
   "ok",

@@ -995,7 +995,8 @@ def _storage_value(lowered: THIRExpr, member_t: TpyType, slot_t: TpyType,
                 and ((isinstance(member_t, OptionalType)
                       and member_t.uses_pointer_repr())
                      or _eligible_ptr_union(member_t, analyzer) is not None))
-    if (mv and not ptr_lift and not record_like(member_t, analyzer)
+    if (mv and not ptr_lift and not mixed
+            and not record_like(member_t, analyzer)
             and not isinstance(member_t, TypeParamRef)
             and not _pointer_borrow(lowered, lc)
             and _absorbs(member_t, rt, lc)):

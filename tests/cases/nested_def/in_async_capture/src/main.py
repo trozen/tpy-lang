@@ -22,7 +22,7 @@ async def capture_mutate() -> Own[Box]:
     bump()
     await asyncio.sleep(0)
     bump()
-    return b
+    return b  # tpyc: warning(/copies Box into owned storage/) -- bump() captures b
 
 
 async def across_await() -> int32:

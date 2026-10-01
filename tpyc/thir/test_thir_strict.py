@@ -279,6 +279,49 @@ def test_strict_frame_reject_names_the_callable(
     _assert_rejects_at(fallback, landmark)
 
 
+OWN_SENTENCE_SRC = '''from typing import Iterator
+from tpy import int32
+
+
+class A:
+    v: int32
+
+    def __init__(self, v: int32) -> None:
+        self.v = v
+
+
+def lit(c: bool) -> Iterator[int32]:
+    t = (A(1), A(2))
+    saved = t[1]
+    yield saved.v
+    if c:
+        t = (A(9), A(8))
+    yield saved.v
+
+
+def main() -> None:
+    for v in lit(True):
+        print(v)
+
+
+main()
+'''
+
+
+def test_strict_reject_with_its_own_sentence_keeps_the_reason() -> None:
+    """A reject that recorded its own sentence prints it in place of the
+    generic one, at the offending statement, while the reason tag still rides
+    the error object (and the survey tally) for tooling."""
+    err, fallback = _strict_reject(OWN_SENTENCE_SRC)
+    assert err.message == (
+        "in function 'lit': binding 'saved' to an element inside 't' is not "
+        "yet supported in a generator when 't' can be reassigned while "
+        "'saved' is live; bind 'saved' after the last reassignment of 't'")
+    assert err.loc is not None and err.loc.line == 14, err.format("main.py")
+    assert err.reason == "res.alias_bind"
+    _assert_rejects_at(fallback, "resumable:res.alias_bind")
+
+
 def test_strict_reject_in_an_import_names_that_module(tmp_path) -> None:
     """A reject inside an imported module is reported against THAT file.
 

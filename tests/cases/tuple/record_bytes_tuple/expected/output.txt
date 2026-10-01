@@ -1,0 +1,21 @@
+local 2 b'm'
+param 102 b'm'
+param_after 102
+unpack 3 b'm'
+subscript b'm'
+literal 5 b'l'
+mix 6 7 b'x'
+mixparam 6 2 b'x'
+method 9 b'h'
+gen 10 b'g'
+async 11 b'm'
+closure 12 b'm'
+container 12 b'm'
+mixstore 2 b'x'
+finally 21 b'm'
+match 22 b'm'
+string 23 s
+string param 123 s
+string param_after 123
+string unpack 24 s
+string container 24 s

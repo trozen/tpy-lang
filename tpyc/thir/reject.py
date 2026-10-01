@@ -86,10 +86,15 @@ class ThirUnsupported(Exception):
     catch it as an internal retry, and only the ones that let it reach a
     body boundary turn it into the `ThirRejectError` `reject_attempt`
     raises.
+
+    `message=` is only for a reject whose limitation is decided in the
+    lowering itself and has a BUGS.md entry; anything sema can decide
+    belongs in a sema diagnostic instead.
     """
 
     def __init__(self, reason: str, *, detail: bool = False,
-                 loc: 'SourceLocation | None' = None) -> None:
+                 loc: 'SourceLocation | None' = None,
+                 message: str | None = None) -> None:
         super().__init__(reason)
         self.reason = reason
         self.detail = detail
@@ -97,6 +102,10 @@ class ThirUnsupported(Exception):
         # the reject unwinds (innermost frame wins) -- what the diagnostic
         # points the user at.
         self.loc = loc
+        # A reject that knows the limitation it hit in the user's terms (and
+        # the workaround) says so instead of the generic unlowered-shape
+        # sentence; `reason` still rides the error for tooling.
+        self.message = message
         compiler = get_current_compiler()
         if loc is None and compiler is not None:
             cause = compiler._thir_reject_detail
@@ -108,7 +117,7 @@ class ThirUnsupported(Exception):
         # statement's landmark scan must not replace that evidence.
         if self.loc is not None and ":lambda." in self.reason:
             return self
-        return ThirUnsupported(reason, loc=self.loc)
+        return ThirUnsupported(reason, loc=self.loc, message=self.message)
 
 
 # One rule for a FunctionInfo and the TpyFunction it came from; shared with
@@ -117,18 +126,21 @@ class ThirUnsupported(Exception):
 is_bodyless_binding = _is_bodyless_binding
 
 
-def note(reason: str, loc: 'SourceLocation | None' = None) -> bool:
+def note(reason: str, loc: 'SourceLocation | None' = None,
+         message: str | None = None) -> bool:
     """Record `reason` as the current attempt's first reject, if none is
     recorded yet. Returns False so admission sites can `return note("sig.x")`
     without restructuring.
 
-    `loc` is stored with the reason and never on its own: the pair is what the
-    strict diagnostic prints, so a location outliving the reason it belongs to
-    would point the user at an unrelated line."""
+    `loc` and `message` are stored with the reason and never on their own: the
+    triple is what the strict diagnostic prints, so a location or message
+    outliving the reason it belongs to would point the user at an unrelated
+    line or limitation."""
     compiler = get_current_compiler()
     if compiler is not None and compiler._thir_reject_reason is None:
         compiler._thir_reject_reason = reason
         compiler._thir_reject_loc = loc
+        compiler._thir_reject_message = message
     return False
 
 
@@ -163,6 +175,7 @@ def begin_attempt() -> None:
         compiler._thir_reject_detail = None
         compiler._thir_reject_detail_loc = None
         compiler._thir_reject_loc = None
+        compiler._thir_reject_message = None
     begin_witness_journal()
 
 
@@ -215,7 +228,8 @@ def reject_attempt(component: RejectComponent, node: object = None, *,
     # The reject's own position when lowering recorded one; the enclosing
     # unit's `def`/decl line is the floor, never a stale sibling's.
     raise _strict_error(component, node, where,
-                        compiler._thir_reject_loc or loc, reason)
+                        compiler._thir_reject_loc or loc, reason,
+                        compiler._thir_reject_message)
 
 
 def reject_or_defer(component: RejectComponent, node: object = None, *,
@@ -244,11 +258,13 @@ def raise_deferred_rejects() -> None:
 
 def _strict_error(component: RejectComponent, node: object, where: str | None,
                   loc: 'SourceLocation | None',
-                  reason: str) -> 'ThirRejectError':
+                  reason: str,
+                  message: str | None = None) -> 'ThirRejectError':
     """The diagnostic a reject becomes.
 
     Phrased for a TPy user reading a compile error: the reason tag is the only
-    internal token in the sentence. `component` and `reason` also ride on the
+    internal token in the generic sentence, and a reject that recorded its own
+    `message` prints that instead. `component` and `reason` also ride on the
     error object, so tooling reads them without parsing the message."""
     from ..codegen_cpp.context import ThirRejectError
     if where is None:
@@ -266,9 +282,11 @@ def _strict_error(component: RejectComponent, node: object, where: str | None,
             where = "at module level"
         else:
             where = "in this module"
-    return ThirRejectError(
-        f"{where}: this construct is not yet supported by C++ code "
-        f"generation ({reason})", loc=loc, component=component, reason=reason)
+    if message is None:
+        message = (f"this construct is not yet supported by C++ code "
+                   f"generation ({reason})")
+    return ThirRejectError(f"{where}: {message}", loc=loc,
+                           component=component, reason=reason)
 
 
 def _walk(root: object):

@@ -1,0 +1,25 @@
+param b'ab'
+param len 2
+param eq True
+param arg b'ab' 2
+param local b'ab'
+param ret b'ab'
+literal b'lit' b'new'
+call b'44' 2 True
+field b'55'
+method b'55'
+elem b'66' 0
+forvar b'99' 0
+global b'glob' 4
+global unpack b'glob' 1 4
+global unpack local b'glob' 1
+gen b'33'
+gen b'33'
+async b'zz' b'zz'
+async ret 2
+comp [b'11', b'22']
+closure 2
+match b'77'
+try b'77'
+finally b'77'
+unpack 5 b'b'

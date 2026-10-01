@@ -888,11 +888,11 @@
   ""
  ],
  "async_method__bytes__tuple_elem": [
-  "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:subscript.tuple_shape)",
+  "ok",
   "",
-  "R",
-  "lowering reject by source kind",
+  "body: __self.fld = std::get<0>(t)",
+  "",
+  "",
   ""
  ],
  "async_method__bytes__walrus": [
@@ -2968,11 +2968,11 @@
   ""
  ],
  "ctor__bytes__tuple_elem": [
-  "error",
-  "[subject] in the constructor of 'Subj': this construct is not yet supported by C++ code generation (subscript.tuple_shape)",
+  "ok",
   "",
-  "R",
-  "lowering reject by source kind",
+  "init: fld(std::get<0>(t))",
+  "",
+  "",
   ""
  ],
  "ctor__bytes__walrus": [
@@ -5048,11 +5048,11 @@
   ""
  ],
  "gen_method__bytes__tuple_elem": [
-  "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:subscript.tuple_shape)",
+  "ok",
   "",
-  "R",
-  "lowering reject by source kind",
+  "body: __self.fld = std::get<0>(t)",
+  "",
+  "",
   ""
  ],
  "gen_method__bytes__walrus": [
@@ -7072,11 +7072,11 @@
   ""
  ],
  "local__bytes__tuple_elem": [
-  "error",
-  "[subject] in function 'probe': this construct is not yet supported by C++ code generation (stmt.var_decl:subscript.tuple_shape)",
+  "ok",
   "",
-  "R",
-  "lowering reject by source kind",
+  "decl: ::tpy::Bytes loc = std::get<0>(t)",
+  "",
+  "",
   ""
  ],
  "local__bytes__walrus": [
@@ -9080,11 +9080,11 @@
   ""
  ],
  "local_holder__bytes__tuple_elem": [
-  "error",
-  "[subject] in function 'probe': this construct is not yet supported by C++ code generation (stmt.assign:subscript.tuple_shape)",
+  "ok",
   "",
-  "R",
-  "lowering reject by source kind",
+  "body: hold.fld = std::get<0>(t)",
+  "",
+  "",
   ""
  ],
  "local_holder__bytes__walrus": [
@@ -11160,11 +11160,11 @@
   ""
  ],
  "method__bytes__tuple_elem": [
-  "error",
-  "[subject] in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:subscript.tuple_shape)",
+  "ok",
   "",
-  "R",
-  "lowering reject by source kind",
+  "body: this->fld = std::get<0>(t)",
+  "",
+  "",
   ""
  ],
  "method__bytes__walrus": [

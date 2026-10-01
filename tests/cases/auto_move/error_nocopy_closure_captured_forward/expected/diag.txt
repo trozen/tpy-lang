@@ -1,0 +1,1 @@
+main.py:22: error: @nocopy type 'Tok' is used after this point and cannot be moved into 't: Own[Tok]'. Remove later uses or restructure the code.

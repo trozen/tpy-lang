@@ -21,6 +21,7 @@ from ...typesys import (
     UnionType,
     VoidType,
     is_own_pointer_repr_optional,
+    param_takes_ownership,
     unwrap_optional_own,
     unwrap_readonly,
     unwrap_ref_type,
@@ -1910,7 +1911,8 @@ class _LowerCtx:
         self.movable_locals: set[str] = set()
         # The params the signature declares `Own[...]` (or `Own[T] | None`),
         # whatever the payload: the caller handed over the value. A
-        # constructor member-init moves these (`moves_only`).
+        # constructor member-init moves these and the ownership-transfer
+        # tuples (`handed_over_params`).
         self.own_params: frozenset[str] = frozenset(
             pname for pname, ptype in self.params
             if isinstance(ptype, TpyType)
@@ -1936,15 +1938,26 @@ class _LowerCtx:
         if self_receiver is not None and func.is_consuming:
             self.movable_locals.add(self_receiver)
         for pname, ptype in self.params:
+            owns = func.takes_ownership_of(pname, ptype)
             own = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype)))
-            if own is not None and not own.wrapped.is_value_type():
+            if owns and own is not None and not own.wrapped.is_value_type():
                 self.movable_locals.add(pname)
-            # An owned-movable TUPLE param (`tuple[Own[A], Own[B]]` --
-            # `std::tuple<A, B>&&`): seed_param_locals' tuple branch.
+            # An ownership-transfer TUPLE param (`tuple[Own[A], B]` --
+            # `std::tuple<A, B*>&&`): seed_param_locals' tuple branch.
             pu = unwrap_readonly(unwrap_send_sync(ptype))
-            if (isinstance(pu, TupleType) and pu.is_owned_movable()
-                    and not isinstance(ptype, ReadonlyType)):
+            if owns and isinstance(pu, TupleType):
                 self.movable_locals.add(pname)
+            if isinstance(pu, TupleType) and pu.is_mixed_own():
+                # A mixed param holds the render a mixed call result binds
+                # (`std::tuple<A, B*>`), so it takes that render's rows. A
+                # capture holds whatever the enclosing variable holds: inside
+                # a function a mixed tuple is only ever a parameter or a call
+                # result, both the mixed render, while a module global holds
+                # storage.
+                if not func.is_capture(pname) or func.genexpr_owner is not None:
+                    self.own_borrow_tuple_locals.add(pname)
+                else:
+                    self.storage_tuple_locals.add(pname)
             # A value-repr Optional[expensive-copy] param (`int | None` ->
             # std::optional<BigInt>, `str | None` -> optional<string_view>)
             # is movable at its narrowed last use -- seed_param_locals'
@@ -2145,12 +2158,22 @@ class _LowerCtx:
         `moves_only`)."""
         return name in self.movable_locals
 
+    @property
+    def handed_over_params(self) -> frozenset[str]:
+        """The params the caller hands over, which a constructor member-init
+        may move: the `Own` params and the ownership-transfer tuples
+        (`param_takes_ownership` -- `std::tuple<A, B*>&&`), which the
+        `Own`-only `own_params` leaves out."""
+        return self.own_params | frozenset(
+            pname for pname, ptype in self.params
+            if isinstance(ptype, TpyType) and param_takes_ownership(ptype))
+
     @contextmanager
     def moves_only(self, names: AbstractSet[str]):
         """Lower a region whose sinks may move only `names`: a constructor
-        member-init (its `Own` params -- the list runs before the body, so
-        no local exists yet) or a comprehension element (its loop variable
-        -- an outer name would be moved once per iteration)."""
+        member-init (its `handed_over_params` -- the list runs before the
+        body, so no local exists yet) or a comprehension element (its loop
+        variable -- an outer name would be moved once per iteration)."""
         saved = self.movable_locals
         self.movable_locals = set(names)
         try:

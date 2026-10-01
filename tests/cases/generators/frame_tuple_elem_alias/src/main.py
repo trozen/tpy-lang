@@ -3,11 +3,12 @@
 # alias copies it rather than taking the address of the element slot. The
 # rejected shapes (a rebind that can run after an alias of a by-value
 # element, including a `finally` rebind after a handler's alias) are pinned
-# by the error_frame_*alias_rebind cases.
+# by the error_frame_*alias_rebind cases; the *_after_rebind sections are
+# the rewrite their diagnostic names, the copy_* sections the other one.
 import asyncio
 from typing import Iterator
 
-from tpy import int32
+from tpy import copy, int32
 
 
 class A:
@@ -38,6 +39,13 @@ async def co_param(p: tuple[A, A]) -> int32:
     await asyncio.sleep(0)
     a.x = 51
     return a.x
+
+
+class H:
+    xs: list[A]
+
+    def __init__(self, i: int32) -> None:
+        self.xs = [A(i), A(i + 1)]
 
 
 class Walker:
@@ -149,6 +157,70 @@ def orelse_alias() -> Iterator[int32]:
     yield t[1].x
 
 
+# workaround 1 for a rebind after the alias: bind a copy. The copy is detached
+# from the slot, so a write through it is not seen through `t`, and the
+# rebind leaves it alone.
+def copy_alias(c: bool) -> Iterator[int32]:
+    t = (A(1), A(2))
+    saved = copy(t[1])  # tpyc: ok
+    yield saved.x
+    saved.x = 5
+    yield t[1].x
+    if c:
+        t = (A(9), A(8))
+    yield saved.x
+    yield t[1].x
+
+
+# workaround 1 through a record field and a list inside the tuple.
+def copy_chained(c: bool) -> Iterator[int32]:
+    t = (H(1), 5)
+    saved = copy(t[0].xs[1])  # tpyc: ok
+    saved.x = 50
+    yield t[0].xs[1].x
+    if c:
+        t = (H(10), 6)
+    yield saved.x
+
+
+# workaround 2 through a tuple inside a list slot: the alias is taken after
+# the last rebind, so a write through it is seen through the slot.
+def list_of_tuples_after_rebind(c: bool) -> Iterator[int32]:
+    xs = [(A(1), A(2))]
+    yield xs[0][1].x
+    if c:
+        xs = [(A(9), A(8))]
+    saved = xs[0][1]  # tpyc: ok
+    saved.x = 5
+    yield xs[0][1].x
+
+
+# workaround 1, coroutine twin. (A MIXED slot's owned element cannot be
+# copied yet: BUGS.md#tuple-elem-copy-mixed-or-list-rejects.)
+async def co_copy(c: bool) -> int32:
+    t = (A(1), A(2))
+    saved = copy(t[0])  # tpyc: ok
+    await asyncio.sleep(0)
+    saved.x = 6
+    if c:
+        t = (A(9), A(8))
+    return saved.x * 100 + t[0].x
+
+
+# workaround 2, coroutine twin on the owned element of a mixed slot: the
+# alias is taken after the last rebind, so it aliases the new element in
+# place and a write through it is seen through the slot.
+async def co_alias_after_rebind(b: A, c: bool) -> int32:
+    t = (A(1), b)
+    await asyncio.sleep(0)
+    if c:
+        t = (A(9), b)
+    saved = t[0]  # tpyc: ok
+    await asyncio.sleep(0)
+    saved.x = 7
+    return t[0].x
+
+
 def main() -> None:
     r0 = A(3)
     r1 = A(4)
@@ -185,6 +257,15 @@ def main() -> None:
         print("alias_after_last_rebind", v)
     for v in orelse_alias():
         print("orelse_alias", v)
+    for v in copy_alias(True):
+        print("copy_alias", v)
+    for v in copy_chained(True):
+        print("copy_chained", v)
+    for v in list_of_tuples_after_rebind(True):
+        print("list_of_tuples_after_rebind", v)
+    print("co_copy", asyncio.run(co_copy(True)))
+    print("co_alias_after_rebind",
+          asyncio.run(co_alias_after_rebind(A(3), True)))
 
 
 main()

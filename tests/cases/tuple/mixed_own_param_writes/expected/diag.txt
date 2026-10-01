@@ -1,0 +1,20 @@
+main.py:353: warning: copies Box into field (tuple element 0); use copy() to make this explicit
+main.py:353: warning: copies Box into field (tuple element 1); use copy() to make this explicit
+main.py:33: warning: Own[Box] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:47: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:79: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:112: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:119: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:176: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:184: warning: copies tuple[Own[Box], Own[Box]] into owned storage; use copy() to make this explicit
+main.py:183: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:191: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:201: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:212: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:225: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit
+main.py:222: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:249: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:258: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit
+main.py:257: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:264: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit
+main.py:397: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)

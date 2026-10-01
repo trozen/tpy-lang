@@ -29,8 +29,12 @@ release commit (annotated; the build hook bakes `git describe`), then
 ## 0.7.0 (prepared when the trigger above fires)
 
 - Tuples: no silent divergence and the everyday shapes compile --
-  `docs/TUPLE_COMPLETION_PLAN.md`, the rest of U1 plus U2-U4 (the
-  everyday rejects, the policy flips, the mixed-param diagnostics)
+  `docs/TUPLE_COMPLETION_PLAN.md`: U3 (the policy flips) and the
+  everyday rejects of U2, which land with the element-form unit (U5) on
+  the lowering's slot contract; U4 and the mixed-param `&&` form are done
+- `str` and `bytes` under one sound view rule, keyed on the view family
+  (plan unit U6 is its tuple part) -- TODO: "`str` and `bytes`: one view
+  rule"
 - Iterating a tuple (`for b in (b1, b2):`), the aliasing spelling for
   reference elements; ranks above nested comprehensions -- TODO:
   "Iterating a tuple"
@@ -54,8 +58,8 @@ Queue (triage at 0.7 planning; not commitments):
 
 - Tuples, the structural half -- `docs/TUPLE_COMPLETION_PLAN.md`, units
   U5-U7: one elementwise form rule in THIR, `str` / `bytes` view elements
-  (ABI change), the loud tail. U8 (per-element ownership at a mixed tuple
-  param) waits on MIR.
+  (ABI change), the loud tail. U8 (the general partial move: reading a
+  tuple param's other element after one was consumed) waits on MIR.
 - Borrow / provenance `HIGH` entries (loans that outlive their storage,
   silent copies where CPython aliases, borrow-form vs storage-form
   spelling mismatches),

@@ -1,1 +1,5 @@
-main.py:23: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:63: warning: Own[A] element 0 of tuple param 'p' is never consumed (unpacked into 'a', which is not stored in a field, forwarded to another Own[T], or returned)
+main.py:37: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:50: warning: Own[A] element 1 of tuple param 'p' is never consumed (unpacked into 'b', which is not stored in a field, forwarded to another Own[T], or returned)
+main.py:71: warning: Own[A] element 1 of tuple param 'p' is never consumed (unpacked into 'b', which is not stored in a field, forwarded to another Own[T], or returned)
+main.py:80: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)

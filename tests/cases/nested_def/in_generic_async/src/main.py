@@ -26,7 +26,7 @@ async def combine(xs: Iterable[int32]) -> Own[Box]:
         stash(b, x)
     await asyncio.sleep(0)
     double()
-    return b
+    return b  # tpyc: warning(/copies Box into owned storage/) -- double() captures b
 
 
 async def main() -> None:
