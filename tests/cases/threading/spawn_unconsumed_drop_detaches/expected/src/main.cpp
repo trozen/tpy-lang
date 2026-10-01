@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
-//     h = spawn[int, One](One())
+//     h = spawn(One())  # tpyc: ok -- dropped unconsumed below
 //     print("spawned")
 void main() {
     ::tpystd::tpy::thread::JoinHandle<::tpy::BigInt> h = ::tpystd::tpy::thread::spawn<::tpy::BigInt, One>(One());
     std::cout << "spawned" << "\n";
 }
 
-// # Dropping a JoinHandle without join() or detach() is a runtime panic: the
-// # spawned thread's result/exception would otherwise silently vanish (Rust's /
-// # raw std::thread's join-or-detach contract).
+// # Dropping a JoinHandle without join() or detach() detaches the thread, as
+// # Rust's JoinHandle does: no panic, the thread runs on and its result is
+// # discarded.
 // from tpy.thread import spawn
 //
 // main()

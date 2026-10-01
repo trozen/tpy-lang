@@ -4,7 +4,6 @@
 namespace tpystd::tpy::thread {
 
 
-
 // # tpy: include("<tpy/threading.hpp>")
 // # tpy: link("pthread")
 // """OS-thread spawn/join -- V1 (Runnable-struct form).
@@ -25,6 +24,7 @@ namespace tpystd::tpy::thread {
 // """
 //
 // from tpy.extern import native
+// from _bindings import posix_signal
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

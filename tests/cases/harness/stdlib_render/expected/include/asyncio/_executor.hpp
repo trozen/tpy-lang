@@ -79,6 +79,8 @@ inline constexpr int32_t _EPOLL_CTL_DEL = 2;
 inline constexpr int32_t _EPOLL_CTL_MOD = 3;
 // _REACTOR_BATCH: Final[int32] = 64
 inline constexpr int32_t _REACTOR_BATCH = 64;
+// _EPOLLIN: Final[uint32] = 0x001
+inline constexpr uint32_t _EPOLLIN = 1;
 
 // def task_from_coro[T](coro: Own[Cancellable[T]]) -> Own[Task[T]]:
 template<typename T>
@@ -509,6 +511,10 @@ struct EpollReactor {
     // def count(self) -> int32:
     int32_t count() const;
 
+    // @readonly
+    // def has_fd(self, fd: int32) -> bool:
+    bool has_fd(int32_t fd) const;
+
     // def poll(self, timeout_ms: int32) -> None:
     void poll(int32_t timeout_ms);
 
@@ -535,6 +541,10 @@ struct Executor : ::tpystd::coro::Awaker {
     std::optional<EpollReactor> reactor;
     // shutdown_armed: bool
     bool shutdown_armed;
+    // shutdown_fd: int32
+    int32_t shutdown_fd;
+    // interrupt_count: int32
+    int32_t interrupt_count;
 
     // def __init__(self) -> None:
     Executor();
@@ -585,8 +595,11 @@ struct Executor : ::tpystd::coro::Awaker {
     // def _cancel_root(self, main_id: int32) -> None:
     void _cancel_root(int32_t main_id);
 
-    // def _check_shutdown_signal(self, main_id: int32, already: bool) -> bool:
-    bool _check_shutdown_signal(int32_t main_id, bool already);
+    // def _check_shutdown_signal(self, main_id: int32) -> None:
+    void _check_shutdown_signal(int32_t main_id);
+
+    // def _rearm_shutdown_fd(self) -> None:
+    void _rearm_shutdown_fd();
 
     // def run_until(self, main_id: int32) -> bool:
     bool run_until(int32_t main_id);
@@ -752,6 +765,13 @@ inline int32_t EpollReactor::count() const {
     return ::tpy::__len__(this->_waiters);
 }
 
+// @readonly
+// def has_fd(self, fd: int32) -> bool:
+//     return fd in self._waiters
+inline bool EpollReactor::has_fd(int32_t fd) const {
+    return (this->_waiters.contains(fd));
+}
+
 // def close(self) -> None:
 //     if self._epfd >= 0:
 //         posix_socket.close(self._epfd)
@@ -761,31 +781,6 @@ inline void EpollReactor::close() {
         ::close(this->_epfd);
         this->_epfd = -1;
     }
-}
-
-// def __init__(self) -> None:
-//     # Backstop for `asyncio.run`'s nested-loop check: a non-null
-//     # current_executor means a `_ExecutorScope` is already active.
-//     # Bare `Executor()` in unit tests is unaffected because those
-//     # tests never set the global.
-//     if _get_current_executor() is not None:
-//         raise RuntimeError(
-//             "Executor: another executor is already running "
-//             "(nested asyncio.run or leaked _ExecutorScope)")
-//     self.slots = []
-//     self.runnable_q = []
-//     self.timer_heap = []
-//     self.reactor = None
-//     self.shutdown_armed = False
-inline Executor::Executor() {
-    if ((::tpystd::asyncio::_executor::_get_current_executor() != nullptr)) {
-        throw ::tpy::RuntimeError("Executor: another executor is already running (nested asyncio.run or leaked _ExecutorScope)");
-    }
-    this->slots = std::vector<Slot>{};
-    this->runnable_q = std::vector<int32_t>{};
-    this->timer_heap = std::vector<TimerEntry>{};
-    this->reactor = std::nullopt;
-    this->shutdown_armed = false;
 }
 
 // def register_timer(self, deadline_seconds: float, waker: Waker) -> None:
@@ -949,24 +944,22 @@ inline void Executor::_cancel_root(int32_t main_id) {
     this->mark_runnable(main_id, ::tpy::__getitem__(this->slots, main_id).generation);
 }
 
-// # True iff a SIGINT has been delivered since the last check; on the first
-// # such observation cancels the root for graceful shutdown.
-// def _check_shutdown_signal(self, main_id: int32, already: bool) -> bool:
-//     if already or not self.shutdown_armed:
-//         return already
-//     if posix_signal.consume() == 0:
-//         return False
-//     self._cancel_root(main_id)
-//     return True
-inline bool Executor::_check_shutdown_signal(int32_t main_id, bool already) {
-    if ((already || (!(this->shutdown_armed)))) {
-        return already;
+// # The reactor disarms an fd once it fires (one-shot), so re-arm the wake fd
+// # after every wait or a later Ctrl-C would not wake the next one.
+// def _rearm_shutdown_fd(self) -> None:
+//     if not self.shutdown_armed:
+//         return
+//     reactor = self.reactor
+//     if reactor is not None and not reactor.has_fd(self.shutdown_fd):
+//         reactor.register_fd(self.shutdown_fd, _EPOLLIN, Waker())
+inline void Executor::_rearm_shutdown_fd() {
+    if ((!(this->shutdown_armed))) {
+        return;
     }
-    if ((::tpy_signal_consume() == 0)) {
-        return false;
+    EpollReactor* reactor = ::tpy::optional_to_ptr(this->reactor);
+    if (((reactor != nullptr) && (!(reactor->has_fd(this->shutdown_fd))))) {
+        reactor->register_fd(this->shutdown_fd, _EPOLLIN, ::tpystd::coro::Waker());
     }
-    this->_cancel_root(main_id);
-    return true;
 }
 
 // def __init__(self, executor: Executor) -> None:

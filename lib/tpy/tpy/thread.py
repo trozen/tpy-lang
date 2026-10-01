@@ -19,6 +19,7 @@ is not valid CPython (a generic function is not subscriptable at runtime).
 from typing import Protocol
 from tpy import Own, Send, nocopy
 from tpy.extern import native
+from _bindings import posix_signal
 
 
 class ThreadTask[R](Protocol):
@@ -26,11 +27,13 @@ class ThreadTask[R](Protocol):
 
 
 # Raw C++ handle owning the std::thread + std::future. Move-only; its
-# destructor only detaches (safe teardown). The consume bookkeeping lives in
-# the TPy `JoinHandle` below.
+# destructor only detaches (safe teardown). The consume bookkeeping and the
+# interruptible wait live in the TPy `JoinHandle` below.
 @native("tpy::JoinHandle")
 @nocopy
 class _RawJoin[R]:
+    # True once the task has finished; waits at most `seconds` for it.
+    def wait_for(self, seconds: float) -> bool: ...
     def join(self) -> Own[R]: ...
     def detach(self) -> None: ...
 
@@ -41,18 +44,15 @@ class _RawJoin[R]:
 def _spawn_native[R: Send, T: ThreadTask[R]](task: Own[T]) -> Own[_RawJoin[R]]: ...
 
 
-# Hard panic for the abort-on-drop path. __del__ cannot `raise` (it lowers to a
-# noexcept destructor -> -Werror=terminate), so it calls this noreturn panic.
-@native("tpy::join_handle_dropped_unconsumed")
-def _abort_dropped_unconsumed() -> None: ...
-
-
 @nocopy
 class JoinHandle[R]:
-    """Handle to a spawned thread. Consume it exactly once via join() or
-    detach(); dropping an un-consumed handle is a loud panic (the spawned
-    thread's result/exception would otherwise vanish -- Rust's / raw
-    std::thread's join-or-detach contract)."""
+    """Handle to a spawned thread. join() or detach() it at most once;
+    dropping it unconsumed detaches the thread, as Rust's JoinHandle does:
+    the thread runs on and its result or exception is discarded.
+
+    On the main thread join() is interruptible: a Ctrl-C raises
+    KeyboardInterrupt and leaves the handle unconsumed, so join() can be
+    called again."""
     _raw: _RawJoin[R]
     _consumed: bool
 
@@ -66,8 +66,14 @@ class JoinHandle[R]:
     def join(self) -> Own[R]:
         if self._consumed:
             raise RuntimeError("JoinHandle.join(): handle already consumed")
-        # Set before the call so a re-raised task exception does not re-trip
-        # the abort-on-drop check when this handle unwinds.
+        if posix_signal.interrupt_armed():
+            # A thread's end is not an fd to wait on together with the Ctrl-C
+            # wake fd, so the wait goes in slices. A KeyboardInterrupt out of
+            # it leaves the handle unconsumed.
+            while not self._raw.wait_for(0.1):
+                posix_signal.check_interrupt()
+            # A Ctrl-C during the last slice is still this join's to deliver.
+            posix_signal.check_interrupt()
         self._consumed = True
         return self._raw.join()
 
@@ -79,7 +85,7 @@ class JoinHandle[R]:
 
     def __del__(self) -> None:
         if not self._consumed:
-            _abort_dropped_unconsumed()
+            self._raw.detach()
 
 
 def spawn[R: Send, T: ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]:

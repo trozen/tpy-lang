@@ -1,5 +1,6 @@
 # input() with and without a prompt: the prompt is written to stdout with no
-# trailing newline before the read, and EOF raises EOFError like CPython.
+# trailing newline before the read, a last line without a newline is still
+# returned, and EOF raises EOFError like CPython.
 from tpy import String
 
 
@@ -12,7 +13,8 @@ def main() -> None:
     plain = input()  # tpyc: ok
     print("s2:", plain)
 
-    # the prompt may be any str, including a String variable
+    # the prompt may be any str, including a String variable; the fixture's
+    # last line has no trailing newline and is returned all the same
     where = String("s3 where: ")
     place = input(where)  # tpyc: ok
     print("s3:", place)

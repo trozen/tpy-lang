@@ -316,6 +316,9 @@ _EPOLL_CTL_ADD: Final[int32] = 1
 _EPOLL_CTL_DEL: Final[int32] = 2
 _EPOLL_CTL_MOD: Final[int32] = 3
 _REACTOR_BATCH: Final[int32] = 64
+# EPOLLIN, for the executor's own SIGINT wake fd (asyncio/__init__.py's
+# EPOLLIN is out of reach here: it imports this module).
+_EPOLLIN: Final[uint32] = 0x001
 
 
 class Reactor(Protocol):
@@ -398,6 +401,10 @@ class EpollReactor:
     def count(self) -> int32:
         return len(self._waiters)
 
+    @readonly
+    def has_fd(self, fd: int32) -> bool:
+        return fd in self._waiters
+
     def poll(self, timeout_ms: int32) -> None:
         if len(self._waiters) == 0:
             return
@@ -447,6 +454,12 @@ class Executor(Awaker):
     # True while SIGINT graceful-shutdown handling is active; gates the
     # signal-flag poll in run_until.
     shutdown_armed: bool
+    # The SIGINT layer's wake fd while armed (else -1).
+    shutdown_fd: int32
+    # Ctrl-Cs seen during this run: the first cancels the root, a second
+    # raises KeyboardInterrupt out of the run (CPython's escape hatch for a
+    # hung cleanup).
+    interrupt_count: int32
 
     def __init__(self) -> None:
         # Backstop for `asyncio.run`'s nested-loop check: a non-null
@@ -462,6 +475,8 @@ class Executor(Awaker):
         self.timer_heap = []
         self.reactor = None
         self.shutdown_armed = False
+        self.shutdown_fd = -1
+        self.interrupt_count = 0
 
     def register_timer(self, deadline_seconds: float, waker: Waker) -> None:
         heapq.heappush(self.timer_heap, TimerEntry(deadline_seconds, waker))
@@ -603,34 +618,46 @@ class Executor(Awaker):
             box.get().cancel_any()
         self.mark_runnable(main_id, self.slots[main_id].generation)
 
-    # True iff a SIGINT has been delivered since the last check; on the first
-    # such observation cancels the root for graceful shutdown.
-    def _check_shutdown_signal(self, main_id: int32, already: bool) -> bool:
-        if already or not self.shutdown_armed:
-            return already
-        if posix_signal.consume() == 0:
-            return False
+    # Counts a SIGINT delivered since the last check: the first cancels the
+    # root for graceful shutdown, a second abandons the cleanup by raising
+    # KeyboardInterrupt out of the run, like CPython's asyncio.run.
+    def _check_shutdown_signal(self, main_id: int32) -> None:
+        if not self.shutdown_armed:
+            return
+        if posix_signal.async_consume() == 0:
+            return
+        self.interrupt_count += 1
+        if self.interrupt_count > 1:
+            raise KeyboardInterrupt()
         self._cancel_root(main_id)
-        return True
+
+    # The reactor disarms an fd once it fires (one-shot), so re-arm the wake fd
+    # after every wait or a later Ctrl-C would not wake the next one.
+    def _rearm_shutdown_fd(self) -> None:
+        if not self.shutdown_armed:
+            return
+        reactor = self.reactor
+        if reactor is not None and not reactor.has_fd(self.shutdown_fd):
+            reactor.register_fd(self.shutdown_fd, _EPOLLIN, Waker())
 
     # Returns True if a SIGINT interrupted the run (root cancelled for graceful
     # shutdown), False on normal completion.
     def run_until(self, main_id: int32) -> bool:
-        interrupted = False
         while True:
             if self.slot_done(main_id):
-                return interrupted
+                return self.interrupt_count > 0
             if self.drain_runnable():
-                interrupted = self._check_shutdown_signal(main_id, interrupted)
+                self._check_shutdown_signal(main_id)
                 continue
             if self.slot_done(main_id):
-                return interrupted
+                return self.interrupt_count > 0
             if not self.wait_for_event():
                 raise RuntimeError(
                     "asyncio.run: no progress possible (a coroutine "
                     "returned Pending with no pending timers and no "
                     "registered I/O)")
-            interrupted = self._check_shutdown_signal(main_id, interrupted)
+            self._check_shutdown_signal(main_id)
+            self._rearm_shutdown_fd()
 
     def drain_spawned_with_cancel(self, skip_id: int32,
                                   max_polls: int32 = 8) -> None:

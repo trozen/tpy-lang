@@ -26,7 +26,6 @@
 #include <string>
 
 #include <fcntl.h>
-#include <poll.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <netinet/in.h>
@@ -121,7 +120,7 @@ int tpy_set_nonblocking(int fd, int nonblocking) {
     if (fcntl(fd, F_SETFL, updated) < 0) {
         return -1;
     }
-    return 0;
+    return (flags & O_NONBLOCK) != 0 ? 1 : 0;
 }
 
 // Set the receive + send timeouts (SO_RCVTIMEO / SO_SNDTIMEO) on a blocking
@@ -129,9 +128,10 @@ int tpy_set_nonblocking(int fd, int nonblocking) {
 // means "block forever" to the kernel). Hidden behind a helper because
 // `struct timeval`'s tv_usec member type (suseconds_t) is not portable enough
 // to mirror as a TPy @native struct, and <sys/time.h> would drag macros into
-// TPy TUs. A timed-out recv/send on such a socket returns EAGAIN/EWOULDBLOCK,
-// which the facade maps to TimeoutError. Returns 0 on success, -1 on error
-// (caller reads tpy_errno()).
+// TPy TUs. Only serves makefile()'s reader: it reads a dup of the fd without
+// the socket module's poll() wait, and a timed-out read there returns
+// EAGAIN/EWOULDBLOCK, which it maps to TimeoutError. Returns 0 on success, -1
+// on error (caller reads tpy_errno()).
 int tpy_set_timeout(int fd, double seconds) {
     struct timeval tv;
     if (seconds <= 0.0) {
@@ -156,82 +156,11 @@ int tpy_set_timeout(int fd, double seconds) {
     return 0;
 }
 
-// Connect with a wall-clock timeout. SO_RCVTIMEO/SO_SNDTIMEO do not cover
-// connect(), so this does the classic non-blocking-connect dance: flip
-// O_NONBLOCK on, start the connect, poll() the fd writable for up to
-// `seconds`, then read SO_ERROR to learn the outcome. O_NONBLOCK is restored
-// to its prior state before returning so subsequent recv/send keep their
-// SO_*TIMEO blocking behavior (and getblocking() stays True). All the
-// non-portable macro/struct handling stays here rather than in the facade.
-// Returns 0 on success, -2 on timeout, -1 on any other error (errno set;
-// caller reads tpy_errno()).
-int tpy_connect_timeout(int fd, const void* addr, unsigned int addrlen,
-                        double seconds) {
-    int flags = fcntl(fd, F_GETFL, 0);
-    if (flags < 0) {
-        return -1;
-    }
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
-        return -1;
-    }
-
-    int result = 0;
-    int rc = connect(fd, reinterpret_cast<const sockaddr*>(addr), addrlen);
-    if (rc == 0) {
-        // Connected immediately (common for loopback / already-resolved IP).
-        result = 0;
-    } else if (errno != EINPROGRESS) {
-        result = -1;  // errno already set by connect().
-    } else {
-        struct pollfd pfd;
-        pfd.fd = fd;
-        pfd.events = POLLOUT;
-        pfd.revents = 0;
-        // Clamp to INT_MAX ms (~24 days) so an absurdly large timeout can't
-        // overflow the int cast (out-of-range double->int is UB); a sub-ms
-        // positive timeout rounds up to 1 rather than to poll's "block forever".
-        double ms = seconds * 1000.0;
-        int timeout_ms = ms >= 2147483647.0 ? 2147483647 : static_cast<int>(ms);
-        if (timeout_ms <= 0) {
-            timeout_ms = 1;
-        }
-        int pr;
-        do {
-            pr = poll(&pfd, 1, timeout_ms);
-        } while (pr < 0 && errno == EINTR);  // retry on signal, like CPython
-        if (pr == 0) {
-            result = -2;  // timed out
-        } else if (pr < 0) {
-            result = -1;  // errno from poll()
-        } else {
-            int so_err = 0;
-            socklen_t len = sizeof(so_err);
-            if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &so_err, &len) < 0) {
-                result = -1;
-            } else if (so_err != 0) {
-                errno = so_err;  // surface the connect failure as errno
-                result = -1;
-            } else {
-                result = 0;
-            }
-        }
-    }
-
-    // Restore the original blocking state regardless of outcome. Preserve a
-    // failure errno across the fcntl call so the caller still sees it. The
-    // restore return is intentionally not checked: re-setting flags just read
-    // from a valid fd effectively cannot fail, and surfacing it would clobber
-    // the connect errno we are carrying back.
-    int saved_errno = errno;
-    fcntl(fd, F_SETFL, flags);
-    errno = saved_errno;
-    return result;
-}
-
 // Platform-correct socket / errno constant values, sourced from the system
 // headers here so the public `socket` facade need not hardcode Linux values:
-// SOL_SOCKET (1 vs BSD 0xffff), SO_* and AF_INET6, and the errno values
-// (EAGAIN / EINPROGRESS / EPIPE / ECONN*) all differ on macOS/BSD. The errno
+// SOL_SOCKET (1 vs BSD 0xffff), SO_*, MSG_DONTWAIT and AF_INET6, and the
+// errno values (EAGAIN / EINPROGRESS / EPIPE / ECONN*) all differ on
+// macOS/BSD. The errno
 // constants key the facade's errno -> OSError-subclass mapping (BrokenPipeError
 // on EPIPE, etc.). Exposed as extern globals (read facade-side via
 // `native_global`) for the same reason as the helpers above -- keep
@@ -244,7 +173,9 @@ std::int32_t tpy_const_so_reuseaddr = SO_REUSEADDR;
 std::int32_t tpy_const_so_error = SO_ERROR;
 std::int32_t tpy_const_so_keepalive = SO_KEEPALIVE;
 std::int32_t tpy_const_af_inet6 = AF_INET6;
+std::int32_t tpy_const_msg_dontwait = MSG_DONTWAIT;
 std::int32_t tpy_const_eagain = EAGAIN;
+std::int32_t tpy_const_eintr = EINTR;
 std::int32_t tpy_const_einprogress = EINPROGRESS;
 std::int32_t tpy_const_epipe = EPIPE;
 std::int32_t tpy_const_econnreset = ECONNRESET;

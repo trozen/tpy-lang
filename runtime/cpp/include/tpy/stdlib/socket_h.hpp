@@ -151,24 +151,20 @@ int tpy_last_resolve_code();
 
 // Toggle O_NONBLOCK on `fd` via fcntl (nonblocking != 0 sets it, 0 clears
 // it). Hidden behind a helper because <fcntl.h> defines the F_* / O_*
-// macros we keep out of TPy-generated TUs. Returns 0 on success, -1 on
-// error (caller reads tpy_errno()). Backs socket.socket.setblocking, the
-// prerequisite for using a socket with the asyncio reactor.
+// macros we keep out of TPy-generated TUs. Returns the previous setting (1
+// non-blocking, 0 blocking) on success, -1 on error (caller reads
+// tpy_errno()). Backs socket.socket.setblocking, the prerequisite for using
+// a socket with the asyncio reactor, and the blocking-mode connect, which
+// restores the previous setting afterwards.
 int tpy_set_nonblocking(int fd, int nonblocking);
 
 // Set SO_RCVTIMEO + SO_SNDTIMEO on a blocking socket from `seconds`
 // (<= 0 disables). Hidden behind a helper because struct timeval's member
 // types are not portable enough to mirror as a TPy @native struct and
-// <sys/time.h> would drag macros into TPy TUs. Backs socket.socket.settimeout
-// for recv/send; a timed-out op returns EAGAIN, mapped to TimeoutError facade
-// side. Returns 0 on success, -1 on error (caller reads tpy_errno()).
+// <sys/time.h> would drag macros into TPy TUs. Only serves makefile()'s
+// reader, which reads a dup of the fd without the socket module's poll()
+// wait; a timed-out read there returns EAGAIN, mapped to TimeoutError.
+// Returns 0 on success, -1 on error (caller reads tpy_errno()).
 int tpy_set_timeout(int fd, double seconds);
-
-// connect() with a wall-clock timeout (SO_*TIMEO does not cover connect):
-// non-blocking connect + poll(POLLOUT, seconds) + SO_ERROR, restoring the
-// fd's prior O_NONBLOCK state before returning. Returns 0 on success, -2 on
-// timeout, -1 on any other error (errno set; caller reads tpy_errno()).
-int tpy_connect_timeout(int fd, const void* addr, unsigned int addrlen,
-                        double seconds);
 
 }  // extern "C"

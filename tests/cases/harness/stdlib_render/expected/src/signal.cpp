@@ -5,25 +5,30 @@ namespace tpystd::signal {
 
 
 // def raise_signal(sig: int32) -> None:
-//     """Send `sig` to the current process (CPython's `signal.raise_signal`)."""
+//     """Send `sig` to the current process (CPython's `signal.raise_signal`).
+//     On the main thread a SIGINT raises KeyboardInterrupt before this returns,
+//     as in CPython (inside `asyncio.run` it cancels the root task instead)."""
 //     posix_signal.raise_signal(sig)
+//     posix_signal.check_interrupt()
 void raise_signal(int32_t sig) {
     ::tpy_signal_raise(sig);
+    ::tpy::check_interrupt();
 }
 
 // # tpy: cpp_namespace("tpystd::signal")
-// """Minimal `signal` module -- `raise_signal` plus the SIG* numbers asyncio's
-// graceful shutdown cares about.
+// """Minimal `signal` module -- `raise_signal` plus the SIGINT / SIGTERM numbers.
 //
 // A thin pure-TPy wrapper over the `posix_signal` binding. Under CPython
 // `import signal` resolves to the real stdlib module (same `raise_signal` /
 // `SIGINT` / `SIGTERM` surface), so the same source compiles and runs both ways.
 //
-// Caveat: `raise_signal(SIGINT)` only behaves the same across runtimes *inside*
-// `asyncio.run`, where TPy installs a SIGINT handler. Outside it, TPy has no
-// SIGINT handler so the default action (terminate) fires, whereas CPython always
-// turns SIGINT into a catchable `KeyboardInterrupt`. The asyncio SIGINT handler
-// lives in the executor's signal scope, not here.
+// SIGINT behaves as in CPython: a standalone program turns it into
+// `KeyboardInterrupt` on the main thread (at the next interruptible operation,
+// immediately for `raise_signal`), and inside `asyncio.run` it cancels the root
+// task first. The handler is the runtime's process-wide SIGINT layer
+// (runtime/cpp/src/stdlib/signal_impl.cpp), installed at startup unless SIGINT
+// was inherited as ignored. There is no `signal.signal` to install handlers of
+// your own.
 // """
 //
 // from tpy.extern import native_global

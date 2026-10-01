@@ -162,28 +162,24 @@ def tpy_last_resolve_code() -> int32: ...
 
 # Toggle O_NONBLOCK on `fd` (nonblocking != 0 sets it). Backs
 # socket.socket.setblocking; required before using a socket with the
-# asyncio reactor. Returns 0 on success, -1 on error (read tpy_errno).
+# asyncio reactor. Returns the previous setting (1 non-blocking, 0
+# blocking), -1 on error (read tpy_errno).
 @native("::tpy_set_nonblocking")
 def tpy_set_nonblocking(fd: int32, nonblocking: int32) -> int32: ...
 
 
-# Set SO_RCVTIMEO + SO_SNDTIMEO from `seconds` (<= 0 disables). Backs
-# socket.socket.settimeout for recv/send. Returns 0 on success, -1 on error.
+# Set SO_RCVTIMEO + SO_SNDTIMEO from `seconds` (<= 0 disables). Only for
+# makefile()'s reader, which reads a dup of the fd without the socket
+# module's poll() wait. Returns 0 on success, -1 on error.
 @native("::tpy_set_timeout")
 def tpy_set_timeout(fd: int32, seconds: float) -> int32: ...
 
 
-# connect() with a wall-clock timeout (SO_*TIMEO does not cover connect).
-# Returns 0 on success, -2 on timeout, -1 on any other error (read tpy_errno).
-@native("::tpy_connect_timeout")
-def tpy_connect_timeout(fd: int32, addr: Ptr[SockaddrIn], addrlen: uint32,
-                        seconds: float) -> int32: ...
-
-
-# Platform-correct constant values (SOL_SOCKET / SO_* / AF_INET6 / EAGAIN /
-# EINPROGRESS differ on macOS/BSD) live as `extern int32_t tpy_const_*`
-# globals in socket_impl.cpp; the public `socket` facade reads them directly
-# via `native_global`, so no binding declaration is needed here.
+# Platform-correct constant values (SOL_SOCKET / SO_* / MSG_DONTWAIT /
+# AF_INET6 / EAGAIN / EINPROGRESS differ on macOS/BSD) live as
+# `extern int32_t tpy_const_*` globals in socket_impl.cpp; the public `socket`
+# facade reads them directly via `native_global`, so no binding declaration
+# is needed here.
 
 
 # ---------- Raw libc strerror ----------

@@ -71,6 +71,35 @@ void EpollReactor::poll(int32_t timeout_ms) {
     }
 }
 
+// def __init__(self) -> None:
+//     # Backstop for `asyncio.run`'s nested-loop check: a non-null
+//     # current_executor means a `_ExecutorScope` is already active.
+//     # Bare `Executor()` in unit tests is unaffected because those
+//     # tests never set the global.
+//     if _get_current_executor() is not None:
+//         raise RuntimeError(
+//             "Executor: another executor is already running "
+//             "(nested asyncio.run or leaked _ExecutorScope)")
+//     self.slots = []
+//     self.runnable_q = []
+//     self.timer_heap = []
+//     self.reactor = None
+//     self.shutdown_armed = False
+//     self.shutdown_fd = -1
+//     self.interrupt_count = 0
+Executor::Executor() {
+    if ((::tpystd::asyncio::_executor::_get_current_executor() != nullptr)) {
+        throw ::tpy::RuntimeError("Executor: another executor is already running (nested asyncio.run or leaked _ExecutorScope)");
+    }
+    this->slots = std::vector<Slot>{};
+    this->runnable_q = std::vector<int32_t>{};
+    this->timer_heap = std::vector<TimerEntry>{};
+    this->reactor = std::nullopt;
+    this->shutdown_armed = false;
+    this->shutdown_fd = -1;
+    this->interrupt_count = 0;
+}
+
 // # Milliseconds until the nearest timer fires (the epoll_wait timeout):
 // # -1 (block forever) when no timer is pending, 0 when one is already
 // # due, else the rounded-up delta. Capped to keep the int32 from
@@ -184,41 +213,67 @@ bool Executor::wait_for_event() {
     return true;
 }
 
+// # Counts a SIGINT delivered since the last check: the first cancels the
+// # root for graceful shutdown, a second abandons the cleanup by raising
+// # KeyboardInterrupt out of the run, like CPython's asyncio.run.
+// def _check_shutdown_signal(self, main_id: int32) -> None:
+//     if not self.shutdown_armed:
+//         return
+//     if posix_signal.async_consume() == 0:
+//         return
+//     self.interrupt_count += 1
+//     if self.interrupt_count > 1:
+//         raise KeyboardInterrupt()
+//     self._cancel_root(main_id)
+void Executor::_check_shutdown_signal(int32_t main_id) {
+    if ((!(this->shutdown_armed))) {
+        return;
+    }
+    if ((::tpy_interrupt_async_consume() == 0)) {
+        return;
+    }
+    this->interrupt_count = ::tpy::add_check<int32_t>(this->interrupt_count, 1);
+    if ((this->interrupt_count > 1)) {
+        throw ::tpy::KeyboardInterrupt{};
+    }
+    this->_cancel_root(main_id);
+}
+
 // # Returns True if a SIGINT interrupted the run (root cancelled for graceful
 // # shutdown), False on normal completion.
 // def run_until(self, main_id: int32) -> bool:
-//     interrupted = False
 //     while True:
 //         if self.slot_done(main_id):
-//             return interrupted
+//             return self.interrupt_count > 0
 //         if self.drain_runnable():
-//             interrupted = self._check_shutdown_signal(main_id, interrupted)
+//             self._check_shutdown_signal(main_id)
 //             continue
 //         if self.slot_done(main_id):
-//             return interrupted
+//             return self.interrupt_count > 0
 //         if not self.wait_for_event():
 //             raise RuntimeError(
 //                 "asyncio.run: no progress possible (a coroutine "
 //                 "returned Pending with no pending timers and no "
 //                 "registered I/O)")
-//         interrupted = self._check_shutdown_signal(main_id, interrupted)
+//         self._check_shutdown_signal(main_id)
+//         self._rearm_shutdown_fd()
 bool Executor::run_until(int32_t main_id) {
-    bool interrupted = false;
     while (true) {
         if (this->slot_done(main_id)) {
-            return interrupted;
+            return (this->interrupt_count > 0);
         }
         if (this->drain_runnable()) {
-            interrupted = this->_check_shutdown_signal(main_id, interrupted);
+            this->_check_shutdown_signal(main_id);
             continue;
         }
         if (this->slot_done(main_id)) {
-            return interrupted;
+            return (this->interrupt_count > 0);
         }
         if ((!(this->wait_for_event()))) {
             throw ::tpy::RuntimeError("asyncio.run: no progress possible (a coroutine returned Pending with no pending timers and no registered I/O)");
         }
-        interrupted = this->_check_shutdown_signal(main_id, interrupted);
+        this->_check_shutdown_signal(main_id);
+        this->_rearm_shutdown_fd();
     }
 }
 

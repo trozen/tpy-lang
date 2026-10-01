@@ -433,6 +433,44 @@ extern "C" {
 }
 ```
 
+### Ctrl-C in a host program (`--no-main`)
+
+A standalone TPy program's generated `main()` sets process-wide dispositions
+(`tpy::process_startup()`): the uncaught-exception terminate handler, SIGPIPE
+ignored, and the SIGINT layer that turns Ctrl-C into `KeyboardInterrupt` (see
+the "Ctrl-C (SIGINT) -> `KeyboardInterrupt`" entry under
+[Error Handling](LANGUAGE_FEATURES.md#error-handling)). A `--no-main` build
+(TPy code linked into a C/C++ host, or a CPython extension module) installs none
+of them: the host owns its signals. Ctrl-C then does whatever the host's
+disposition says, and `time.sleep` / `input()` / blocking sockets in TPy code
+are not interruptible. (`asyncio.run` still installs a SIGINT handler for the
+duration of the run and restores the host's afterwards.)
+
+A host that wants Ctrl-C delivered into TPy code opts in with one of two calls
+from `<tpy/core.hpp>`:
+
+```cpp
+// Arm Ctrl-C delivery; the calling thread becomes the one that receives
+// KeyboardInterrupt. Installs TPy's SIGINT handler unless the argument is
+// false. Returns false on failure.
+bool tpy::install_interrupt_handler(bool install_sigint_handler = true);
+
+// For a host that keeps its own SIGINT handler (armed above with false): call
+// this from that handler -- it is async-signal-safe -- to request delivery.
+void tpy::request_interrupt() noexcept;
+```
+
+Arming is once per process: a repeated `install_interrupt_handler()` keeps the
+first call's target thread. It can add TPy's SIGINT handler (a `true` call
+after a `false` one installs it then, replacing the host's), but never removes
+one: a `false` call after a `true` one leaves TPy's handler in place.
+
+The interrupt then surfaces as a `tpy::KeyboardInterrupt` C++ exception (a
+`std::exception`) thrown out of whichever TPy call was running on that thread,
+at its next interruptible operation. Threads spawned through `tpy.thread` block
+SIGINT so the kernel delivers it to the target thread; host-created threads
+should do the same if they may run while TPy code waits.
+
 ---
 
 ## Module directives

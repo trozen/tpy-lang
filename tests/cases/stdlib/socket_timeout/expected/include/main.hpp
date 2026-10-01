@@ -4,15 +4,75 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/tpy/thread.hpp"
 #include "tpystd/io.hpp"
 #include "tpystd/socket.hpp"
 
 namespace tpyapp::main {
 
+using ::tpystd::tpy::thread::spawn;
+
+struct Drain;
+
 inline constexpr std::string_view __name__ = "__main__";
 
+// def accept_timeout() -> None:
+void accept_timeout();
+// def accept_queued() -> None:
+void accept_queued();
+// def send_timeout() -> None:
+void send_timeout();
+// def blocking_send() -> None:
+void blocking_send();
 // def main() -> None:
 void main();
 
+// class Drain:
+struct Drain {
+    // sock: socket.socket
+    ::tpystd::socket::socket sock;
+
+    // def __init__(self, sock: Own[socket.socket]) -> None:
+    explicit Drain(::tpystd::socket::socket&& sock);
+    // non-copyable (field 'sock')
+    Drain(const Drain&) = delete;
+    Drain& operator=(const Drain&) = delete;
+    Drain(Drain&&) = default;
+    Drain& operator=(Drain&&) = default;
+
+    // def run(self) -> int32:
+    int32_t run() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Drain";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Drain& obj) {
+    ::tpy::print_object_default(os, "Drain", obj);
+    return os;
+}
+
+
+// def __init__(self, sock: Own[socket.socket]) -> None:
+//     self.sock = sock
+inline Drain::Drain(::tpystd::socket::socket&& sock) : sock(std::move(sock)) {}
+
+// def run(self) -> int32:
+//     total = 0
+//     while True:
+//         chunk = self.sock.recv(65536)
+//         if len(chunk) == 0:
+//             break
+//         total += len(chunk)
+//     return total
+inline int32_t Drain::run() const {
+    int32_t total = 0;
+    while (true) {
+        ::tpy::Bytes chunk = this->sock.recv(65536);
+        if ((::tpy::__len__(chunk) == 0)) {
+            break;
+        }
+        total = ::tpy::add_check<int32_t>(total, ::tpy::__len__(chunk));
+    }
+    return total;
+}
 void __tpy_init();
 } // namespace tpyapp::main
