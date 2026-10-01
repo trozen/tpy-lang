@@ -897,19 +897,21 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 // def __init__(self, executor: Executor) -> None:
 //     self._armed = False
 //     self._fd = -1
-//     fd = posix_signal.install_shutdown()
+//     fd = posix_signal.async_begin()
 //     if fd >= 0:
 //         executor.register_fd(fd, EPOLLIN, Waker())
 //         executor.shutdown_armed = True
+//         executor.shutdown_fd = fd
 //         self._armed = True
 //         self._fd = fd
 _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
     : _armed(false),
       _fd(-1) {
-    int32_t fd = ::tpy_signal_install_shutdown();
+    int32_t fd = ::tpy_interrupt_async_begin();
     if ((fd >= 0)) {
         executor.register_fd(fd, EPOLLIN, ::tpystd::coro::Waker());
         executor.shutdown_armed = true;
+        executor.shutdown_fd = fd;
         this->_armed = true;
         this->_fd = fd;
     }

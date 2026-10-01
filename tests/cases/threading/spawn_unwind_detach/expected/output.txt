@@ -1,0 +1,4 @@
+free: caught boom
+method: caught method boom
+del: caught del boom
+generator: caught gen boom 1

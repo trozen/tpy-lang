@@ -13,12 +13,11 @@
  * RAII cleanup runs as soon as the thread finishes. `Send` task authors may
  * rely on this (e.g. a channel `Sender.__del__` that closes + notifies).
  *
- * This is the RAW handle. The consume bookkeeping (double-join / loud
- * abort-on-unconsumed-drop) lives in the TPy `JoinHandle` wrapper (thread.py):
- * its __del__ panics on the unconsumed path. This raw handle's destructor only
- * DETACHES an un-consumed thread -- never std::terminate, never panic -- so it
- * is safe to run during the stack unwinding that the wrapper's __del__ panic
- * triggers (a member teardown that terminated would mask that diagnostic).
+ * This is the RAW handle. The consume bookkeeping (double-join raises) and the
+ * interruptible join (a Ctrl-C raises KeyboardInterrupt while it waits) live
+ * in the TPy `JoinHandle` wrapper (thread.py). Dropping an un-consumed handle
+ * DETACHES the thread, here and in the wrapper -- never std::terminate -- so a
+ * handle torn down by stack unwinding never masks the exception in flight.
  *
  * Pulled in only by modules importing `tpy.thread` (via `# tpy: include`), and
  * -lpthread is likewise import-gated, so non-threaded programs pay nothing.
@@ -26,6 +25,9 @@
 
 #pragma once
 
+#include <chrono>
+#include <csignal>
+#include <exception>
 #include <future>
 #include <thread>
 #include <type_traits>
@@ -35,15 +37,6 @@
 #include "core.hpp"
 
 namespace tpy {
-
-// Abort-on-unconsumed-drop. Called from the TPy JoinHandle's __del__ on the
-// drop-without-join/detach path: a hard panic rather than a thrown exception,
-// because a TPy __del__ lowers to a noexcept C++ destructor where `throw`
-// would -Werror=terminate. The loud diagnostic still surfaces.
-[[noreturn]] inline void join_handle_dropped_unconsumed() {
-    tpy_panic("JoinHandle dropped without join() or detach() -- "
-              "the spawned thread's result was discarded");
-}
 
 template <typename R>
 class JoinHandle {
@@ -74,6 +67,12 @@ public:
         if (thread_.joinable()) thread_.detach();
     }
 
+    // True once the task has finished; waits at most `seconds` for it.
+    bool wait_for(double seconds) {
+        return future_.wait_for(std::chrono::duration<double>(seconds))
+            == std::future_status::ready;
+    }
+
     // Block until the task finishes; return its result or rethrow its
     // exception in the joining thread.
     R join() {
@@ -88,6 +87,34 @@ public:
 private:
     std::thread thread_;
     std::future<R> future_;
+};
+
+// Keeps SIGINT blocked on the calling thread while a worker is created, so the
+// worker inherits the blocked mask and the kernel delivers every Ctrl-C to the
+// interrupt target thread. Only while the SIGINT layer is armed; the creator's
+// mask is restored on scope exit, also when thread creation throws.
+class SpawnSigintBlock {
+public:
+    SpawnSigintBlock() : active_(interrupt_armed()) {
+        if (active_) {
+            sigset_t block;
+            // Unqualified: function-like macros on macOS/BSD.
+            sigemptyset(&block);
+            sigaddset(&block, SIGINT);
+            pthread_sigmask(SIG_BLOCK, &block, &saved_);
+        }
+    }
+    ~SpawnSigintBlock() {
+        if (active_) {
+            pthread_sigmask(SIG_SETMASK, &saved_, nullptr);
+        }
+    }
+    SpawnSigintBlock(const SpawnSigintBlock&) = delete;
+    SpawnSigintBlock& operator=(const SpawnSigintBlock&) = delete;
+
+private:
+    bool active_;
+    sigset_t saved_{};
 };
 
 // Move the task onto a new OS thread and run task.run() there. R is deduced
@@ -116,6 +143,7 @@ auto spawn_thread(T task) {
             }
         });
     std::future<R> future = job.get_future();
+    SpawnSigintBlock sigint_block;
     std::thread thread(std::move(job));
     return JoinHandle<R>(std::move(thread), std::move(future));
 }

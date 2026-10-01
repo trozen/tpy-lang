@@ -1,0 +1,17 @@
+free: caught KeyboardInterrupt
+finally: cleanup ran
+finally: caught after cleanup
+with: enter,exit
+method: caught after 1 step
+generator: finally ran
+generator: caught after 1 item
+closure: caught, count=1
+exception: passed through except Exception
+reraise: handling
+reraise: caught again
+async: run returned 1
+async: caught KeyboardInterrupt after the run
+message: signal ''
+message: bare ''
+message: given 'why'
+done

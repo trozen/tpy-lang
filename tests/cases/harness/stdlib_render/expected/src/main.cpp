@@ -51,6 +51,7 @@ int32_t _pin_cycle_copy() {
 // import _datetime_cal
 // import _datetime_fmt
 // import _datetime_parse
+// import _interrupt
 // import asyncio
 // import asyncio._executor
 // import base64
@@ -143,6 +144,7 @@ void __tpy_init() {
     ::tpystd::_datetime_cal::__tpy_init();
     ::tpystd::_datetime_fmt::__tpy_init();
     ::tpystd::_datetime_parse::__tpy_init();
+    ::tpystd::_interrupt::__tpy_init();
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::asyncio::_executor::__tpy_init();
     ::tpystd::base64::__tpy_init();

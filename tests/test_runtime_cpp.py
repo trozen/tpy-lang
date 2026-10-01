@@ -40,7 +40,18 @@ _SELFCHECKS = [
      "every iterable kind loops through iter_range in the form it came in"),
     ("test_copy_iter_sources.cpp",
      "copy_iter borrows an lvalue source, owns a temporary and copies each element"),
+    ("test_interrupt_embedding.cpp",
+     "a --no-main host's Ctrl-C reaches TPy code through the embedding API"),
 ]
+
+# Runtime impls (runtime/cpp/src/) a self-check links against, and the libs
+# they need.
+_EXTRA_SOURCES = {
+    "test_interrupt_embedding.cpp": ["stdlib/signal_impl.cpp"],
+}
+_EXTRA_LIBS = {
+    "test_interrupt_embedding.cpp": ["-pthread"],
+}
 
 
 # Self-checks also built the way a release build sees the headers: their
@@ -74,7 +85,11 @@ def test_runtime_selfcheck(source, what, flags, request, tmp_path):
         *CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}", *flags,
         "-I", str(RUNTIME_DIR),
         *(["-c"] if cross else []),
-        str(src), "-o", str(binary.with_suffix(".o") if cross else binary),
+        str(src),
+        *(str(PROJECT_ROOT / "runtime" / "cpp" / "src" / extra)
+          for extra in ([] if cross else _EXTRA_SOURCES.get(source, []))),
+        *([] if cross else _EXTRA_LIBS.get(source, [])),
+        "-o", str(binary.with_suffix(".o") if cross else binary),
     ]
     build = subprocess.run(cmd, capture_output=True, text=True)
     if build.returncode != 0:

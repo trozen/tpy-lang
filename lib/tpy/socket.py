@@ -1,10 +1,12 @@
 # tpy: cpp_namespace("tpystd::socket")
 """POSIX-sockets module, CPython-compatible surface.
 
-Backed by `_bindings.posix_socket` (raw @native bindings) + three out-of-line
-helpers in runtime/cpp/src/stdlib/socket_impl.cpp for DNS resolution and
-errno access. All Python semantics (error wrapping, address-tuple packing,
-RAII of fd lifetimes) live in this file, not in C++.
+Backed by `_bindings.posix_socket` (raw @native bindings) + a few out-of-line
+helpers in runtime/cpp/src/stdlib/socket_impl.cpp for DNS resolution, errno
+access and fcntl / timeval options. All Python semantics (error wrapping,
+address-tuple packing, RAII of fd lifetimes, the blocking / timeout-mode
+retry loops and where a Ctrl-C is delivered) are TPy code here; the wait on
+an fd plus the Ctrl-C wake fd is `_interrupt`'s one runtime primitive.
 
 Phase 1 scope:
   * IPv4 TCP client/server (blocking I/O, single connection at a time).
@@ -40,16 +42,17 @@ TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
   * **Non-blocking I/O.** `setblocking(False)` is done (toggles O_NONBLOCK
     via fcntl); the EAGAIN/EWOULDBLOCK + selector handling lives in the
     asyncio epoll reactor (`get_running_loop().sock_recv`/`sock_sendall`).
-    `settimeout(sec)` is also done: recv/send use SO_RCVTIMEO/SO_SNDTIMEO
-    (the timeval is built in tpy_set_timeout, not a @native struct), and
-    connect() uses a poll-based wait (tpy_connect_timeout). A timed-out op
-    raises TimeoutError ("timed out"), matching CPython's socket.timeout.
-    Not reproduced: the process-wide `setdefaulttimeout()` /
-    `_GLOBAL_DEFAULT_TIMEOUT` sentinel (default is plain blocking), and
-    accept() under a timeout (server-side, not needed for the client).
+    `settimeout(sec)` is also done: recv/send/accept/connect wait in poll()
+    on one deadline per operation (`_interrupt`'s waits), and a timed-out
+    op raises TimeoutError ("timed out"), matching CPython's socket.timeout.
+    Blocking mode takes the same path with no deadline, so a Ctrl-C ends a
+    blocked call with KeyboardInterrupt. Not reproduced: the
+    process-wide `setdefaulttimeout()` / `_GLOBAL_DEFAULT_TIMEOUT` sentinel
+    (default is plain blocking).
 
-  * **setsockopt with struct values.** SO_RCVTIMEO / SO_SNDTIMEO are handled
-    via the dedicated tpy_set_timeout helper (timeval built C-side). SO_LINGER
+  * **setsockopt with struct values.** SO_RCVTIMEO / SO_SNDTIMEO are set by
+    settimeout() through the tpy_set_timeout helper (timeval built C-side),
+    for makefile()'s reader only. SO_LINGER
     (struct linger) is still int-only -- add an @native(binding="C") struct +
     another setsockopt overload when needed.
 
@@ -110,6 +113,7 @@ from tpy.unsafe import (
 
 from _bindings import posix_socket
 from _bindings.posix_socket import SockaddrIn
+import _interrupt
 
 import os
 from io import FileIO, BufferedReader, DEFAULT_BUFFER_SIZE
@@ -145,6 +149,9 @@ SHUT_RD:   Final[int32] = 0
 SHUT_WR:   Final[int32] = 1
 SHUT_RDWR: Final[int32] = 2
 
+# recv/send flag: this call only, don't block (Linux 0x40, macOS/BSD 0x80).
+_MSG_DONTWAIT: Final[int32] = native_global("tpy_const_msg_dontwait", binding="C")
+
 
 # ---------- SocketError ----------
 
@@ -178,6 +185,7 @@ class gaierror(OSError):
 # EWOULDBLOCK on both Linux and macOS; EINPROGRESS is a non-blocking connect's
 # "in progress" result.
 _EAGAIN: Final[int32] = native_global("tpy_const_eagain", binding="C")
+_EINTR: Final[int32] = native_global("tpy_const_eintr", binding="C")
 _EINPROGRESS: Final[int32] = native_global("tpy_const_einprogress", binding="C")
 # Connection-error errno values, also platform-divergent (see socket_impl.cpp).
 _EPIPE: Final[int32] = native_global("tpy_const_epipe", binding="C")
@@ -300,9 +308,11 @@ class socket:
     fd: int32 = int32(-1)
 
     # Socket mode, mirroring CPython's three states: -1.0 = blocking (None
-    # timeout), 0.0 = non-blocking, > 0 = timeout mode. recv/send read this to
-    # decide whether an EAGAIN is a timeout (TimeoutError) or a non-blocking
-    # "would block" (BlockingIOError, which the asyncio reactor parks on).
+    # timeout), 0.0 = non-blocking, > 0 = timeout mode. Blocking and timeout
+    # mode try each call without blocking and on a would-block wait in poll()
+    # (on a deadline this many seconds out when > 0), a wait a Ctrl-C ends;
+    # non-blocking mode calls libc directly and reports a would-block as
+    # BlockingIOError, which the asyncio reactor parks on.
     _timeout: float = -1.0
 
     def __init__(self, family: int32, type_: int32, proto: int32 = int32(0),
@@ -336,14 +346,24 @@ class socket:
         if posix_socket.shutdown(self.fd, how) < int32(0):
             _raise_errno()
 
+    def _check_wait(self, rc: int32) -> None:
+        """Raise unless an `_interrupt` wait reported the fd READY: TimeoutError
+        once the timeout-mode deadline passed, else the poll()'s errno."""
+        if rc == _interrupt.TIMED_OUT:
+            raise TimeoutError("timed out")
+        if rc != _interrupt.READY:
+            self._raise_io()
+
     def _raise_io(self) -> None:
-        """Like the module-level `_raise_errno`, but timeout-aware: in timeout
-        mode an EAGAIN/EWOULDBLOCK means the SO_*TIMEO window elapsed, so raise
-        TimeoutError("timed out") to match CPython's socket.timeout. In
-        non-blocking mode the same errno is a genuine would-block ->
-        BlockingIOError (the asyncio reactor parks on it). Other errno ->
-        SocketError."""
-        err = posix_socket.tpy_errno()
+        """Like the module-level `_raise_errno`, but mode-aware: in non-blocking
+        mode an EAGAIN/EWOULDBLOCK is a genuine would-block -> BlockingIOError
+        (the asyncio reactor parks on it); in timeout mode it can only be a
+        wait that ran out -> TimeoutError("timed out"), CPython's
+        socket.timeout. Other errno -> SocketError."""
+        self._raise_err(posix_socket.tpy_errno())
+
+    def _raise_err(self, err: int32) -> None:
+        """`_raise_io` for an error code the caller already has."""
         msg = _strerror(err)
         if err == _EAGAIN or err == _EINPROGRESS:
             if self._timeout > 0.0:
@@ -373,9 +393,11 @@ class socket:
         """Set the socket's timeout mode (CPython parity):
           * None  -> blocking forever (clears any timeout).
           * 0.0   -> non-blocking (same as setblocking(False)).
-          * > 0   -> recv/send/connect raise TimeoutError after `value` secs.
-        recv/send use SO_RCVTIMEO/SO_SNDTIMEO; connect uses a poll-based wait
-        (see connect()). A negative value is a ValueError."""
+          * > 0   -> recv/send/accept/connect raise TimeoutError after
+                     `value` secs.
+        The operations wait in poll() on one deadline per call;
+        SO_RCVTIMEO/SO_SNDTIMEO are set too, for makefile()'s reader over a
+        dup of the fd. A negative value is a ValueError."""
         if value is None:
             self._timeout = -1.0
             if posix_socket.tpy_set_nonblocking(self.fd, int32(0)) < int32(0):
@@ -400,8 +422,8 @@ class socket:
                 _raise_errno()
             return
         self._timeout = value
-        # Timeout mode stays blocking at the OS level (SO_*TIMEO enforce the
-        # window); getblocking() therefore reports True, as in CPython.
+        # Timeout mode stays blocking at the OS level; getblocking() therefore
+        # reports True, as in CPython.
         if posix_socket.tpy_set_nonblocking(self.fd, int32(0)) < int32(0):
             _raise_errno()
         if posix_socket.tpy_set_timeout(self.fd, value) < int32(0):
@@ -423,18 +445,45 @@ class socket:
     def connect(self, address: tuple[str, int32]) -> None:
         host, port = address
         addr = _build_sockaddr_in(host, port)
-        # SO_*TIMEO does not cover connect(), so timeout mode routes through the
-        # poll-based helper (non-blocking connect + poll + SO_ERROR); -2 means
-        # the wait elapsed. Blocking / non-blocking modes use the plain connect.
-        if self._timeout > 0.0:
-            rc = posix_socket.tpy_connect_timeout(self.fd, take_ptr(addr),
-                                                  _SOCKADDR_IN_LEN, self._timeout)
-            if rc == int32(-2):
-                raise TimeoutError("timed out")
-            if rc != int32(0):
-                self._raise_io()
+        # Non-blocking mode (asyncio) connects directly and reports
+        # EINPROGRESS as BlockingIOError.
+        if self._timeout != 0.0:
+            self._connect_waiting(take_ptr(addr))
         elif posix_socket.connect(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < int32(0):
             self._raise_io()
+
+    # Blocking and timeout mode: a non-blocking connect, a wait for
+    # writability and SO_ERROR for the outcome. connect() is never re-issued:
+    # after EINPROGRESS the kernel completes it on its own, and a second call
+    # would only report EALREADY / EISCONN. O_NONBLOCK is set for the call
+    # only (connect has no per-call don't-wait flag); flipping it is safe on a
+    # socket that is not yet connected, as no other thread does I/O on it.
+    def _connect_waiting(self, addr: Ptr[SockaddrIn]) -> None:
+        was_nonblocking = posix_socket.tpy_set_nonblocking(self.fd, 1)
+        if was_nonblocking < 0:
+            self._raise_io()
+        try:
+            if posix_socket.connect(self.fd, addr, _SOCKADDR_IN_LEN) < 0:
+                err = posix_socket.tpy_errno()
+                # EINTR: the connect goes on in the background, as after
+                # EINPROGRESS.
+                if err != _EINPROGRESS and err != _EINTR:
+                    self._raise_err(err)
+                self._check_wait(_interrupt.wait_writable(
+                    self.fd, _interrupt.deadline_after(self._timeout)))
+                so_err: int32 = 0
+                optlen: uint32 = 4
+                if posix_socket.getsockopt(self.fd, SOL_SOCKET, SO_ERROR,
+                                           take_ptr(so_err),
+                                           take_ptr(optlen)) < 0:
+                    self._raise_io()
+                if so_err != 0:
+                    self._raise_err(so_err)
+        finally:
+            if was_nonblocking == 0:
+                posix_socket.tpy_set_nonblocking(self.fd, 0)
+        # Connected: a Ctrl-C that arrived meanwhile is delivered now.
+        _interrupt.check()
 
     # Literal 128 = SOMAXCONN; named-Final-as-default rejected by sema.
     def listen(self, backlog: int32 = int32(128)) -> None:
@@ -448,12 +497,31 @@ class socket:
     # Peer resolution (`_ipv4_to_str` -> `inet_ntop`) can raise while `new_fd`
     # is still naked (not yet owned by a `socket`), so close it on failure to
     # avoid leaking the accepted descriptor.
+    #
+    # Blocking and timeout mode wait for a pending connection, then call a
+    # plain accept(): the listener's O_NONBLOCK is shared with every thread
+    # accepting on it and with setblocking(), so it is never flipped for the
+    # call (the multi-acceptor race this leaves is TODO.md's settimeout item).
     def _accept_fd(self) -> tuple[int32, tuple[str, int32]]:
         addr = SockaddrIn(0, 0, 0)
         addrlen: uint32 = _SOCKADDR_IN_LEN
-        new_fd = posix_socket.accept(self.fd, take_ptr(addr), take_ptr(addrlen))
-        if new_fd < int32(0):
-            _raise_errno()
+        new_fd: int32 = -1
+        if self._timeout != 0.0:
+            deadline = _interrupt.deadline_after(self._timeout)
+            while new_fd < 0:
+                self._check_wait(_interrupt.wait_readable(self.fd, deadline))
+                addrlen = _SOCKADDR_IN_LEN
+                new_fd = posix_socket.accept(self.fd, take_ptr(addr), take_ptr(addrlen))
+                if new_fd < 0:
+                    err = posix_socket.tpy_errno()
+                    # EAGAIN (a listener that is O_NONBLOCK after all): another
+                    # acceptor took the connection first; wait for the next.
+                    if err != _EINTR and err != _EAGAIN:
+                        self._raise_err(err)
+        else:
+            new_fd = posix_socket.accept(self.fd, take_ptr(addr), take_ptr(addrlen))
+            if new_fd < int32(0):
+                _raise_errno()
         try:
             peer = (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
                     int32.trunc(posix_socket.ntohs(addr.sin_port)))
@@ -491,9 +559,12 @@ class socket:
     # Underscore-private: not part of CPython's socket surface.
     def _send_from(self, data: bytes, offset: uint64) -> int32:
         data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
-        n = posix_socket.send(self.fd,
-                              unsafe_ptr_add(data_ptr, int64.trunc(offset)),
-                              uint64(len(data)) - offset, int32(0))
+        start = unsafe_ptr_add(data_ptr, int64.trunc(offset))
+        if self._timeout != 0.0:
+            return int32.trunc(self._send_waiting(start,
+                                                  uint64(len(data)) - offset))
+        n = posix_socket.send(self.fd, start, uint64(len(data)) - offset,
+                              int32(0))
         if n < int64(0):
             self._raise_io()
         return int32.trunc(n)
@@ -504,16 +575,65 @@ class socket:
         sent: uint64 = 0
         data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
         while sent < total:
-            chunk = posix_socket.send(self.fd,
-                              unsafe_ptr_add(data_ptr, int64.trunc(sent)),
-                              total - sent, int32(0))
-            if chunk < int64(0):
-                self._raise_io()
+            start = unsafe_ptr_add(data_ptr, int64.trunc(sent))
+            chunk: int64 = 0
+            if self._timeout != 0.0:
+                chunk = self._send_waiting(start, total - sent)
+            else:
+                chunk = posix_socket.send(self.fd, start, total - sent, int32(0))
+                if chunk < 0:
+                    self._raise_io()
             if chunk == int64(0):
                 # A zero-byte send means the peer went away; CPython's next
                 # send() would fail with EPIPE, so surface the same class.
                 raise BrokenPipeError(_EPIPE, _strerror(_EPIPE))
             sent = sent + uint64(chunk)
+
+    # Blocking and timeout mode: sends everything, as a blocking send() on a
+    # stream socket does, unless the timeout expires after part of the data
+    # went out (then the count sent so far, like SO_SNDTIMEO) or a Ctrl-C
+    # arrives (then the count is lost: BUGS.md#interrupted-send-loses-sent-count).
+    def _send_waiting(self, data: Ptr[readonly[uint8]], size: uint64) -> int64:
+        deadline = _interrupt.deadline_after(self._timeout)
+        sent: uint64 = 0
+        while True:
+            n = posix_socket.send(self.fd, unsafe_ptr_add(data, int64.trunc(sent)),
+                                  size - sent, _MSG_DONTWAIT)
+            if n >= 0:
+                sent += uint64.trunc(n)
+                if sent == size or n == 0:
+                    # The data is committed; a Ctrl-C that arrived meanwhile
+                    # is delivered now.
+                    _interrupt.check()
+                    return int64.trunc(sent)
+                continue
+            err = posix_socket.tpy_errno()
+            if err == _EINTR:
+                continue
+            if err != _EAGAIN:
+                if sent > 0:
+                    return int64.trunc(sent)
+                self._raise_err(err)
+            rc = _interrupt.wait_writable(self.fd, deadline)
+            if rc == _interrupt.TIMED_OUT and sent > 0:
+                return int64.trunc(sent)
+            self._check_wait(rc)
+
+    # Blocking and timeout mode: a Ctrl-C already pending is delivered before
+    # the call, so no received data is dropped for it.
+    def _recv_waiting(self, buf: Ptr[uint8], size: uint64) -> int64:
+        _interrupt.check()
+        deadline = _interrupt.deadline_after(self._timeout)
+        while True:
+            n = posix_socket.recv(self.fd, buf, size, _MSG_DONTWAIT)
+            if n >= 0:
+                return n
+            err = posix_socket.tpy_errno()
+            if err == _EINTR:
+                continue
+            if err != _EAGAIN:
+                self._raise_err(err)
+            self._check_wait(_interrupt.wait_readable(self.fd, deadline))
 
     def recv(self, bufsize: int32) -> bytes:
         """Receive up to `bufsize` bytes. Empty bytes means peer closed."""
@@ -524,9 +644,13 @@ class socket:
         if bufsize == int32(0):
             return bytes()
         buf = UninitHeapStorage[uint8](uint32.trunc(bufsize))
-        n = posix_socket.recv(self.fd, buf.ptr(), uint64(bufsize), int32(0))
-        if n < int64(0):
-            self._raise_io()
+        n: int64 = 0
+        if self._timeout != 0.0:
+            n = self._recv_waiting(buf.ptr(), uint64(bufsize))
+        else:
+            n = posix_socket.recv(self.fd, buf.ptr(), uint64(bufsize), int32(0))
+            if n < 0:
+                self._raise_io()
         return unsafe_bytes_from_buf(buf.ptr(), uint64(n))
 
     def setsockopt_int(self, level: int32, optname: int32, value: int32) -> None:

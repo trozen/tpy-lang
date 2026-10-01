@@ -34,11 +34,24 @@ inline double time_time() {
 /**
  * time_sleep - Suspend execution for the given number of seconds.
  *
- * Equivalent to Python's time.sleep().
+ * Equivalent to Python's time.sleep(). With the SIGINT layer armed a Ctrl-C
+ * ends the sleep early with KeyboardInterrupt (on the interrupt target thread).
  */
 inline void time_sleep(double seconds) {
     if (seconds < 0) {
         raise_value_error("sleep length must be non-negative");
+    }
+    if (const auto* ops = interrupt_detail::ops.load(std::memory_order_acquire)) {
+        if (!(seconds > 0.0)) {
+            // No wait to cut short, but still a check point: `time.sleep(0)`
+            // is how a busy loop stays interruptible.
+            check_interrupt();
+            return;
+        }
+        if (ops->sleep(seconds) == interrupt_detail::kInterrupted) {
+            throw KeyboardInterrupt();
+        }
+        return;
     }
     auto duration = std::chrono::duration<double>(seconds);
     std::this_thread::sleep_for(duration);
@@ -99,12 +112,18 @@ class StdStream {
 public:
     explicit StdStream(std::ostream& s) : sink_(&s) {}
 
+    // A write can block on a full pipe; a Ctrl-C that arrived meanwhile is
+    // delivered once it returns.
     int32_t write(std::string_view text) {
         sink_->write(text.data(), static_cast<std::streamsize>(text.size()));
+        check_interrupt();
         return static_cast<int32_t>(text.size());
     }
 
-    void flush() { sink_->flush(); }
+    void flush() {
+        sink_->flush();
+        check_interrupt();
+    }
 
     std::ostream& sink() const { return *sink_; }
 

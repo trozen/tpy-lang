@@ -4,6 +4,7 @@
 #include <tpy/tpy.hpp>
 #include <tpy/threading.hpp>
 
+#include <tpy/stdlib/signal_h.hpp>
 
 namespace tpystd::tpy::thread {
 
@@ -55,11 +56,11 @@ struct JoinHandle {
 
     // def __del__(self) -> None:
     //     if not self._consumed:
-    //         _abort_dropped_unconsumed()
+    //         self._raw.detach()
     ~JoinHandle() {
         if (!this->__tpy_owned_) return;
         if ((!(this->_consumed))) {
-            ::tpy::join_handle_dropped_unconsumed();
+            this->_raw.detach();
         }
     }
 
@@ -69,13 +70,25 @@ struct JoinHandle {
     // def join(self) -> Own[R]:
     //     if self._consumed:
     //         raise RuntimeError("JoinHandle.join(): handle already consumed")
-    //     # Set before the call so a re-raised task exception does not re-trip
-    //     # the abort-on-drop check when this handle unwinds.
+    //     if posix_signal.interrupt_armed():
+    //         # A thread's end is not an fd to wait on together with the Ctrl-C
+    //         # wake fd, so the wait goes in slices. A KeyboardInterrupt out of
+    //         # it leaves the handle unconsumed.
+    //         while not self._raw.wait_for(0.1):
+    //             posix_signal.check_interrupt()
+    //         # A Ctrl-C during the last slice is still this join's to deliver.
+    //         posix_signal.check_interrupt()
     //     self._consumed = True
     //     return self._raw.join()
     ::tpy::own_return_t<R> join() {
         if (this->_consumed) {
             throw ::tpy::RuntimeError("JoinHandle.join(): handle already consumed");
+        }
+        if (::tpy::interrupt_armed()) {
+            while ((!(this->_raw.wait_for(0.1)))) {
+                ::tpy::check_interrupt();
+            }
+            ::tpy::check_interrupt();
         }
         this->_consumed = true;
         return this->_raw.join();

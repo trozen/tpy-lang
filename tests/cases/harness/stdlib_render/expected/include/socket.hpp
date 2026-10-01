@@ -11,6 +11,7 @@
 #include "tpystd/tpy/thread.hpp"
 #include "tpystd/tpy/version.hpp"
 #include <tpy/stdlib/socket_h.hpp>
+#include "tpystd/_interrupt/_interrupt.hpp"
 #include "tpystd/io.hpp"
 #include "tpystd/os.hpp"
 
@@ -19,7 +20,9 @@ extern "C" int32_t tpy_const_sol_socket;
 extern "C" int32_t tpy_const_so_reuseaddr;
 extern "C" int32_t tpy_const_so_keepalive;
 extern "C" int32_t tpy_const_so_error;
+extern "C" int32_t tpy_const_msg_dontwait;
 extern "C" int32_t tpy_const_eagain;
+extern "C" int32_t tpy_const_eintr;
 extern "C" int32_t tpy_const_einprogress;
 extern "C" int32_t tpy_const_epipe;
 extern "C" int32_t tpy_const_econnreset;
@@ -152,8 +155,14 @@ struct socket {
     // def shutdown(self, how: int32) -> None:
     void shutdown(int32_t how) const;
 
+    // def _check_wait(self, rc: int32) -> None:
+    void _check_wait(int32_t rc) const;
+
     // def _raise_io(self) -> None:
     void _raise_io() const;
+
+    // def _raise_err(self, err: int32) -> None:
+    void _raise_err(int32_t err) const;
 
     // def setblocking(self, flag: bool) -> None:
     void setblocking(bool flag);
@@ -172,6 +181,9 @@ struct socket {
 
     // def connect(self, address: tuple[str, int32]) -> None:
     void connect(const std::tuple<std::string, int32_t>& address) const;
+
+    // def _connect_waiting(self, addr: Ptr[SockaddrIn]) -> None:
+    void _connect_waiting(::sockaddr_in* addr) const;
 
     // def listen(self, backlog: int32 = int32(128)) -> None:
     void listen(int32_t backlog = 128) const;
@@ -193,6 +205,12 @@ struct socket {
 
     // def sendall(self, data: bytes) -> None:
     void sendall(::tpy::BytesView data) const;
+
+    // def _send_waiting(self, data: Ptr[readonly[uint8]], size: uint64) -> int64:
+    int64_t _send_waiting(const uint8_t* data, uint64_t size) const;
+
+    // def _recv_waiting(self, buf: Ptr[uint8], size: uint64) -> int64:
+    int64_t _recv_waiting(uint8_t* buf, uint64_t size) const;
 
     // def recv(self, bufsize: int32) -> bytes:
     ::tpy::Bytes recv(int32_t bufsize) const;
@@ -313,6 +331,56 @@ inline void socket::shutdown(int32_t how) const {
     }
 }
 
+// def _check_wait(self, rc: int32) -> None:
+//     """Raise unless an `_interrupt` wait reported the fd READY: TimeoutError
+//     once the timeout-mode deadline passed, else the poll()'s errno."""
+//     if rc == _interrupt.TIMED_OUT:
+//         raise TimeoutError("timed out")
+//     if rc != _interrupt.READY:
+//         self._raise_io()
+inline void socket::_check_wait(int32_t rc) const {
+    if ((rc == ::tpystd::_interrupt::TIMED_OUT)) {
+        throw ::tpy::TimeoutError("timed out");
+    }
+    if ((rc != ::tpystd::_interrupt::READY)) {
+        this->_raise_io();
+    }
+}
+
+// def _raise_io(self) -> None:
+//     """Like the module-level `_raise_errno`, but mode-aware: in non-blocking
+//     mode an EAGAIN/EWOULDBLOCK is a genuine would-block -> BlockingIOError
+//     (the asyncio reactor parks on it); in timeout mode it can only be a
+//     wait that ran out -> TimeoutError("timed out"), CPython's
+//     socket.timeout. Other errno -> SocketError."""
+//     self._raise_err(posix_socket.tpy_errno())
+inline void socket::_raise_io() const {
+    this->_raise_err(::tpy_errno());
+}
+
+// def _raise_err(self, err: int32) -> None:
+//     """`_raise_io` for an error code the caller already has."""
+//     msg = _strerror(err)
+//     if err == _EAGAIN or err == _EINPROGRESS:
+//         if self._timeout > 0.0:
+//             # CPython's socket.timeout carries no errno (it is None
+//             # there); leave the unset 0 / "" defaults.
+//             raise TimeoutError("timed out")
+//         raise BlockingIOError(err, msg)
+//     _maybe_raise_connection_error(err, msg)
+//     raise SocketError(err, msg)
+inline void socket::_raise_err(int32_t err) const {
+    std::string msg = ::tpystd::socket::_strerror(err);
+    if (((err == ::tpy_const_eagain) || (err == ::tpy_const_einprogress))) {
+        if ((this->_timeout > 0.0)) {
+            throw ::tpy::TimeoutError("timed out");
+        }
+        throw ::tpy::BlockingIOError(err, msg);
+    }
+    ::tpystd::socket::_maybe_raise_connection_error(err, msg);
+    throw SocketError(err, msg);
+}
+
 // def setblocking(self, flag: bool) -> None:
 //     """Set blocking (True) or non-blocking (False) mode, like CPython.
 //     Equivalent to settimeout(None) / settimeout(0.0) respectively.
@@ -366,6 +434,27 @@ inline void socket::bind(const std::tuple<std::string, int32_t>& address) const 
     }
 }
 
+// def connect(self, address: tuple[str, int32]) -> None:
+//     host, port = address
+//     addr = _build_sockaddr_in(host, port)
+//     # Non-blocking mode (asyncio) connects directly and reports
+//     # EINPROGRESS as BlockingIOError.
+//     if self._timeout != 0.0:
+//         self._connect_waiting(take_ptr(addr))
+//     elif posix_socket.connect(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < int32(0):
+//         self._raise_io()
+inline void socket::connect(const std::tuple<std::string, int32_t>& address) const {
+    const auto& __tup_1 = address;
+    std::string_view host = std::get<0>(__tup_1);
+    int32_t port = std::get<1>(__tup_1);
+    ::sockaddr_in addr = ::tpystd::socket::_build_sockaddr_in(host, port);
+    if ((this->_timeout != 0.0)) {
+        this->_connect_waiting(&addr);
+    } else if ((::connect(this->fd, &addr, _SOCKADDR_IN_LEN) < 0)) {
+        this->_raise_io();
+    }
+}
+
 // # Literal 128 = SOMAXCONN; named-Final-as-default rejected by sema.
 // def listen(self, backlog: int32 = int32(128)) -> None:
 //     if posix_socket.listen(self.fd, backlog) < int32(0):
@@ -414,27 +503,6 @@ inline std::tuple<socket, std::tuple<std::string, int32_t>> socket::_accept_nonb
 //     return self._send_from(data, 0)
 inline int32_t socket::send(::tpy::BytesView data) const {
     return this->_send_from(data, 0);
-}
-
-// # Send the suffix `data[offset:]` without materializing it -- the async
-// # `_SockSendAll` advances `offset` across parks, so slicing a fresh
-// # `bytes` per park would be O(n^2) (CPython tracks a memoryview offset).
-// # Underscore-private: not part of CPython's socket surface.
-// def _send_from(self, data: bytes, offset: uint64) -> int32:
-//     data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
-//     n = posix_socket.send(self.fd,
-//                           unsafe_ptr_add(data_ptr, int64.trunc(offset)),
-//                           uint64(len(data)) - offset, int32(0))
-//     if n < int64(0):
-//         self._raise_io()
-//     return int32.trunc(n)
-inline int32_t socket::_send_from(::tpy::BytesView data, uint64_t offset) const {
-    const uint8_t* data_ptr = data.data();
-    int64_t n = ::send(this->fd, (data_ptr + static_cast<int64_t>(offset)), (::tpy::sub_check<uint64_t>(::tpy::int_cast_check<uint64_t>(::tpy::__len__(data)), offset)), 0);
-    if ((n < 0)) {
-        this->_raise_io();
-    }
-    return static_cast<int32_t>(n);
 }
 
 // def setsockopt_int(self, level: int32, optname: int32, value: int32) -> None:

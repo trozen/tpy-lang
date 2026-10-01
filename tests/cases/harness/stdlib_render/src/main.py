@@ -16,6 +16,7 @@ import _bindings.zlib
 import _datetime_cal
 import _datetime_fmt
 import _datetime_parse
+import _interrupt
 import asyncio
 import asyncio._executor
 import base64

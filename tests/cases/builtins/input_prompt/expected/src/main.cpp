@@ -13,7 +13,8 @@ namespace tpyapp::main {
 //     plain = input()  # tpyc: ok
 //     print("s2:", plain)
 //
-//     # the prompt may be any str, including a String variable
+//     # the prompt may be any str, including a String variable; the fixture's
+//     # last line has no trailing newline and is returned all the same
 //     where = String("s3 where: ")
 //     place = input(where)  # tpyc: ok
 //     print("s3:", place)

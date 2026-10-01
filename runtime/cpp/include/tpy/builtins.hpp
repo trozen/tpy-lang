@@ -26,9 +26,27 @@ namespace tpy {
 // -- stdin helper --
 
 // Read a line from stdin (newline stripped). Raises EOFError on EOF,
-// like CPython's `input()`. Powers the `input()` builtin.
+// like CPython's `input()`. Powers the `input()` builtin. With the SIGINT
+// layer armed the read goes through it, so a Ctrl-C while waiting for input
+// raises KeyboardInterrupt and, as in CPython, discards the part of the line
+// typed before it.
 inline std::string input_line() {
     std::string line;
+    if (const auto* ops = interrupt_detail::ops.load(std::memory_order_acquire)) {
+        // std::getline would flush the tied std::cout first; keep doing so,
+        // or a prompt printed without input()'s own prompt stays buffered.
+        if (std::ostream* tied = std::cin.tie()) {
+            tied->flush();
+        }
+        int r = ops->read_line(line);
+        if (r == interrupt_detail::kInterrupted) {
+            throw KeyboardInterrupt();
+        }
+        if (r == 0) {
+            raise_eof_error("EOF when reading a line");
+        }
+        return line;
+    }
     if (!std::getline(std::cin, line)) {
         raise_eof_error("EOF when reading a line");
     }
@@ -37,7 +55,10 @@ inline std::string input_line() {
 
 // input(prompt): CPython writes the prompt to stdout with no trailing
 // newline and flushes it, so the prompt is visible before the read blocks.
+// A Ctrl-C already pending is taken first: CPython raises it before input()
+// runs, so no prompt appears.
 inline std::string input_line(std::string_view prompt) {
+    check_interrupt();
     std::cout << prompt << std::flush;
     return input_line();
 }

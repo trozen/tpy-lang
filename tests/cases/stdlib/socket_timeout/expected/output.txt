@@ -2,3 +2,8 @@ recv ok: b'hi'
 recv timeout: timed out
 as oserror: timed out
 makefile timeout: timed out
+accept: timeout: timed out
+accept queued: peer matches: True
+send: timeout: timed out
+blocking send: all sent: True
+blocking send: peer got: 2000000

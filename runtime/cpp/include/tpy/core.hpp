@@ -27,6 +27,7 @@
 #include <utility>
 #include <variant>
 
+#include "interrupt.hpp"
 #include "throwable.hpp"
 #include "type_traits.hpp"
 
@@ -182,13 +183,50 @@ struct GeneratorExit : BaseException {
     TPY_THROWABLE_VIRTUALS(GeneratorExit)
 };
 // Inherits BaseException (not Exception) like CPython, so `except Exception:`
-// does not swallow a Ctrl-C. Surfaced on an uncaught SIGINT graceful shutdown
-// (asyncio.run).
+// does not swallow a Ctrl-C. Raised on the interrupt target thread at the next
+// interruptible operation after a SIGINT (check_interrupt() below), and by
+// asyncio.run after a SIGINT graceful shutdown.
 struct KeyboardInterrupt : BaseException {
-    KeyboardInterrupt() : BaseException("KeyboardInterrupt") {}
     using BaseException::BaseException;
     TPY_THROWABLE_VIRTUALS(KeyboardInterrupt)
 };
+
+// True while the process-wide SIGINT layer is armed (see interrupt.hpp).
+inline bool interrupt_armed() noexcept {
+    return interrupt_detail::ops.load(std::memory_order_acquire) != nullptr;
+}
+
+[[gnu::cold, gnu::noinline]] inline void deliver_interrupt() {
+    const interrupt_detail::Ops* ops =
+        interrupt_detail::ops.load(std::memory_order_acquire);
+    if (ops != nullptr && ops->take() != 0) {
+        throw KeyboardInterrupt();
+    }
+}
+
+// Raise KeyboardInterrupt if a Ctrl-C is pending for this thread. Called after
+// operations that cannot wait on the wake fd themselves (stdout / file I/O,
+// raise_signal); one relaxed load when nothing is pending.
+inline void check_interrupt() {
+    if (interrupt_detail::pending.load(std::memory_order_relaxed) != 0) [[unlikely]] {
+        deliver_interrupt();
+    }
+}
+
+// Embedding API for --no-main builds, whose host owns signal dispositions.
+// install_interrupt_handler() arms the SIGINT layer with the calling thread as
+// the interrupt target (what generated main() does for a standalone program)
+// and installs its SIGINT handler; returns false on failure. A host that keeps
+// its own SIGINT handler passes false and calls request_interrupt() from that
+// handler (async-signal-safe). Either way the Ctrl-C reaches the host as a
+// tpy::KeyboardInterrupt thrown out of the TPy call that was running.
+inline bool install_interrupt_handler(bool install_sigint_handler = true) {
+    return tpy_interrupt_install(install_sigint_handler ? 1 : 0) == 0;
+}
+
+inline void request_interrupt() noexcept {
+    tpy_request_interrupt();
+}
 
 // Forward decl: raise_fixedint_overflow (below) calls tpy_panic, whose
 // definition lives later in this header.
@@ -341,6 +379,12 @@ TPY_DEFINE_RAISE_HELPER(raise_eof_error,             EOFError)
 [[noreturn]] inline void raise_mapped_os_error(int32_t err, std::string_view strerror_arg,
                                                std::string_view filename_arg = "",
                                                std::string_view filename2_arg = "") {
+    // A syscall only fails with EINTR when a signal handler ran without
+    // SA_RESTART semantics for it; when that was a Ctrl-C, CPython surfaces
+    // KeyboardInterrupt rather than the OSError.
+    if (err == EINTR) {
+        check_interrupt();
+    }
     throw_os_error_as(os_error_subclass_for(err), err, strerror_arg,
                       filename_arg, filename2_arg);
 }
@@ -461,6 +505,22 @@ inline std::string demangle_type_name(const char* mangled) {
         try {
             std::rethrow_exception(ex);
         } catch (const std::exception& e) {
+            // CPython reports an uncaught KeyboardInterrupt tersely and then
+            // dies by SIGINT itself, so a parent shell sees the 130 / signal
+            // status an unhandled Ctrl-C produces rather than a crash. Only
+            // the exact type: a subclass is reported like any exception, as
+            // CPython's exit-by-SIGINT also tests the exact type.
+            if (typeid(e) == typeid(KeyboardInterrupt)) {
+                const auto& ki = static_cast<const KeyboardInterrupt&>(e);
+                std::fflush(stdout);
+                std::fputs("KeyboardInterrupt", stderr);
+                if (!ki.message.empty()) {
+                    std::fputs(": ", stderr);
+                    std::fwrite(ki.message.data(), 1, ki.message.size(), stderr);
+                }
+                std::fputc('\n', stderr);
+                tpy_interrupt_exit_by_sigint();
+            }
             type_name = demangle_type_name(typeid(e).name());
             what_msg = e.what();
         } catch (...) {
@@ -523,6 +583,9 @@ inline void process_startup() {
     // hung-up peer then returns EPIPE (a catchable OSError) instead of the
     // kernel's default SIGPIPE termination.
     std::signal(SIGPIPE, SIG_IGN);
+    // Ctrl-C -> KeyboardInterrupt on this (the main) thread, unless SIGINT was
+    // inherited as ignored, which CPython also leaves alone.
+    tpy_interrupt_process_startup();
 }
 
 /**

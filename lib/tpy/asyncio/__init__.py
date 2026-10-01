@@ -96,15 +96,18 @@ EPOLLOUT: Final[uint32] = uint32(0x004)
 
 @nocopy
 class _SignalScope:
-    """RAII guard arming SIGINT graceful shutdown for the duration of
-    `asyncio.run` (SIGINT only, matching CPython; SIGTERM keeps its default).
+    """RAII guard giving `asyncio.run` Ctrl-C delivery for its duration
+    (SIGINT only, matching CPython; SIGTERM keeps its default).
 
-    Installs the C signal layer and registers its wakeup eventfd in the
-    executor's epoll set (no-op waker) so a signal wakes a blocked `epoll_wait`;
-    `__del__` unregisters the fd then restores the prior disposition. A failed
-    install leaves the run unarmed. Note: the registered eventfd keeps the
-    reactor fd count >= 1, so the "no progress possible" deadlock guard stays
-    quiet while armed (CPython has no such guard)."""
+    Takes delivery over from the process-wide SIGINT layer (synchronous check
+    points stop raising KeyboardInterrupt while the run lasts) and registers
+    the layer's wake fd in the executor's epoll set (no-op waker) so a signal
+    wakes a blocked `epoll_wait`; `__del__` unregisters the fd and hands
+    delivery back. A run that gets no fd (not on the interrupt target thread,
+    SIGINT inherited as ignored, or a failed install) stays unarmed. Note: the
+    registered fd keeps the reactor fd count >= 1, so the "no progress
+    possible" deadlock guard stays quiet while armed (CPython has no such
+    guard)."""
 
     _armed: bool
     _fd: int32
@@ -112,21 +115,22 @@ class _SignalScope:
     def __init__(self, executor: Executor) -> None:
         self._armed = False
         self._fd = -1
-        fd = posix_signal.install_shutdown()
+        fd = posix_signal.async_begin()
         if fd >= 0:
             executor.register_fd(fd, EPOLLIN, Waker())
             executor.shutdown_armed = True
+            executor.shutdown_fd = fd
             self._armed = True
             self._fd = fd
 
     def __del__(self) -> None:
         if self._armed:
-            # Unregister before restore() closes the fd, so the reactor's waiter
-            # table is not left with a stale (closed) entry. The current
+            # Unregister before async_end() may close the fd, so the reactor's
+            # waiter table is not left with a stale (closed) entry. The current
             # executor is still set here (this scope tears down before the
             # _ExecutorScope that clears it).
             _reactor_unregister_fd(self._fd)
-            posix_signal.restore()
+            posix_signal.async_end()
 
 
 # Reactor access mirrors `_register_timer_at`: no-op when no executor is

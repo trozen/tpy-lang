@@ -22,6 +22,7 @@
 #include "tpystd/_datetime_cal/_datetime_cal.hpp"
 #include "tpystd/_datetime_fmt/_datetime_fmt.hpp"
 #include "tpystd/_datetime_parse/_datetime_parse.hpp"
+#include "tpystd/_interrupt/_interrupt.hpp"
 #include "tpystd/asyncio.hpp"
 #include "tpystd/asyncio/_executor/_executor.hpp"
 #include "tpystd/base64.hpp"

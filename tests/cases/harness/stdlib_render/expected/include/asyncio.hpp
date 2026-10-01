@@ -2861,17 +2861,17 @@ inline _SignalScope& _SignalScope::operator=(_SignalScope&& other) noexcept {
 
 // def __del__(self) -> None:
 //     if self._armed:
-//         # Unregister before restore() closes the fd, so the reactor's waiter
-//         # table is not left with a stale (closed) entry. The current
+//         # Unregister before async_end() may close the fd, so the reactor's
+//         # waiter table is not left with a stale (closed) entry. The current
 //         # executor is still set here (this scope tears down before the
 //         # _ExecutorScope that clears it).
 //         _reactor_unregister_fd(self._fd)
-//         posix_signal.restore()
+//         posix_signal.async_end()
 inline _SignalScope::~_SignalScope() {
     if (!this->__tpy_owned_) return;
     if (this->_armed) {
         ::tpystd::asyncio::_reactor_unregister_fd(this->_fd);
-        ::tpy_signal_restore();
+        ::tpy_interrupt_async_end();
     }
 }
 

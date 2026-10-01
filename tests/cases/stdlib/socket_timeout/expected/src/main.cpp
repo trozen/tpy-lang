@@ -6,6 +6,108 @@
 namespace tpyapp::main {
 
 
+// def accept_timeout() -> None:
+//     # accept: a timeout-mode listener nobody connects to
+//     srv = socket.create_server(("127.0.0.1", 0))
+//     srv.settimeout(0.05)
+//     try:
+//         conn, peer = srv.accept()  # tpyc: ok -- the subject: times out
+//         print("accept: NO TIMEOUT")
+//     except TimeoutError as e:
+//         print("accept: timeout:", str(e))
+//     srv.close()
+void accept_timeout() {
+    ::tpystd::socket::socket srv = ::tpystd::socket::create_server(std::tuple<std::string, int32_t>{"127.0.0.1", 0});
+    srv.settimeout(0.05);
+    {
+        try {
+            auto __tup_1 = srv.accept();
+            ::tpystd::socket::socket conn = std::move(std::get<0>(__tup_1));
+            const std::tuple<std::string, int32_t>& peer = std::get<1>(__tup_1);
+            std::cout << "accept: NO TIMEOUT" << "\n";
+        } catch (const ::tpy::TimeoutError& e) {
+            std::cout << "accept: timeout:" << " " << std::string(::tpy::__str__(e)) << "\n";
+        }
+    }
+    srv.close();
+}
+
+// def accept_queued() -> None:
+//     # accept: the deadline has passed before the wait starts, but the
+//     # connection is already queued, so the one poll still sees it
+//     srv = socket.create_server(("127.0.0.1", 0))
+//     c = socket.create_connection(srv.getsockname())
+//     srv.settimeout(1e-9)
+//     conn, peer = srv.accept()  # tpyc: ok -- the subject: accepted, no timeout
+//     print("accept queued: peer matches:", peer == c.getsockname())
+//     conn.close()
+//     c.close()
+//     srv.close()
+void accept_queued() {
+    ::tpystd::socket::socket srv = ::tpystd::socket::create_server(std::tuple<std::string, int32_t>{"127.0.0.1", 0});
+    ::tpystd::socket::socket c = ::tpystd::socket::create_connection(srv.getsockname());
+    srv.settimeout(1e-09);
+    auto __tup_1 = srv.accept();
+    ::tpystd::socket::socket conn = std::move(std::get<0>(__tup_1));
+    const std::tuple<std::string, int32_t>& peer = std::get<1>(__tup_1);
+    std::cout << "accept queued: peer matches:" << " " << ::tpy::print_bool((peer == c.getsockname())) << "\n";
+    conn.close();
+    c.close();
+    srv.close();
+}
+
+// def send_timeout() -> None:
+//     # send: the peer never reads, so the buffer fills and a send times out
+//     a, b = socket.socketpair()
+//     a.settimeout(0.05)
+//     chunk = b"x" * 65536
+//     try:
+//         while True:
+//             a.send(chunk)  # tpyc: ok -- the subject: raises once nothing fits
+//     except TimeoutError as e:
+//         print("send: timeout:", str(e))
+//     a.close()
+//     b.close()
+void send_timeout() {
+    auto __tup_1 = ::tpystd::socket::socketpair();
+    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
+    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    a.settimeout(0.05);
+    ::tpy::Bytes chunk = (::tpy::bytes_repeat(::tpy::bytes_literal_owned("x", 1), 65536));
+    {
+        try {
+            while (true) {
+                a.send(chunk);
+            }
+        } catch (const ::tpy::TimeoutError& e) {
+            std::cout << "send: timeout:" << " " << std::string(::tpy::__str__(e)) << "\n";
+        }
+    }
+    a.close();
+    b.close();
+}
+
+// def blocking_send() -> None:
+//     # blocking send: one send() waits for the reader and sends everything
+//     a, b = socket.socketpair()
+//     h = spawn(Drain(b))
+//     data = b"x" * 2000000
+//     n = a.send(data)  # tpyc: ok -- the subject: larger than any socket buffer
+//     print("blocking send: all sent:", n == len(data))
+//     a.close()
+//     print("blocking send: peer got:", h.join())
+void blocking_send() {
+    auto __tup_1 = ::tpystd::socket::socketpair();
+    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
+    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    ::tpystd::tpy::thread::JoinHandle<int32_t> h = ::tpystd::tpy::thread::spawn<int32_t, Drain>(Drain(std::move(b)));
+    ::tpy::Bytes data = (::tpy::bytes_repeat(::tpy::bytes_literal_owned("x", 1), 2000000));
+    int32_t n = a.send(data);
+    std::cout << "blocking send: all sent:" << " " << ::tpy::print_bool((n == ::tpy::__len__(data))) << "\n";
+    a.close();
+    std::cout << "blocking send: peer got:" << " " << h.join() << "\n";
+}
+
 // def main() -> None:
 //     a, b = socket.socketpair()
 //
@@ -40,6 +142,11 @@ namespace tpyapp::main {
 //
 //     a.close()
 //     b.close()
+//
+//     accept_timeout()
+//     accept_queued()
+//     send_timeout()
+//     blocking_send()
 void main() {
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
@@ -76,14 +183,22 @@ void main() {
     }
     a.close();
     b.close();
+    ::tpyapp::main::accept_timeout();
+    ::tpyapp::main::accept_queued();
+    ::tpyapp::main::send_timeout();
+    ::tpyapp::main::blocking_send();
 }
 
 // # socket.settimeout timeout mode: a recv that outlasts the timeout raises
 // # TimeoutError("timed out") -- CPython's socket.timeout -- and because
 // # TimeoutError is an OSError subclass, `except OSError` catches it too. The
 // # makefile-backed read path (what http.client/requests use) honors the timeout
-// # as well. A send to a live peer under a timeout still succeeds.
+// # as well. A send to a live peer under a timeout still succeeds. accept() and a
+// # send into a full buffer time out too, and a blocking send sends everything.
+// # A timeout too short to wait still accepts a connection that is already queued.
 // import socket
+//
+// from tpy.thread import spawn
 //
 // main()
 void __tpy_init() {
@@ -92,6 +207,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::socket::__tpy_init();
+    ::tpystd::tpy::thread::__tpy_init();
     ::tpyapp::main::main();
 }
 

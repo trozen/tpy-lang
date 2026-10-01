@@ -16,14 +16,27 @@ landed with V1. This document is the contract for the whole track.
 Implementation notes (where the build refined the contract):
 - `JoinHandle[R]` is the TPy `@nocopy` wrapper as designed (a native
   `_RawJoin[R]` field owning `std::thread`+`std::future`, plus a `_consumed`
-  flag). `join`/`detach` set `_consumed` *before* the underlying call so a
-  re-raised task exception does not re-trip the drop check on unwind.
-- Abort-on-unconsumed-drop: `__del__` calls a native `[[noreturn]]`
-  `tpy_panic` helper rather than `raise` -- a TPy `__del__` lowers to a
-  `noexcept` C++ destructor, where a `throw` is `-Werror=terminate`. The raw
-  handle's own destructor only *detaches* (safe teardown), so it never masks
-  that diagnostic. Double-`join`/`detach` still `raise RuntimeError` from the
-  normal methods (catchable).
+  flag). `join` first waits on the raw handle in 100 ms slices
+  (`_RawJoin.wait_for(0.1)`, with an interrupt check after each and one more
+  when the task finishes, so a Ctrl-C on the main thread raises
+  `KeyboardInterrupt` and leaves the handle unconsumed: `join()` can be
+  retried), then sets `_consumed` *before* the joining call, as
+  `detach` does. The CPython stub mirrors this: it waits on an `Event` the
+  worker sets (a `KeyboardInterrupt` out of `Thread.join()` would mark the
+  thread stopped on 3.12, so a retried join could miss the result) and marks
+  the handle consumed only after the wait returns.
+- Drop detaches: `__del__` on an unconsumed handle detaches the thread, as
+  Rust's `JoinHandle` drop does. The thread runs on and its result or
+  exception is discarded; a handle torn down by stack unwinding (a Ctrl-C's
+  `KeyboardInterrupt`) therefore never masks the exception in flight. A
+  drop-time panic was tried and rejected: the runtime cannot tell a
+  forgotten `join()` from a handle unwound by an exception (the handle is
+  movable, and resumable frames drop their locals after the exception was
+  caught), so any such rule panics or detaches in the wrong shapes. The
+  structured answer -- a scope that joins its threads automatically, like
+  Rust's `thread::scope` -- is a follow-up (TODO.md, "`tpy.thread.scope`").
+  Double-`join`/`detach` still `raise RuntimeError` from the normal methods
+  (catchable).
 - The internal `_spawn_native` takes a plain `Own[T]` (Send already enforced
   at the user-facing `spawn`'s `Send[Own[T]]` param), so the forward moves.
 
@@ -165,11 +178,10 @@ def spawn[R: Send, T: ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]: 
 
 `JoinHandle[R]` (v1, minimal): `join(self) -> Own[R]`, `detach(self)`. Drop model
 (as built): `@nocopy` + `__del__` + a mutable `_consumed` flag (the `Rc`
-pattern) -- `join`/`detach` set the flag and then delegate to the raw handle;
-`__del__` on an unconsumed handle calls a native `[[noreturn]]` `tpy_panic`
-(abort-on-unconsumed-drop). It is a native panic rather than a `raise`
-because a TPy `__del__` lowers to a `noexcept` C++ destructor where `throw`
-is `-Werror=terminate` (see the Implementation notes at the top). A second
+pattern) -- `detach` sets the flag and then delegates to the raw handle;
+`join` waits first and sets the flag only once the task has finished (an
+interrupted wait leaves the handle joinable); `__del__` on an unconsumed
+handle detaches the thread (see the Implementation notes at the top). A second
 `join`/`detach` after the flag is set `raise`s `RuntimeError` (catchable, an
 ordinary method not a destructor). This does **not** require consuming `self`
 by move, so the earlier `join(self)`-by-move spike is moot. `is_finished` /
@@ -184,10 +196,10 @@ timeout-join / thread name are possible follow-ups (not yet filed).
   semantics, and it handles result storage for free (no hand-rolled
   `exception_ptr` stash needed). Verified end-to-end
   (`tests/cases/threading/spawn_exception`).
-- **Abort-on-unconsumed-drop.** `JoinHandle` is `@nocopy`; `join`/`detach`
-  flip the `_consumed` flag (they do NOT move-consume `self`). A handle
-  dropped without either is a loud runtime panic (matches raw `std::thread`'s
-  join-or-detach-or-terminate contract; upholds "exceptions do not vanish").
+- **Drop detaches.** `JoinHandle` is `@nocopy`; `join`/`detach` flip the
+  `_consumed` flag (they do NOT move-consume `self`). A handle dropped
+  without either detaches the thread, as Rust's `JoinHandle` does (see the
+  Implementation notes); the thread's result or exception is then discarded.
   Runtime-enforced in v1; upgrades to a compile error if/when linear types
   land.
 
@@ -230,9 +242,11 @@ inferred-form cases run under CPython via `lib/cpy/tpy/thread.py`):
   silently copied, per the CLAUDE.md reference-type-test rule); also covers
   multiple handles joined and a task with no meaningful data.
 - `spawn_exception` -- `join()` re-raises the task's exception, caught by
-  `try/except`. `spawn_detach` -- `detach()` consumes, no drop panic.
-- `panic_spawn_double_join` / `panic_spawn_unconsumed_drop` -- the two
-  runtime panics (double-consume; dropped without join/detach).
+  `try/except`. `spawn_detach` -- `detach()` consumes.
+- `panic_spawn_double_join` -- the double-consume runtime panic;
+  `spawn_unconsumed_drop_detaches` / `spawn_unwind_detach` -- a handle
+  dropped without join/detach detaches, on a normal exit and during
+  unwinding.
 - `error_spawn_task_not_send` (non-`Send` task field, `Rc`) /
   `error_spawn_result_not_send` (non-`Send` `R`) -- compile-time rejection
   with the why-not chain.
