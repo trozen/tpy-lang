@@ -354,20 +354,55 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
         if isinstance(effects, MIRNotCovered):
             gaps.append(effects)
 
-    # Function exit has no successor, so liveness says nothing about a result.
-    if fn.borrowed_result is not None:
-        for block in fn.blocks:
-            term = block.terminator
-            point = MIRPoint(block.id, len(block.statements))
-            state = dependencies.referents.get(point)
-            # A feasible point without facts already recorded its gap above.
-            if not isinstance(term, MIRReturn) or point not in presence.points or state is None:
-                continue
-            origins = resolve_referents(MIRPlace(term.value), state, slots)
-            if not origins:
-                gap("borrowed return has unknown origins", term.loc)
-            for origin in sorted(origins, key=lambda r: (r.place.root.index, len(r.place.projections))):
-                if not origin.external:
-                    attribute(MIRStorageConflictKind.RETURN_ESCAPE, origin.place, MIRPlace(term.value),
-                              MIREdge(block.id), term.loc)
+    escapes, unknown = _return_escapes(prepared, dependencies)
+    for loc in unknown:
+        gap("borrowed return has unknown origins", loc)
+    for escape in escapes:
+        attribute(escape.kind, escape.origin, escape.holder, escape.site, escape.loc)
     return tuple(conflicts), tuple(gaps)
+
+
+def _return_escapes(prepared: MIRPrepared, dependencies: MIRDependencies
+                    ) -> tuple[tuple[MIRStorageConflict, ...], tuple[SourceLocation | None, ...]]:
+    """Every borrowed return on a feasible path that reaches the body's own
+    storage, over all origins, with the locations of returns whose origins
+    are unknown. Discovery only: which origins a certificate requires is the
+    caller's attribution."""
+    fn, presence = prepared.function, prepared.presence
+    slots = {s.id: s for s in fn.slots}
+    escapes: list[MIRStorageConflict] = []
+    unknown: list[SourceLocation | None] = []
+    # Function exit has no successor, so liveness says nothing about a result.
+    if fn.borrowed_result is None:
+        return (), ()
+    for block in fn.blocks:
+        term = block.terminator
+        point = MIRPoint(block.id, len(block.statements))
+        state = dependencies.referents.get(point)
+        # A feasible point without facts is the dependency coverage's gap.
+        if not isinstance(term, MIRReturn) or point not in presence.points or state is None:
+            continue
+        origins = resolve_referents(MIRPlace(term.value), state, slots)
+        if not origins:
+            unknown.append(term.loc)
+        for origin in sorted(origins, key=lambda r: (r.place.root.index, len(r.place.projections))):
+            if not origin.external:
+                escapes.append(MIRStorageConflict(MIRStorageConflictKind.RETURN_ESCAPE, origin.place,
+                                                  MIRPlace(term.value), MIREdge(block.id), term.loc))
+    return tuple(escapes), tuple(unknown)
+
+
+def analyze_return_escapes(fn: MIRFunction, dependencies: MIRDependencies | MIRNotCovered
+                           ) -> tuple[MIRStorageConflict, ...] | MIRNotCovered:
+    """Unconditional discovery of RETURN_ESCAPE conflicts over every borrowed
+    return of a lowered body (a record or view result reaching a local or a
+    temporary), independent of any certificate's required origins."""
+    if isinstance(dependencies, MIRNotCovered):
+        return dependencies
+    prepared = _prepare_function(fn)
+    if dependencies.function is not fn:
+        raise MIRValidationError("return escape input belongs to a different MIR function")
+    escapes, unknown = _return_escapes(prepared, dependencies)
+    if unknown:
+        return MIRNotCovered(fn.id, "return escapes", "borrowed return has unknown origins", unknown[0])
+    return escapes

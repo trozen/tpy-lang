@@ -2,7 +2,7 @@
 
 from collections import deque
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import MappingProxyType
 
 from ..thir.scalar_leaves import record_type
@@ -31,6 +31,10 @@ class MIRReferent:
     place: MIRPlace
     # External origins may alias one another, including ancestor/child paths.
     external: bool = False
+    # A literal's immortal storage, which nothing writes: decided where the
+    # referent is created, never by elimination. Derived from the place, so
+    # it does not take part in identity.
+    static: bool = field(default=False, compare=False)
 
 
 MIRReferents = Mapping[MIRPlace, frozenset[MIRReferent]]
@@ -217,7 +221,7 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
             case MIRConstant() if slots[target.root].value_kind is MIRValueKind.BORROWED:
                 # A literal's static storage outlives the body and is never written:
                 # the holder's own identity names that immortal external origin.
-                result[target] = frozenset({MIRReferent(MIRPlace(target.root), external=True)})
+                result[target] = frozenset({MIRReferent(MIRPlace(target.root), external=True, static=True)})
             case (MIRConstant() | MIRRead() | MIRCompare() | MIRNot() | MIROp() | MIRIsPresent()
                   | MIRIsAlternative() | MIRConstruct() | MIRCopy() | MIRMove() | MIRIteratorHasNext()
                   | MIRRangeAdvance()):

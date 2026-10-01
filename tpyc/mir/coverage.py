@@ -2,9 +2,14 @@
 
 from ..thir import nodes as th
 from ..thir.metadata import unsupported_metadata
-from ..thir.scalar_leaves import owned_leaf, primitive_leaf, primitive_owned_leaf, storage_leaf
+# `view_compatible` is the one predicate between a view holder and what it
+# borrows: a TypeDef family pairing, a leaf fact rather than a MIR rule.
+from ..thir.scalar_leaves import (  # noqa: F401
+    owned_leaf, primitive_leaf, primitive_owned_leaf, storage_leaf, view_compatible, view_leaf,
+)
 from ..typesys import (
     FLOAT, INT32, FloatLiteralType, IntLiteralType, Representation, TpyType, passing_representation,
+    through_view,
 )
 from .nodes import MIROptionalLayout, MIRSlot, MIRSlotKind, MIRTupleElement, MIRTupleLayout, MIRValueKind
 
@@ -48,12 +53,31 @@ def owned_borrow(slot: MIRSlot) -> bool:
     return slot.value_kind is MIRValueKind.BORROWED and slot.readonly and owned_leaf(slot.type)
 
 
+def view_holder(slot: MIRSlot) -> bool:
+    """A readonly BORROWED holder typed by a view over an owned leaf
+    (`view_leaf`): its referents are the owned-leaf storage it views."""
+    return (slot.value_kind is MIRValueKind.BORROWED and slot.readonly and slot.form is th.Form.BORROW
+            and view_leaf(slot.type))
+
+
+def leaf_borrow(slot: MIRSlot) -> bool:
+    """A holder an operation reads an owned leaf through: an owned leaf's
+    own borrow or a view of one."""
+    return owned_borrow(slot) or view_holder(slot)
+
+
+def read_leaf(slot: MIRSlot) -> TpyType:
+    """The leaf type an operation reading `slot` sees: a view holder reads
+    its family's owned leaf."""
+    return through_view(slot.type)
+
+
 def primitive_operand(slot: MIRSlot) -> bool:
     """An operand a certified primitive operation reads: an inert leaf by
-    value, or an owned leaf through a borrowed holder, whose TypeDef carries
-    the primitive-operation contract."""
-    if owned_borrow(slot):
-        return primitive_owned_leaf(slot.type)
+    value, or an owned leaf through a borrowed holder or a view, whose
+    TypeDef carries the primitive-operation contract."""
+    if leaf_borrow(slot):
+        return primitive_owned_leaf(read_leaf(slot))
     return scalar_slot(slot) and primitive_leaf(slot.type)
 
 

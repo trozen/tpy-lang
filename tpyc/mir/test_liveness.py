@@ -14,7 +14,7 @@ from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch,
     MIRConstant, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRGoto,
-    MIRIsAlternative, MIRPlace, MIRRead, MIRReceiverInit, MIRRecordLayout,
+    MIRIsAlternative, MIRMemberInit, MIRPlace, MIRRead, MIRReceiverInit, MIRRecordLayout,
     MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleElement,
     MIRUnionExtract, MIRUnionLayout, MIRUnionPayload, MIRValueKind,
     MIRRvalue, MIRAlias,
@@ -159,7 +159,7 @@ def test_receiver_initialization_is_an_entry_use_not_a_loop_use() -> None:
              MIRSlot(X, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE))
     fn = MIRFunction(B, VoidType(), slots, (MIRBlock(A, (), MIRReturn()),), A,
                      records=(MIRRecordLayout(CELL, (FIELD,), True, True),),
-                     receiver_init=MIRReceiverInit(P, (X,)), kind=MIRBodyKind.CONSTRUCTOR)
+                     receiver_init=MIRReceiverInit(P, (MIRMemberInit(X),)), kind=MIRBodyKind.CONSTRUCTOR)
     result = analyze_liveness(fn)
     assert result.live_in[A] == set()
     assert result.entry_live == {P, X}

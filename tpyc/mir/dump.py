@@ -5,14 +5,14 @@ from ..thir.nodes import THIRStubCallee
 from .nodes import (
     MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref, MIRField,
     MIRGoto, MIRFunction, MIRNot, MIROp, MIRPrint, MIRPlace, MIRRead, MIRReturn, MIRValueKind,
-    MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
+    MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRMemberInit, MIRMemberInitMode,
     MIRRegionId, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRTupleInitialization,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
     MIRContainerStructure, MIRContainerElements,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
-    MIRRangeAdvance,
+    MIRRangeAdvance, MIRSlotId,
 )
 from .validate import validate_function
 
@@ -38,6 +38,20 @@ def _call(call: MIRCall) -> str:
         effects += ", global-reads={" + ", ".join(sorted(f"{g.module}::{g.name}"
                                                         for g in call.summary.global_reads)) + "}"
     return f"call {callee}({args}) [{effects}, {'may-raise' if call.may_raise else 'normal-return'}]"
+
+
+def _member_init(member: MIRMemberInit, borrowed: set[MIRSlotId]) -> str:
+    """One receiver member's entry initialization: a scalar by its value, an
+    owned leaf by how its buffer arrives (a copy through a borrowed
+    parameter reads the storage it points at)."""
+    source = (repr(member.source.value) if isinstance(member.source, MIRConstant)
+              else f"(*%{member.source.index})" if member.source in borrowed else f"%{member.source.index}")
+    match member.mode:
+        case MIRMemberInitMode.SCALAR:
+            return source
+        case MIRMemberInitMode.MOVE:
+            return f"move {source}"
+    return f"copy {source}" + (" may-raise" if member.may_raise else "")
 
 
 def _place(place: MIRPlace) -> str:
@@ -113,8 +127,8 @@ def dump_function(fn: MIRFunction) -> str:
         lines.append(f"  %{slot.id.index}: {slot.type}{access} {slot.kind.name.lower()}{name}{duration}")
     if fn.receiver_init is not None:
         init = fn.receiver_init
-        values = ", ".join(repr(value.value) if isinstance(value, MIRConstant) else f"%{value.index}"
-                           for value in init.fields)
+        borrowed = {s.id for s in fn.slots if s.value_kind is MIRValueKind.BORROWED}
+        values = ", ".join(_member_init(member, borrowed) for member in init.fields)
         lines.append(f"initialize-receiver %{init.receiver.index} ({values})")
     for region in fn.regions:
         parent = f"r{region.parent.index}" if region.parent is not None else "body"
@@ -155,8 +169,9 @@ def dump_function(fn: MIRFunction) -> str:
                     rhs = f"alias %{source.index}"
                 case MIRBorrow(source=source):
                     rhs = f"borrow {_place(source)}"
-                case MIRConstruct(fields=fields):
-                    rhs = "construct (" + ", ".join(f"%{s.index}" for s in fields) + ")"
+                case MIRConstruct(fields=fields, may_raise=may_raise):
+                    rhs = "construct (" + ", ".join(f"%{s.index}" for s in fields) + ")" + (
+                        " may-raise" if may_raise else "")
                 case MIRTupleConstruct(elements=elements):
                     rhs = "tuple (" + ", ".join(
                         "construct (" + ", ".join(f"%{s.index}" for s in element.fields) + ")"

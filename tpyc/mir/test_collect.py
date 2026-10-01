@@ -13,12 +13,18 @@ from ..mir_workspace import analyze_call_workspace
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from .call_contract import MIRSummaryState
+from ..parse import SourceLocation
+from ..typesys import BOOL, STR
 from .collect import (
-    MIRStorageCheck, MIRStorageState, MIRVerdictStatus, dump_codegen_mir, enumerate_bodies,
-    enumerate_body_sources, verdict_of,
+    MIRBodyVerdict, MIRLineFacts, MIRLineWrite, MIRStorageCheck, MIRStorageState, MIRVerdictStatus, analyze_body,
+    dump_codegen_mir, enumerate_bodies, enumerate_body_sources, line_facts, verdict_of,
 )
 from .definitions import MIRDefinitions
-from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, function_body_kind
+from .nodes import (
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRCompare, MIRConstant, MIRFunction,
+    MIRPlace, MIRRecordLayout, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRValueKind,
+    function_body_kind,
+)
 
 
 def dump(source: str) -> str:
@@ -464,3 +470,213 @@ def test_verdicts_climb_the_ladder() -> None:
     init, = (v for v in verdicts if v.line is None)
     assert (init.name, init.status, init.reason) == ("__tpy_init", MIRVerdictStatus.UNCOVERED,
                                                      "module initialization")
+
+
+# --- line facts -------------------------------------------------------------------
+
+LINE_FACT_SOURCE = """\
+from tpy import int32
+
+G = "global"
+
+class P:
+    def __init__(self, x: int32) -> None:
+        self.x = x
+    def bump(self) -> None:
+        self.x = self.x + 1
+
+class H:
+    def __init__(self, p: P) -> None:
+        self.p = p
+
+def owned(a: str) -> int:
+    t = a + "x"
+    v = t
+    t += "y"
+    return len(v) + len(t)
+
+def alias(p: P) -> int32:
+    q = p
+    return q.x
+
+def rebound(s: str) -> int:
+    s = s + "!"
+    return len(s)
+
+def alias_live() -> int32:
+    r = P(1)
+    q = r
+    return q.x + r.x
+
+def rebind() -> int32:
+    r = P(1)
+    q = r
+    print(q.x)
+    r = P(2)
+    return q.x + r.x
+
+def branchy(p: P, o: P, c: bool) -> int32:
+    q = p
+    if c:
+        q = o
+    return q.x
+
+def field_borrow(h: H) -> int32:
+    q = h.p
+    return q.x
+
+def read_global() -> int:
+    g = G
+    return len(g)
+
+def iterate(ps: list[P]) -> int32:
+    total = 0
+    for p in ps:
+        total += p.x
+    return total
+
+def pair(a: P, b: P) -> int32:
+    t = (a, b)
+    return t[0].x + t[1].x
+"""
+
+
+@pytest.fixture(scope="module")
+def facts() -> dict[str, MIRLineFacts | None]:
+    compiler, modules = _compile(LINE_FACT_SOURCE)
+    entry = _entry(modules)
+    ctx = compiler.collect_thir(entry, tolerate_reject=True)
+    with compiler.mir_analysis([(entry, ctx)]) as program:
+        verdicts = enumerate_bodies(entry.ast, entry.analyzer, ctx, entry.name, program.definitions,
+                                    compiler.thir_reject_by_node, program.workspace)
+        return {v.body.declaration.split("@")[0]: line_facts(v) for v in verdicts}
+
+
+def _borrows(found: MIRLineFacts, line: int, holder: str) -> list[tuple[int, set[str]]]:
+    return [(state.block, set(state.referents)) for state in found.borrows[(line, holder)]]
+
+
+def test_an_unlowered_body_has_no_line_facts(facts) -> None:
+    assert facts["__tpy_init"] is None
+
+
+def test_owned_locals_carry_kind_copy_and_in_place_events(facts) -> None:
+    owned = facts["owned"]
+    assert owned is not None and owned.lines >= {16, 17, 18, 19}
+    assert owned.writes[(16, "t")] == (MIRLineWrite(0, MIRValueKind.OWNED, False),)
+    # sema owns `v`: a copy of an owned local.
+    assert owned.writes[(17, "v")] == (MIRLineWrite(0, MIRValueKind.OWNED, True),)
+    assert owned.events == {(18, "t"): ("in_place",)}
+    # A borrowed str parameter's external referent is spelled by the parameter.
+    assert _borrows(owned, 16, "a") == [(0, {"a"})]
+    assert "t" not in owned.holders and (16, "t") not in owned.borrows
+
+
+def test_a_record_alias_borrows_the_parameter(facts) -> None:
+    alias = facts["alias"]
+    assert alias.writes[(22, "q")] == (MIRLineWrite(0, MIRValueKind.BORROWED, False),)
+    assert _borrows(alias, 22, "q") == [(0, {"p"})]
+
+
+def test_a_reassigned_str_parameter_has_two_spellings(facts) -> None:
+    rebound = facts["rebound"]
+    assert rebound.names == {"s": {"param": "param(s)", "local": "local(s)"}}
+    # The local's copy of the parameter is entry code with no line; the
+    # reassignment appends in place to the LOCAL slot.
+    assert rebound.writes[(26, "local(s)")] == (MIRLineWrite(0, MIRValueKind.OWNED, False),)
+    assert rebound.events[(26, "local(s)")] == ("in_place",)
+    assert rebound.holders == {"param(s)"}
+    assert _borrows(rebound, 26, "param(s)") == [(0, {"param(s)"})]
+
+
+def test_unnamed_storage_takes_its_binding_name(facts) -> None:
+    # `r = P(1)` constructs a temporary that `r` borrows; `q = r` aliases it.
+    assert _borrows(facts["alias_live"], 31, "q") == [(0, {"r"})]
+    # Rebinding `r` to fresh storage names two objects: the binding line splits them.
+    rebind = facts["rebind"]
+    assert _borrows(rebind, 39, "q") == [(0, {"r@35"})]
+    assert _borrows(rebind, 39, "r") == [(0, {"r@38"})]
+    assert rebind.events[(38, "r@38")] == ("own_site",)
+
+
+def test_borrows_are_per_block_and_join_at_merges(facts) -> None:
+    branchy = facts["branchy"]
+    assert _borrows(branchy, 42, "q") == [(0, {"p"})]
+    assert _borrows(branchy, 44, "q") == [(1, {"o"})]
+    assert _borrows(branchy, 45, "q") == [(3, {"o", "p"})]
+
+
+def test_field_and_member_referents_are_spelled_as_paths(facts) -> None:
+    assert _borrows(facts["field_borrow"], 48, "q") == [(0, {"h.p"})]
+    pair = facts["pair"]
+    assert pair.holders >= {"t", "t[0]", "t[1]"}
+    assert _borrows(pair, 62, "t") == [(0, {"a", "b"})]
+    assert _borrows(pair, 62, "t[1]") == [(0, {"b"})]
+    iterate = facts["iterate"]
+    assert _borrows(iterate, 58, "p") == [(2, {"ps[elements]"})]
+    # The loop header lowers into the init, test, read and advance blocks;
+    # the element holder is bound in the read block only.
+    assert _borrows(iterate, 57, "p") == [(0, set()), (1, set()), (2, {"ps[elements]"}), (3, set())]
+
+
+def test_a_global_and_a_field_write_are_spelled_by_name(facts) -> None:
+    read_global = facts["read_global"]
+    assert read_global.names["G"] == {"global": "G"}
+    assert _borrows(read_global, 52, "G") == [(0, {"G"})]
+    assert read_global.writes[(52, "g")] == (MIRLineWrite(0, MIRValueKind.OWNED, True),)
+    bump = facts["P.bump"]
+    # A scalar field write is a write of the place, and no replacement event.
+    assert bump.writes[(9, "self.x")] == (MIRLineWrite(0, MIRValueKind.SCALAR, False),)
+    assert bump.events == {}
+
+
+def test_a_literal_origin_is_spelled_static() -> None:
+    # The spelling rule on a hand-built body; the case's `literal_view`
+    # section pins it from source.
+    body = MIRBodyId("main", "f@1:0")
+    region = MIRRegionId(body, 0)
+    literal, view, result = (MIRSlotId(body, i) for i in range(3))
+    entry = MIRBlockId(body, 0)
+    fn = MIRFunction(body, BOOL, (
+        MIRSlot(literal, STR, MIRSlotKind.TEMPORARY, form=th.Form.BORROW, value_kind=MIRValueKind.BORROWED,
+                readonly=True, residence=region),
+        MIRSlot(view, STR, MIRSlotKind.LOCAL, "v", form=th.Form.BORROW, value_kind=MIRValueKind.BORROWED,
+                readonly=True, residence=region),
+        MIRSlot(result, BOOL, MIRSlotKind.TEMPORARY, residence=region),
+    ), (MIRBlock(entry, (
+        MIRAssign(MIRPlace(literal), MIRConstant("abc"), SourceLocation(2, 4)),
+        MIRAssign(MIRPlace(view), MIRAlias(literal), SourceLocation(2, 4)),
+        MIRAssign(MIRPlace(result), MIRCompare("==", view, view), SourceLocation(3, 4)),
+    ), MIRReturn(result), region),), entry, (MIRRecordLayout(STR, (), True, True, opaque=True),),
+        regions=(MIRRegion(region, None, entry),))
+    verdict = MIRBodyVerdict(body, "f", 1, MIRBodyKind.FREE_FUNCTION, MIRVerdictStatus.COVERED, None, (), False,
+                             None, None, fn, analyze_body(fn), None)
+    found = line_facts(verdict)
+    assert _borrows(found, 3, "v") == [(0, {"static"})]
+
+
+MEMBER_INIT_SOURCE = """\
+from tpy import int32
+
+class Rec:
+    def __init__(self, name: str, n: int32) -> None:
+        self.name = name
+        self.n = n
+"""
+
+
+def test_constructor_member_inits_are_line_facts() -> None:
+    compiler, modules = _compile(MEMBER_INIT_SOURCE)
+    entry = _entry(modules)
+    ctx = compiler.collect_thir(entry, tolerate_reject=True)
+    with compiler.mir_analysis([(entry, ctx)]) as program:
+        verdicts = enumerate_bodies(entry.ast, entry.analyzer, ctx, entry.name, program.definitions,
+                                    compiler.thir_reject_by_node, program.workspace)
+        found = {v.body.declaration.split("@")[0]: line_facts(v) for v in verdicts}
+    init = next(facts for name, facts in found.items() if name.endswith("__init__"))
+    # The receiver's entry initialization has no CFG statement, so the member
+    # inits are keyed by the constructor's field-write lines: the str field is
+    # a copy of the view parameter, the int32 field a scalar.
+    assert init.writes[(5, "self.name")] == (MIRLineWrite(0, MIRValueKind.OWNED, True),)
+    assert init.writes[(6, "self.n")] == (MIRLineWrite(0, MIRValueKind.SCALAR, False),)
+    assert {5, 6} <= init.lines

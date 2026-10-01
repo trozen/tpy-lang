@@ -104,21 +104,21 @@ int32_t take_point(const Point& p);
 int32_t rvalue_temp();
 // def conditional_hoist() -> None:  # tpyc: mir(conflict /^replacement$/)
 void conditional_hoist();
-// def view_local(s: str) -> int32:  # tpyc: mir(uncovered /^view local$/)
+// def view_local(s: str) -> int32:  # tpyc: mir(covered)
 int32_t view_local(std::string_view s);
-// def str_field(r: Rec) -> bool:  # tpyc: mir(uncovered /^owned-leaf record field$/)
+// def str_field(r: Rec) -> bool:  # tpyc: mir(covered)
 bool str_field(const Rec& r);
-// def str_field_write(r: Rec, s: str) -> None:  # tpyc: mir(uncovered /^owned-leaf record field$/)
+// def str_field_write(r: Rec, s: str) -> None:  # tpyc: mir(covered)
 void str_field_write(Rec& r, std::string_view s);
 // def global_write() -> None:  # tpyc: mir(uncovered /^owned-leaf global write$/)
 void global_write();
-// def view_return(s: str) -> StrView:  # tpyc: mir(uncovered /^view return$/)
+// def view_return(s: str) -> StrView:  # tpyc: mir(covered) mir_summary(known)
 std::string_view view_return(std::string_view s);
 // def buffer(b: bytearray) -> int32:  # tpyc: mir(uncovered /^unsupported parameter type$/)
 int32_t buffer(const ::tpy::ByteArray& b);
 // def global_copy() -> int32:  # tpyc: mir(uncovered /^unsupported owned-leaf expression$/)
 int32_t global_copy();
-// def view_caller(s: str) -> int32:  # tpyc: mir(uncovered /^unsupported coercion$/)
+// def view_caller(s: str) -> int32:  # tpyc: mir(covered)
 int32_t view_caller(std::string_view s);
 // def fstring(n: int) -> str:  # tpyc: mir(uncovered /^unsupported owned-leaf expression$/)
 std::string fstring(const ::tpy::BigInt& n);
@@ -126,7 +126,7 @@ std::string fstring(const ::tpy::BigInt& n);
 bool concat_mixed(std::string_view s, std::string_view t);
 // def no_init(flag: bool) -> int:  # tpyc: mir(uncovered /^owned-leaf declaration needs an initializer$/)
 ::tpy::BigInt no_init(bool flag);
-// def string_as_str(s: str) -> str:  # tpyc: mir(uncovered /^conversion aliases its source$/)
+// def string_as_str(s: str) -> str:  # tpyc: mir(covered)
 std::string string_as_str(std::string_view s);
 // def countdown(n: int) -> Iterator[int]:  # tpyc: mir(uncovered /^resumable body$/)
 __gen_countdown countdown(::tpy::BigInt n);
@@ -140,7 +140,7 @@ struct Rec {
     // count: int32
     int32_t count;
 
-    // def __init__(self, name: str, count: int32):  # tpyc: mir(uncovered /^unsupported record fields$/)
+    // def __init__(self, name: str, count: int32):  # tpyc: mir(covered)
     Rec() = default;
     explicit Rec(std::string_view name, int32_t count);
 
@@ -198,8 +198,8 @@ struct __gen_countdown : public ::tpy::next_iter_mixin<__gen_countdown, ::tpy::B
 };
 
 
-// # constructor: owned-leaf record fields are not lowered yet
-// def __init__(self, name: str, count: int32):  # tpyc: mir(uncovered /^unsupported record fields$/)
+// # constructor: the str field is initialized by a copy of the view parameter (may raise)
+// def __init__(self, name: str, count: int32):  # tpyc: mir(covered)
 //     self.name = name
 //     self.count = count
 inline Rec::Rec(std::string_view name, int32_t count)

@@ -8,7 +8,7 @@ from types import MappingProxyType
 
 from ..typesys import BOOL
 from .nodes import (
-    MIRStatement, MIRStorageInit, MIRBlockId, MIRBorrow, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
+    MIRStatement, MIRStorageInit, MIRBlockId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRFunction, MIRGoto,
     statement_target,
     MIRIsPresent, MIRNot, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRPlace, MIRPoint, MIRRead, MIRSlotId, MIRValueKind,
@@ -291,7 +291,7 @@ def _analyze_presence(fn: MIRFunction) -> MIRPresence:
                                                "iterator operation without current availability proof"))
             target = statement_target(stmt)
             places = [target] if target is not None and target.projections else []
-            if isinstance(stmt, MIRAssign) and isinstance(stmt.value, (MIRRead, MIRUnionExtract, MIRBorrow)):
+            if isinstance(stmt, MIRAssign) and isinstance(stmt.value, (MIRRead, MIRUnionExtract, MIRBorrow, MIRCopy)):
                 places.append(stmt.value.source)
             for place in places:
                 issues.extend(_missing(place, state, alias_slots, point))

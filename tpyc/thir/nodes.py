@@ -28,7 +28,9 @@ from ..typesys import (
     FloatLiteralType, IntLiteralType, NominalType, Representation, ResolvedBinop, ResolvedUnaryop, TpyType,
     certified_primitive_comparison, certified_primitive_conversion, certified_primitive_op,
     certified_primitive_promotion, certified_primitive_subscript, is_inert_leaf, is_owned_leaf,
+    view_family_of,
 )
+from .scalar_leaves import view_compatible
 
 if TYPE_CHECKING:
     from .temp_plan import THIRTempPlan
@@ -1586,34 +1588,57 @@ class THIRCoerce(THIRExpr):
     coercion_name: str
     wrap: 'str | None' = None
 
-    @property
-    def conversion_refusal(self) -> str | None:
-        """Why the coercion is not a certified conversion, None when it is.
+    def _conversion(self) -> str:
+        """One classification of the coercion for a loan model: "certified",
+        "passthrough", or the reason it is neither. Decided here once, so no
+        consumer can read two facts that disagree.
 
         Certified: a runtime conversion between leaves
         (`typesys.certified_primitive_conversion`) under a declared rule
         whose result is a NEW value -- the target is an inert leaf, which
         holds no borrow, or an owned leaf the `wrap` template builds
-        (`::tpy::BigInt({0})`, `{0}.to_fixed_check<..>()`). A passthrough
-        into an owned leaf renders its source in place (a `String` read at a
-        `str` view parameter), so its result aliases the source. A literal
-        source is compile-time data, not a conversion; a borrow-only rule
-        renders a view whatever its target type says."""
+        (`::tpy::BigInt({0})`, `{0}.to_fixed_check<..>()`). Passthrough: a
+        declared, non-borrow-only rule with no `wrap` that renders a member
+        of a view family in place as the family's owned type, itself an owned
+        leaf (`scalar_leaves.view_compatible`: a `String`, or a `StrView` at a
+        `str` view parameter) -- the source's storage IS the value, lent at a
+        borrowing sink and copied at an owning one. A literal source is
+        compile-time data, not a conversion; a borrow-only rule renders a view
+        whatever its target type says; any other passthrough into an owned
+        leaf aliases its source and is no conversion at all."""
         rule = coercion_rule(self.coercion_name)
-        source = self.expr.result_type
+        target, source = self.result_type, self.expr.result_type
         if (rule is None or rule.borrow_only or isinstance(self.expr, THIRLiteral)
-                or isinstance(source, (IntLiteralType, FloatLiteralType))
-                or not certified_primitive_conversion(source, self.result_type)):
+                or isinstance(source, (IntLiteralType, FloatLiteralType))):
             return "unsupported coercion"
-        if is_inert_leaf(self.result_type):
-            return None
-        if is_owned_leaf(self.result_type) and self.wrap is not None:
-            return None
+        family = view_family_of(target)
+        if (self.wrap is None and family is not None and target == family.owned_type
+                and is_owned_leaf(target) and view_compatible(family.view_type, source)):
+            return "passthrough"
+        if not certified_primitive_conversion(source, target):
+            return "unsupported coercion"
+        if is_inert_leaf(target) or (is_owned_leaf(target) and self.wrap is not None):
+            return "certified"
         return "conversion aliases its source"
 
     @property
+    def conversion_refusal(self) -> str | None:
+        """Why the coercion is not a certified conversion, None when it is; a
+        passthrough is refused here as an alias, since only a consumer that
+        asks `owned_passthrough` first may admit it."""
+        kind = self._conversion()
+        if kind == "certified":
+            return None
+        return "conversion aliases its source" if kind == "passthrough" else kind
+
+    @property
+    def owned_passthrough(self) -> bool:
+        """The source read in place as its family's owned type (see `_conversion`)."""
+        return self._conversion() == "passthrough"
+
+    @property
     def certified_conversion(self) -> bool:
-        return self.conversion_refusal is None
+        return self._conversion() == "certified"
 
 
 @dataclass(frozen=True)

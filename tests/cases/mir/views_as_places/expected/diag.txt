@@ -1,0 +1,3 @@
+main.py:116: warning: Mutation of 't' while borrowed (reassignment invalidates view 'c')
+main.py:126: warning: Mutation of 't' while borrowed (reassignment invalidates view 'c')
+main.py:134: warning: Mutation of 't' while borrowed (reassignment invalidates view 'c')

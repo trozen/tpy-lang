@@ -250,7 +250,14 @@ class MIRBorrow:
 
 @dataclass(frozen=True)
 class MIRConstruct:
+    """Build a record from one operand per field: an inert leaf by value, or
+    an owned leaf copied out of the storage a borrowed holder lends (the
+    constructor's member initializer copies it) or moved out of owned
+    temporary storage the call hands over."""
     fields: tuple[MIRSlotId, ...]
+    # Some owned-leaf member is copied, and that copy can exit by exception
+    # (`TypeDef.copy_may_raise`).
+    may_raise: bool = False
 
 
 @dataclass(frozen=True)
@@ -497,11 +504,31 @@ class MIRBlock:
     region: MIRRegionId | None = None
 
 
+class MIRMemberInitMode(Enum):
+    # An inert leaf, by value.
+    SCALAR = auto()
+    # An owned leaf copied from a parameter's storage (borrowed or owned) or
+    # materialized from a constant: an allocation.
+    COPY = auto()
+    # An owned leaf moved out of a by-value parameter's storage.
+    MOVE = auto()
+
+
+@dataclass(frozen=True)
+class MIRMemberInit:
+    """How one member of the receiver is initialized at entry, in layout order."""
+    source: MIRSlotId | MIRConstant
+    mode: MIRMemberInitMode = MIRMemberInitMode.SCALAR
+    # The initialization can exit by exception (`TypeDef.copy_may_raise` of a COPY).
+    may_raise: bool = False
+    loc: SourceLocation | None = None
+
+
 @dataclass(frozen=True)
 class MIRReceiverInit:
     """Initialize supplied storage before the CFG can observe the receiver."""
     receiver: MIRSlotId
-    fields: tuple[MIRSlotId | MIRConstant, ...]
+    fields: tuple[MIRMemberInit, ...]
 
 
 @dataclass(frozen=True)
@@ -519,8 +546,8 @@ class MIRFunction:
     borrowed_result: THIRBorrowedRecord | None = None
     # Some statement can exit the body by exception (`validate.statement_may_raise`):
     # a raising operation, an allocating copy or materialization, a call whose
-    # summary may raise, or a print. Derived at lowering, re-checked by the
-    # validator.
+    # summary may raise, or a print; or a receiver member's initialization
+    # copies an owned leaf. Derived at lowering, re-checked by the validator.
     exceptional_exits: bool = False
 
 

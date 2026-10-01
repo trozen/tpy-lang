@@ -63,9 +63,9 @@ def mutable_leaf(s: String) -> None:  # tpyc: mir(uncovered /^stub parameter is 
     probe_fill(s)
 
 
-# free function: a @pure stub returning a view, held in a local
-def view_result(s: str) -> int32:  # tpyc: mir(uncovered /^view local$/)
-    v = probe_view(s)
+# free function: a @pure stub returning a view borrows its lent argument
+def view_result(s: str) -> int32:  # tpyc: mir(covered)
+    v = probe_view(s)  # tpyc: mir_borrowed(v) mir_borrows(v, s)
     return 1
 
 

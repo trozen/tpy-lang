@@ -975,6 +975,15 @@ holds: the snippet harness runs MIR over every case that reaches codegen
 (`tpyc/mir/collect.py`: one `MIRBodyVerdict` per body, the record `--dump-mir`
 and the coverage tool also render), so a MIR exception fails the case, and a case pins a
 body's verdict with `# tpyc: mir(...)` / `mir_summary(...)` on its `def` line.
+A statement line pins exact per-line facts with the line-level fact family
+(`mir_owned` / `mir_borrowed` / `mir_copy` / `mir_write` /
+`mir_borrows(x, a|b)`, names selectable as `param(x)` / `local(x)`), which
+one producer, `collect.line_facts`, derives from the verdict's analyses and
+the harness only reads. The verdict family pins OUTCOMES per body; the fact
+family pins, per line, slot kinds, a holder's possible origins, copies and
+non-initializing writes. Unit tests keep what neither expresses: a copy's
+source and `may_raise`, passings, initialization vs replacement modes,
+region lifetimes, operation order, and the ABSENCE of a copy.
 There is no MIR dump snapshot per case, for the reason THIR has none: a dump
 pins the IR's spelling, not a fact about the program.
 
@@ -1878,15 +1887,21 @@ form facts, never on lists of accepted kinds.
   `getitem` on them are certified reads; stub calls get a contract from the
   stub's declared facts (`@pure`, `transient=True`); summaries cover raising
   and cyclic bodies and global reads.
-- **B2, second half: views as places.** str/bytes/Span views carry a loan
-  on their source, starting with parameter, local and field roots
-  (container-element views need B3); owned-leaf record fields and
-  constructor initializers; the first str conflicts (`view_return_escape`,
-  `view_source_mutation`, `temporary_borrow`). str and bytes follow one
-  rule. The classification still UNKNOWN comes here: `TupleType.
-  is_value_type()` is always true; `Own` is not position-transparent (a
-  value type becomes a value, a reference type `T&&`); `Ptr` is
-  value-typed; `readonly` limits access, not lifetime.
+- **B2, second half: views as places.** Landed as the Views, Field and
+  Conflict naming rules of the [B2 contract](#b2-contract): `StrView` /
+  `BytesView` holders borrow parameter, local, field, global and static
+  roots under one family predicate (str and bytes by construction),
+  owned-leaf record fields are places with constructor member-init, and the
+  first str conflicts are the existing `replacement`, `scope_end` and
+  `return_escape` kinds. `tests/cases/mir/views_as_places` pins
+  `replacement`; `return_escape` has a unit pin in
+  `tpyc/mir/test_views.py`; a view `scope_end` is pinned nowhere yet.
+  Moved to B3: view FIELDS (a record retaining a loan), method calls and
+  method summaries, container-element views and Span. The classification
+  still UNKNOWN stays open: `TupleType.is_value_type()` is always true;
+  `Own` is not position-transparent (a value type becomes a value, a
+  reference type `T&&`); `Ptr` is value-typed; `readonly` limits access,
+  not lifetime.
 - **B3: containers.** Holders with element places, element views and
   iterator loans. From here on each step builds the call-effect contracts it
   needs -- retention, invalidation, result origins, exceptional behavior --
@@ -1994,7 +2009,8 @@ as the corpus grows).
   CONST_REF or VIEW passing it is a readonly borrow of storage outside the
   body; every admitted operation reads that storage through a borrow that
   lives through the operation and yields a fresh owned value or an inert
-  leaf. A view result is refused (second half). The TypeDef declares it:
+  leaf. A view of one is a borrowed holder (Views rule below). The
+  TypeDef declares it:
   `owned_leaf` on `int` (BigInt), `str`, `String` and `bytes` (their C++
   types own a buffer, copy and move with no observable effect beyond
   allocation, destroy with no hook), `copy_may_raise` (a standard
@@ -2031,10 +2047,10 @@ as the corpus grows).
   included) whose target is an inert leaf or an owned leaf the render
   materializes as a new value (`THIRCoerce.wrap`, e.g. `::tpy::BigInt({0})`,
   `std::string(::tpy::char_to_str({0}))`); a passthrough into an owned leaf
-  (`string_to_str`: at a view parameter the C++ passes a view of the
-  `String`) refuses at every sink, owning sinks included, until the views
-  half models it as a borrow (`THIRCoerce.conversion_refusal` names the
-  reason); a promotion that is an argument-less method of one operand's
+  is the Views rule's `owned_passthrough` (lent at a borrowing sink,
+  copied at an owning one), and every other passthrough refuses
+  (`THIRCoerce.conversion_refusal`, "conversion aliases its source"); a
+  promotion that is an argument-less method of one operand's
   type yielding the other's (`THIRBinOp.promoted_operand`, lowered as a
   `coerce` op feeding the operator); `s[i]` on a str / bytes place with a
   fixed-width int (or int literal) index and an inert result
@@ -2091,21 +2107,120 @@ as the corpus grows).
   only when no argument is lent. An unmarked stub stays opaque. Audited for
   the acceptance program: `len` (`@pure`), `time.time` (`transient=True`),
   `math.log` and `int(x: float)` (`@pure`).
-- **Deferred (not covered), second half or later.** StrView / BytesView
-  locals and their sources, slices, view returns and their origins, view
-  fields; owned-leaf record fields and constructor initializers (a callee's
-  field write can invalidate a forwarded borrow, so they land with the
-  conflict check); owned leaves in tuple / Optional / union members and
-  container elements (B3); `bytearray`; owned-leaf global writes; `String`
-  in-place methods beyond `+=`; f-strings; method calls on these types;
-  `THIRMethodCall` stub contracts; the cannot-raise stub fact so
-  `may_raise` can be False; a `String` bound as `str` (a passthrough
-  conversion, a view at a parameter and a copy at an owning sink) refuses
-  until the views half models the parameter case as a borrow; the
-  conversion certificate keys freshness on the render's `wrap` where the
-  declared `Coercion.builds_fresh_value` should decide it (the rows that
-  would need the flag are read by sema too, so that is its own zero-churn
-  unit).
+- **Views rule.** A view is a readonly `BORROWED` holder typed by its
+  family's view type (`StrView`, `BytesView`) whose referents are a
+  conservative set of POSSIBLE origins, never "exactly": the owned-leaf
+  storage its source reads (a local, an owned-leaf field place, an external
+  parameter, a global handle, a static literal). The family is
+  `typesys.view_family_of` (it answers for the view member too), and
+  compatibility is ONE predicate, `thir/scalar_leaves.view_compatible
+  (holder, source)`: the holder is the family's view type and the source is
+  the family's owned type, an owned sibling that is itself an owned leaf
+  (`String`; `bytearray` stays out) or the family's view. The validator
+  asks it at every `MIRBorrow`, `MIRAlias`, dereference and `MIRCopy`, so
+  str and bytes follow one rule by construction; a borrowing view with no
+  owned-leaf family (Span, dict views) refuses as "view of container
+  storage". Model: every view-producing operation TRANSFERS referents and
+  never copies. A name, a `*_to_strview` coerce or a field read is a
+  `MIRBorrow` of the place; a view-to-view binding is an `MIRAlias`; an
+  unstepped slice is a borrow of the WHOLE receiver (the interior is
+  opaque, so a sub-range is the buffer's loan; Python slices clamp, so it
+  does not raise), with its bounds evaluated as reads BEFORE the borrow
+  (fixed-width int or int literal, the getitem rule); a str / bytes literal
+  in a view holder is a `MIRConstant` with an immortal static origin (any
+  readonly borrowed holder that is not a parameter). Every owned sink
+  copies through the view: `THIRFormConvert` (materialize) at a `-> str`
+  return, an owned local or a field store is `MIRCopy((*v), may_raise)`.
+  Certified operations read a view operand as the leaf it views (`len(v)`,
+  `v == "x"`, `v[i]`, `print(v)`). A view PARAMETER (`v: StrView`) is a
+  loan passed by VALUE: a readonly borrowed slot seeded external like a
+  `str` view parameter; reseating one refuses ("reassigned view
+  parameter"), while a reassigned `str` parameter owns a local
+  (`THIRParamCopy`) and a later view borrows that local. A view RESULT of a
+  user callee is a borrowed result (`call_contract.view_result`, one fact
+  for body, summary and caller); the caller's holder takes the callee's
+  `summary.returns` referents. `summary.returns` holds parameter indices
+  only: a result rooted in a parameter's field summarizes as that
+  parameter, and a result whose origins include a global, a static literal
+  or the body's own storage leaves the body lowered and its summary opaque
+  ("view result origin outside the parameters"; an empty origin set is
+  never read as fresh). A stub view result borrows every lent argument and
+  refuses with none ("stub view result has no lent origin"). `String`
+  bound as `str` is authorized by `THIRCoerce.owned_passthrough`, keyed on
+  the sink: a `MIRBorrow` of the `String` place at a borrowing sink (a
+  `str` view parameter, a view local), a `MIRCopy` at an owning one. Rule:
+  a view source MIR cannot name refuses ("unsupported view source": an
+  if-expression or select producing a view, a method call returning one, a
+  view field, a slice-object index), as does a stepped slice ("stepped
+  slice"), which allocates.
+- **Field rule.** An owned-leaf record field is a place: `MIRField` admits
+  owned-leaf field types under the owner's layout (`MIRDefinitions`
+  layouts admit `storage_leaf or owned_leaf` fields; projecting INSIDE the
+  leaf stays banned). Model: a read is a borrow of `%r.Owner::name` at an
+  operand position and a `MIRCopy` at an owned sink; `r.f = v` and the
+  field `+=` are `IN_PLACE` replacement events on the field place
+  (`storage.storage_destination`), as for owned-leaf locals. Each
+  constructor member is decided once (`MIRFieldInitializer`) and lowered as
+  a `MIRMemberInit(source, mode, may_raise, loc)` in
+  `MIRReceiverInit.fields`: SCALAR for an inert leaf, COPY from a
+  parameter's storage or a constant (`may_raise` from the TypeDef), MOVE
+  out of a by-value parameter; a receiver-init copy that may raise is an exceptional exit
+  of the constructor, and the caller's `MIRConstruct` carries `may_raise`.
+  A record declaration's initializer is a full expression that owns its
+  argument temporaries. A callee's field writes are replacement events at
+  the call: `MIRStorageEvents.call_writes` lists every place a call may
+  write (`call_effects.call_write_places`, from a free-function callee's
+  summary; a method call has no summary and stays opaque), so
+  `v = r.name; rename(r, s); len(v)` is a conflict when sema has not already
+  owned `v`. Retention asks `retention.affects` over an unchanged
+  `may_overlap`: replacing an owned-leaf field reaches holders at or under
+  that field under ONE root (sibling fields are disjoint), while distinct
+  external roots may alias, so a write through one parameter reaches every
+  non-record holder of another (`write_then_reuse` in the case: `s` may
+  view the very `r.name` the write replaces). Rule: a field whose type
+  holds a borrow refuses ("record holds a borrow"): storing a view in a
+  record is a retention effect, B3.
+- **Conflict naming.** No view-specific conflict kind exists; the
+  tentative names map onto the structural kinds. `view_return_escape` is
+  `return_escape`: a borrowed (record or view) result reaching a local or
+  a temporary, discovered unconditionally by
+  `storage_evidence.analyze_return_escapes` for every lowered body (split
+  from certificate attribution, which filters by required roots) and
+  reported in `MIRAnalyses.conflicts`, a required analyses field.
+  `view_source_mutation` is `replacement`: an in-place write or rebind of
+  the source (a local, a field place, a call write) while a view of it is
+  live. `temporary_borrow` is `scope_end` whose ended storage is a
+  TEMPORARY. Last-use precision follows from liveness: a view dead at the
+  write is no conflict even where sema warns.
+- **Deferred (not covered), B3 or later.** View FIELDS: storing a view in
+  a record is a retention effect and reading one needs the field's loan
+  (B3, "record holds a borrow"); method calls on owned leaves and views
+  (`s.strip()`, `String` in-place methods beyond `+=`, `THIRMethodCall`
+  stub contracts) and method SUMMARIES, so `r.rename(s)` stays opaque
+  (B3/B5); views and owned leaves as container elements, Span and iterator
+  loans (B3); tuple / Optional / union members; `bytearray`; owned-leaf
+  global writes; f-strings; stepped slices ("stepped slice"); reassigned
+  explicit view parameters ("reassigned view parameter"); view-producing
+  if-expressions and selects ("unsupported view source"); structured
+  return origins, so a view result rooted in a global or a static literal
+  can be summarized (B5); the private-write summary rule is implemented but
+  a body with local record storage still stays OPAQUE under "summary
+  storage or value shape"; constructor-argument temporaries outside a
+  declaration (reassignment, optional backing, argument temporaries);
+  `readonly[str]` fields ("owned-leaf record field"); BORROW-form field
+  reads; a lent holder overlapping the call's own field write
+  (`rename(r, r.name)`) is not checked, the holder being dead after the
+  call; hoisted owned-leaf locals (a view or str bound in an `if` arm)
+  refuse as "missing or inconsistent hoisted binding facts"; the
+  cannot-raise stub fact so `may_raise` can be False; the conversion
+  certificate keys freshness on the render's `wrap` where the declared
+  `Coercion.builds_fresh_value` should decide it (the rows that would need
+  the flag are read by sema too, so that is its own zero-churn unit); the
+  fixed-int constructors (`int32(a)`) publish no `THIRStubCallee` until a
+  stub-callee shape for the generic `__init__[T]` is decided. Test
+  hazard: the `_dynamic_attached_qnames` holdout latches
+  `TypeDef.is_borrowing_view`, so a per-test compiler reset drops it
+  mid-test (`tpyc/mir/test_views.py` re-latches in its fixture).
 - **Measured** (`scripts/mir_coverage/`, name-hash sample, branch base vs
   the reviewed B2 tree): lowered test bodies 9.5% -> 11.5% (1001 -> 1218
   of 10577; 11.5% -> 14.0% excluding module init), of which the body-kind
@@ -2124,6 +2239,26 @@ as the corpus grows).
   leaf set (records, containers, views), then "stub declares no contract"
   (216 bodies: unmarked stubs, the cheapest next lever), "owned-leaf record
   field" (174, second half), f-strings (105) and "view local" (74).
+- **Measured** (views half; `scripts/mir_coverage/`, name-hash sample,
+  master 9cbcc321e0 vs the integrated branch): lowered test bodies 12.0% ->
+  16.1% (1286 -> 1733 of 10772; 14.5% -> 19.5% excluding module init),
+  example bodies 12.0% -> 19.9% (20 -> 33 of 166), stdlib bodies 3.8% ->
+  5.0% (52 -> 68). Loan-active USER bodies 78 -> 138 of 2279 (3.5% ->
+  6.1%); certified 46 -> 49; 889 bodies changed first blocker, the largest
+  moves "unsupported record fields" at constructors (315 lowered, 64 now
+  "record holds a borrow"), "owned-leaf record field" (69 lowered, 75 now
+  "missing receiver fact"), "view local" (22) and "view return" (12); the
+  blocking type `str` 423 -> 335 bodies, `StrView` 94 -> 27. Conflicts
+  3 -> 7: those the `views_as_places` case pins -- three at the time of the
+  run, four since review added `forwarded_then_reuse` (a source written while
+  a view is live, its bytes twin, a `str` parameter read after a field write
+  it may view) and one stdlib body, `ssl.SSLContext.load_cert_chain`
+  (`self._certfile = certfile; self._keyfile = keyfile`: the second view
+  parameter may view the field the first write replaces -- sound for a
+  caller passing `ctx._certfile`, and the shape every two-field setter has,
+  so a precision item for the advisory checker: distinct external roots are
+  assumed to alias). No MIR crash; no body that lowered before stopped
+  lowering; no snapshot changed.
 
 ## Scope matrix and remaining increments
 

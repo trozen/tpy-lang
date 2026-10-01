@@ -3284,9 +3284,11 @@ def certified_primitive_op(method: 'FunctionInfo | None', operands: 'Sequence[Tp
     operation: the type that declares it carries the primitive-operation
     contract (`TypeDef.primitive_ops`) and every operand and the result is
     a leaf -- inert, or owned (`is_owned_leaf`), which the operation reads
-    through a borrow or builds fresh. A view or reference operand or result
-    is not certified, nor is a dunder a contract-less type declares -- a
-    native generic extension included. Conversions around the call are the
+    through a borrow or builds fresh. A view of an owned leaf
+    (`view_owned_leaf`) is an operand the operation reads through the borrow
+    it holds; a view result, a reference operand or result, and a dunder a
+    contract-less type declares -- a native generic extension included --
+    are not certified. Conversions around the call are the
     caller's to refuse. `receiver` is the index of the operand bound to
     `self` (1 for a reverse operator); the others bind the declared
     parameters in order."""
@@ -3298,7 +3300,7 @@ def certified_primitive_op(method: 'FunctionInfo | None', operands: 'Sequence[Tp
     arguments = [i for i in range(len(operands)) if i != receiver]
 
     def operand_ok(index: int, t: TpyType) -> bool:
-        if _leaf_value(t):
+        if _leaf_value(through_view(t)):
             return True
         if not _is_number_literal(t):
             return False
@@ -3322,8 +3324,10 @@ def certified_primitive_comparison(left: TpyType, right: TpyType) -> bool:
     takes only an int literal, and only when its runtime compares fixed-width
     ints); or one operand is an owned leaf whose runtime compares fixed-width
     ints (`TypeDef.compares_fixed_ints`) and the other a fixed-width int
-    carrying the contract. Sema accepts any unresolved comparison, so its
+    carrying the contract. A view operand compares as the owned leaf it
+    reads (`view_owned_leaf`). Sema accepts any unresolved comparison, so its
     acceptance certifies nothing; these facts do."""
+    left, right = through_view(left), through_view(right)
     typed = [t for t in (left, right) if not _is_number_literal(t)]
     if not typed:
         return False
@@ -3390,8 +3394,9 @@ def certified_primitive_subscript(receiver: TpyType, index: TpyType, result: Tpy
     runtime code (`TypeDef.primitive_ops`), the index is a fixed-width int
     (or an int literal, which converts to one; the stub declares no other
     element index) and the element is an inert leaf carrying the contract
-    -- a slice index or a view result is not."""
-    return (is_primitive_owned_leaf(receiver)
+    -- a slice index or a view result is not. A view receiver is read as
+    the owned leaf it views (`view_owned_leaf`)."""
+    return (is_primitive_owned_leaf(through_view(receiver))
             and (isinstance(index, IntLiteralType) or _primitive_fixed_int(index))
             and _primitive_inert(result))
 
@@ -5992,6 +5997,35 @@ def view_family_for_type(var_type: 'TpyType') -> Optional[ViewTypeFamily]:
         return view_family_for_type(var_type.base_type)
     qn = var_type.qualified_name() if isinstance(var_type, NominalType) else None
     return _VIEW_OWNED_QNAME_TO_FAMILY.get(qn) if qn else None
+
+
+def view_family_of(t: 'TpyType') -> Optional[ViewTypeFamily]:
+    """The view family a runtime member type belongs to: its owned type, an
+    owned sibling (`String`, `bytearray`) or its view type (`StrView`,
+    `BytesView`). Unlike `view_family_for_type`, which answers the members
+    sema infers view locals for, this answers the VIEW member too; pending
+    and Literal types are no runtime member and answer None."""
+    if not isinstance(t, NominalType) or t.type_args:
+        return None
+    return next((f for f in VIEW_TYPE_FAMILIES if f.is_any_member(t)), None)
+
+
+def view_owned_leaf(t: 'TpyType') -> Optional[TpyType]:
+    """The owned leaf a borrowing view reads through: its family's owned
+    type when `t` is the family's view type and that owned type is an owned
+    leaf (`StrView` reads a `str`, `BytesView` a `bytes`). None for every
+    other type -- a Span or dict view borrows container storage, not a leaf."""
+    family = view_family_of(t)
+    if family is None or t != family.view_type or not _is_borrowing_view_type(t):
+        return None
+    return family.owned_type if is_owned_leaf(family.owned_type) else None
+
+
+def through_view(t: TpyType) -> TpyType:
+    """An operand as the leaf its operation reads: a view reads the owned
+    leaf of its family through the borrow it holds."""
+    owned = view_owned_leaf(t)
+    return owned if owned is not None else t
 
 
 # int32 range limits (for runtime-constant checks). Use int_traits_of(t) for

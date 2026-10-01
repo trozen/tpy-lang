@@ -5,6 +5,7 @@ from collections.abc import Callable
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32
@@ -12,7 +13,7 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRBodyId, MIRConstant, MIRFieldId, MIRFunction, MIRNotCovered,
+    MIRBodyId, MIRConstant, MIRFieldId, MIRFunction, MIRMemberInit, MIRMemberInitMode, MIRNotCovered,
     MIRSlotId, MIRSlotKind,
 )
 from .testutil import Reference, execute
@@ -83,7 +84,8 @@ def test_initialization_precedes_alias_and_scalar_capture(artifacts: Artifacts, 
     fn = lower(constructors["Cell"])
     init = fn.receiver_init
     assert init is not None and init.receiver == fn.slots[0].id
-    assert init.fields == (fn.slots[1].id, MIRConstant(0), MIRConstant(False))
+    assert tuple(member.source for member in init.fields) == (fn.slots[1].id, MIRConstant(0), MIRConstant(False))
+    assert all(member.mode is MIRMemberInitMode.SCALAR and not member.may_raise for member in init.fields)
     heap = {41: {}, 42: {}}
     assert execute(fn, Reference(41), 3, reset, heap=heap) is None
     typ = fn.slots[0].type
@@ -149,7 +151,8 @@ def test_malformed_entry_values_are_rejected(
 ) -> None:
     fn = lower(artifacts[0]["Plain"])
     with pytest.raises(MIRValidationError):
-        validate_function(replace(fn, receiver_init=replace(fn.receiver_init, fields=fields)))
+        validate_function(replace(fn, receiver_init=replace(fn.receiver_init, fields=tuple(
+            MIRMemberInit(source) for source in fields))))
 
 
 def test_entry_cannot_read_a_local_or_initialize_readonly_receiver(artifacts: Artifacts) -> None:
@@ -157,7 +160,7 @@ def test_entry_cannot_read_a_local_or_initialize_readonly_receiver(artifacts: Ar
     local = next(s for s in fn.slots if s.kind is MIRSlotKind.TEMPORARY and s.type == INT32)
     with pytest.raises(MIRValidationError, match="initializer parameter"):
         validate_function(replace(fn, receiver_init=replace(fn.receiver_init,
-            fields=(local.id, MIRConstant(0), MIRConstant(False)))))
+            fields=(MIRMemberInit(local.id), MIRMemberInit(MIRConstant(0)), MIRMemberInit(MIRConstant(False))))))
     with pytest.raises(MIRValidationError, match="constructor receiver"):
         validate_function(replace(fn, slots=(replace(fn.slots[0], readonly=True), *fn.slots[1:])))
     with pytest.raises(MIRValidationError, match="constructor receiver"):
@@ -178,6 +181,22 @@ def test_actual_emitted_exclusions(fields: str, body: str, reason: str) -> None:
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Record")
     result = lower_constructor(ctor, MIRBodyId("constructors", "excluded"))
+    assert isinstance(result, MIRNotCovered) and reason in result.reason
+
+
+@pytest.mark.parametrize("field,param,body,reason", [
+    ("value: str", "value: str", "self.value = value + '!'", "parameter or literal"),
+    ("view: StrView", "value: StrView", "self.view = value", "record holds a borrow"),
+    ("pair: tuple[str, str]", "value: str", "self.pair = (value, value)", "unsupported record fields"),
+])
+def test_owned_leaf_field_exclusions(field: str, param: str, body: str, reason: str) -> None:
+    source = (f"from tpy import StrView\nclass Record:\n    {field}\n"
+              f"    def __init__(self, {param}):\n        {body}\n")
+    compiler, modules = _compile(source)
+    _, ctx = compiler.generate_code_and_thir(_entry(modules))
+    ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Record")
+    with activate_compiler(compiler):
+        result = lower_constructor(ctor, MIRBodyId("constructors", "excluded"))
     assert isinstance(result, MIRNotCovered) and reason in result.reason
 
 

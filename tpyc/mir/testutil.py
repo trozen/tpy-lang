@@ -98,7 +98,7 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
         assert isinstance(reference, Reference) and not reference.path
         assert reference.identity not in objects or not objects[reference.identity]
         objects[reference.identity] = {
-            member.id: value.value if isinstance(value, MIRConstant) else values[value]
+            member.id: value.source.value if isinstance(value.source, MIRConstant) else values[value.source]
             for member, value in zip(records[slots[init.receiver].type].fields, init.fields)
         }
     next_identity = max(objects, default=0) + 1

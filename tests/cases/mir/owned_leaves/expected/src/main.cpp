@@ -346,25 +346,25 @@ void conditional_hoist() {
     std::cout << "conditional_hoist:" << " " << saved->x << " " << saved->y << "\n";
 }
 
-// # refused: a view local
-// def view_local(s: str) -> int32:  # tpyc: mir(uncovered /^view local$/)
-//     v = s[1:]
+// # covered: a view local borrows the parameter it slices
+// def view_local(s: str) -> int32:  # tpyc: mir(covered)
+//     v = s[1:]  # tpyc: mir_borrowed(v) mir_borrows(v, s)
 //     return 1
 int32_t view_local(std::string_view s) {
     std::string_view v = ::tpy::str_slice(s, ::tpy::BasicSlice{1, std::nullopt});
     return 1;
 }
 
-// # refused: an owned-leaf record field read
-// def str_field(r: Rec) -> bool:  # tpyc: mir(uncovered /^owned-leaf record field$/)
+// # covered: an owned-leaf field read is a borrow of the field place
+// def str_field(r: Rec) -> bool:  # tpyc: mir(covered)
 //     return r.name == "x"
 bool str_field(const Rec& r) {
     return (r.name == "x");
 }
 
-// # refused: an owned-leaf record field write
-// def str_field_write(r: Rec, s: str) -> None:  # tpyc: mir(uncovered /^owned-leaf record field$/)
-//     r.name = s
+// # covered: an owned-leaf field write is a replacement event on the field place
+// def str_field_write(r: Rec, s: str) -> None:  # tpyc: mir(covered)
+//     r.name = s  # tpyc: mir_write(r.name)
 void str_field_write(Rec& r, std::string_view s) {
     r.name = s;
 }
@@ -377,8 +377,8 @@ void global_write() {
     G = "new";
 }
 
-// # refused: a view return
-// def view_return(s: str) -> StrView:  # tpyc: mir(uncovered /^view return$/)
+// # covered: a view result borrows the parameter (summary returns={0})
+// def view_return(s: str) -> StrView:  # tpyc: mir(covered) mir_summary(known)
 //     return s
 std::string_view view_return(std::string_view s) {
     return s;
@@ -399,8 +399,8 @@ int32_t global_copy() {
     return ::tpyapp::main::takes_own(std::move(__tmp_1));
 }
 
-// # refused: no MIR place holds a view, so the conversion handing the view result to `takes` is refused
-// def view_caller(s: str) -> int32:  # tpyc: mir(uncovered /^unsupported coercion$/)
+// # covered: the view result of `view_return` is lent to `takes` without a copy
+// def view_caller(s: str) -> int32:  # tpyc: mir(covered)
 //     return takes(view_return(s))
 int32_t view_caller(std::string_view s) {
     return ::tpyapp::main::takes(::tpyapp::main::view_return(s));
@@ -438,9 +438,9 @@ bool concat_mixed(std::string_view s, std::string_view t) {
     return n;
 }
 
-// # refused: the concatenation's String is rendered in place as the str local
-// def string_as_str(s: str) -> str:  # tpyc: mir(uncovered /^conversion aliases its source$/)
-//     t = s + "x"
+// # covered: the String local is read in place as a str at the return (a copy at the owning sink)
+// def string_as_str(s: str) -> str:  # tpyc: mir(covered)
+//     t = s + "x"  # tpyc: mir_owned(t)
 //     return t
 std::string string_as_str(std::string_view s) {
     ::tpy::String t = (::tpy::str_concat(s, "x"));
